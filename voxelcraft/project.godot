@@ -1,0 +1,29 @@
+; Engine configuration file.
+; VoxelCraft - Minecraft-inspiriertes Voxel-Sandbox-Spiel
+; Godot 4.3, GDScript
+
+config_version=5
+
+[application]
+
+config/name="VoxelCraft"
+config/description="Voxel-Sandbox-Spiel: Chunks, prozedurale Welt, Crafting"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.3")
+
+[autoload]
+
+BlockDB="*res://scripts/autoload/block_db.gd"
+ItemDB="*res://scripts/autoload/item_db.gd"
+RecipeDB="*res://scripts/autoload/recipe_db.gd"
+Game="*res://scripts/autoload/game.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=1
+textures/canvas_textures/default_texture_filter=0
