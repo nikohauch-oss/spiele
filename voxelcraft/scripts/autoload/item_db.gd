@@ -40,6 +40,10 @@ func _ready() -> void:
 	_reg({"id": "porkchop_cooked", "name": "Gebratenes Schweinefleisch", "food": 8})
 	_reg({"id": "rotten_flesh", "name": "Verrottetes Fleisch", "food": 2})
 
+	# --- Fernkampf ---
+	_reg({"id": "bow", "name": "Bogen", "durability": 120, "max_stack": 1})
+	_reg({"id": "arrow", "name": "Pfeil"})
+
 	# --- Werkzeuge: [Prefix, Anzeigename, Stufe, Tempo, Haltbarkeit, Bonus-Schaden] ---
 	for m in [["wooden", "Holz", 1, 4.0, 60, 0], ["stone", "Stein", 2, 8.0, 132, 1],
 			["iron", "Eisen", 3, 12.0, 251, 2], ["diamond", "Diamant", 4, 16.0, 800, 3]]:
@@ -233,6 +237,21 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 			_blob(img, Color(0.45, 0.4, 0.18), 5)
 			_px(img, 7, 8, Color(0.3, 0.5, 0.2))
 			_px(img, 10, 10, Color(0.3, 0.5, 0.2))
+		"bow":
+			var string_c := Color(0.85, 0.85, 0.78)
+			for pt in [[5, 2], [4, 3], [3, 4], [3, 6], [3, 8], [3, 10], [4, 11], [5, 12]]:
+				_px(img, pt[0], pt[1], wood.darkened(0.1))
+				_px(img, pt[0] + 1, pt[1], wood)
+			for y in range(2, 13):
+				_px(img, 7, y, string_c)  # Sehne
+		"arrow":
+			for i in 8:
+				_px(img, 3 + i, 12 - i, wood)  # Schaft diagonal
+			_px(img, 11, 3, Color(0.6, 0.6, 0.62))  # Spitze
+			_px(img, 12, 3, Color(0.6, 0.6, 0.62))
+			_px(img, 11, 4, Color(0.6, 0.6, 0.62))
+			_px(img, 3, 11, Color(0.9, 0.9, 0.85))  # Federn
+			_px(img, 4, 13, Color(0.9, 0.9, 0.85))
 	return img
 
 

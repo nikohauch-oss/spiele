@@ -77,12 +77,14 @@ func _physics_process(delta: float) -> void:
 			mob.take_damage(ItemDB.attack_damage(player.inventory.selected_id()), dir)
 			if player.inventory.damage_selected():
 				Game.hud.toast("Werkzeug zerbrochen!")
+		_handle_use(Vector3i.ZERO, Vector3i.ZERO, false)  # Bogen/Essen geht trotzdem
 		return
 
 	# ------------------------------------------------- Block anvisiert ---
 	if collider == null:
 		_stop_digging()
 		highlight.visible = false
+		_handle_use(Vector3i.ZERO, Vector3i.ZERO, false)  # Bogen/Essen in die Luft
 		return
 
 	var point := ray.get_collision_point()
@@ -98,9 +100,13 @@ func _physics_process(delta: float) -> void:
 	else:
 		_stop_digging()
 
+	_handle_use(block_pos, place_pos, true)
+
+
+func _handle_use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 	if Input.is_action_pressed("use") and _place_cd <= 0.0:
 		_place_cd = PLACE_REPEAT
-		_use(block_pos, place_pos)
+		_use(block_pos, place_pos, has_target)
 
 
 # ------------------------------------------------------------------ Abbau ---
@@ -135,8 +141,13 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 		var drop: String = BlockDB.get_def(block_id).drop
 		if drop != "":
 			ItemEntity.spawn_id(drop, 1, center)
-		elif block_id == BlockDB.LEAVES and randf() < 0.08:
-			ItemEntity.spawn_id("apple", 1, center)  # seltener Apfeldrop
+		elif block_id == BlockDB.LEAVES:
+			# Mit der Axt gibt es Laub (Werkstoff fuer Bett/Bogen/Pfeile),
+			# sonst nur ab und zu einen Apfel
+			if ItemDB.get_def(held).get("tool", "") == "axe":
+				ItemEntity.spawn_id("leaves", 1, center)
+			elif randf() < 0.08:
+				ItemEntity.spawn_id("apple", 1, center)
 	# Werkzeug abnutzen (nicht im Kreativmodus)
 	if not player.creative and ItemDB.is_tool(held):
 		if player.inventory.damage_selected():
@@ -150,6 +161,7 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 			ItemEntity.spawn_stack(stack, center)
 	Game.chunk_manager.set_block(pos, BlockDB.AIR)
 	_spawn_break_particles(pos, block_id)
+	Sfx.play_at("break", center)
 	_dig_progress = 0.0
 	Game.hud.set_dig_progress(-1.0)
 
@@ -183,31 +195,42 @@ func _spawn_break_particles(pos: Vector3i, block_id: int) -> void:
 
 # ------------------------------------------------------- Benutzen/Platzieren ---
 
-func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
-	var target_id: int = Game.chunk_manager.get_block(block_pos)
-	# Interaktive Bloecke oeffnen
-	if target_id == BlockDB.CRAFTING_TABLE:
-		Game.open_container(ContainerUI.Mode.TABLE)
-		return
-	if target_id == BlockDB.FURNACE:
-		if not Game.furnaces.has(block_pos):
-			Game.create_furnace(block_pos)  # z. B. aus altem Spielstand
-		Game.open_container(ContainerUI.Mode.FURNACE, block_pos)
-		return
-	if target_id == BlockDB.CHEST:
-		if not Game.chests.has(block_pos):
-			Game.create_chest(block_pos)
-		Game.open_container(ContainerUI.Mode.CHEST, block_pos)
-		return
-
+func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 	var held := player.inventory.selected_id()
-	if held == "":
+	if has_target:
+		var target_id: int = Game.chunk_manager.get_block(block_pos)
+		# Interaktive Bloecke haben Vorrang
+		if target_id == BlockDB.CRAFTING_TABLE:
+			Game.open_container(ContainerUI.Mode.TABLE)
+			return
+		if target_id == BlockDB.FURNACE:
+			if not Game.furnaces.has(block_pos):
+				Game.create_furnace(block_pos)  # z. B. aus altem Spielstand
+			Game.open_container(ContainerUI.Mode.FURNACE, block_pos)
+			return
+		if target_id == BlockDB.CHEST:
+			if not Game.chests.has(block_pos):
+				Game.create_chest(block_pos)
+			Game.open_container(ContainerUI.Mode.CHEST, block_pos)
+			return
+		if target_id == BlockDB.BED:
+			_try_sleep(block_pos)
+			return
+
+	# Bogen schiessen (braucht kein Blockziel)
+	if held == "bow":
+		_place_cd = 1.0  # Nachspann-Zeit
+		_shoot_bow()
 		return
-	# Essen
+	# Essen (braucht ebenfalls kein Blockziel)
 	if ItemDB.food_value(held) > 0:
 		if player.stats.hunger < PlayerStats.MAX_HUNGER:
 			player.stats.eat(ItemDB.food_value(held))
 			player.inventory.consume_selected()
+			Sfx.play("eat")
+		return
+
+	if not has_target or held == "":
 		return
 	# Block platzieren
 	var block := ItemDB.block_of(held)
@@ -216,8 +239,8 @@ func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
 	var cell: int = Game.chunk_manager.get_block(place_pos)
 	if cell != BlockDB.AIR and cell != BlockDB.WATER:
 		return
-	# Fackeln brauchen einen festen Block darunter und vertragen kein Wasser
-	if block == BlockDB.TORCH:
+	# Fackeln und Betten brauchen einen festen Block darunter, kein Wasser
+	if block == BlockDB.TORCH or block == BlockDB.BED:
 		var below: int = Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
 		if cell == BlockDB.WATER or not BlockDB.is_solid(below):
 			return
@@ -233,3 +256,32 @@ func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
 	elif block == BlockDB.CHEST:
 		Game.create_chest(place_pos)
 	player.inventory.consume_selected()
+	Sfx.play_at("place", Vector3(place_pos) + Vector3(0.5, 0.5, 0.5))
+
+
+## Rechtsklick auf ein Bett: nachts schlafen -> Morgen + neuer Spawnpunkt.
+func _try_sleep(bed_pos: Vector3i) -> void:
+	if not Game.day_night.is_night():
+		Game.hud.toast("Schlafen geht nur nachts.")
+		return
+	for m in get_tree().get_nodes_in_group("monsters"):
+		if m.global_position.distance_to(player.global_position) < 14.0:
+			Game.hud.toast("Du kannst nicht schlafen - Monster in der Naehe!")
+			return
+	Game.day_night.time = 0.0  # Sonnenaufgang
+	Game.spawn_point = Vector3(bed_pos) + Vector3(0.5, 0.7, 0.5)
+	Game.hud.toast("Guten Morgen! Spawnpunkt gesetzt.")
+	Sfx.play("pop")
+
+
+func _shoot_bow() -> void:
+	if not player.creative and player.inventory.count_of("arrow") <= 0:
+		Game.hud.toast("Keine Pfeile!")
+		return
+	var dir := -player.camera.global_transform.basis.z
+	Arrow.shoot(player.camera.global_position + dir * 0.4, dir * 26.0, 5.0, player)
+	Sfx.play("shoot")
+	if not player.creative:
+		player.inventory.remove_id("arrow", 1)
+		if player.inventory.damage_selected():
+			Game.hud.toast("Bogen zerbrochen!")

@@ -91,6 +91,7 @@ func _process(delta: float) -> void:
 func _try_pickup(player) -> void:
 	var rest = player.inventory.add_stack(stack)
 	if rest == null:
+		Sfx.play("pop")
 		queue_free()
 	else:
 		stack = rest  # Inventar voll: Rest bleibt liegen

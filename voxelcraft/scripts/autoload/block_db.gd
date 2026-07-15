@@ -7,7 +7,7 @@ extends Node
 enum {
 	AIR, GRASS, DIRT, STONE, SAND, LOG, LEAVES, WATER,
 	COAL_ORE, IRON_ORE, PLANKS, CRAFTING_TABLE, FURNACE, BEDROCK,
-	TORCH, CHEST, DIAMOND_ORE,
+	TORCH, CHEST, DIAMOND_ORE, BED,
 	BLOCK_COUNT,
 }
 
@@ -61,6 +61,8 @@ var defs := {
 	DIAMOND_ORE: {"id": "diamond_ore", "name": "Diamant-Erz",
 		"tiles": ["diamond_ore", "diamond_ore", "diamond_ore"],
 		"hardness": 9.0, "tool": "pickaxe", "min_tier": 3, "drop": "diamond"},
+	BED: {"id": "bed", "name": "Bett", "tiles": ["bed_top", "bed_side", "planks"],
+		"hardness": 1.2, "tool": "axe", "see_through": true},
 }
 
 var atlas_texture: ImageTexture
@@ -157,7 +159,7 @@ func _build_atlas() -> void:
 	var kinds := ["grass_top", "grass_side", "dirt", "stone", "sand", "log_side",
 		"log_top", "leaves", "water", "coal_ore", "iron_ore", "planks",
 		"table_top", "table_side", "furnace_front", "bedrock",
-		"torch", "chest_top", "chest_side", "diamond_ore"]
+		"torch", "chest_top", "chest_side", "diamond_ore", "bed_top", "bed_side"]
 	var img := Image.create_empty(ATLAS_TILES * TILE, ATLAS_TILES * TILE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 0, 1))  # Magenta = "fehlende Kachel"
 	for i in kinds.size():
@@ -285,6 +287,22 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 						c = Color(0.08, 0.06, 0.05) if rng.randf() > 0.25 else Color(0.9, 0.45, 0.1)
 				"bedrock":
 					c = _vary(Color(0.25, 0.25, 0.27), rng, 0.14)
+				"bed_top":
+					# Kissen oben (helles Ende), Rest rote Decke
+					if py < 5:
+						c = _vary(Color(0.92, 0.92, 0.88), rng, 0.03)
+					else:
+						c = _vary(Color(0.72, 0.14, 0.14), rng, 0.04)
+					if px == 0 or px == 15:
+						c = c.darkened(0.3)
+				"bed_side":
+					# oben rote Decke, unten Holzrahmen
+					if py < 6:
+						c = _vary(Color(0.72, 0.14, 0.14), rng, 0.04)
+					else:
+						c = _vary(Color(0.55, 0.4, 0.22), rng, 0.05)
+						if py % 4 == 3:
+							c = c.darkened(0.3)
 			img.set_pixel(ox + px, oy + py, c)
 	# Erz-Sprenkel als 2x2-Kluempchen nachtraeglich aufmalen
 	if kind.ends_with("_ore"):

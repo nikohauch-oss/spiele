@@ -23,6 +23,11 @@ var shaped := [
 	{"pattern": ["SSS", "S S", "SSS"], "key": {"S": "stone"}, "result": "furnace", "count": 1},
 	{"pattern": ["PPP", "P P", "PPP"], "key": {"P": "planks"}, "result": "chest", "count": 1},
 	{"pattern": ["K", "S"], "key": {"K": "coal", "S": "stick"}, "result": "torch", "count": 4},
+	# Blaetter ersetzen Wolle/Faden (mit der Axt von Baeumen ernten)
+	{"pattern": ["LLL", "PPP"], "key": {"L": "leaves", "P": "planks"}, "result": "bed", "count": 1},
+	{"pattern": [" SL", "S L", " SL"], "key": {"S": "stick", "L": "leaves"}, "result": "bow", "count": 1},
+	{"pattern": ["F", "S", "L"], "key": {"F": "stone", "S": "stick", "L": "leaves"},
+		"result": "arrow", "count": 4},
 ]
 
 

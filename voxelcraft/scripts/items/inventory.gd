@@ -106,6 +106,30 @@ func notify_changed() -> void:
 	changed.emit()
 
 
+## Gesamtanzahl eines Items ueber alle Slots (z. B. Pfeile fuer den Bogen).
+func count_of(id: String) -> int:
+	var total := 0
+	for s in slots:
+		if s != null and s.id == id:
+			total += s.count
+	return total
+
+
+## Entfernt n Stueck eines Items (ueber mehrere Stacks hinweg).
+func remove_id(id: String, n: int) -> void:
+	for i in SIZE:
+		if n <= 0:
+			break
+		var s = slots[i]
+		if s != null and s.id == id:
+			var take := mini(s.count, n)
+			s.count -= take
+			n -= take
+			if s.count <= 0:
+				slots[i] = null
+	changed.emit()
+
+
 # --------------------------------------------------------- Serialisierung ---
 
 func serialize() -> Array:

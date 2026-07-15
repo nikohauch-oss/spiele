@@ -62,7 +62,9 @@ func _try_spawn_zombie() -> void:
 	# Fackelschutz: in beleuchteten Bereichen (Blocklicht >= 8) spawnt nichts
 	if Game.chunk_manager.light_get(Vector3i(spot.wx, spot.ground + 1, spot.wz), false) >= 8:
 		return
-	_spawn(Zombie.new(), _zombies, spot)
+	# 30 % Skelette, sonst Zombies
+	var monster: Mob = SkeletonMob.new() if randf() < 0.3 else Zombie.new()
+	_spawn(monster, _zombies, spot)
 
 
 func _try_spawn_animal() -> void:

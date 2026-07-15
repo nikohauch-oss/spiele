@@ -52,6 +52,7 @@ func damage(amount: float) -> void:
 	changed.emit()
 	if Game.hud:
 		Game.hud.flash_damage()
+	Sfx.play("hurt")
 	if health <= 0.0:
 		_dead = true
 		died.emit()

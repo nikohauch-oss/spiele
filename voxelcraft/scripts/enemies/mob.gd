@@ -42,6 +42,7 @@ func add_box(size: Vector3, pos: Vector3, color: Color) -> void:
 
 func take_damage(amount: float, from_dir: Vector3) -> void:
 	health -= amount
+	Sfx.play_at("hit", global_position)
 	# Rueckstoss + kurzes rotes Aufblitzen aller Koerperteile
 	velocity += Vector3(from_dir.x, 0, from_dir.z).normalized() * 7.0 + Vector3(0, 4.5, 0)
 	for part in _body_parts:

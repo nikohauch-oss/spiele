@@ -252,6 +252,8 @@ func _shift_transfer(area: int, index: int) -> void:
 				var recipe := _current_recipe()
 				if recipe.is_empty():
 					break
+				if _round == 0:
+					Sfx.play("click")
 				var rest: int = inv.add_item(recipe.result, recipe.count)
 				if rest > 0 and Game.player:
 					ItemEntity.spawn_id(recipe.result, rest,
@@ -375,6 +377,7 @@ func _take_result() -> void:
 			craft_grid[i].count -= 1
 			if craft_grid[i].count <= 0:
 				craft_grid[i] = null
+	Sfx.play("click")
 
 
 func _current_recipe() -> Dictionary:

@@ -17,6 +17,7 @@ BlockDB="*res://scripts/autoload/block_db.gd"
 ItemDB="*res://scripts/autoload/item_db.gd"
 RecipeDB="*res://scripts/autoload/recipe_db.gd"
 Game="*res://scripts/autoload/game.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
 
 [display]
 

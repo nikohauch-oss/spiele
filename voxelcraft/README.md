@@ -42,6 +42,10 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
   eine Spitzhacke, Eisen-Erz mindestens Stein-, Diamant-Erz Eisen-Spitzhacke)
 - **Truhen** mit 27 Lager-Slots (8 Bretter im Ring); **Fackeln**
   (Kohle über Stock = 4 Stück)
+- **Bogen & Pfeile**: craftbar mit Laub als Faden-Ersatz (Blätter mit der
+  **Axt** ernten!) oder als Skelett-Drop; Rechtsklick schießt (1 s Nachspann)
+- **Bett** (3 Laub über 3 Brettern): nachts Rechtsklick → Morgen überspringen
+  und Spawnpunkt setzen — klappt nicht, wenn Monster in der Nähe sind
 - Ofen als Block-Entity: schmilzt Eisen-Erz → Eisenbarren und Holz → Kohle,
   Brennstoffe mit Brennwerten (Kohle, Holz, Bretter, Stöcke); läuft auch
   bei geschlossenem UI weiter
@@ -51,8 +55,12 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
 - Zombies spawnen nachts, verfolgen den Spieler und greifen an —
   **aber nicht in fackelbeleuchteten Bereichen** (Blocklicht ≥ 8);
   sie droppen verrottetes Fleisch
+- **Skelette** (30 % der Nacht-Spawns) halten Abstand und schießen Pfeile
+  mit Schwerkraft-Flugbahn; sie droppen Pfeile und manchmal einen Bogen
 - **Schweine** spawnen tagsüber auf Grasflächen, fliehen bei Schlägen und
   droppen rohes Schweinefleisch — im Ofen braten (roh 3 / gebraten 8 Hunger)
+- **Sound-Effekte** komplett prozedural synthetisiert (Abbauen, Platzieren,
+  Einsammeln, Essen, Treffer, Bogenschuss, ...) — weiterhin null Assets
 - Healthbar + Hunger-System (Sprinten macht hungrig, Essen: Äpfel aus
   Blättern; hoher Hunger regeneriert, leerer Hunger zehrt)
 - Speichern/Laden: Seed + nur veränderte Chunks + Spieler + Öfen
@@ -90,7 +98,8 @@ voxelcraft/
     │   ├── block_db.gd      Blocktypen, prozeduraler Textur-Atlas, Materialien
     │   ├── item_db.gd       Items/Werkzeuge, Icons, Abbau-Regeln (Zeit & Drops)
     │   ├── recipe_db.gd     Crafting-/Schmelzrezepte + Pattern-Matching
-    │   └── game.gd          Input-Map, Referenzen, Öfen-Ticks, Speichern/Laden, UI-Steuerung
+    │   ├── game.gd          Input-Map, Referenzen, Öfen-Ticks, Speichern/Laden, UI-Steuerung
+    │   └── sfx.gd           prozedural synthetisierte Sound-Effekte
     ├── world/
     │   ├── chunk.gd         Chunk-Node (Mesh + Kollision) und Daten-Indexierung
     │   ├── chunk_mesher.gd  SurfaceTool-Meshing mit Face-Culling + Licht-Sampling
@@ -105,16 +114,18 @@ voxelcraft/
     │   ├── inventory.gd     36-Slot-Datenmodell inkl. Werkzeug-Haltbarkeit
     │   ├── furnace_state.gd Ofen-Logik (Block-Entity)
     │   ├── chest_state.gd   Truhen-Lager (Block-Entity)
-    │   └── item_entity.gd   aufsammelbare Item-Drops in der Welt
+    │   ├── item_entity.gd   aufsammelbare Item-Drops in der Welt
+    │   └── arrow.gd         Pfeil-Projektil (Schwerkraft + Raycast-Treffer)
     ├── ui/
     │   ├── slot_ui.gd       wiederverwendbarer Item-Slot
     │   ├── hud.gd           Fadenkreuz, Hotbar, Herzen/Hunger, Debug, Toasts
     │   └── container_ui.gd  Inventar / Werkbank / Ofen (ein gemeinsames Fenster)
     └── enemies/
         ├── mob.gd           Basisklasse: Klotz-Koerper, Schaden, Rueckstoss
-        ├── zombie.gd        Gegner-KI (Verfolgen, Springen, Angreifen)
+        ├── zombie.gd        Nahkampf-Gegner (Verfolgen, Springen, Angreifen)
+        ├── skeleton.gd      Fernkampf-Gegner (Abstand halten, Pfeile schiessen)
         ├── animal.gd        Schwein (wandern, fliehen, Fleisch-Drop)
-        └── mob_spawner.gd   Spawns um den Spieler (nachts Zombies, tags Tiere)
+        └── mob_spawner.gd   Spawns um den Spieler (nachts Monster, tags Tiere)
 ```
 
 ## Architektur-Entscheidungen
@@ -159,6 +170,6 @@ voxelcraft/
 
 - Greedy Meshing (Flächen zusammenfassen) für noch weniger Vertices
 - Fließendes Wasser, Glas (Sand schmelzen), Nicht-Würfel-Blöcke (Stufen, Zäune)
-- Sounds und Schrittgeräusche
-- Mehr Gegner (Skelette mit Fernkampf), Rüstung, Betten (Nacht überspringen)
+- Schrittgeräusche und Umgebungsklänge
+- Rüstung, Creeper, Truhen-Loot in Weltstrukturen
 - Hauptmenü mit mehreren Welt-Slots

@@ -25,6 +25,7 @@ var _attack_cd := 0.0
 
 func _ready() -> void:
 	health = 20.0
+	add_to_group("monsters")  # blockiert das Schlafen in der Naehe
 	add_capsule(0.35, 1.9)
 	add_box(Vector3(0.55, 1.4, 0.32), Vector3(0, 0.7, 0), Color(0.2, 0.5, 0.25))  # Rumpf
 	add_box(Vector3(0.5, 0.5, 0.5), Vector3(0, 1.7, 0), Color(0.3, 0.65, 0.3))    # Kopf

@@ -56,7 +56,14 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 				if id == BlockDB.AIR:
 					continue
 				if id == BlockDB.TORCH:
-					v_count = _add_torch(st, x, y, z, light[col_base + y], v_count)
+					# Schmaler Stab (2/16 breit, 10/16 hoch) in der Zellenmitte
+					v_count = _add_scaled_box(st, x, y, z, Vector3(0.4375, 0.0, 0.4375),
+						Vector3(0.5625, 0.625, 0.5625), id, light[col_base + y], false, v_count)
+					continue
+				if id == BlockDB.BED:
+					# Halbhohe Liegeflaeche, leicht eingerueckt gegen Z-Fighting
+					v_count = _add_scaled_box(st, x, y, z, Vector3(0.01, 0.02, 0.01),
+						Vector3(0.99, 0.5625, 0.99), id, light[col_base + y], true, v_count)
 					continue
 				var is_water := id == BlockDB.WATER
 				for f: Dictionary in FACES:
@@ -109,26 +116,27 @@ static func _add_face(st: SurfaceTool, f: Dictionary, x: int, y: int, z: int,
 	return v_count + 4
 
 
-## Fackel als schmale Box (2/16 breit, 10/16 hoch) in der Zellenmitte.
-## Landet in der opaken Surface, damit sie per Raycast anvisierbar ist -
-## die winzige Kollisionsbox stoert die Bewegung praktisch nicht.
-static func _add_torch(st: SurfaceTool, x: int, y: int, z: int,
-		light_byte: int, v_count: int) -> int:
-	var base_uv := BlockDB.uv_base(BlockDB.TORCH, 1)
+## Verkleinerte Box innerhalb einer Zelle (Fackel, Bett): bmin/bmax in
+## Zellkoordinaten 0..1. Landet in der opaken Surface, damit sie per Raycast
+## anvisierbar ist. Beleuchtung kommt aus der eigenen Zelle.
+static func _add_scaled_box(st: SurfaceTool, x: int, y: int, z: int,
+		bmin: Vector3, bmax: Vector3, block_id: int, light_byte: int,
+		include_bottom: bool, v_count: int) -> int:
 	var span := BlockDB.UV_STEP - BlockDB.UV_INSET * 2.0
-	# Fackeln leuchten selbst: eigene Zelle, volle Schattierung
-	var color := Color(LIGHT_CURVE[light_byte & 15], LIGHT_CURVE[light_byte >> 4], 1.0)
 	var origin := Vector3(x, y, z)
+	var size := bmax - bmin
 	for f: Dictionary in FACES:
-		if (f.n as Vector3i).y == -1:
+		var n := f.n as Vector3i
+		if n.y == -1 and not include_bottom:
 			continue  # Unterseite steht auf dem Boden
+		var base_uv := BlockDB.uv_base(block_id, f.slot)
+		var color := Color(LIGHT_CURVE[light_byte & 15], LIGHT_CURVE[light_byte >> 4], f.shade)
 		for i in 4:
 			var v: Vector3 = f.v[i]
-			var p := origin + Vector3(0.4375 + v.x * 0.125, v.y * 0.625, 0.4375 + v.z * 0.125)
 			st.set_color(color)
-			st.set_normal(Vector3(f.n))
+			st.set_normal(Vector3(n))
 			st.set_uv(base_uv + Vector2(BlockDB.UV_INSET, BlockDB.UV_INSET) + f.uv[i] * span)
-			st.add_vertex(p)
+			st.add_vertex(origin + bmin + v * size)
 		for idx in [0, 1, 2, 0, 2, 3]:
 			st.add_index(v_count + idx)
 		v_count += 4
