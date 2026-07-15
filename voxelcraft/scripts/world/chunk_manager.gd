@@ -86,21 +86,70 @@ func set_block(wpos: Vector3i, id: int) -> void:
 	var rec: Dictionary = chunks.get(cpos, {})
 	if rec.is_empty():
 		return
-	var lx := wpos.x & 15
-	var lz := wpos.z & 15
-	rec.data[Chunk.index(lx, wpos.y, lz)] = id
+	var idx := Chunk.index(wpos.x & 15, wpos.y, wpos.z & 15)
+	var old_id: int = rec.data[idx]
+	if old_id == id:
+		return
+	rec.data[idx] = id
 	rec.edited = true
 	rec.max_y = maxi(rec.max_y, wpos.y)
-	_mark_dirty(cpos, true)
-	# Randblock geaendert -> angrenzende Chunks brauchen ebenfalls neue Meshes
-	if lx == 0:
-		_mark_dirty(cpos + Vector2i(-1, 0), true)
-	elif lx == 15:
-		_mark_dirty(cpos + Vector2i(1, 0), true)
-	if lz == 0:
-		_mark_dirty(cpos + Vector2i(0, -1), true)
-	elif lz == 15:
-		_mark_dirty(cpos + Vector2i(0, 1), true)
+	# Licht aktualisieren (chunk-uebergreifende BFS), dann alle betroffenen
+	# Zellen remeshen - erst NACH dem Licht-Update, damit die Mesh-Jobs
+	# bereits die neuen Lichtwerte snapshotten.
+	var touched := LightEngine.on_block_changed(self, wpos, old_id, id)
+	touched[wpos] = true
+	_remesh_cells(touched)
+
+
+## Lichtwert (0..15) einer Zelle; sky=true fuer Himmels-, false fuer Blocklicht.
+func light_get(wpos: Vector3i, sky: bool) -> int:
+	if wpos.y >= Chunk.HEIGHT:
+		return 15 if sky else 0
+	if wpos.y < 0:
+		return 0
+	var rec: Dictionary = chunks.get(world_to_chunk(wpos), {})
+	if rec.is_empty():
+		return 15 if sky else 0  # ungeladen: als beleuchtet annehmen
+	var b: int = rec.light[Chunk.index(wpos.x & 15, wpos.y, wpos.z & 15)]
+	return b >> 4 if sky else b & 15
+
+
+## Setzt einen Lichtwert. Rueckgabe false, wenn der Chunk nicht geladen ist
+## oder sich nichts geaendert hat (stoppt die BFS an Weltgrenzen).
+func light_set(wpos: Vector3i, sky: bool, v: int) -> bool:
+	if wpos.y < 0 or wpos.y >= Chunk.HEIGHT:
+		return false
+	var rec: Dictionary = chunks.get(world_to_chunk(wpos), {})
+	if rec.is_empty():
+		return false
+	var idx := Chunk.index(wpos.x & 15, wpos.y, wpos.z & 15)
+	var old: int = rec.light[idx]
+	var nw := (v << 4) | (old & 15) if sky else (old & 0xF0) | v
+	if nw == old:
+		return false
+	rec.light[idx] = nw
+	rec.edited = true  # Lichtstand muss mitgespeichert werden
+	return true
+
+
+## Remesht alle Chunks, in denen Zellen liegen (inkl. Nachbarn bei Randzellen).
+func _remesh_cells(cells: Dictionary) -> void:
+	var cset := {}
+	for wpos: Vector3i in cells:
+		var c := world_to_chunk(wpos)
+		cset[c] = true
+		var lx := wpos.x & 15
+		var lz := wpos.z & 15
+		if lx == 0:
+			cset[c + Vector2i(-1, 0)] = true
+		elif lx == 15:
+			cset[c + Vector2i(1, 0)] = true
+		if lz == 0:
+			cset[c + Vector2i(0, -1)] = true
+		elif lz == 15:
+			cset[c + Vector2i(0, 1)] = true
+	for c: Vector2i in cset:
+		_mark_dirty(c, true)
 
 
 ## Hoechster fester Block einer Weltsaeule (-1 wenn Chunk nicht geladen).
@@ -127,7 +176,7 @@ func get_edited_chunks() -> Dictionary:
 	for cpos: Vector2i in chunks:
 		var rec: Dictionary = chunks[cpos]
 		if rec.edited:
-			out[cpos] = {"data": rec.data, "max_y": rec.max_y}
+			out[cpos] = {"data": rec.data, "light": rec.light, "max_y": rec.max_y}
 	return out
 
 
@@ -135,8 +184,8 @@ func get_edited_chunks() -> Dictionary:
 func load_edited_chunks(saved: Dictionary) -> void:
 	for cpos: Vector2i in saved:
 		var e: Dictionary = saved[cpos]
-		chunks[cpos] = {"data": e.data, "max_y": e.max_y, "edited": true,
-			"dirty": false, "node": null}
+		chunks[cpos] = {"data": e.data, "light": e.light, "max_y": e.max_y,
+			"edited": true, "dirty": false, "node": null}
 
 
 # ------------------------------------------------------------- Lade-Logik ---
@@ -195,11 +244,13 @@ func _request_mesh(cpos: Vector2i, priority: bool) -> void:
 	rec.dirty = false
 	_pending_mesh[cpos] = true
 	var job := {"type": "mesh", "cpos": cpos, "data": rec.data.duplicate(),
-		"max_y": rec.max_y, "neighbors": {}}
+		"light": rec.light.duplicate(), "max_y": rec.max_y,
+		"neighbors": {}, "nlights": {}}
 	for off: Vector2i in NEIGHBOR_OFFSETS:
 		var nrec: Dictionary = chunks.get(cpos + off, {})
 		if not nrec.is_empty():
 			job.neighbors[off] = nrec.data.duplicate()
+			job.nlights[off] = nrec.light.duplicate()
 	_push_job(job, priority)
 
 
@@ -228,10 +279,12 @@ func _worker_loop() -> void:
 		var res: Dictionary
 		if job.type == "data":
 			var g := generator.generate_chunk(job.cpos)
-			res = {"type": "data", "cpos": job.cpos, "data": g.data, "max_y": g.max_y}
+			res = {"type": "data", "cpos": job.cpos, "data": g.data,
+				"light": g.light, "max_y": g.max_y}
 		else:
 			res = {"type": "mesh", "cpos": job.cpos,
-				"result": ChunkMesher.build(job.data, job.neighbors, job.max_y)}
+				"result": ChunkMesher.build(job.data, job.light,
+					job.neighbors, job.nlights, job.max_y)}
 		_mutex.lock()
 		_results.push_back(res)
 		_mutex.unlock()
@@ -258,8 +311,8 @@ func _apply_data(res: Dictionary) -> void:
 	_pending_data.erase(res.cpos)
 	if chunks.has(res.cpos):
 		return  # z. B. aus Spielstand geladen -> gespeicherte Daten behalten
-	chunks[res.cpos] = {"data": res.data, "max_y": res.max_y, "edited": false,
-		"dirty": false, "node": null}
+	chunks[res.cpos] = {"data": res.data, "light": res.light, "max_y": res.max_y,
+		"edited": false, "dirty": false, "node": null}
 
 
 func _apply_mesh(res: Dictionary) -> void:

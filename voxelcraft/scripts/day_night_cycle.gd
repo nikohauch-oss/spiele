@@ -46,6 +46,12 @@ func _process(delta: float) -> void:
 		environment.ambient_light_color = AMBIENT_NIGHT.lerp(AMBIENT_DAY, daylight)
 		environment.ambient_light_energy = lerpf(0.35, 0.6, daylight)
 
+	# Chunk-Shader: dimmt nur das Himmelslicht - Fackeln leuchten nachts weiter.
+	# Minimum 0.22 = "Mondlicht", damit die Oberflaeche nachts spielbar bleibt.
+	var sun_uniform := lerpf(0.22, 1.0, daylight)
+	BlockDB.opaque_material.set_shader_parameter("sun_light", sun_uniform)
+	BlockDB.water_material.set_shader_parameter("sun_light", sun_uniform)
+
 
 func is_night() -> bool:
 	return sin(time / DAY_LENGTH * TAU) < 0.0

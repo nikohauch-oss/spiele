@@ -13,7 +13,9 @@ func _ready() -> void:
 	randomize()
 	var save := Game.try_load_save()
 	Game.world_seed = save.get("seed", randi() & 0x7FFFFFFF)
+	Game.world = self
 	Game.furnaces.clear()
+	Game.chests.clear()
 	Game.ui_open = false
 
 	# --- Environment: Himmel, Nebel (kaschiert die Sichtweite), Umgebungslicht ---
@@ -65,6 +67,8 @@ func _ready() -> void:
 func _apply_save(save: Dictionary) -> void:
 	for pos: Vector3i in save.get("furnaces", {}):
 		Game.furnaces[pos] = FurnaceState.deserialize(save.furnaces[pos])
+	for pos: Vector3i in save.get("chests", {}):
+		Game.chests[pos] = ChestState.deserialize(save.chests[pos])
 	var pdata: Dictionary = save.get("player", {})
 	if pdata.is_empty():
 		for entry in START_ITEMS:

@@ -128,21 +128,25 @@ func _stop_digging() -> void:
 
 
 func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
-	# Drops einsammeln (direkt ins Inventar, keine Item-Entities)
+	var center := Vector3(pos) + Vector3(0.5, 0.4, 0.5)
+	# Drops als aufsammelbare Item-Entities in die Welt werfen
 	if ItemDB.yields_drops(block_id, held):
 		var drop: String = BlockDB.get_def(block_id).drop
 		if drop != "":
-			player.inventory.add_item(drop)
+			ItemEntity.spawn_id(drop, 1, center)
 		elif block_id == BlockDB.LEAVES and randf() < 0.08:
-			player.inventory.add_item("apple")  # seltener Apfeldrop aus Blaettern
+			ItemEntity.spawn_id("apple", 1, center)  # seltener Apfeldrop
 	# Werkzeug abnutzen (nicht im Kreativmodus)
 	if not player.creative and ItemDB.is_tool(held):
 		if player.inventory.damage_selected():
 			Game.hud.toast("Werkzeug zerbrochen!")
-	# Ofen-Inhalt zurueckgeben, bevor der Block verschwindet
+	# Inhalt von Block-Entities fallen lassen, bevor der Block verschwindet
 	if block_id == BlockDB.FURNACE:
 		for stack in Game.remove_furnace(pos):
-			player.inventory.add_stack(stack)
+			ItemEntity.spawn_stack(stack, center)
+	elif block_id == BlockDB.CHEST:
+		for stack in Game.remove_chest(pos):
+			ItemEntity.spawn_stack(stack, center)
 	Game.chunk_manager.set_block(pos, BlockDB.AIR)
 	_dig_progress = 0.0
 	Game.hud.set_dig_progress(-1.0)
@@ -161,6 +165,11 @@ func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
 			Game.create_furnace(block_pos)  # z. B. aus altem Spielstand
 		Game.open_container(ContainerUI.Mode.FURNACE, block_pos)
 		return
+	if target_id == BlockDB.CHEST:
+		if not Game.chests.has(block_pos):
+			Game.create_chest(block_pos)
+		Game.open_container(ContainerUI.Mode.CHEST, block_pos)
+		return
 
 	var held := player.inventory.selected_id()
 	if held == "":
@@ -178,13 +187,20 @@ func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
 	var cell := Game.chunk_manager.get_block(place_pos)
 	if cell != BlockDB.AIR and cell != BlockDB.WATER:
 		return
+	# Fackeln brauchen einen festen Block darunter und vertragen kein Wasser
+	if block == BlockDB.TORCH:
+		var below := Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
+		if cell == BlockDB.WATER or not BlockDB.is_solid(below):
+			return
 	# Nicht im eigenen Koerper platzieren
 	var block_box := AABB(Vector3(place_pos), Vector3.ONE)
 	var player_box := AABB(player.global_position - Vector3(0.4, 0.0, 0.4),
 		Vector3(0.8, 1.85, 0.8))
-	if block_box.intersects(player_box):
+	if block != BlockDB.TORCH and block_box.intersects(player_box):
 		return
 	Game.chunk_manager.set_block(place_pos, block)
 	if block == BlockDB.FURNACE:
 		Game.create_furnace(place_pos)
+	elif block == BlockDB.CHEST:
+		Game.create_chest(place_pos)
 	player.inventory.consume_selected()

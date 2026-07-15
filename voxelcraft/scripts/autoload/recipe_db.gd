@@ -20,12 +20,15 @@ var shaped := [
 	{"pattern": ["P", "P"], "key": {"P": "planks"}, "result": "stick", "count": 4},
 	{"pattern": ["PP", "PP"], "key": {"P": "planks"}, "result": "crafting_table", "count": 1},
 	{"pattern": ["SSS", "S S", "SSS"], "key": {"S": "stone"}, "result": "furnace", "count": 1},
+	{"pattern": ["PPP", "P P", "PPP"], "key": {"P": "planks"}, "result": "chest", "count": 1},
+	{"pattern": ["K", "S"], "key": {"K": "coal", "S": "stick"}, "result": "torch", "count": 4},
 ]
 
 
 func _ready() -> void:
-	# Werkzeugrezepte fuer alle drei Material-Stufen generieren
-	for m in [["wooden", "planks"], ["stone", "stone"], ["iron", "iron_ingot"]]:
+	# Werkzeugrezepte fuer alle Material-Stufen generieren
+	for m in [["wooden", "planks"], ["stone", "stone"], ["iron", "iron_ingot"],
+			["diamond", "diamond"]]:
 		var key := {"M": m[1], "S": "stick"}
 		shaped.append({"pattern": ["MMM", " S ", " S "], "key": key,
 			"result": "%s_pickaxe" % m[0], "count": 1})

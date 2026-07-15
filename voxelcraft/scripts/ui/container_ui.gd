@@ -9,13 +9,14 @@ extends Control
 ## Rechtsklick legt 1 Item ab oder nimmt die halbe Menge. Der "Cursor-Stack"
 ## haengt an der Maus. Beim Schliessen wandern Reste zurueck ins Inventar.
 
-enum Mode { PLAYER, TABLE, FURNACE }
+enum Mode { PLAYER, TABLE, FURNACE, CHEST }
 # Slot-Herkunft fuer die Klick-Logik
-enum Area { INV, CRAFT, RESULT, F_IN, F_FUEL, F_OUT }
+enum Area { INV, CRAFT, RESULT, F_IN, F_FUEL, F_OUT, CHEST }
 
 var inv: Inventory  # wird von HUD.bind gesetzt
 var mode := Mode.PLAYER
 var furnace: FurnaceState
+var chest: ChestState
 
 var craft_w := 2
 var craft_grid: Array = []   # w*w Stacks (physisch aus dem Inventar entnommen)
@@ -25,6 +26,7 @@ var _panel_box: VBoxContainer
 var _top_area: VBoxContainer
 var _inv_slots: Array[SlotUI] = []
 var _craft_slots: Array[SlotUI] = []
+var _chest_slots: Array[SlotUI] = []
 var _result_slot: SlotUI
 var _f_in: SlotUI
 var _f_fuel: SlotUI
@@ -101,9 +103,10 @@ func _process(_delta: float) -> void:
 
 # ------------------------------------------------------------ Oeffnen/Schliessen ---
 
-func open(new_mode: int, furnace_state = null) -> void:
+func open(new_mode: int, state = null) -> void:
 	mode = new_mode as Mode
-	furnace = furnace_state
+	furnace = state if mode == Mode.FURNACE else null
+	chest = state if mode == Mode.CHEST else null
 	craft_w = 3 if mode == Mode.TABLE else 2
 	craft_grid.clear()
 	craft_grid.resize(craft_w * craft_w)
@@ -113,14 +116,22 @@ func open(new_mode: int, furnace_state = null) -> void:
 
 
 func close() -> void:
-	# Crafting-Reste und Cursor-Stack zurueck ins Inventar
+	# Crafting-Reste und Cursor-Stack zurueck ins Inventar;
+	# was nicht mehr passt, faellt als Item-Entity zu Boden
 	for i in craft_grid.size():
-		if craft_grid[i] != null:
-			craft_grid[i] = inv.add_stack(craft_grid[i])
-	cursor = inv.add_stack(cursor)
+		craft_grid[i] = _return_stack(craft_grid[i])
+	cursor = _return_stack(cursor)
 	_update_cursor()
 	visible = false
 	furnace = null
+	chest = null
+
+
+func _return_stack(stack) -> Variant:
+	var rest = inv.add_stack(stack)
+	if rest != null and Game.player:
+		ItemEntity.spawn_stack(rest, Game.player.global_position + Vector3(0, 0.5, 0))
+	return null
 
 
 ## Baut den oberen Bereich passend zum Modus neu auf.
@@ -128,9 +139,10 @@ func _build_top_area() -> void:
 	for c in _top_area.get_children():
 		c.queue_free()
 	_craft_slots.clear()
-	var title := "Ofen" if mode == Mode.FURNACE \
-		else ("Crafting" if mode == Mode.PLAYER else "Werkbank")
-	_top_area.add_child(_label(title))
+	_chest_slots.clear()
+	var titles := {Mode.PLAYER: "Crafting", Mode.TABLE: "Werkbank",
+		Mode.FURNACE: "Ofen", Mode.CHEST: "Truhe"}
+	_top_area.add_child(_label(titles[mode]))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -151,6 +163,16 @@ func _build_top_area() -> void:
 		_prog_fill = _bar(mid, Color(0.85, 0.85, 0.9))       # Schmelzfortschritt
 		_f_out = _make_slot(Area.F_OUT, 0)
 		row.add_child(_f_out)
+	elif mode == Mode.CHEST:
+		var grid := GridContainer.new()
+		grid.columns = 9
+		grid.add_theme_constant_override("h_separation", 4)
+		grid.add_theme_constant_override("v_separation", 4)
+		row.add_child(grid)
+		for i in ChestState.SIZE:
+			var s := _make_slot(Area.CHEST, i)
+			_chest_slots.append(s)
+			grid.add_child(s)
 	else:
 		var grid := GridContainer.new()
 		grid.columns = craft_w
@@ -187,6 +209,8 @@ func _on_slot_clicked(area: int, index: int, button: int) -> void:
 				furnace.fuel = _click_stack(furnace.fuel, button)
 		Area.F_OUT:
 			furnace.output = _take_only(furnace.output)
+		Area.CHEST:
+			chest.slots[index] = _click_stack(chest.slots[index], button)
 	_refresh_all()
 
 
@@ -280,6 +304,9 @@ func _refresh_all() -> void:
 		s.set_stack(inv.slots[s.index])
 	if mode == Mode.FURNACE:
 		_refresh_furnace()
+	elif mode == Mode.CHEST:
+		for i in _chest_slots.size():
+			_chest_slots[i].set_stack(chest.slots[i])
 	else:
 		for i in _craft_slots.size():
 			_craft_slots[i].set_stack(craft_grid[i])

@@ -7,17 +7,19 @@ extends Node
 ##  - oeffnet/schliesst Container-UIs (Inventar, Werkbank, Ofen)
 
 const SAVE_PATH := "user://voxelcraft_save.dat"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 var player = null          # PlayerController
 var chunk_manager = null   # ChunkManager
 var hud = null             # HUD
 var day_night = null       # DayNightCycle
+var world = null           # Main-Node (Parent fuer Item-Entities)
 
 var world_seed := 0
 var spawn_point := Vector3.ZERO
 var ui_open := false
 var furnaces := {}         # Vector3i -> FurnaceState
+var chests := {}           # Vector3i -> ChestState
 var loaded_save := {}      # von Main beim Start konsumiert
 
 
@@ -104,8 +106,12 @@ func open_container(mode: int, world_pos := Vector3i.ZERO) -> void:
 		return
 	ui_open = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	var furnace = furnaces.get(world_pos) if mode == ContainerUI.Mode.FURNACE else null
-	hud.container.open(mode, furnace)
+	var state = null
+	if mode == ContainerUI.Mode.FURNACE:
+		state = furnaces.get(world_pos)
+	elif mode == ContainerUI.Mode.CHEST:
+		state = chests.get(world_pos)
+	hud.container.open(mode, state)
 
 
 func close_container() -> void:
@@ -115,7 +121,7 @@ func close_container() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-# ------------------------------------------------------------ Ofen-Registry ---
+# ------------------------------------------------- Block-Entity-Registries ---
 
 func create_furnace(pos: Vector3i) -> void:
 	furnaces[pos] = FurnaceState.new()
@@ -132,6 +138,19 @@ func remove_furnace(pos: Vector3i) -> Array:
 		if s != null:
 			stacks.append(s)
 	return stacks
+
+
+func create_chest(pos: Vector3i) -> void:
+	chests[pos] = ChestState.new()
+
+
+## Truhe abgebaut: Zustand entfernen, Inhalt zurueckgeben.
+func remove_chest(pos: Vector3i) -> Array:
+	var c = chests.get(pos)
+	if c == null:
+		return []
+	chests.erase(pos)
+	return c.contents()
 
 
 # --------------------------------------------------------- Speichern/Laden ---
@@ -154,6 +173,9 @@ func save_world() -> void:
 	var furnace_data := {}
 	for pos: Vector3i in furnaces:
 		furnace_data[pos] = furnaces[pos].serialize()
+	var chest_data := {}
+	for pos: Vector3i in chests:
+		chest_data[pos] = chests[pos].serialize()
 	var data := {
 		"version": SAVE_VERSION,
 		"seed": world_seed,
@@ -171,6 +193,7 @@ func save_world() -> void:
 		},
 		"chunks": chunk_manager.get_edited_chunks(),
 		"furnaces": furnace_data,
+		"chests": chest_data,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:

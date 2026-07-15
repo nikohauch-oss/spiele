@@ -34,11 +34,12 @@ func _ready() -> void:
 	_reg({"id": "stick", "name": "Stock", "fuel": 5.0})
 	_reg({"id": "coal", "name": "Kohle", "fuel": 80.0})
 	_reg({"id": "iron_ingot", "name": "Eisenbarren"})
+	_reg({"id": "diamond", "name": "Diamant"})
 	_reg({"id": "apple", "name": "Apfel", "food": 4})
 
 	# --- Werkzeuge: [Prefix, Anzeigename, Stufe, Tempo, Haltbarkeit, Bonus-Schaden] ---
 	for m in [["wooden", "Holz", 1, 4.0, 60, 0], ["stone", "Stein", 2, 8.0, 132, 1],
-			["iron", "Eisen", 3, 12.0, 251, 2]]:
+			["iron", "Eisen", 3, 12.0, 251, 2], ["diamond", "Diamant", 4, 16.0, 800, 3]]:
 		_reg({"id": "%s_pickaxe" % m[0], "name": "%s-Spitzhacke" % m[1], "tool": "pickaxe",
 			"tier": m[2], "speed": m[3], "durability": m[4], "damage": 2 + m[5], "max_stack": 1})
 		_reg({"id": "%s_axe" % m[0], "name": "%s-Axt" % m[1], "tool": "axe",
@@ -167,6 +168,8 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 		head = Color(0.55, 0.55, 0.57)
 	elif id.begins_with("iron_") and d.tool != "":
 		head = Color(0.85, 0.85, 0.9)
+	elif id.begins_with("diamond_") and d.tool != "":
+		head = Color(0.35, 0.9, 0.88)
 
 	if d.tool != "":
 		# Stiel diagonal von unten links zur Mitte
@@ -204,6 +207,8 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 				_px(img, 4 + i, 12 - i, wood.darkened(0.15))
 		"coal":
 			_blob(img, Color(0.12, 0.12, 0.14), 5)
+		"diamond":
+			_blob(img, Color(0.35, 0.9, 0.88), 4)
 		"iron_ingot":
 			for y in range(6, 11):
 				for x in range(3 + (10 - y) / 2, 13 - (10 - y) / 2):

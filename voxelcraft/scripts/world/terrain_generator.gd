@@ -87,9 +87,11 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 					else:
 						id = BlockDB.DIRT
 				elif id == BlockDB.STONE:
-					# Erze in Stein einstreuen
+					# Erze in Stein einstreuen (seltenste zuerst pruefen)
 					var r := rng.randf()
-					if y < 48 and r < 0.008:
+					if y < 14 and r < 0.003:
+						id = BlockDB.DIAMOND_ORE
+					elif y < 48 and r < 0.008:
 						id = BlockDB.IRON_ORE
 					elif y >= 8 and r < 0.02:
 						id = BlockDB.COAL_ORE
@@ -105,7 +107,8 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 			max_y = maxi(max_y, maxi(h, SEA_LEVEL))
 
 	max_y = maxi(max_y, _plant_trees(cpos, data))
-	return {"data": data, "max_y": max_y}
+	return {"data": data, "max_y": max_y,
+		"light": LightEngine.compute_skylight(data, max_y)}
 
 
 ## Baeume: deterministisch pro Weltposition. Stamm nur mit 2 Block Rand zum

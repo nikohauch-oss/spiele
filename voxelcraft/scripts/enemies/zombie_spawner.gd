@@ -35,6 +35,9 @@ func _process(delta: float) -> void:
 	if Game.chunk_manager.get_block(feet) != BlockDB.AIR \
 			or Game.chunk_manager.get_block(head) != BlockDB.AIR:
 		return
+	# Fackelschutz: in beleuchteten Bereichen (Blocklicht >= 8) spawnt nichts
+	if Game.chunk_manager.light_get(feet, false) >= 8:
+		return
 
 	var z := Zombie.new()
 	add_child(z)

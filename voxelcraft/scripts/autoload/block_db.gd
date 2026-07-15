@@ -7,6 +7,7 @@ extends Node
 enum {
 	AIR, GRASS, DIRT, STONE, SAND, LOG, LEAVES, WATER,
 	COAL_ORE, IRON_ORE, PLANKS, CRAFTING_TABLE, FURNACE, BEDROCK,
+	TORCH, CHEST, DIAMOND_ORE,
 	BLOCK_COUNT,
 }
 
@@ -53,11 +54,18 @@ var defs := {
 		"hardness": 7.0, "tool": "pickaxe", "min_tier": 1},
 	BEDROCK: {"id": "bedrock", "name": "Grundgestein", "tiles": ["bedrock", "bedrock", "bedrock"],
 		"hardness": -1.0},
+	TORCH: {"id": "torch", "name": "Fackel", "tiles": ["torch", "torch", "torch"],
+		"hardness": 0.05, "solid": false, "see_through": true},
+	CHEST: {"id": "chest", "name": "Truhe", "tiles": ["chest_top", "chest_side", "planks"],
+		"hardness": 3.5, "tool": "axe"},
+	DIAMOND_ORE: {"id": "diamond_ore", "name": "Diamant-Erz",
+		"tiles": ["diamond_ore", "diamond_ore", "diamond_ore"],
+		"hardness": 9.0, "tool": "pickaxe", "min_tier": 3, "drop": "diamond"},
 }
 
 var atlas_texture: ImageTexture
-var opaque_material: StandardMaterial3D
-var water_material: StandardMaterial3D
+var opaque_material: ShaderMaterial
+var water_material: ShaderMaterial
 
 var _tile_index := {}       # Kachel-Name -> Index im Atlas
 var _by_string_id := {}     # "grass" -> GRASS
@@ -138,7 +146,8 @@ func _finalize_defs() -> void:
 func _build_atlas() -> void:
 	var kinds := ["grass_top", "grass_side", "dirt", "stone", "sand", "log_side",
 		"log_top", "leaves", "water", "coal_ore", "iron_ore", "planks",
-		"table_top", "table_side", "furnace_front", "bedrock"]
+		"table_top", "table_side", "furnace_front", "bedrock",
+		"torch", "chest_top", "chest_side", "diamond_ore"]
 	var img := Image.create_empty(ATLAS_TILES * TILE, ATLAS_TILES * TILE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 0, 1))  # Magenta = "fehlende Kachel"
 	for i in kinds.size():
@@ -148,22 +157,40 @@ func _build_atlas() -> void:
 	atlas_texture = ImageTexture.create_from_image(img)
 
 
-func _build_materials() -> void:
-	opaque_material = StandardMaterial3D.new()
-	opaque_material.albedo_texture = atlas_texture
-	opaque_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	opaque_material.vertex_color_use_as_albedo = true  # Flaechen-Schattierung
-	opaque_material.roughness = 1.0
-	opaque_material.metallic_specular = 0.0
+## Chunk-Shader: Vertex-Farbe traegt das gebackene Voxel-Licht
+## (R = Blocklicht, G = Himmelslicht, B = Flaechen-Schattierung).
+## "sun_light" wird vom Tag-Nacht-Zyklus gesetzt und dimmt nur das
+## Himmelslicht - Fackellicht bleibt nachts voll erhalten. Unshaded,
+## damit die Voxel-Beleuchtung nicht mit der Sonnen-Light3D kollidiert;
+## Environment-Nebel wirkt weiterhin.
+const _CHUNK_SHADER := """
+shader_type spatial;
+render_mode unshaded%s;
+uniform sampler2D atlas : source_color, filter_nearest;
+uniform float sun_light : hint_range(0.0, 1.0) = 1.0;
+void fragment() {
+	vec4 tex = texture(atlas, UV);
+	float l = max(COLOR.r, COLOR.g * sun_light);
+	l = max(l, 0.04) * COLOR.b;
+	ALBEDO = tex.rgb * l;
+%s
+}
+"""
 
-	water_material = StandardMaterial3D.new()
-	water_material.albedo_texture = atlas_texture
-	water_material.albedo_color = Color(1, 1, 1, 0.72)
-	water_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	water_material.cull_mode = BaseMaterial3D.CULL_DISABLED  # auch von unten sichtbar
-	water_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	water_material.vertex_color_use_as_albedo = true
-	water_material.roughness = 0.1
+
+func _build_materials() -> void:
+	opaque_material = _make_chunk_material("", "")
+	water_material = _make_chunk_material(", cull_disabled", "\tALPHA = 0.72;")
+
+
+func _make_chunk_material(modes: String, extra: String) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = _CHUNK_SHADER % [modes, extra]
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("atlas", atlas_texture)
+	mat.set_shader_parameter("sun_light", 1.0)
+	return mat
 
 
 ## Malt eine 16x16-Kachel: Grundfarbe mit deterministischem Pixelrauschen,
@@ -202,8 +229,22 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 					c = _vary(Color(0.18, 0.45, 0.14), rng, 0.09)
 				"water":
 					c = _vary(Color(0.22, 0.42, 0.82), rng, 0.04)
-				"coal_ore", "iron_ore":
+				"coal_ore", "iron_ore", "diamond_ore":
 					c = _vary(Color(0.52, 0.52, 0.54), rng, 0.05)
+				"torch":
+					# Holzstab mit gluehender Spitze (die Flaechen der kleinen
+					# Fackel-Box zeigen diese Kachel komplett)
+					c = _vary(Color(0.5, 0.37, 0.2), rng, 0.05)
+					if py <= 3:
+						c = _vary(Color(0.98, 0.78, 0.25), rng, 0.06)
+				"chest_top", "chest_side":
+					c = _vary(Color(0.55, 0.4, 0.21), rng, 0.04)
+					if px == 0 or px == 15 or py == 0 or py == 15:
+						c = c.darkened(0.35)  # dunkler Rahmen
+					elif kind == "chest_side" and py == 6:
+						c = c.darkened(0.4)   # Deckelfuge
+					if kind == "chest_side" and py >= 5 and py <= 8 and px >= 7 and px <= 8:
+						c = Color(0.45, 0.45, 0.48)  # Schloss
 				"planks", "table_side":
 					c = _vary(Color(0.66, 0.51, 0.3), rng, 0.04)
 					if py % 4 == 3:
@@ -222,8 +263,12 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 					c = _vary(Color(0.25, 0.25, 0.27), rng, 0.14)
 			img.set_pixel(ox + px, oy + py, c)
 	# Erz-Sprenkel als 2x2-Kluempchen nachtraeglich aufmalen
-	if kind == "coal_ore" or kind == "iron_ore":
-		var ore_c := Color(0.12, 0.12, 0.12) if kind == "coal_ore" else Color(0.82, 0.65, 0.5)
+	if kind.ends_with("_ore"):
+		var ore_c := Color(0.12, 0.12, 0.12)
+		if kind == "iron_ore":
+			ore_c = Color(0.82, 0.65, 0.5)
+		elif kind == "diamond_ore":
+			ore_c = Color(0.35, 0.85, 0.85)
 		for i in 5:
 			var sx := 1 + rng.randi() % (TILE - 3)
 			var sy := 1 + rng.randi() % (TILE - 3)

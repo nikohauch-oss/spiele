@@ -61,10 +61,13 @@ func _process(_delta: float) -> void:
 		_water_tint.visible = _player.is_head_in_water()
 	if _debug.visible and _player:
 		var p := _player.global_position
-		_debug.text = "FPS: %d\nPosition: %.1f / %.1f / %.1f\nChunk: %s\nChunks geladen: %d\nSeed: %d" % [
+		var cell := Vector3i((p + Vector3(0, 0.9, 0)).floor())
+		_debug.text = "FPS: %d\nPosition: %.1f / %.1f / %.1f\nChunk: %s\nChunks geladen: %d\nLicht: Himmel %d / Block %d\nSeed: %d" % [
 			Engine.get_frames_per_second(), p.x, p.y, p.z,
 			str(ChunkManager.world_to_chunk(Vector3i(p.floor()))),
-			Game.chunk_manager.chunks.size(), Game.world_seed]
+			Game.chunk_manager.chunks.size(),
+			Game.chunk_manager.light_get(cell, true),
+			Game.chunk_manager.light_get(cell, false), Game.world_seed]
 
 
 # ------------------------------------------------------------------- Aufbau ---

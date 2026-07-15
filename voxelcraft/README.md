@@ -12,10 +12,15 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
   `ArrayMesh`/`SurfaceTool` mit Face-Culling (nur sichtbare Flächen)
 - Prozedurale Terrain-Generierung mit `FastNoiseLite`: Höhenkarte,
   3 Biome (Wiese, Wüste, Wald), Höhlen, Erze, Bäume, Seen/Ozeane
-- 14 Blocktypen: Gras, Erde, Stein, Sand, Holzstamm, Blätter, Wasser,
-  Kohle-Erz, Eisen-Erz, Bretter, Werkbank, Ofen, Grundgestein, Luft
-- Chunks werden dynamisch um den Spieler geladen/entladen; Daten-Generierung
-  und Meshing laufen in einem **Worker-Thread** (kein Ruckeln beim Nachladen)
+- 17 Blocktypen: Gras, Erde, Stein, Sand, Holzstamm, Blätter, Wasser,
+  Kohle-/Eisen-/Diamant-Erz, Bretter, Werkbank, Ofen, Truhe, Fackel,
+  Grundgestein, Luft
+- **Voxel-Beleuchtung** im Minecraft-Stil: Himmelslicht (Höhlen sind dunkel,
+  Überhänge werden weich ausgeleuchtet) + Blocklicht durch **Fackeln**;
+  das Licht wird per BFS ausgebreitet, in Vertex-Farben gebacken und im
+  Shader mit der Tageszeit kombiniert — Fackeln leuchten nachts voll weiter
+- Chunks werden dynamisch um den Spieler geladen/entladen; Daten-Generierung,
+  Himmelslicht und Meshing laufen in einem **Worker-Thread**
 
 **Spieler**
 - First-Person-Controller (`CharacterBody3D`): Laufen, Springen, Sprinten,
@@ -24,20 +29,25 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
   (inkl. Drahtgitter-Highlight + Fortschrittsbalken), Blöcke platzieren
 - Inventar mit 36 Slots (9er-Hotbar + Hauptinventar), Maus-Drag wie in
   Minecraft (Linksklick = Stapel, Rechtsklick = einzeln/halbieren)
+- Abgebaute Blöcke fallen als **Item-Drops** (3D-Entities) heraus und werden
+  per Magnet-Radius automatisch eingesammelt
 
 **Crafting**
 - 2×2-Crafting im Inventar, 3×3 an der Werkbank (geformte + formlose Rezepte,
   positionsunabhängig und gespiegelt erkannt)
-- Werkzeuge: Spitzhacke/Axt/Schaufel/Schwert in Holz/Stein/Eisen mit
-  Haltbarkeit, Abbau-Tempo und Mindest-Stufe für Drops
-  (Stein braucht eine Spitzhacke, Eisen-Erz mindestens Stein-Spitzhacke)
+- Werkzeuge: Spitzhacke/Axt/Schaufel/Schwert in Holz/Stein/Eisen/**Diamant**
+  mit Haltbarkeit, Abbau-Tempo und Mindest-Stufe für Drops (Stein braucht
+  eine Spitzhacke, Eisen-Erz mindestens Stein-, Diamant-Erz Eisen-Spitzhacke)
+- **Truhen** mit 27 Lager-Slots (8 Bretter im Ring); **Fackeln**
+  (Kohle über Stock = 4 Stück)
 - Ofen als Block-Entity: schmilzt Eisen-Erz → Eisenbarren und Holz → Kohle,
   Brennstoffe mit Brennwerten (Kohle, Holz, Bretter, Stöcke); läuft auch
   bei geschlossenem UI weiter
 
 **Extras**
 - Tag-Nacht-Zyklus (rotierende Sonne, Himmels-/Nebel-/Ambientfarben)
-- Zombies spawnen nachts, verfolgen den Spieler und greifen an
+- Zombies spawnen nachts, verfolgen den Spieler und greifen an —
+  **aber nicht in fackelbeleuchteten Bereichen** (Blocklicht ≥ 8)
 - Healthbar + Hunger-System (Sprinten macht hungrig, Essen: Äpfel aus
   Blättern; hoher Hunger regeneriert, leerer Hunger zehrt)
 - Speichern/Laden: Seed + nur veränderte Chunks + Spieler + Öfen
@@ -76,16 +86,19 @@ voxelcraft/
     │   └── game.gd          Input-Map, Referenzen, Öfen-Ticks, Speichern/Laden, UI-Steuerung
     ├── world/
     │   ├── chunk.gd         Chunk-Node (Mesh + Kollision) und Daten-Indexierung
-    │   ├── chunk_mesher.gd  SurfaceTool-Meshing mit Face-Culling (Thread-sicher)
+    │   ├── chunk_mesher.gd  SurfaceTool-Meshing mit Face-Culling + Licht-Sampling
+    │   ├── light_engine.gd  Voxel-Licht: Himmelslicht + Fackel-BFS (beide Kanäle)
     │   ├── terrain_generator.gd  FastNoiseLite: Höhen, Biome, Höhlen, Erze, Bäume
-    │   └── chunk_manager.gd Lade-Pipeline, Worker-Thread, Block-Zugriff, Save-Anbindung
+    │   └── chunk_manager.gd Lade-Pipeline, Worker-Thread, Block-/Licht-Zugriff, Save
     ├── player/
     │   ├── player_controller.gd   Bewegung, Kamera, Modi
     │   ├── player_interaction.gd  Raycast: Abbauen/Platzieren/Benutzen/Angreifen
     │   └── player_stats.gd        Gesundheit + Hunger
     ├── items/
     │   ├── inventory.gd     36-Slot-Datenmodell inkl. Werkzeug-Haltbarkeit
-    │   └── furnace_state.gd Ofen-Logik (Block-Entity)
+    │   ├── furnace_state.gd Ofen-Logik (Block-Entity)
+    │   ├── chest_state.gd   Truhen-Lager (Block-Entity)
+    │   └── item_entity.gd   aufsammelbare Item-Drops in der Welt
     ├── ui/
     │   ├── slot_ui.gd       wiederverwendbarer Item-Slot
     │   ├── hud.gd           Fadenkreuz, Hotbar, Herzen/Hunger, Debug, Toasts
@@ -109,6 +122,14 @@ voxelcraft/
 - **Kollision nur für opake Blöcke:** Die Trimesh-Form wird vor dem Anhängen
   der Wasser-Surface erzeugt; Wasser bleibt begehbar/schwimmbar und der
   Raycast ignoriert es.
+- **Licht als Daten, nicht als Light3D-Nodes:** Pro Voxel ein Byte
+  (Himmelslicht + Blocklicht als Nibbles). Initiales Himmelslicht rechnet der
+  Worker pro Chunk; Fackeln/Blockänderungen laufen als inkrementelle BFS
+  chunkübergreifend auf dem Main-Thread. Der Mesher bäckt die Level in
+  Vertex-Farben, ein Mini-Shader kombiniert sie mit der Tageshelligkeit —
+  dadurch kostet der Tag-Nacht-Wechsel **kein** Remeshing. Kompromiss:
+  Das initiale Himmelslicht wird pro Chunk lokal berechnet, an Chunkgrenzen
+  können unter Überhängen selten kleine Helligkeitssprünge auftreten.
 - **Szenenaufbau per Code:** Außer `Main.tscn` gibt es keine .tscn-Dateien —
   Nodes werden in `_ready()` erzeugt. Das hält das Projekt asset-frei,
   diff-freundlich und vermeidet kaputte Ressourcen-Referenzen; die Struktur
@@ -128,7 +149,7 @@ voxelcraft/
 ## Ideen zum Weiterbauen
 
 - Greedy Meshing (Flächen zusammenfassen) für noch weniger Vertices
-- Item-Drops als 3D-Entities statt Auto-Pickup
-- Fließendes Wasser, Torchlight/Block-Licht, Glas (Sand schmelzen)
+- Fließendes Wasser, Glas (Sand schmelzen), Nicht-Würfel-Blöcke (Stufen, Zäune)
 - Sounds, Schrittgeräusche, Partikel beim Abbauen
-- Mehr Gegner, Rüstung, Truhen (das Container-UI ist dafür vorbereitet)
+- Mehr Gegner (Skelette mit Fernkampf), Rüstung, passive Tiere als Nahrungsquelle
+- Hauptmenü mit mehreren Welt-Slots
