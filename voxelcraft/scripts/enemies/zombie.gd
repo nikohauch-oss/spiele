@@ -111,7 +111,8 @@ func take_damage(amount: float, from_dir: Vector3) -> void:
 	# Rueckstoss + kurzes rotes Aufblitzen
 	velocity += Vector3(from_dir.x, 0, from_dir.z).normalized() * 7.0 + Vector3(0, 4.5, 0)
 	for part in _body_parts:
-		var mat: StandardMaterial3D = part.mesh.material
+		var box := part.mesh as BoxMesh
+		var mat := box.material as StandardMaterial3D
 		var base: Color = part.get_meta("base_color")
 		mat.albedo_color = base.lerp(Color.RED, 0.7)
 		create_tween().tween_property(mat, "albedo_color", base, 0.25)

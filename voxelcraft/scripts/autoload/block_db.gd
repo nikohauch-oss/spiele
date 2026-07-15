@@ -249,7 +249,7 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 					c = _vary(Color(0.66, 0.51, 0.3), rng, 0.04)
 					if py % 4 == 3:
 						c = c.darkened(0.3)  # horizontale Fugen
-					elif (px + (py / 4) * 8) % 16 == 0:
+					elif (px + (py >> 2) * 8) % 16 == 0:
 						c = c.darkened(0.25)  # versetzte Stossfugen
 				"table_top":
 					c = _vary(Color(0.6, 0.45, 0.27), rng, 0.04)

@@ -44,7 +44,7 @@ func _ready() -> void:
 	player = PlayerController.new()
 	Game.player = player
 	add_child(player)
-	var spawn_h := Game.chunk_manager.generator.surface_height(8, 8)
+	var spawn_h: int = Game.chunk_manager.generator.surface_height(8, 8)
 	Game.spawn_point = save.get("spawn", Vector3(8.5, spawn_h + 0.5, 8.5))
 	player.global_position = Game.spawn_point
 	player.frozen = true

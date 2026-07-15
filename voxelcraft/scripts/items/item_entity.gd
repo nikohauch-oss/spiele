@@ -37,7 +37,7 @@ func _ready() -> void:
 	sprite.texture = ItemDB.icon(stack.id)
 	sprite.pixel_size = 0.028
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.texture_filter = SpriteBase3D.TEXTURE_FILTER_NEAREST
 	sprite.name = "Sprite"
 	add_child(sprite)
 

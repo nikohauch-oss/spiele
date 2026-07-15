@@ -14,7 +14,9 @@ var progress := 0.0     # Schmelzfortschritt des aktuellen Items
 
 func tick(delta: float) -> void:
 	var recipe: Dictionary = RecipeDB.smelting.get(input.id, {}) if input != null else {}
-	var can_smelt := not recipe.is_empty() and (output == null
+	# Explizit als bool typisiert: der Ausdruck enthaelt Variant-Zugriffe
+	# (output ist untypisiert), da kann GDScript den Typ nicht ableiten
+	var can_smelt: bool = not recipe.is_empty() and (output == null
 		or (output.id == recipe.result and output.count < ItemDB.max_stack(recipe.result)))
 
 	# Neuen Brennstoff zuenden, wenn noetig und moeglich

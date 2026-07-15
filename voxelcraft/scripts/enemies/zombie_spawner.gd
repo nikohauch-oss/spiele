@@ -23,10 +23,10 @@ func _process(delta: float) -> void:
 
 	var ang := randf() * TAU
 	var dist := randf_range(MIN_DIST, MAX_DIST)
-	var p := Game.player.global_position
+	var p: Vector3 = Game.player.global_position
 	var wx := int(floor(p.x + cos(ang) * dist))
 	var wz := int(floor(p.z + sin(ang) * dist))
-	var ground := Game.chunk_manager.get_ground_y(wx, wz)
+	var ground: int = Game.chunk_manager.get_ground_y(wx, wz)
 	if ground < 0 or ground + 3 >= Chunk.HEIGHT:
 		return  # Chunk nicht geladen
 	# Platz frei? (2 Bloecke Luft, kein Wasser)

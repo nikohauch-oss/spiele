@@ -211,7 +211,8 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 			_blob(img, Color(0.35, 0.9, 0.88), 4)
 		"iron_ingot":
 			for y in range(6, 11):
-				for x in range(3 + (10 - y) / 2, 13 - (10 - y) / 2):
+				var inset := (10 - y) >> 1  # trapezfoermiger Barren
+				for x in range(3 + inset, 13 - inset):
 					_px(img, x, y, Color(0.82, 0.82, 0.88) if y > 6 else Color(0.92, 0.92, 0.97))
 		"apple":
 			_blob(img, Color(0.8, 0.12, 0.1), 4)

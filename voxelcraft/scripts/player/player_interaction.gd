@@ -66,14 +66,15 @@ func _physics_process(delta: float) -> void:
 	var collider: Object = ray.get_collider() if ray.is_colliding() else null
 
 	# ------------------------------------------------ Gegner anvisiert ---
-	if collider is Zombie:
+	var zombie := collider as Zombie
+	if zombie != null:
 		highlight.visible = false
 		_dig_progress = 0.0
 		Game.hud.set_dig_progress(-1.0)
 		if Input.is_action_pressed("attack") and _attack_cd <= 0.0:
 			_attack_cd = ATTACK_COOLDOWN
 			var dir := -player.camera.global_transform.basis.z
-			collider.take_damage(ItemDB.attack_damage(player.inventory.selected_id()), dir)
+			zombie.take_damage(ItemDB.attack_damage(player.inventory.selected_id()), dir)
 			if player.inventory.damage_selected():
 				Game.hud.toast("Werkzeug zerbrochen!")
 		return
@@ -108,7 +109,7 @@ func _dig(delta: float, block_pos: Vector3i) -> void:
 	if block_pos != _dig_target:
 		_dig_target = block_pos
 		_dig_progress = 0.0
-	var block_id := Game.chunk_manager.get_block(block_pos)
+	var block_id: int = Game.chunk_manager.get_block(block_pos)
 	if block_id == BlockDB.AIR:
 		return
 	var held := player.inventory.selected_id()
@@ -155,7 +156,7 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 # ------------------------------------------------------- Benutzen/Platzieren ---
 
 func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
-	var target_id := Game.chunk_manager.get_block(block_pos)
+	var target_id: int = Game.chunk_manager.get_block(block_pos)
 	# Interaktive Bloecke oeffnen
 	if target_id == BlockDB.CRAFTING_TABLE:
 		Game.open_container(ContainerUI.Mode.TABLE)
@@ -184,12 +185,12 @@ func _use(block_pos: Vector3i, place_pos: Vector3i) -> void:
 	var block := ItemDB.block_of(held)
 	if block < 0:
 		return
-	var cell := Game.chunk_manager.get_block(place_pos)
+	var cell: int = Game.chunk_manager.get_block(place_pos)
 	if cell != BlockDB.AIR and cell != BlockDB.WATER:
 		return
 	# Fackeln brauchen einen festen Block darunter und vertragen kein Wasser
 	if block == BlockDB.TORCH:
-		var below := Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
+		var below: int = Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
 		if cell == BlockDB.WATER or not BlockDB.is_solid(below):
 			return
 	# Nicht im eigenen Koerper platzieren
