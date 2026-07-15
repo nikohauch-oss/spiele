@@ -13,6 +13,7 @@ var _body_parts: Array[MeshInstance3D] = []
 func _init() -> void:
 	collision_layer = 4  # Layer 3 = Kreaturen (Spieler-Raycast trifft sie)
 	collision_mask = 1   # kollidiert nur mit der Welt
+	add_to_group("mobs")  # fuer Explosions-Flaechenschaden
 
 
 func add_capsule(radius: float, height: float) -> void:

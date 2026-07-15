@@ -34,6 +34,27 @@ var shaped := [
 	# Mit echter Feder (Huhn) gibt es mehr Pfeile
 	{"pattern": ["F", "S", "E"], "key": {"F": "stone", "S": "stick", "E": "feather"},
 		"result": "arrow", "count": 8},
+	# --- Bauen & Sprengen ---
+	{"pattern": ["GSG", "SGS", "GSG"], "key": {"G": "gunpowder", "S": "sand"},
+		"result": "c4", "count": 1},
+	{"pattern": ["S S", "SSS", "S S"], "key": {"S": "stick"}, "result": "ladder", "count": 3},
+	{"pattern": ["PP", "PP", "PP"], "key": {"P": "planks"}, "result": "door", "count": 1},
+	{"pattern": ["PSP", "PSP"], "key": {"P": "planks", "S": "stick"},
+		"result": "fence", "count": 3},
+	{"pattern": ["PPP"], "key": {"P": "planks"}, "result": "slab_plank", "count": 6},
+	{"pattern": ["SSS"], "key": {"S": "stone"}, "result": "slab_stone", "count": 6},
+	{"pattern": ["P  ", "PP ", "PPP"], "key": {"P": "planks"},
+		"result": "stair_plank", "count": 4},
+	{"pattern": ["S  ", "SS ", "SSS"], "key": {"S": "stone"},
+		"result": "stair_stone", "count": 4},
+	# --- Farming & Werkzeuge ---
+	{"pattern": ["WWW"], "key": {"W": "wheat"}, "result": "bread", "count": 1},
+	# Bett auch klassisch mit Wolle (von Schafen)
+	{"pattern": ["WWW", "PPP"], "key": {"W": "wool", "P": "planks"}, "result": "bed", "count": 1},
+	{"pattern": [" I ", "ICI", " I "], "key": {"I": "iron_ingot", "C": "coal"},
+		"result": "compass", "count": 1},
+	{"pattern": [" S ", "SIS", " S "], "key": {"S": "stone", "I": "iron_ingot"},
+		"result": "clock", "count": 1},
 ]
 
 
@@ -50,6 +71,8 @@ func _ready() -> void:
 			"result": "%s_shovel" % m[0], "count": 1})
 		shaped.append({"pattern": ["M", "M", "S"], "key": key,
 			"result": "%s_sword" % m[0], "count": 1})
+		shaped.append({"pattern": ["MM", " S", " S"], "key": key,
+			"result": "%s_hoe" % m[0], "count": 1})
 	# Ruestung fuer Leder/Eisen/Diamant
 	for m in [["leather", "leather"], ["iron", "iron_ingot"], ["diamond", "diamond"]]:
 		var key := {"M": m[1]}

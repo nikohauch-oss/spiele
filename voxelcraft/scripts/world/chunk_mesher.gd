@@ -75,6 +75,27 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 					v_count = _add_scaled_box(st, x, y, z, Vector3(0.01, 0.02, 0.01),
 						Vector3(0.99, 0.5625, 0.99), id, light[col_base + y], true, v_count)
 					continue
+				if id >= BlockDB.WHEAT_0 and id <= BlockDB.WHEAT_2:
+					d_count = _add_cross(st_deco, x, y, z, id, light[col_base + y], d_count)
+					continue
+				if id == BlockDB.LADDER:
+					d_count = _add_ladder(st_deco, x, y, z, light[col_base + y],
+						data, neighbors, d_count)
+					continue
+				if id == BlockDB.SLAB_PLANK or id == BlockDB.SLAB_STONE:
+					v_count = _add_scaled_box(st, x, y, z, Vector3(0.005, 0.005, 0.005),
+						Vector3(0.995, 0.5, 0.995), id, light[col_base + y], true, v_count)
+					continue
+				if id >= BlockDB.STAIR_PLANK_N and id <= BlockDB.STAIR_STONE_W:
+					v_count = _add_stairs(st, x, y, z, id, light[col_base + y], v_count)
+					continue
+				if id >= BlockDB.DOOR_C_N and id <= BlockDB.DOOR_O_W:
+					v_count = _add_door(st, x, y, z, id, light[col_base + y], v_count)
+					continue
+				if id == BlockDB.FENCE:
+					v_count = _add_fence(st, x, y, z, light[col_base + y],
+						data, neighbors, v_count)
+					continue
 				var is_water := id == BlockDB.WATER
 				var is_glass := id == BlockDB.GLASS
 				for f: Dictionary in FACES:
@@ -191,6 +212,77 @@ static func _add_scaled_box(st: SurfaceTool, x: int, y: int, z: int,
 		for idx in [0, 1, 2, 0, 2, 3]:
 			st.add_index(v_count + idx)
 		v_count += 4
+	return v_count
+
+
+## Leiter: duenne Platte an der ersten festen Nachbarwand (kein Metadaten-Feld
+## noetig - die Ausrichtung ergibt sich aus der Umgebung).
+static func _add_ladder(st: SurfaceTool, x: int, y: int, z: int, light_byte: int,
+		data: PackedByteArray, neighbors: Dictionary, v_count: int) -> int:
+	var bmin := Vector3(0.05, 0.0, 0.46)
+	var bmax := Vector3(0.95, 1.0, 0.54)
+	for side in [[Vector3i(-1, 0, 0), Vector3(0.005, 0, 0.05), Vector3(0.085, 1, 0.95)],
+			[Vector3i(1, 0, 0), Vector3(0.915, 0, 0.05), Vector3(0.995, 1, 0.95)],
+			[Vector3i(0, 0, -1), Vector3(0.05, 0, 0.005), Vector3(0.95, 1, 0.085)],
+			[Vector3i(0, 0, 1), Vector3(0.05, 0, 0.915), Vector3(0.95, 1, 0.995)]]:
+		var off: Vector3i = side[0]
+		if BlockDB.is_solid(_block_at(x + off.x, y + off.y, z + off.z, data, neighbors)):
+			bmin = side[1]
+			bmax = side[2]
+			break
+	return _add_scaled_box(st, x, y, z, bmin, bmax, BlockDB.LADDER, light_byte, false, v_count)
+
+
+## Stufen: unterer Halbblock + obere Haelfte auf der Aufstiegsseite.
+static func _add_stairs(st: SurfaceTool, x: int, y: int, z: int, id: int,
+		light_byte: int, v_count: int) -> int:
+	var dir := (id - BlockDB.STAIR_PLANK_N) % 4  # 0=N(-z) 1=O(+x) 2=S(+z) 3=W(-x)
+	v_count = _add_scaled_box(st, x, y, z, Vector3(0.005, 0.005, 0.005),
+		Vector3(0.995, 0.5, 0.995), id, light_byte, true, v_count)
+	var tops := [
+		[Vector3(0.005, 0.5, 0.005), Vector3(0.995, 0.995, 0.5)],   # N
+		[Vector3(0.5, 0.5, 0.005), Vector3(0.995, 0.995, 0.995)],   # O
+		[Vector3(0.005, 0.5, 0.5), Vector3(0.995, 0.995, 0.995)],   # S
+		[Vector3(0.005, 0.5, 0.005), Vector3(0.5, 0.995, 0.995)],   # W
+	]
+	return _add_scaled_box(st, x, y, z, tops[dir][0], tops[dir][1], id,
+		light_byte, false, v_count)
+
+
+## Tuer: duenne Platte an einer Zellkante; offene Tueren sind um 90 Grad
+## auf die Nachbarkante gedreht. Beide Zellhaelften zeichnen dieselbe Form.
+static func _add_door(st: SurfaceTool, x: int, y: int, z: int, id: int,
+		light_byte: int, v_count: int) -> int:
+	var dir := (id - BlockDB.DOOR_C_N) % 4
+	if id >= BlockDB.DOOR_O_N:
+		dir = (dir + 1) % 4  # geoeffnet: an die Seitenkante klappen
+	var edges := [
+		[Vector3(0.005, 0.0, 0.005), Vector3(0.995, 1.0, 0.19)],    # N
+		[Vector3(0.81, 0.0, 0.005), Vector3(0.995, 1.0, 0.995)],    # O
+		[Vector3(0.005, 0.0, 0.81), Vector3(0.995, 1.0, 0.995)],    # S
+		[Vector3(0.005, 0.0, 0.005), Vector3(0.19, 1.0, 0.995)],    # W
+	]
+	return _add_scaled_box(st, x, y, z, edges[dir][0], edges[dir][1], id,
+		light_byte, true, v_count)
+
+
+## Zaun: Mittelpfosten + Querriegel zu festen Nachbarn/anderen Zaeunen.
+static func _add_fence(st: SurfaceTool, x: int, y: int, z: int, light_byte: int,
+		data: PackedByteArray, neighbors: Dictionary, v_count: int) -> int:
+	v_count = _add_scaled_box(st, x, y, z, Vector3(0.375, 0.0, 0.375),
+		Vector3(0.625, 1.0, 0.625), BlockDB.FENCE, light_byte, false, v_count)
+	var arms := [
+		[Vector3i(1, 0, 0), Vector3(0.625, 0.35, 0.42), Vector3(0.995, 0.9, 0.58)],
+		[Vector3i(-1, 0, 0), Vector3(0.005, 0.35, 0.42), Vector3(0.375, 0.9, 0.58)],
+		[Vector3i(0, 0, 1), Vector3(0.42, 0.35, 0.625), Vector3(0.58, 0.9, 0.995)],
+		[Vector3i(0, 0, -1), Vector3(0.42, 0.35, 0.005), Vector3(0.58, 0.9, 0.375)],
+	]
+	for a: Array in arms:
+		var off: Vector3i = a[0]
+		var nb := _block_at(x + off.x, y + off.y, z + off.z, data, neighbors)
+		if nb == BlockDB.FENCE or BlockDB.is_solid(nb):
+			v_count = _add_scaled_box(st, x, y, z, a[1], a[2], BlockDB.FENCE,
+				light_byte, true, v_count)
 	return v_count
 
 

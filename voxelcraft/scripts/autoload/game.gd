@@ -6,8 +6,9 @@ extends Node
 ##  - Speichern/Laden der Welt (user://voxelcraft_save.dat, Godot-Binaerformat)
 ##  - oeffnet/schliesst Container-UIs (Inventar, Werkbank, Ofen)
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 const SETTINGS_PATH := "user://settings.cfg"
+const CROP_STAGE_TIME := 60.0  # Sekunden pro Weizen-Wachstumsstufe
 
 var player = null          # PlayerController
 var chunk_manager = null   # ChunkManager
@@ -21,6 +22,7 @@ var ui_open := false
 var paused := false
 var furnaces := {}         # Vector3i -> FurnaceState
 var chests := {}           # Vector3i -> ChestState
+var crops := {}            # Vector3i -> Wachstumsfortschritt in Sekunden
 var loaded_save := {}      # von Main beim Start konsumiert
 
 # Welt-Slots (Hauptmenue) + Einstellungen
@@ -71,6 +73,28 @@ func _process(delta: float) -> void:
 	# Oefen schmelzen auch, wenn kein UI offen ist
 	for f in furnaces.values():
 		f.tick(delta)
+	_tick_crops(delta)
+
+
+## Weizen waechst in Echtzeit ueber zwei Stufen zur reifen Pflanze.
+func _tick_crops(delta: float) -> void:
+	if chunk_manager == null or crops.is_empty():
+		return
+	var advance: Array = []
+	for pos: Vector3i in crops:
+		crops[pos] += delta
+		if crops[pos] >= CROP_STAGE_TIME:
+			advance.append(pos)
+	for pos: Vector3i in advance:
+		var id: int = chunk_manager.get_block(pos)
+		if id == BlockDB.WHEAT_0:
+			chunk_manager.set_block(pos, BlockDB.WHEAT_1)
+			crops[pos] = 0.0
+		elif id == BlockDB.WHEAT_1:
+			chunk_manager.set_block(pos, BlockDB.WHEAT_2)
+			crops.erase(pos)  # ausgewachsen
+		else:
+			crops.erase(pos)  # Block ist weg oder Chunk entladen
 
 
 # ------------------------------------------------------------------ Input ---
@@ -86,6 +110,8 @@ func _setup_input() -> void:
 	_add_key("toggle_creative", KEY_F)
 	_add_key("inventory", KEY_E)
 	_add_key("drop_item", KEY_Q)
+	_add_key("perspective", KEY_F4)
+	_add_key("minimap", KEY_M)
 	_add_key("debug", KEY_F3)
 	_add_key("save_world", KEY_F5)
 	_add_key("load_world", KEY_F9)
@@ -141,6 +167,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("debug") and hud:
 		hud.toggle_debug()
+	elif event.is_action_pressed("minimap") and hud and not ui_open:
+		hud.toggle_map()
 
 
 # ------------------------------------------------------------- Pause-Menue ---
@@ -165,6 +193,7 @@ func return_to_menu() -> void:
 	world = null
 	furnaces.clear()
 	chests.clear()
+	crops.clear()
 	Sfx.set_rain(false)
 	get_tree().change_scene_to_file("res://scenes/Menu.tscn")
 
@@ -278,6 +307,7 @@ func save_world() -> void:
 		"chunks": chunk_manager.get_edited_chunks(),
 		"furnaces": furnace_data,
 		"chests": chest_data,
+		"crops": crops.duplicate(),
 	}
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:

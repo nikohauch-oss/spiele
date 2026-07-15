@@ -7,13 +7,14 @@ extends RefCounted
 const SEA_LEVEL := 62
 const DIRT_DEPTH := 4  # Erd-/Sandschicht ueber dem Stein
 
-enum Biome { PLAINS, DESERT, FOREST }
+enum Biome { PLAINS, DESERT, FOREST, SNOWY }
 
 var world_seed: int
 var height_noise := FastNoiseLite.new()  # grosse Landschaftsformen
 var detail_noise := FastNoiseLite.new()  # feine Unebenheiten
 var biome_noise := FastNoiseLite.new()   # "Temperatur" -> Biomwahl
 var cave_noise := FastNoiseLite.new()    # 3D-Rauschen fuer Hoehlen
+var ore_noise := FastNoiseLite.new()     # 3D-Rauschen fuer Erz-Adern
 
 
 func _init(s: int) -> void:
@@ -31,12 +32,17 @@ func _init(s: int) -> void:
 	cave_noise.seed = s + 303
 	cave_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	cave_noise.frequency = 0.05
+	ore_noise.seed = s + 404
+	ore_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	ore_noise.frequency = 0.11
 
 
 func biome_at(wx: int, wz: int) -> int:
 	var t := biome_noise.get_noise_2d(wx, wz)
 	if t > 0.32:
 		return Biome.DESERT
+	if t < -0.52:
+		return Biome.SNOWY
 	if t < -0.18:
 		return Biome.FOREST
 	return Biome.PLAINS
@@ -75,6 +81,7 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 			# Sand statt Gras in der Wueste und an/unter der Wasserlinie (Straende)
 			var sandy := biome == Biome.DESERT or h <= SEA_LEVEL + 1
 
+			var snowy := biome == Biome.SNOWY
 			for y in h + 1:
 				var id := BlockDB.STONE
 				if y <= bedrock_top:
@@ -83,17 +90,18 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 					if sandy:
 						id = BlockDB.SAND
 					elif y == h:
-						id = BlockDB.GRASS
+						id = BlockDB.SNOW if snowy else BlockDB.GRASS
 					else:
 						id = BlockDB.DIRT
 				elif id == BlockDB.STONE:
-					# Erze in Stein einstreuen (seltenste zuerst pruefen)
-					var r := rng.randf()
-					if y < 14 and r < 0.003:
+					# Erze als zusammenhaengende Adern (3D-Rauschen)
+					# + seltene Einzel-Diamanten in der Tiefe
+					var ore := ore_noise.get_noise_3d(wx, y, wz)
+					if y < 14 and rng.randf() < 0.003:
 						id = BlockDB.DIAMOND_ORE
-					elif y < 48 and r < 0.008:
+					elif y < 48 and ore < -0.62:
 						id = BlockDB.IRON_ORE
-					elif y >= 8 and r < 0.02:
+					elif y >= 8 and ore > 0.6:
 						id = BlockDB.COAL_ORE
 				# Hoehlen ausgraben (nicht durch Grundgestein)
 				if id != BlockDB.BEDROCK and y > bedrock_top and y < h - 1:
@@ -184,6 +192,8 @@ func _plant_trees(cpos: Vector2i, data: PackedByteArray) -> int:
 				chance = 0.03
 			elif biome == Biome.PLAINS:
 				chance = 0.003
+			elif biome == Biome.SNOWY:
+				chance = 0.008
 			if chance <= 0.0:
 				continue
 			var rng := RandomNumberGenerator.new()
@@ -191,7 +201,8 @@ func _plant_trees(cpos: Vector2i, data: PackedByteArray) -> int:
 			if rng.randf() >= chance:
 				continue
 			var h := height_at(wx, wz)
-			if h <= SEA_LEVEL or data[Chunk.index(x, h, z)] != BlockDB.GRASS:
+			var surface := data[Chunk.index(x, h, z)]
+			if h <= SEA_LEVEL or (surface != BlockDB.GRASS and surface != BlockDB.SNOW):
 				continue
 			var trunk_h := 4 + rng.randi() % 2
 			if h + trunk_h + 2 >= Chunk.HEIGHT:

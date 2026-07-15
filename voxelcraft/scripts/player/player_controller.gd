@@ -20,6 +20,7 @@ var creative := false:
 		flying = v
 var flying := false
 var frozen := true  # bis die Welt unter dem Spieler fertig gemesht ist
+var third_person := false
 
 var camera: Camera3D
 var interaction: PlayerInteraction
@@ -28,6 +29,8 @@ var inventory := Inventory.new()
 
 var _fall_peak := 0.0   # hoechster Punkt seit Verlassen des Bodens (Fallschaden)
 var _step_accum := 0.0  # zurueckgelegte Strecke bis zum naechsten Schrittgeraeusch
+var _body: Node3D       # Klotz-Figur, nur in der Aussenansicht sichtbar
+var _wish := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -47,6 +50,23 @@ func _ready() -> void:
 	camera.fov = 75.0
 	camera.far = 400.0
 	add_child(camera)
+
+	# Spielerfigur fuer die Aussenansicht (F4)
+	_body = Node3D.new()
+	_body.visible = false
+	add_child(_body)
+	for part in [[Vector3(0.5, 0.75, 0.28), Vector3(0, 1.05, 0), Color(0.2, 0.45, 0.75)],
+			[Vector3(0.45, 0.45, 0.45), Vector3(0, 1.65, 0), Color(0.85, 0.7, 0.55)],
+			[Vector3(0.45, 0.7, 0.26), Vector3(0, 0.35, 0), Color(0.25, 0.3, 0.45)]]:
+		var mesh := BoxMesh.new()
+		mesh.size = part[0]
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = part[2]
+		mesh.material = mat
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.position = part[1]
+		_body.add_child(mi)
 
 	stats = PlayerStats.new()
 	add_child(stats)
@@ -77,6 +97,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			Game.hud.toast("Kreativmodus AN" if creative else "Kreativmodus AUS")
 	elif event.is_action_pressed("drop_item"):
 		_drop_selected()
+	elif event.is_action_pressed("perspective"):
+		third_person = not third_person
+		_body.visible = third_person
 	elif event is InputEventMouseButton and event.pressed:
 		# Mausrad: Hotbar durchschalten
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -96,6 +119,7 @@ func _physics_process(delta: float) -> void:
 	if not Game.ui_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var wish := (transform.basis * Vector3(input_dir.x, 0, input_dir.y))
+	_wish = wish
 	var sprinting := Input.is_action_pressed("sprint") and not Game.ui_open
 
 	if flying:
@@ -104,6 +128,9 @@ func _physics_process(delta: float) -> void:
 		_walk(delta, wish, sprinting)
 
 	move_and_slide()
+	if not flying:
+		_step_assist()
+	_update_camera()
 	stats.on_moved(velocity, sprinting and input_dir != Vector2.ZERO)
 
 	# Sprint-Gefuehl: Sichtfeld beim Rennen leicht aufziehen
@@ -143,7 +170,18 @@ func _walk(delta: float, wish: Vector3, sprinting: bool) -> void:
 	if in_water:
 		speed *= 0.6
 
-	if in_water:
+	# Leiter-Klettern: Leertaste hoch, Umschalt runter, sonst langsames Rutschen
+	var on_ladder: bool = Game.chunk_manager.get_block(Vector3i(global_position.floor())) == BlockDB.LADDER \
+		or Game.chunk_manager.get_block(Vector3i((global_position + Vector3(0, 1, 0)).floor())) == BlockDB.LADDER
+	if on_ladder and not in_water:
+		if not Game.ui_open and Input.is_action_pressed("jump"):
+			velocity.y = 3.5
+		elif not Game.ui_open and Input.is_action_pressed("descend"):
+			velocity.y = -3.0
+		else:
+			velocity.y = move_toward(velocity.y, -1.2, 30.0 * delta)
+		_fall_peak = global_position.y
+	elif in_water:
 		# Schwimmen: gebremstes Sinken, Leertaste schwimmt nach oben
 		velocity.y = move_toward(velocity.y, -2.0, 18.0 * delta)
 		if not Game.ui_open and Input.is_action_pressed("jump"):
@@ -176,6 +214,43 @@ func is_in_water() -> bool:
 ## Ist die Kamera unter Wasser? (fuer den HUD-Blaufilter)
 func is_head_in_water() -> bool:
 	return Game.chunk_manager.get_block(Vector3i(camera.global_position.floor())) == BlockDB.WATER
+
+
+## Automatisch auf ~0,5 Bloecke hohe Hindernisse steigen
+## (Halbbloecke, Stufen, Betten) - macht Treppenbauen fluessig begehbar.
+func _step_assist() -> void:
+	if not is_on_floor() or not is_on_wall() or _wish.length_squared() < 0.1:
+		return
+	var fwd := _wish.normalized()
+	var front := global_position + fwd * 0.55
+	var cell := Vector3i(Vector3(front.x, global_position.y + 0.05, front.z).floor())
+	var fid: int = Game.chunk_manager.get_block(cell)
+	if not _is_half_step(fid):
+		return
+	var above1: int = Game.chunk_manager.get_block(cell + Vector3i(0, 1, 0))
+	var above2: int = Game.chunk_manager.get_block(cell + Vector3i(0, 2, 0))
+	if not BlockDB.is_solid(above1) and not BlockDB.is_solid(above2):
+		global_position.y += 0.55
+
+
+func _is_half_step(id: int) -> bool:
+	return id == BlockDB.SLAB_PLANK or id == BlockDB.SLAB_STONE or id == BlockDB.BED \
+		or (id >= BlockDB.STAIR_PLANK_N and id <= BlockDB.STAIR_STONE_W)
+
+
+## Kameraposition: Ego-Sicht oder Aussenansicht (mit Wand-Abstandspruefung).
+func _update_camera() -> void:
+	if not third_person:
+		camera.position = Vector3(0, EYE_HEIGHT, 0)
+		return
+	var eye := global_position + Vector3(0, EYE_HEIGHT, 0)
+	var back: Vector3 = camera.global_transform.basis.z  # zeigt nach hinten
+	var dist := 4.0
+	var query := PhysicsRayQueryParameters3D.create(eye, eye + back * (dist + 0.3), 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		dist = maxf(eye.distance_to(hit.position) - 0.3, 0.6)
+	camera.position = Vector3(0, EYE_HEIGHT, 0) + camera.transform.basis * Vector3(0, 0, dist)
 
 
 func _play_step_sound() -> void:

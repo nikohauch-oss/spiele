@@ -84,12 +84,14 @@ func _try_spawn_animal() -> void:
 	# Tiere gibt es nur auf Gras (Wiese/Wald)
 	if Game.chunk_manager.get_block(Vector3i(spot.wx, spot.ground, spot.wz)) != BlockDB.GRASS:
 		return
-	# Arten-Mix: 40 % Schwein, 30 % Kuh, 30 % Huhn
+	# Arten-Mix: 30 % Schwein, 25 % Kuh, 25 % Huhn, 20 % Schaf
 	var r := randf()
 	var s := Animal.Species.PIG
-	if r > 0.7:
+	if r > 0.8:
+		s = Animal.Species.SHEEP
+	elif r > 0.55:
 		s = Animal.Species.CHICKEN
-	elif r > 0.4:
+	elif r > 0.3:
 		s = Animal.Species.COW
 	_spawn(Animal.create(s), _animals, spot)
 

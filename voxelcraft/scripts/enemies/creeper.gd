@@ -103,50 +103,8 @@ func _set_flash(on: bool) -> void:
 
 func _explode() -> void:
 	var center := global_position + Vector3(0, 0.9, 0)
-	# Bloecke in der Kugel entfernen (Grundgestein/Wasser bleiben)
-	var r := int(ceil(EXPLOSION_RADIUS))
-	var cpos := Vector3i(center.floor())
-	for dx in range(-r, r + 1):
-		for dy in range(-r, r + 1):
-			for dz in range(-r, r + 1):
-				if Vector3(dx, dy, dz).length() > EXPLOSION_RADIUS:
-					continue
-				var p := cpos + Vector3i(dx, dy, dz)
-				var id: int = Game.chunk_manager.get_block(p)
-				if id != BlockDB.AIR and id != BlockDB.WATER \
-						and BlockDB.get_def(id).hardness >= 0.0:
-					Game.chunk_manager.set_block(p, BlockDB.AIR)
-	# Distanz-Schaden am Spieler
-	if Game.player:
-		var d: float = Game.player.global_position.distance_to(center)
-		if d < 5.0:
-			Game.player.stats.damage(maxf(18.0 * (1.0 - d / 5.0), 1.0))
-	Sfx.play_at("explosion", center, 6.0)
-	_spawn_explosion_particles(center)
 	queue_free()
-
-
-func _spawn_explosion_particles(center: Vector3) -> void:
-	var p := CPUParticles3D.new()
-	p.one_shot = true
-	p.amount = 40
-	p.lifetime = 0.7
-	p.explosiveness = 1.0
-	p.spread = 180.0
-	p.initial_velocity_min = 4.0
-	p.initial_velocity_max = 9.0
-	p.gravity = Vector3(0, -8, 0)
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.14, 0.14, 0.14)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.4, 0.38, 0.35)
-	mesh.material = mat
-	p.mesh = mesh
-	Game.world.add_child(p)
-	p.global_position = center
-	p.emitting = true
-	p.finished.connect(p.queue_free)
+	Explosion.explode(center, EXPLOSION_RADIUS, 18.0)
 
 
 func _on_death() -> void:

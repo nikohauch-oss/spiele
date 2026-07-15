@@ -12,13 +12,23 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
   `ArrayMesh`/`SurfaceTool` mit Face-Culling (nur sichtbare Flächen)
 - Prozedurale Terrain-Generierung mit `FastNoiseLite`: Höhenkarte,
   3 Biome (Wiese, Wüste, Wald), Höhlen, Erze, Bäume, Seen/Ozeane
-- 22 Blocktypen: Gras, Erde, Stein, Sand, Holzstamm, Blätter, Wasser,
-  Kohle-/Eisen-/Diamant-Erz, Bretter, Werkbank, Ofen, Truhe, Fackel, Bett,
-  Blumen, hohes Gras, Kaktus, **Glas** (Sand schmelzen), Grundgestein, Luft
+- Über 45 Blocktypen, darunter Erze in **Adern**, Glas, Wolle, Schnee sowie
+  Bau-Elemente: **Türen** (auf/zu), **Stufen**, **Halbblöcke**, **Zäune**
+  (verbinden sich automatisch), **Leitern** (kletterbar) — mit automatischem
+  Aufstieg auf halbhohe Blöcke
+- **4 Biome**: Wiese, Wüste, Wald und **Schneelandschaft** (dort fällt
+  Schnee statt Regen)
 - **Dungeons**: seltene unterirdische Räume mit Loot-Truhen (Eisen, Diamanten,
   Bogen, ...) — Erkunden lohnt sich
 - **Wetter**: zufällige Regenphasen mit Partikeln, Regenrauschen und
   dunklerem Himmel
+- **C4-Sprengstoff** aus Creeper-Schwarzpulver + Sand: platzieren,
+  per Rechtsklick zünden, wegrennen — Kettenreaktionen inklusive
+- **Farming**: mit der Hacke Ackerboden anlegen, Samen (aus hohem Gras) säen,
+  Weizen wächst in Echtzeit über 3 Stufen → **Brot** backen oder Tiere
+  füttern (**Nachwuchs!**); Schafe liefern Wolle
+- **Minimap** (Taste M), **Kompass** (zeigt zum Spawn) und **Uhr**
+- **Dritte-Person-Ansicht** (F4) mit Spielerfigur
 - **Voxel-Beleuchtung** im Minecraft-Stil: Himmelslicht (Höhlen sind dunkel,
   Überhänge werden weich ausgeleuchtet) + Blocklicht durch **Fackeln**;
   das Licht wird per BFS ausgebreitet, in Vertex-Farben gebacken und im
@@ -91,6 +101,8 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
 | `Shift`+Klick | Stack schnell verschieben (Inventar ↔ Truhe/Ofen) |
 | `1–9` / Mausrad | Hotbar-Slot wählen |
 | `F3` | Debug-Overlay (FPS, Position, Chunks) |
+| `F4` | Erste/Dritte Person umschalten |
+| `M` | Minimap ein/aus |
 | `F5` / `F9` / `F10` | Speichern / letzten Stand laden / neue Welt |
 | `Esc` | UI schließen bzw. Maus freigeben |
 

@@ -4,12 +4,14 @@ extends Mob
 ## fliehen ein paar Sekunden, wenn sie getroffen werden, und droppen ihre
 ## Produkte (Fleisch, Leder, Federn). Gespawnt vom MobSpawner auf Gras.
 
-enum Species { PIG, COW, CHICKEN }
+enum Species { PIG, COW, CHICKEN, SHEEP }
 
 const JUMP_VELOCITY := 8.0
 const DESPAWN_RANGE := 80.0
+const GROW_TIME := 120.0  # Sekunden, bis ein Jungtier ausgewachsen ist
 
 var species := Species.PIG
+var is_baby := false
 
 var _walk_speed := 1.4
 var _flee_speed := 3.8
@@ -17,6 +19,8 @@ var _wander_dir := Vector3.ZERO
 var _wander_timer := 0.0
 var _flee_timer := 0.0
 var _flee_dir := Vector3.ZERO
+var _breed_cd := 0.0
+var _grow_timer := 0.0
 
 
 static func create(s: int) -> Animal:
@@ -57,6 +61,19 @@ func _ready() -> void:
 			add_box(Vector3(0.24, 0.18, 0.06), Vector3(0, 0.1, 0), Color(0.95, 0.75, 0.2))      # Beine
 			_walk_speed = 1.2
 			_flee_speed = 3.0
+		Species.SHEEP:
+			health = 8.0
+			add_capsule(0.4, 1.1)
+			var fleece := Color(0.9, 0.9, 0.88)
+			add_box(Vector3(0.65, 0.55, 1.0), Vector3(0, 0.65, 0.05), fleece)              # Wollkoerper
+			add_box(Vector3(0.35, 0.35, 0.3), Vector3(0, 0.8, -0.6), Color(0.75, 0.72, 0.68))  # Kopf
+			add_box(Vector3(0.5, 0.35, 0.16), Vector3(0, 0.18, 0.3), Color(0.7, 0.68, 0.65))
+			add_box(Vector3(0.5, 0.35, 0.16), Vector3(0, 0.18, -0.3), Color(0.7, 0.68, 0.65))
+			_walk_speed = 1.2
+			_flee_speed = 3.2
+	if is_baby:
+		scale = Vector3.ONE * 0.45
+		_grow_timer = GROW_TIME
 
 
 func _physics_process(delta: float) -> void:
@@ -65,6 +82,13 @@ func _physics_process(delta: float) -> void:
 	if species == Species.CHICKEN and velocity.y < -3.0:
 		velocity.y = -3.0
 	_flee_timer = maxf(_flee_timer - delta, 0.0)
+	_breed_cd = maxf(_breed_cd - delta, 0.0)
+	# Jungtiere wachsen mit der Zeit
+	if is_baby:
+		_grow_timer -= delta
+		if _grow_timer <= 0.0:
+			is_baby = false
+			scale = Vector3.ONE
 
 	# Weit weg vom Spieler? Still despawnen (wie Monster)
 	if Game.player == null \
@@ -105,8 +129,23 @@ func _on_damaged(from_dir: Vector3) -> void:
 	_flee_dir = Vector3(from_dir.x, 0, from_dir.z).normalized()
 
 
+## Mit Weizen gefuettert: einmal pro Minute gibt es ein Jungtier.
+func try_feed() -> bool:
+	if is_baby or _breed_cd > 0.0:
+		return false
+	_breed_cd = 60.0
+	var baby := Animal.create(species)
+	baby.is_baby = true
+	get_parent().add_child(baby)
+	baby.global_position = global_position + Vector3(randf_range(-0.5, 0.5), 0.2,
+		randf_range(-0.5, 0.5))
+	return true
+
+
 func _on_death() -> void:
 	var pos := global_position + Vector3(0, 0.6, 0)
+	if is_baby:
+		return  # Jungtiere droppen nichts
 	match species:
 		Species.PIG:
 			ItemEntity.spawn_id("porkchop_raw", 1 + randi() % 2, pos)
@@ -116,3 +155,5 @@ func _on_death() -> void:
 		Species.CHICKEN:
 			ItemEntity.spawn_id("chicken_raw", 1, pos)
 			ItemEntity.spawn_id("feather", 1 + randi() % 2, pos)
+		Species.SHEEP:
+			ItemEntity.spawn_id("wool", 1 + randi() % 2, pos)

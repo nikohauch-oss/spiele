@@ -111,6 +111,14 @@ func _physics_process(delta: float) -> void:
 		highlight.visible = false
 		_dig_progress = 0.0
 		Game.hud.set_dig_progress(-1.0)
+		# Tiere mit Weizen fuettern -> Nachwuchs
+		if Input.is_action_pressed("use") and _place_cd <= 0.0 and mob is Animal \
+				and player.inventory.selected_id() == "wheat":
+			_place_cd = PLACE_REPEAT
+			if (mob as Animal).try_feed():
+				player.inventory.consume_selected()
+				Sfx.play("eat")
+			return
 		if Input.is_action_pressed("attack") and _attack_cd <= 0.0:
 			_attack_cd = ATTACK_COOLDOWN
 			var dir := -player.camera.global_transform.basis.z
@@ -190,6 +198,18 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 	if not player.creative and ItemDB.is_tool(held):
 		if player.inventory.damage_selected():
 			Game.hud.toast("Werkzeug zerbrochen!")
+	# Reifer Weizen gibt Weizen + Samen; junger nur Samen (via drop-Def)
+	if block_id == BlockDB.WHEAT_2:
+		ItemEntity.spawn_id("wheat", 1, center)
+		ItemEntity.spawn_id("seeds", 1 + randi() % 2, center)
+	if block_id >= BlockDB.WHEAT_0 and block_id <= BlockDB.WHEAT_2:
+		Game.crops.erase(pos)
+	# Tueren: die zweite Haelfte still mit entfernen
+	if block_id >= BlockDB.DOOR_C_N and block_id <= BlockDB.DOOR_O_W:
+		for off in [Vector3i(0, -1, 0), Vector3i(0, 1, 0)]:
+			if Game.chunk_manager.get_block(pos + off) == block_id:
+				Game.chunk_manager.set_block(pos + off, BlockDB.AIR)
+				break
 	# Inhalt von Block-Entities fallen lassen, bevor der Block verschwindet
 	if block_id == BlockDB.FURNACE:
 		for stack in Game.remove_furnace(pos):
@@ -207,18 +227,21 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 	Game.hud.set_dig_progress(-1.0)
 
 
-## Pflanzen/Fackeln/Kakteen ueber einem entfernten Block "abknicken" lassen.
+## Pflanzen/Fackeln/Kakteen/Weizen ueber einem entfernten Block "abknicken".
 func _pop_supported_above(pos: Vector3i) -> void:
 	var above := pos + Vector3i(0, 1, 0)
 	while true:
 		var id: int = Game.chunk_manager.get_block(above)
 		if id != BlockDB.TORCH and id != BlockDB.FLOWER_RED \
 				and id != BlockDB.FLOWER_YELLOW and id != BlockDB.TALL_GRASS \
-				and id != BlockDB.CACTUS:
+				and id != BlockDB.CACTUS \
+				and not (id >= BlockDB.WHEAT_0 and id <= BlockDB.WHEAT_2):
 			break
 		var drop: String = BlockDB.get_def(id).drop
 		if drop != "":
 			ItemEntity.spawn_id(drop, 1, Vector3(above) + Vector3(0.5, 0.4, 0.5))
+		if id >= BlockDB.WHEAT_0 and id <= BlockDB.WHEAT_2:
+			Game.crops.erase(above)
 		Game.chunk_manager.set_block(above, BlockDB.AIR)
 		above += Vector3i(0, 1, 0)
 
@@ -274,6 +297,32 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 		if target_id == BlockDB.BED:
 			_try_sleep(block_pos)
 			return
+		if target_id == BlockDB.C4:
+			# Zuenden: Block raus, tickende Entity rein
+			Game.chunk_manager.set_block(block_pos, BlockDB.AIR)
+			C4Entity.ignite(block_pos)
+			return
+		if target_id >= BlockDB.DOOR_C_N and target_id <= BlockDB.DOOR_O_W:
+			_toggle_door(block_pos, target_id)
+			return
+		# Hacke auf Gras/Erde -> Ackerboden
+		if ItemDB.get_def(held).get("tool", "") == "hoe" \
+				and (target_id == BlockDB.GRASS or target_id == BlockDB.DIRT) \
+				and Game.chunk_manager.get_block(block_pos + Vector3i(0, 1, 0)) == BlockDB.AIR:
+			Game.chunk_manager.set_block(block_pos, BlockDB.FARMLAND)
+			if player.inventory.damage_selected():
+				Game.hud.toast("Werkzeug zerbrochen!")
+			Sfx.play_at("place", Vector3(block_pos) + Vector3(0.5, 1, 0.5))
+			return
+		# Samen auf Ackerboden -> Weizen
+		if held == "seeds" and target_id == BlockDB.FARMLAND:
+			var crop_pos := block_pos + Vector3i(0, 1, 0)
+			if Game.chunk_manager.get_block(crop_pos) == BlockDB.AIR:
+				Game.chunk_manager.set_block(crop_pos, BlockDB.WHEAT_0)
+				Game.crops[crop_pos] = 0.0
+				player.inventory.consume_selected()
+				Sfx.play_at("place", Vector3(crop_pos))
+			return
 
 	# Bogen schiessen (braucht kein Blockziel)
 	if held == "bow":
@@ -290,10 +339,25 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 
 	if not has_target or held == "":
 		return
+	# Tuer: belegt zwei Zellen, Ausrichtung nach Blickrichtung
+	if held == "door":
+		var below_door: int = Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
+		if Game.chunk_manager.get_block(place_pos) == BlockDB.AIR \
+				and Game.chunk_manager.get_block(place_pos + Vector3i(0, 1, 0)) == BlockDB.AIR \
+				and BlockDB.is_solid(below_door):
+			var door_id: int = BlockDB.DOOR_C_N + _facing_index()
+			Game.chunk_manager.set_block(place_pos, door_id)
+			Game.chunk_manager.set_block(place_pos + Vector3i(0, 1, 0), door_id)
+			player.inventory.consume_selected()
+			Sfx.play_at("place", Vector3(place_pos) + Vector3(0.5, 1, 0.5))
+		return
 	# Block platzieren
 	var block := ItemDB.block_of(held)
 	if block < 0:
 		return
+	# Stufen: Variante nach Blickrichtung (Aufstieg vom Spieler weg)
+	if block == BlockDB.STAIR_PLANK_N or block == BlockDB.STAIR_STONE_N:
+		block += _facing_index()
 	var cell: int = Game.chunk_manager.get_block(place_pos)
 	# Hohes Gras darf ueberbaut werden (wie in Minecraft)
 	if cell != BlockDB.AIR and cell != BlockDB.WATER and cell != BlockDB.TALL_GRASS:
@@ -311,6 +375,18 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 		BlockDB.CACTUS:
 			if cell == BlockDB.WATER or (below != BlockDB.SAND and below != BlockDB.CACTUS):
 				return
+		BlockDB.LADDER:
+			# Leitern brauchen eine feste Wand daneben
+			if cell == BlockDB.WATER:
+				return
+			var wall := false
+			for off in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+					Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				if BlockDB.is_solid(Game.chunk_manager.get_block(place_pos + off)):
+					wall = true
+					break
+			if not wall:
+				return
 	# Nicht im eigenen Koerper platzieren (durchlaufbare Bloecke sind ok)
 	var block_box := AABB(Vector3(place_pos), Vector3.ONE)
 	var player_box := AABB(player.global_position - Vector3(0.4, 0.0, 0.4),
@@ -324,6 +400,26 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 		Game.create_chest(place_pos)
 	player.inventory.consume_selected()
 	Sfx.play_at("place", Vector3(place_pos) + Vector3(0.5, 0.5, 0.5))
+
+
+## Blickrichtung als Index 0=N(-z) 1=O(+x) 2=S(+z) 3=W(-x).
+func _facing_index() -> int:
+	var f := -player.transform.basis.z
+	if absf(f.x) > absf(f.z):
+		return 1 if f.x > 0.0 else 3
+	return 2 if f.z > 0.0 else 0
+
+
+## Tuer oeffnen/schliessen: beide Zellhaelften gemeinsam umschalten.
+func _toggle_door(pos: Vector3i, id: int) -> void:
+	var toggled: int = id + 4 if id < BlockDB.DOOR_O_N else id - 4
+	var partner := pos + Vector3i(0, -1, 0)
+	if Game.chunk_manager.get_block(partner) != id:
+		partner = pos + Vector3i(0, 1, 0)
+	Game.chunk_manager.set_block(pos, toggled)
+	if Game.chunk_manager.get_block(partner) == id:
+		Game.chunk_manager.set_block(partner, toggled)
+	Sfx.play_at("place", Vector3(pos) + Vector3(0.5, 0.5, 0.5))
 
 
 ## Rechtsklick auf ein Bett: nachts schlafen -> Morgen + neuer Spawnpunkt.

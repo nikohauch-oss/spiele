@@ -9,6 +9,15 @@ enum {
 	COAL_ORE, IRON_ORE, PLANKS, CRAFTING_TABLE, FURNACE, BEDROCK,
 	TORCH, CHEST, DIAMOND_ORE, BED,
 	FLOWER_RED, FLOWER_YELLOW, TALL_GRASS, CACTUS, GLASS,
+	C4, LADDER, FARMLAND, WHEAT_0, WHEAT_1, WHEAT_2, SNOW, WOOL,
+	SLAB_PLANK, SLAB_STONE,
+	# Stufen/Tueren: 4 Ausrichtungen als eigene Ids (N, O, S, W aufsteigend);
+	# offene Tueren = geschlossene Id + 4
+	STAIR_PLANK_N, STAIR_PLANK_E, STAIR_PLANK_S, STAIR_PLANK_W,
+	STAIR_STONE_N, STAIR_STONE_E, STAIR_STONE_S, STAIR_STONE_W,
+	DOOR_C_N, DOOR_C_E, DOOR_C_S, DOOR_C_W,
+	DOOR_O_N, DOOR_O_E, DOOR_O_S, DOOR_O_W,
+	FENCE,
 	BLOCK_COUNT,
 }
 
@@ -77,6 +86,31 @@ var defs := {
 		"tiles": ["cactus_top", "cactus_side", "cactus_top"], "hardness": 0.6},
 	GLASS: {"id": "glass", "name": "Glas", "tiles": ["glass", "glass", "glass"],
 		"hardness": 0.5, "see_through": true},
+	C4: {"id": "c4", "name": "C4-Sprengstoff", "tiles": ["c4", "c4", "c4"],
+		"hardness": 0.3},
+	LADDER: {"id": "ladder", "name": "Leiter", "tiles": ["ladder", "ladder", "ladder"],
+		"hardness": 0.4, "tool": "axe", "solid": false, "see_through": true},
+	FARMLAND: {"id": "farmland", "name": "Ackerboden",
+		"tiles": ["farmland", "dirt", "dirt"], "hardness": 0.75, "tool": "shovel",
+		"drop": "dirt"},
+	WHEAT_0: {"id": "wheat_0", "name": "Weizen", "tiles": ["wheat0", "wheat0", "wheat0"],
+		"hardness": 0.05, "solid": false, "see_through": true, "drop": "seeds", "no_item": true},
+	WHEAT_1: {"id": "wheat_1", "name": "Weizen", "tiles": ["wheat1", "wheat1", "wheat1"],
+		"hardness": 0.05, "solid": false, "see_through": true, "drop": "seeds", "no_item": true},
+	WHEAT_2: {"id": "wheat_2", "name": "Weizen (reif)", "tiles": ["wheat2", "wheat2", "wheat2"],
+		"hardness": 0.05, "solid": false, "see_through": true, "drop": "", "no_item": true},
+	SNOW: {"id": "snow", "name": "Schneeblock", "tiles": ["snow", "snow_side", "dirt"],
+		"hardness": 0.8, "tool": "shovel", "drop": "dirt"},
+	WOOL: {"id": "wool", "name": "Wolle", "tiles": ["wool", "wool", "wool"],
+		"hardness": 0.8},
+	SLAB_PLANK: {"id": "slab_plank", "name": "Holz-Halbblock",
+		"tiles": ["planks", "planks", "planks"], "hardness": 3.0, "tool": "axe",
+		"see_through": true},
+	SLAB_STONE: {"id": "slab_stone", "name": "Stein-Halbblock",
+		"tiles": ["stone", "stone", "stone"], "hardness": 6.0, "tool": "pickaxe",
+		"min_tier": 1, "see_through": true},
+	FENCE: {"id": "fence", "name": "Zaun", "tiles": ["planks", "planks", "planks"],
+		"hardness": 3.0, "tool": "axe", "see_through": true},
 }
 
 var atlas_texture: ImageTexture
@@ -96,9 +130,28 @@ var _uv_base := []          # [block][slot 0..2] -> Vector2 (linke obere UV-Ecke
 
 
 func _ready() -> void:
+	_register_variants()
 	_build_atlas()
 	_build_materials()
 	_finalize_defs()
+
+
+## Stufen- und Tuer-Varianten (4 Ausrichtungen) programmatisch registrieren.
+## Nur die N-Variante der Stufen wird ein Item; alle anderen droppen sie.
+func _register_variants() -> void:
+	for s in [[STAIR_PLANK_N, "stair_plank", "Holz-Stufen", "planks", "axe", 3.0, 0],
+			[STAIR_STONE_N, "stair_stone", "Stein-Stufen", "stone", "pickaxe", 6.0, 1]]:
+		for i in 4:
+			var d := {"id": s[1] if i == 0 else "%s_%d" % [s[1], i], "name": s[2],
+				"tiles": [s[3], s[3], s[3]], "hardness": s[5], "tool": s[4],
+				"min_tier": s[6], "see_through": true, "drop": s[1]}
+			if i > 0:
+				d.no_item = true
+			defs[(s[0] as int) + i] = d
+	for i in 8:
+		defs[DOOR_C_N + i] = {"id": "door_%d" % i, "name": "Tuer",
+			"tiles": ["planks", "planks", "planks"], "hardness": 3.0, "tool": "axe",
+			"see_through": true, "drop": "door", "no_item": true}
 
 
 func get_def(block_id: int) -> Dictionary:
@@ -176,7 +229,9 @@ func _build_atlas() -> void:
 		"log_top", "leaves", "water", "coal_ore", "iron_ore", "planks",
 		"table_top", "table_side", "furnace_front", "bedrock",
 		"torch", "chest_top", "chest_side", "diamond_ore", "bed_top", "bed_side",
-		"flower_red", "flower_yellow", "tall_grass", "cactus_side", "cactus_top", "glass"]
+		"flower_red", "flower_yellow", "tall_grass", "cactus_side", "cactus_top", "glass",
+		"c4", "ladder", "farmland", "wheat0", "wheat1", "wheat2",
+		"snow", "snow_side", "wool"]
 	var img := Image.create_empty(ATLAS_TILES * TILE, ATLAS_TILES * TILE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 0, 1))  # Magenta = "fehlende Kachel"
 	for i in kinds.size():
@@ -362,6 +417,46 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 						c = Color(0.85, 0.9, 0.95, 1.0)  # Rahmen
 					elif px - py == 4 or px - py == 5:
 						c = Color(1, 1, 1, 0.45)  # Lichtreflex
+				"c4":
+					c = _vary(Color(0.85, 0.8, 0.6), rng, 0.04)  # beiger Sprengstoff
+					if py >= 6 and py <= 9:
+						c = _vary(Color(0.8, 0.15, 0.12), rng, 0.05)  # rote Banderole
+					elif py == 12 and px % 3 != 0:
+						c = Color(0.25, 0.25, 0.28)  # Draht
+				"ladder":
+					c = Color(0, 0, 0, 0)
+					if px == 3 or px == 4 or px == 11 or px == 12:
+						c = _vary(Color(0.55, 0.4, 0.22), rng, 0.05)  # Holme
+					elif (py == 3 or py == 7 or py == 11) and px > 4 and px < 11:
+						c = _vary(Color(0.5, 0.36, 0.2), rng, 0.05)   # Sprossen
+				"farmland":
+					c = _vary(Color(0.36, 0.24, 0.14), rng, 0.06)
+					if px % 4 == 0:
+						c = c.darkened(0.3)  # Furchen
+				"wheat0":
+					c = Color(0, 0, 0, 0)
+					if px % 4 == 1 and py >= 11:
+						c = _vary(Color(0.35, 0.62, 0.25), rng, 0.06)
+				"wheat1":
+					c = Color(0, 0, 0, 0)
+					if px % 3 == 1 and py >= 6:
+						c = _vary(Color(0.42, 0.6, 0.22), rng, 0.06)
+				"wheat2":
+					c = Color(0, 0, 0, 0)
+					if px % 3 == 1 and py >= 4:
+						c = _vary(Color(0.78, 0.68, 0.3), rng, 0.05)
+						if py <= 6:
+							c = _vary(Color(0.88, 0.78, 0.4), rng, 0.04)  # Aehren
+				"snow":
+					c = _vary(Color(0.94, 0.95, 0.97), rng, 0.02)
+				"snow_side":
+					c = _vary(Color(0.55, 0.4, 0.26), rng, 0.05)
+					if py < 4:
+						c = _vary(Color(0.94, 0.95, 0.97), rng, 0.02)
+				"wool":
+					c = _vary(Color(0.9, 0.9, 0.88), rng, 0.03)
+					if (px * 3 + py * 7) % 11 == 0:
+						c = c.darkened(0.12)  # Woll-Locken
 			img.set_pixel(ox + px, oy + py, c)
 	# Erz-Sprenkel als 2x2-Kluempchen nachtraeglich aufmalen
 	if kind.ends_with("_ore"):

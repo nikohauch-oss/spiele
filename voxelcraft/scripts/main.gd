@@ -7,6 +7,8 @@ const START_ITEMS := []  # z. B. [["wooden_pickaxe", 1]] fuer Debug-Starts
 
 var player: PlayerController
 var _rain: CPUParticles3D
+var _snow_check := 0.0
+var _snowing := false
 var _started := false
 
 
@@ -17,7 +19,9 @@ func _ready() -> void:
 	Game.world = self
 	Game.furnaces.clear()
 	Game.chests.clear()
+	Game.crops.clear()
 	Game.ui_open = false
+	Game.paused = false
 
 	# --- Environment: Himmel, Nebel (kaschiert die Sichtweite), Umgebungslicht ---
 	var env := Environment.new()
@@ -94,6 +98,7 @@ func _apply_save(save: Dictionary) -> void:
 		Game.furnaces[pos] = FurnaceState.deserialize(save.furnaces[pos])
 	for pos: Vector3i in save.get("chests", {}):
 		Game.chests[pos] = ChestState.deserialize(save.chests[pos])
+	Game.crops = save.get("crops", {})
 	var pdata: Dictionary = save.get("player", {})
 	if pdata.is_empty():
 		for entry in START_ITEMS:
@@ -108,10 +113,27 @@ func _apply_save(save: Dictionary) -> void:
 	player.stats.load_values(pdata.get("health", 20.0), pdata.get("hunger", 20.0))
 
 
-func _process(_delta: float) -> void:
-	# Regen folgt dem Spieler
+func _process(delta: float) -> void:
+	# Regen folgt dem Spieler; im Schnee-Biom faellt er als Schnee
 	if player:
 		_rain.global_position = player.global_position + Vector3(0, 10, 0)
+		_snow_check -= delta
+		if _snow_check <= 0.0:
+			_snow_check = 1.0
+			var p := player.global_position
+			var snowy: bool = Game.chunk_manager.generator.biome_at(
+				int(floor(p.x)), int(floor(p.z))) == TerrainGenerator.Biome.SNOWY
+			if snowy != _snowing:
+				_snowing = snowy
+				var mat := (_rain.mesh as BoxMesh).material as StandardMaterial3D
+				if snowy:
+					mat.albedo_color = Color(0.95, 0.95, 0.98, 0.8)
+					_rain.initial_velocity_min = 2.5
+					_rain.initial_velocity_max = 4.0
+				else:
+					mat.albedo_color = Color(0.55, 0.65, 0.9, 0.45)
+					_rain.initial_velocity_min = 14.0
+					_rain.initial_velocity_max = 18.0
 	# Spieler erst loslassen, wenn der Chunk unter ihm fertig gemesht ist
 	if not _started:
 		var cpos := ChunkManager.world_to_chunk(Vector3i(player.global_position.floor()))

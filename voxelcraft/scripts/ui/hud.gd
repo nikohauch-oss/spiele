@@ -12,6 +12,14 @@ var _hearts: Array[ColorRect] = []
 var _food: Array[ColorRect] = []
 var _armor_pips: Array[ColorRect] = []
 var _pause_panel: Control
+var _info: Label            # Kompass-/Uhr-Zeile ueber der Hotbar
+var _map_panel: Control
+var _map_texrect: TextureRect
+var _map_img: Image
+var _map_tex: ImageTexture
+var _map_row := 0
+
+const MAP_SIZE := 64   # Pixel (1 Pixel = 2 Bloecke -> 128 m Kartenbreite)
 var _dig_fill: ColorRect
 var _dig_bar: Control
 var _toast: Label
@@ -41,6 +49,8 @@ func _ready() -> void:
 	_build_bottom_bar()
 	_build_labels()
 
+	_build_minimap()
+
 	container = ContainerUI.new()
 	add_child(container)
 
@@ -64,6 +74,9 @@ func bind(player: PlayerController) -> void:
 func _process(_delta: float) -> void:
 	if _player:
 		_water_tint.visible = _player.is_head_in_water()
+		_update_info_line()
+		if _map_panel.visible:
+			_update_minimap()
 	if _debug.visible and _player:
 		var p := _player.global_position
 		var cell := Vector3i((p + Vector3(0, 0.9, 0)).floor())
@@ -118,6 +131,15 @@ func _build_bottom_bar() -> void:
 	root.offset_bottom = -8
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+
+	# Info-Zeile (Kompass/Uhr, wenn in der Hand)
+	_info = Label.new()
+	_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_info.add_theme_font_size_override("font_size", 15)
+	_info.add_theme_color_override("font_outline_color", Color.BLACK)
+	_info.add_theme_constant_override("outline_size", 5)
+	_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_info)
 
 	# Ruestungs-Reihe (nur sichtbar, wenn etwas getragen wird)
 	var armor_row := HBoxContainer.new()
@@ -180,6 +202,64 @@ func _build_labels() -> void:
 	_debug.add_theme_constant_override("outline_size", 4)
 	_debug.visible = false
 	add_child(_debug)
+
+
+## Minimap oben rechts (Taste M): Draufsicht aus den Chunk-Daten,
+## amortisiert aktualisiert (4 Zeilen pro Frame -> kein Ruckeln).
+func _build_minimap() -> void:
+	_map_img = Image.create_empty(MAP_SIZE, MAP_SIZE, false, Image.FORMAT_RGBA8)
+	_map_img.fill(Color(0, 0, 0, 0.6))
+	_map_tex = ImageTexture.create_from_image(_map_img)
+	_map_panel = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.09, 0.1, 0.13, 0.9)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(6)
+	_map_panel.add_theme_stylebox_override("panel", style)
+	_map_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_map_panel.offset_left = -216
+	_map_panel.offset_top = 12
+	_map_panel.offset_right = -12
+	_map_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_panel.visible = false
+	_map_texrect = TextureRect.new()
+	_map_texrect.texture = _map_tex
+	_map_texrect.custom_minimum_size = Vector2(192, 192)
+	_map_texrect.stretch_mode = TextureRect.STRETCH_SCALE
+	_map_texrect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_map_texrect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_panel.add_child(_map_texrect)
+	add_child(_map_panel)
+
+
+func toggle_map() -> void:
+	_map_panel.visible = not _map_panel.visible
+
+
+## 4 Kartenzeilen pro Frame neu einlesen (1 Pixel = 2x2 Bloecke).
+func _update_minimap() -> void:
+	var center := Vector3i(_player.global_position.floor())
+	for _r in 4:
+		var py := _map_row
+		_map_row = (_map_row + 1) % MAP_SIZE
+		var wz := center.z + (py - (MAP_SIZE >> 1)) * 2
+		for px in MAP_SIZE:
+			var wx := center.x + (px - (MAP_SIZE >> 1)) * 2
+			var g: int = Game.chunk_manager.get_ground_y(wx, wz)
+			var c := Color(0, 0, 0, 0.6)
+			if g >= 0:
+				var top: int = Game.chunk_manager.get_block(Vector3i(wx, g, wz))
+				c = BlockDB.avg_color(top)
+				if Game.chunk_manager.get_block(Vector3i(wx, g + 1, wz)) == BlockDB.WATER:
+					c = Color(0.22, 0.42, 0.82)
+				# Hoehen-Schattierung fuer Relief
+				c = c.darkened(clampf((70.0 - g) * 0.012, -0.15, 0.35))
+			_map_img.set_pixel(px, py, c)
+	# Spieler-Markierung in der Mitte
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			_map_img.set_pixel((MAP_SIZE >> 1) + dx, (MAP_SIZE >> 1) + dy, Color.WHITE)
+	_map_tex.update(_map_img)
 
 
 func _build_pause_panel() -> Control:
@@ -255,6 +335,26 @@ func _refresh_stats() -> void:
 		var f := clampf(s.hunger / 2.0 - i, 0.0, 1.0)
 		_food[i].color = Color(0.85, 0.55, 0.15) if f >= 1.0 \
 			else (Color(0.55, 0.35, 0.1) if f > 0.0 else Color(0.2, 0.2, 0.2, 0.7))
+
+
+## Kompass zeigt Richtung + Distanz zum Spawnpunkt, Uhr die Tageszeit.
+func _update_info_line() -> void:
+	var held: String = _player.inventory.selected_id()
+	if held == "compass":
+		var to_spawn: Vector3 = Game.spawn_point - _player.global_position
+		var dist := int(Vector2(to_spawn.x, to_spawn.z).length())
+		# Winkel relativ zur Blickrichtung -> 8 Pfeilrichtungen
+		var ang := atan2(to_spawn.x, to_spawn.z) - _player.rotation.y - PI
+		var arrows := ["^", "/^", ">", "\\v", "v", "v/", "<", "^\\"]
+		var idx := posmod(roundi(ang / (PI / 4.0)), 8)
+		_info.text = "Spawn: %s %d m" % [arrows[idx], dist]
+	elif held == "clock":
+		var frac: float = Game.day_night.time / DayNightCycle.DAY_LENGTH
+		var hours := fmod(frac * 24.0 + 6.0, 24.0)  # 0 % = 06:00 Sonnenaufgang
+		_info.text = "Zeit: %02d:%02d %s" % [int(hours), int(fmod(hours, 1.0) * 60.0),
+			"(Nacht)" if Game.day_night.is_night() else "(Tag)"]
+	else:
+		_info.text = ""
 
 
 ## Abbau-Fortschritt 0..1 anzeigen; negativ = ausblenden

@@ -21,11 +21,13 @@ var _icons := {}
 
 
 func _ready() -> void:
-	# --- Bloecke als Items (Wasser/Grundgestein sind nicht erhaeltlich) ---
+	# --- Bloecke als Items (Wasser/Grundgestein/Varianten sind nicht erhaeltlich) ---
 	for b in range(1, BlockDB.BLOCK_COUNT):
 		if b == BlockDB.WATER or b == BlockDB.BEDROCK:
 			continue
 		var bd := BlockDB.get_def(b)
+		if bd.get("no_item", false):
+			continue  # Stufen-/Tuer-Varianten, Weizen-Stufen
 		_reg({"id": bd.id, "name": bd.name, "block": b})
 	defs["log"].fuel = 15.0
 	defs["planks"].fuel = 15.0
@@ -51,7 +53,17 @@ func _ready() -> void:
 	_reg({"id": "steak", "name": "Steak", "food": 8})
 	_reg({"id": "chicken_raw", "name": "Rohes Huehnchen", "food": 2})
 	_reg({"id": "chicken_cooked", "name": "Gebratenes Huehnchen", "food": 6})
-	_reg({"id": "gunpowder", "name": "Schwarzpulver"})  # Creeper-Drop
+	_reg({"id": "gunpowder", "name": "Schwarzpulver"})  # Creeper-Drop -> C4
+
+	# --- Farming ---
+	_reg({"id": "seeds", "name": "Samen"})
+	_reg({"id": "wheat", "name": "Weizen"})
+	_reg({"id": "bread", "name": "Brot", "food": 5})
+
+	# --- Sonstiges ---
+	_reg({"id": "door", "name": "Tuer"})  # platziert 2 Zellen (kein Block-Item)
+	_reg({"id": "compass", "name": "Kompass", "max_stack": 1})
+	_reg({"id": "clock", "name": "Uhr", "max_stack": 1})
 
 	# --- Ruestung: [Prefix, Anzeigename, Haltbarkeit, Punkte je Teil] ---
 	for a in [["leather", "Leder", 60, [1, 3, 2, 1]], ["iron", "Eisen", 160, [2, 6, 5, 2]],
@@ -73,6 +85,8 @@ func _ready() -> void:
 			"tier": m[2], "speed": m[3], "durability": m[4], "damage": 1 + m[5], "max_stack": 1})
 		_reg({"id": "%s_sword" % m[0], "name": "%s-Schwert" % m[1], "tool": "sword",
 			"tier": m[2], "speed": 1.0, "durability": m[4], "damage": 4 + m[5], "max_stack": 1})
+		_reg({"id": "%s_hoe" % m[0], "name": "%s-Hacke" % m[1], "tool": "hoe",
+			"tier": m[2], "speed": 1.0, "durability": m[4], "damage": 1, "max_stack": 1})
 
 	_build_icons()
 
@@ -183,10 +197,16 @@ func _tier_for(item_id: String, required_tool: String) -> int:
 
 # --------------------------------------------------------------------- Icons ---
 
+# Block-Items, deren Atlas-Kachel als Icon nichts taugt (sehen wie der
+# Grundwerkstoff aus) - sie bekommen gemalte Silhouetten
+const _PAINTED_BLOCK_ICONS := ["slab_plank", "slab_stone", "stair_plank",
+	"stair_stone", "fence"]
+
+
 func _build_icons() -> void:
 	for id: String in defs:
 		var d: Dictionary = defs[id]
-		if d.block >= 0:
+		if d.block >= 0 and not id in _PAINTED_BLOCK_ICONS:
 			# Blockseite direkt aus dem Textur-Atlas ausschneiden
 			var at := AtlasTexture.new()
 			at.atlas = BlockDB.atlas_texture
@@ -236,6 +256,31 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 					_px(img, p[0], p[1], head)
 		return img
 
+	# Bau-Bloecke als Silhouetten (Material: Holz oder Stein)
+	if id in _PAINTED_BLOCK_ICONS:
+		var mat_c := Color(0.55, 0.55, 0.57) if id.ends_with("stone") else Color(0.66, 0.51, 0.3)
+		if id.begins_with("slab"):
+			for x in range(2, 14):
+				for y in range(9, 13):
+					_px(img, x, y, mat_c if (x + y) % 7 != 0 else mat_c.darkened(0.2))
+		elif id.begins_with("stair"):
+			for x in range(2, 14):
+				for y in range(9, 13):
+					_px(img, x, y, mat_c)
+			for x in range(8, 14):
+				for y in range(5, 9):
+					_px(img, x, y, mat_c.lightened(0.08))
+		else:  # Zaun
+			for y in range(3, 14):
+				_px(img, 4, y, mat_c)
+				_px(img, 5, y, mat_c.darkened(0.15))
+				_px(img, 10, y, mat_c)
+				_px(img, 11, y, mat_c.darkened(0.15))
+			for x in range(2, 14):
+				_px(img, x, 5, mat_c.lightened(0.1))
+				_px(img, x, 9, mat_c.lightened(0.1))
+		return img
+
 	if d.tool != "":
 		# Stiel diagonal von unten links zur Mitte
 		for i in 8:
@@ -257,6 +302,12 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 				for y in range(1, 5):
 					for x in range(10, 13):
 						_px(img, x, y, head)
+			"hoe":      # abgewinkeltes Blatt
+				for x in range(8, 13):
+					_px(img, x, 2, head)
+					_px(img, x, 3, head)
+				_px(img, 8, 4, head)
+				_px(img, 8, 5, head)
 			"sword":    # lange Klinge + Parierstange
 				for i in 9:
 					_px(img, 5 + i, 11 - i, head)
@@ -313,6 +364,35 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 				var gx := 3 + (i * 7) % 10
 				var gy := 5 + (i * 5) % 8
 				_px(img, gx, gy, Color(0.35, 0.35, 0.38))
+		"seeds":
+			for i in 9:
+				_px(img, 4 + (i * 5) % 9, 5 + (i * 7) % 8, Color(0.4, 0.65, 0.25))
+		"wheat":
+			for gx in [4, 7, 10]:
+				for gy in range(4, 13):
+					_px(img, gx, gy, Color(0.78, 0.68, 0.3))
+				_px(img, gx, 4, Color(0.88, 0.78, 0.4))
+				_px(img, gx + 1, 5, Color(0.88, 0.78, 0.4))
+		"bread":
+			for x in range(3, 13):
+				for y in range(6, 11):
+					_px(img, x, y, Color(0.72, 0.5, 0.25) if y > 7 else Color(0.85, 0.65, 0.35))
+		"door":
+			for x in range(5, 11):
+				for y in range(2, 14):
+					_px(img, x, y, wood if (x + y) % 6 != 0 else wood.darkened(0.2))
+			_px(img, 9, 8, Color(0.85, 0.85, 0.9))  # Klinke
+		"compass":
+			_blob(img, Color(0.45, 0.45, 0.5), 5)
+			for i in 4:
+				_px(img, 8, 5 + i, Color(0.9, 0.2, 0.15))  # rote Nadel
+				_px(img, 8, 9 + i, Color(0.85, 0.85, 0.9))
+		"clock":
+			_blob(img, Color(0.85, 0.7, 0.3), 5)
+			for i in 3:
+				_px(img, 8, 6 + i, Color(0.2, 0.2, 0.25))  # Zeiger
+			_px(img, 9, 9, Color(0.2, 0.2, 0.25))
+			_px(img, 10, 9, Color(0.2, 0.2, 0.25))
 		"bow":
 			var string_c := Color(0.85, 0.85, 0.78)
 			for pt in [[5, 2], [4, 3], [3, 4], [3, 6], [3, 8], [3, 10], [4, 11], [5, 12]]:
