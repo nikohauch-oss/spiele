@@ -10,6 +10,8 @@ var container: ContainerUI
 var _hotbar: Array[SlotUI] = []
 var _hearts: Array[ColorRect] = []
 var _food: Array[ColorRect] = []
+var _armor_pips: Array[ColorRect] = []
+var _pause_panel: Control
 var _dig_fill: ColorRect
 var _dig_bar: Control
 var _toast: Label
@@ -41,6 +43,9 @@ func _ready() -> void:
 
 	container = ContainerUI.new()
 	add_child(container)
+
+	_pause_panel = _build_pause_panel()
+	add_child(_pause_panel)
 
 	_death_panel = _build_death_panel()
 	add_child(_death_panel)
@@ -114,6 +119,15 @@ func _build_bottom_bar() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
+	# Ruestungs-Reihe (nur sichtbar, wenn etwas getragen wird)
+	var armor_row := HBoxContainer.new()
+	armor_row.add_theme_constant_override("separation", 3)
+	armor_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	armor_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(armor_row)
+	for i in 10:
+		_armor_pips.append(_stat_pip(armor_row))
+
 	var stats_row := HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 40)
 	stats_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -168,6 +182,38 @@ func _build_labels() -> void:
 	add_child(_debug)
 
 
+func _build_pause_panel() -> Control:
+	var root := ColorRect.new()
+	root.color = Color(0, 0, 0, 0.55)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.visible = false
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	center.add_child(box)
+	var title := Label.new()
+	title.text = "Pause"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	box.add_child(title)
+	var entries := [["Fortsetzen", func() -> void: Game.set_pause(false)],
+		["Speichern", func() -> void: Game.save_world()],
+		["Speichern & Hauptmenue", func() -> void: Game.return_to_menu()]]
+	for e: Array in entries:
+		var b := Button.new()
+		b.text = e[0]
+		b.custom_minimum_size = Vector2(240, 40)
+		b.pressed.connect(e[1])
+		box.add_child(b)
+	return root
+
+
+func set_paused(on: bool) -> void:
+	_pause_panel.visible = on
+
+
 func _build_death_panel() -> Control:
 	var panel := ColorRect.new()
 	panel.color = Color(0.4, 0.0, 0.0, 0.55)
@@ -190,6 +236,13 @@ func _refresh_hotbar() -> void:
 	for i in _hotbar.size():
 		_hotbar[i].set_stack(_player.inventory.slots[i])
 		_hotbar[i].set_selected(i == _player.inventory.selected)
+	# Ruestungsanzeige (1 Pip = 2 Punkte)
+	var pts := _player.inventory.armor_points()
+	for i in 10:
+		_armor_pips[i].visible = pts > 0
+		var a := clampf(pts / 2.0 - i, 0.0, 1.0)
+		_armor_pips[i].color = Color(0.75, 0.75, 0.8) if a >= 1.0 \
+			else (Color(0.5, 0.5, 0.55) if a > 0.0 else Color(0.2, 0.2, 0.2, 0.7))
 
 
 func _refresh_stats() -> void:

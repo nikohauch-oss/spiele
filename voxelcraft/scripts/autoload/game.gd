@@ -6,8 +6,8 @@ extends Node
 ##  - Speichern/Laden der Welt (user://voxelcraft_save.dat, Godot-Binaerformat)
 ##  - oeffnet/schliesst Container-UIs (Inventar, Werkbank, Ofen)
 
-const SAVE_PATH := "user://voxelcraft_save.dat"
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
+const SETTINGS_PATH := "user://settings.cfg"
 
 var player = null          # PlayerController
 var chunk_manager = null   # ChunkManager
@@ -18,13 +18,53 @@ var world = null           # Main-Node (Parent fuer Item-Entities)
 var world_seed := 0
 var spawn_point := Vector3.ZERO
 var ui_open := false
+var paused := false
 var furnaces := {}         # Vector3i -> FurnaceState
 var chests := {}           # Vector3i -> ChestState
 var loaded_save := {}      # von Main beim Start konsumiert
 
+# Welt-Slots (Hauptmenue) + Einstellungen
+var save_slot := 1
+var settings := {"view_distance": 4, "sensitivity": 1.0, "volume": 0.8}
+
 
 func _ready() -> void:
 	_setup_input()
+	load_settings()
+
+
+func save_path(slot := -1) -> String:
+	return "user://voxelcraft_slot%d.dat" % (save_slot if slot < 0 else slot)
+
+
+func slot_exists(slot: int) -> bool:
+	return FileAccess.file_exists(save_path(slot))
+
+
+func delete_slot(slot: int) -> void:
+	if slot_exists(slot):
+		DirAccess.remove_absolute(save_path(slot))
+
+
+func load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		for k in settings.keys():
+			settings[k] = cfg.get_value("settings", k, settings[k])
+	apply_volume()
+
+
+func save_settings() -> void:
+	var cfg := ConfigFile.new()
+	for k in settings.keys():
+		cfg.set_value("settings", k, settings[k])
+	cfg.save(SETTINGS_PATH)
+
+
+func apply_volume() -> void:
+	var v: float = clampf(settings.get("volume", 0.8), 0.0, 1.0)
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(v, 0.001)))
+	AudioServer.set_bus_mute(0, v <= 0.001)
 
 
 func _process(delta: float) -> void:
@@ -75,29 +115,58 @@ func _add_mouse(action: String, button: MouseButton) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if player == null:
+		return  # im Hauptmenue
 	if event.is_action_pressed("ui_cancel"):
-		if ui_open:
+		if paused:
+			set_pause(false)
+		elif ui_open:
 			close_container()
-		elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		else:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			set_pause(true)
 	elif event.is_action_pressed("inventory"):
+		if paused:
+			return
 		if ui_open:
 			close_container()
-		elif player and not player.frozen:
+		elif not player.frozen:
 			open_container(ContainerUI.Mode.PLAYER)
 	elif event.is_action_pressed("save_world"):
 		save_world()
 	elif event.is_action_pressed("load_world"):
-		if FileAccess.file_exists(SAVE_PATH):
+		if FileAccess.file_exists(save_path()):
 			get_tree().reload_current_scene()
 	elif event.is_action_pressed("new_world"):
-		if FileAccess.file_exists(SAVE_PATH):
-			DirAccess.remove_absolute(SAVE_PATH)
+		delete_slot(save_slot)
 		get_tree().reload_current_scene()
 	elif event.is_action_pressed("debug") and hud:
 		hud.toggle_debug()
+
+
+# ------------------------------------------------------------- Pause-Menue ---
+
+func set_pause(on: bool) -> void:
+	paused = on
+	ui_open = on
+	if hud:
+		hud.set_paused(on)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
+
+
+## Speichert und wechselt zurueck ins Hauptmenue.
+func return_to_menu() -> void:
+	save_world()
+	paused = false
+	ui_open = false
+	player = null
+	chunk_manager = null
+	hud = null
+	day_night = null
+	world = null
+	furnaces.clear()
+	chests.clear()
+	Sfx.set_rain(false)
+	get_tree().change_scene_to_file("res://scenes/Menu.tscn")
 
 
 # ----------------------------------------------------------- Container-UI ---
@@ -145,6 +214,20 @@ func create_chest(pos: Vector3i) -> void:
 	chests[pos] = ChestState.new()
 
 
+## Dungeon-Truhe: wird beim ersten Oeffnen mit Zufalls-Loot gefuellt.
+func create_chest_with_loot(pos: Vector3i) -> void:
+	var c := ChestState.new()
+	# [Item, min, max, Wahrscheinlichkeit]
+	var table := [["iron_ingot", 1, 3, 0.7], ["coal", 2, 5, 0.8], ["apple", 1, 3, 0.6],
+		["arrow", 3, 8, 0.6], ["torch", 2, 6, 0.7], ["diamond", 1, 2, 0.25],
+		["bow", 1, 1, 0.15], ["steak", 1, 2, 0.3], ["planks", 2, 6, 0.5]]
+	for e: Array in table:
+		if randf() < e[3]:
+			var count: int = e[1] + randi() % (e[2] - e[1] + 1)
+			c.slots[randi() % ChestState.SIZE] = Inventory.make_stack(e[0], count)
+	chests[pos] = c
+
+
 ## Truhe abgebaut: Zustand entfernen, Inhalt zurueckgeben.
 func remove_chest(pos: Vector3i) -> Array:
 	var c = chests.get(pos)
@@ -159,8 +242,8 @@ func remove_chest(pos: Vector3i) -> Array:
 ## Beim Szenenstart aufrufen: laedt den Spielstand (falls vorhanden) in loaded_save.
 func try_load_save() -> Dictionary:
 	loaded_save = {}
-	if FileAccess.file_exists(SAVE_PATH):
-		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if FileAccess.file_exists(save_path()):
+		var f := FileAccess.open(save_path(), FileAccess.READ)
 		if f:
 			var data = f.get_var()
 			if data is Dictionary and data.get("version", 0) == SAVE_VERSION:
@@ -196,7 +279,7 @@ func save_world() -> void:
 		"furnaces": furnace_data,
 		"chests": chest_data,
 	}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
 		f.store_var(data)  # nur Godot-Basistypen -> sicher deserialisierbar
 		if hud:

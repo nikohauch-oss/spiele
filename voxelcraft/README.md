@@ -12,9 +12,13 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
   `ArrayMesh`/`SurfaceTool` mit Face-Culling (nur sichtbare Flächen)
 - Prozedurale Terrain-Generierung mit `FastNoiseLite`: Höhenkarte,
   3 Biome (Wiese, Wüste, Wald), Höhlen, Erze, Bäume, Seen/Ozeane
-- 17 Blocktypen: Gras, Erde, Stein, Sand, Holzstamm, Blätter, Wasser,
-  Kohle-/Eisen-/Diamant-Erz, Bretter, Werkbank, Ofen, Truhe, Fackel,
-  Grundgestein, Luft
+- 22 Blocktypen: Gras, Erde, Stein, Sand, Holzstamm, Blätter, Wasser,
+  Kohle-/Eisen-/Diamant-Erz, Bretter, Werkbank, Ofen, Truhe, Fackel, Bett,
+  Blumen, hohes Gras, Kaktus, **Glas** (Sand schmelzen), Grundgestein, Luft
+- **Dungeons**: seltene unterirdische Räume mit Loot-Truhen (Eisen, Diamanten,
+  Bogen, ...) — Erkunden lohnt sich
+- **Wetter**: zufällige Regenphasen mit Partikeln, Regenrauschen und
+  dunklerem Himmel
 - **Voxel-Beleuchtung** im Minecraft-Stil: Himmelslicht (Höhlen sind dunkel,
   Überhänge werden weich ausgeleuchtet) + Blocklicht durch **Fackeln**;
   das Licht wird per BFS ausgebreitet, in Vertex-Farben gebacken und im
@@ -55,12 +59,17 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
 - Zombies spawnen nachts, verfolgen den Spieler und greifen an —
   **aber nicht in fackelbeleuchteten Bereichen** (Blocklicht ≥ 8);
   sie droppen verrottetes Fleisch
-- **Skelette** (30 % der Nacht-Spawns) halten Abstand und schießen Pfeile
-  mit Schwerkraft-Flugbahn; sie droppen Pfeile und manchmal einen Bogen
-- **Schweine** spawnen tagsüber auf Grasflächen, fliehen bei Schlägen und
-  droppen rohes Schweinefleisch — im Ofen braten (roh 3 / gebraten 8 Hunger)
-- **Sound-Effekte** komplett prozedural synthetisiert (Abbauen, Platzieren,
-  Einsammeln, Essen, Treffer, Bogenschuss, ...) — weiterhin null Assets
+- **Skelette** (Fernkampf) und **Creeper** (anschleichen, zischen,
+  explodieren — reißt Löcher in die Welt!) ergänzen die Zombies nachts
+- **Schweine, Kühe und Hühner** tagsüber auf Grasflächen: Fleisch (im Ofen
+  braten), **Leder** für Rüstung und **Federn** für bessere Pfeil-Rezepte
+- **Rüstung** in Leder/Eisen/Diamant (Helm, Brustpanzer, Beinschutz,
+  Stiefel): 4 % Schadensreduktion pro Punkt, mit Haltbarkeit; eigene
+  Slots im Inventar, Shift-Klick legt direkt an
+- **Sound-Effekte** komplett prozedural synthetisiert (Abbauen, Schritte je
+  Untergrund, Treffer, Explosionen, Regen-Loop, ...) — weiterhin null Assets
+- **Hauptmenü** mit 3 Welt-Slots und Einstellungen (Sichtweite,
+  Maus-Empfindlichkeit, Lautstärke); Esc öffnet im Spiel ein Pause-Menü
 - Healthbar + Hunger-System (Sprinten macht hungrig, Essen: Äpfel aus
   Blättern; hoher Hunger regeneriert, leerer Hunger zehrt)
 - Speichern/Laden: Seed + nur veränderte Chunks + Spieler + Öfen

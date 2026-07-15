@@ -6,6 +6,7 @@ extends Node3D
 const START_ITEMS := []  # z. B. [["wooden_pickaxe", 1]] fuer Debug-Starts
 
 var player: PlayerController
+var _rain: CPUParticles3D
 var _started := false
 
 
@@ -33,9 +34,33 @@ func _ready() -> void:
 	Game.day_night.time = save.get("time", DayNightCycle.DAY_LENGTH * 0.2)
 	add_child(Game.day_night)
 
+	# --- Regen-Partikel (folgen dem Spieler, nur bei Regenwetter aktiv) ---
+	_rain = CPUParticles3D.new()
+	_rain.amount = 350
+	_rain.lifetime = 1.0
+	_rain.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	_rain.emission_box_extents = Vector3(13, 0.5, 13)
+	_rain.direction = Vector3.DOWN
+	_rain.spread = 0.0
+	_rain.initial_velocity_min = 14.0
+	_rain.initial_velocity_max = 18.0
+	_rain.gravity = Vector3.ZERO
+	var drop_mesh := BoxMesh.new()
+	drop_mesh.size = Vector3(0.02, 0.35, 0.02)
+	var drop_mat := StandardMaterial3D.new()
+	drop_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	drop_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	drop_mat.albedo_color = Color(0.55, 0.65, 0.9, 0.45)
+	drop_mesh.material = drop_mat
+	_rain.mesh = drop_mesh
+	_rain.emitting = false
+	add_child(_rain)
+	Game.day_night.weather_changed.connect(func(r: bool) -> void: _rain.emitting = r)
+
 	# --- Welt ---
 	Game.chunk_manager = ChunkManager.new()
 	add_child(Game.chunk_manager)
+	Game.chunk_manager.view_distance = Game.settings.get("view_distance", 4)
 	Game.chunk_manager.setup(Game.world_seed)
 	if save.has("chunks"):
 		Game.chunk_manager.load_edited_chunks(save.chunks)
@@ -78,12 +103,15 @@ func _apply_save(save: Dictionary) -> void:
 	player.rotation.y = pdata.get("rot_y", 0.0)
 	player.camera.rotation.x = pdata.get("cam_x", 0.0)
 	player.creative = pdata.get("creative", false)
-	player.inventory.load_from(pdata.get("inv", []))
+	player.inventory.load_from(pdata.get("inv", {}))
 	player.inventory.selected = pdata.get("selected", 0)
 	player.stats.load_values(pdata.get("health", 20.0), pdata.get("hunger", 20.0))
 
 
 func _process(_delta: float) -> void:
+	# Regen folgt dem Spieler
+	if player:
+		_rain.global_position = player.global_position + Vector3(0, 10, 0)
 	# Spieler erst loslassen, wenn der Chunk unter ihm fertig gemesht ist
 	if not _started:
 		var cpos := ChunkManager.world_to_chunk(Vector3i(player.global_position.floor()))

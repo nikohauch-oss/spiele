@@ -1,47 +1,82 @@
 class_name Animal
 extends Mob
-## Passives Tier (Schwein): wandert tagsueber ueber die Wiesen, flieht ein
-## paar Sekunden lang, wenn es getroffen wird, und droppt rohes
-## Schweinefleisch - die Hauptnahrungsquelle neben Aepfeln.
-## Gespawnt vom MobSpawner auf Grasbloecken.
+## Passive Tiere (Schwein, Kuh, Huhn): wandern tagsueber ueber die Wiesen,
+## fliehen ein paar Sekunden, wenn sie getroffen werden, und droppen ihre
+## Produkte (Fleisch, Leder, Federn). Gespawnt vom MobSpawner auf Gras.
 
-const WALK_SPEED := 1.4
-const FLEE_SPEED := 3.8
+enum Species { PIG, COW, CHICKEN }
+
 const JUMP_VELOCITY := 8.0
 const DESPAWN_RANGE := 80.0
 
+var species := Species.PIG
+
+var _walk_speed := 1.4
+var _flee_speed := 3.8
 var _wander_dir := Vector3.ZERO
 var _wander_timer := 0.0
 var _flee_timer := 0.0
 var _flee_dir := Vector3.ZERO
 
 
+static func create(s: int) -> Animal:
+	var a := Animal.new()
+	a.species = s as Species
+	return a
+
+
 func _ready() -> void:
-	health = 10.0
-	add_capsule(0.4, 1.0)
-	var pink := Color(0.93, 0.62, 0.65)
-	add_box(Vector3(0.6, 0.5, 0.95), Vector3(0, 0.55, 0.05), pink)                     # Rumpf
-	add_box(Vector3(0.42, 0.4, 0.3), Vector3(0, 0.68, -0.55), pink.lightened(0.1))     # Kopf
-	add_box(Vector3(0.16, 0.12, 0.08), Vector3(0, 0.6, -0.72), Color(0.85, 0.5, 0.55)) # Ruessel
-	add_box(Vector3(0.5, 0.3, 0.16), Vector3(0, 0.15, 0.32), pink.darkened(0.15))      # Beine hinten
-	add_box(Vector3(0.5, 0.3, 0.16), Vector3(0, 0.15, -0.28), pink.darkened(0.15))     # Beine vorn
+	match species:
+		Species.PIG:
+			health = 10.0
+			add_capsule(0.4, 1.0)
+			var pink := Color(0.93, 0.62, 0.65)
+			add_box(Vector3(0.6, 0.5, 0.95), Vector3(0, 0.55, 0.05), pink)
+			add_box(Vector3(0.42, 0.4, 0.3), Vector3(0, 0.68, -0.55), pink.lightened(0.1))
+			add_box(Vector3(0.16, 0.12, 0.08), Vector3(0, 0.6, -0.72), Color(0.85, 0.5, 0.55))
+			add_box(Vector3(0.5, 0.3, 0.16), Vector3(0, 0.15, 0.32), pink.darkened(0.15))
+			add_box(Vector3(0.5, 0.3, 0.16), Vector3(0, 0.15, -0.28), pink.darkened(0.15))
+		Species.COW:
+			health = 12.0
+			add_capsule(0.45, 1.3)
+			var brown := Color(0.42, 0.28, 0.18)
+			add_box(Vector3(0.7, 0.6, 1.1), Vector3(0, 0.85, 0.05), brown)
+			add_box(Vector3(0.45, 0.45, 0.35), Vector3(0, 1.05, -0.7), brown.lightened(0.15))
+			add_box(Vector3(0.3, 0.1, 0.1), Vector3(0, 1.25, -0.75), Color(0.85, 0.85, 0.8))  # Hoerner
+			add_box(Vector3(0.55, 0.55, 0.18), Vector3(0, 0.28, 0.45), brown.darkened(0.2))
+			add_box(Vector3(0.55, 0.55, 0.18), Vector3(0, 0.28, -0.35), brown.darkened(0.2))
+			_walk_speed = 1.2
+			_flee_speed = 3.4
+		Species.CHICKEN:
+			health = 6.0
+			add_capsule(0.25, 0.7)
+			var white := Color(0.92, 0.92, 0.9)
+			add_box(Vector3(0.4, 0.35, 0.5), Vector3(0, 0.35, 0.02), white)
+			add_box(Vector3(0.25, 0.28, 0.22), Vector3(0, 0.62, -0.3), white)
+			add_box(Vector3(0.1, 0.06, 0.12), Vector3(0, 0.58, -0.45), Color(0.95, 0.75, 0.2))  # Schnabel
+			add_box(Vector3(0.24, 0.18, 0.06), Vector3(0, 0.1, 0), Color(0.95, 0.75, 0.2))      # Beine
+			_walk_speed = 1.2
+			_flee_speed = 3.0
 
 
 func _physics_process(delta: float) -> void:
 	velocity.y -= GRAVITY * delta
+	# Huehner flattern: nie schneller als 3 m/s fallen
+	if species == Species.CHICKEN and velocity.y < -3.0:
+		velocity.y = -3.0
 	_flee_timer = maxf(_flee_timer - delta, 0.0)
 
-	# Weit weg vom Spieler? Still despawnen (wie Zombies)
+	# Weit weg vom Spieler? Still despawnen (wie Monster)
 	if Game.player == null \
 			or global_position.distance_to(Game.player.global_position) > DESPAWN_RANGE:
 		queue_free()
 		return
 
 	var move_dir := Vector3.ZERO
-	var speed := WALK_SPEED
+	var speed := _walk_speed
 	if _flee_timer > 0.0:
 		move_dir = _flee_dir
-		speed = FLEE_SPEED
+		speed = _flee_speed
 	else:
 		_wander_timer -= delta
 		if _wander_timer <= 0.0:
@@ -71,4 +106,13 @@ func _on_damaged(from_dir: Vector3) -> void:
 
 
 func _on_death() -> void:
-	ItemEntity.spawn_id("porkchop_raw", 1 + randi() % 2, global_position + Vector3(0, 0.6, 0))
+	var pos := global_position + Vector3(0, 0.6, 0)
+	match species:
+		Species.PIG:
+			ItemEntity.spawn_id("porkchop_raw", 1 + randi() % 2, pos)
+		Species.COW:
+			ItemEntity.spawn_id("beef_raw", 1 + randi() % 2, pos)
+			ItemEntity.spawn_id("leather", 1 + randi() % 2, pos)
+		Species.CHICKEN:
+			ItemEntity.spawn_id("chicken_raw", 1, pos)
+			ItemEntity.spawn_id("feather", 1 + randi() % 2, pos)

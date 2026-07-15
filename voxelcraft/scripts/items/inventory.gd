@@ -10,6 +10,7 @@ const SIZE := 36
 const HOTBAR := 9
 
 var slots: Array = []
+var armor: Array = [null, null, null, null]  # Helm, Brustpanzer, Beinschutz, Stiefel
 var selected := 0:
 	set(v):
 		selected = posmod(v, HOTBAR)
@@ -18,6 +19,26 @@ var selected := 0:
 
 func _init() -> void:
 	slots.resize(SIZE)
+
+
+## Summe der Ruestungspunkte aller getragenen Teile (fuer die Schadensformel).
+func armor_points() -> int:
+	var total := 0
+	for a in armor:
+		if a != null:
+			total += ItemDB.armor_points(a.id)
+	return total
+
+
+## Alle getragenen Teile um 1 abnutzen (bei erlittenem Treffer).
+func damage_armor() -> void:
+	for i in 4:
+		var a = armor[i]
+		if a != null and a.has("durability"):
+			a.durability -= 1
+			if a.durability <= 0:
+				armor[i] = null
+	changed.emit()
 
 
 static func make_stack(id: String, count: int) -> Dictionary:
@@ -132,18 +153,27 @@ func remove_id(id: String, n: int) -> void:
 
 # --------------------------------------------------------- Serialisierung ---
 
-func serialize() -> Array:
+func serialize() -> Dictionary:
 	var out := []
 	for s in slots:
 		out.append(null if s == null else s.duplicate())
-	return out
+	var arm := []
+	for a in armor:
+		arm.append(null if a == null else a.duplicate())
+	return {"slots": out, "armor": arm}
 
 
-func load_from(arr: Array) -> void:
+func load_from(data: Dictionary) -> void:
 	slots.clear()
 	slots.resize(SIZE)
+	var arr: Array = data.get("slots", [])
 	for i in mini(arr.size(), SIZE):
 		var s = arr[i]
 		if s is Dictionary and ItemDB.defs.has(s.get("id", "")):
 			slots[i] = s
+	armor = [null, null, null, null]
+	var arm: Array = data.get("armor", [])
+	for i in mini(arm.size(), 4):
+		if arm[i] is Dictionary and ItemDB.defs.has(arm[i].get("id", "")):
+			armor[i] = arm[i]
 	changed.emit()

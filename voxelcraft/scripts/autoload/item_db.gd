@@ -44,6 +44,24 @@ func _ready() -> void:
 	_reg({"id": "bow", "name": "Bogen", "durability": 120, "max_stack": 1})
 	_reg({"id": "arrow", "name": "Pfeil"})
 
+	# --- Tierprodukte ---
+	_reg({"id": "leather", "name": "Leder"})
+	_reg({"id": "feather", "name": "Feder"})
+	_reg({"id": "beef_raw", "name": "Rohes Rindfleisch", "food": 3})
+	_reg({"id": "steak", "name": "Steak", "food": 8})
+	_reg({"id": "chicken_raw", "name": "Rohes Huehnchen", "food": 2})
+	_reg({"id": "chicken_cooked", "name": "Gebratenes Huehnchen", "food": 6})
+	_reg({"id": "gunpowder", "name": "Schwarzpulver"})  # Creeper-Drop
+
+	# --- Ruestung: [Prefix, Anzeigename, Haltbarkeit, Punkte je Teil] ---
+	for a in [["leather", "Leder", 60, [1, 3, 2, 1]], ["iron", "Eisen", 160, [2, 6, 5, 2]],
+			["diamond", "Diamant", 360, [3, 8, 6, 3]]]:
+		var parts := [["helmet", "Helm"], ["chestplate", "Brustpanzer"],
+			["leggings", "Beinschutz"], ["boots", "Stiefel"]]
+		for i in 4:
+			_reg({"id": "%s_%s" % [a[0], parts[i][0]], "name": "%s-%s" % [a[1], parts[i][1]],
+				"durability": a[2], "max_stack": 1, "armor": a[3][i], "armor_slot": i})
+
 	# --- Werkzeuge: [Prefix, Anzeigename, Stufe, Tempo, Haltbarkeit, Bonus-Schaden] ---
 	for m in [["wooden", "Holz", 1, 4.0, 60, 0], ["stone", "Stein", 2, 8.0, 132, 1],
 			["iron", "Eisen", 3, 12.0, 251, 2], ["diamond", "Diamant", 4, 16.0, 800, 3]]:
@@ -79,7 +97,20 @@ func _reg(d: Dictionary) -> void:
 		d.fuel = 0.0
 	if not d.has("food"):
 		d.food = 0
+	if not d.has("armor"):
+		d.armor = 0
+	if not d.has("armor_slot"):
+		d.armor_slot = -1
 	defs[d.id] = d
+
+
+## Ruestungs-Slot (0=Helm..3=Stiefel) eines Items, -1 wenn keine Ruestung.
+func armor_slot(id: String) -> int:
+	return defs.get(id, {}).get("armor_slot", -1)
+
+
+func armor_points(id: String) -> int:
+	return defs.get(id, {}).get("armor", 0)
 
 
 # ------------------------------------------------------------------ Lookups ---
@@ -173,10 +204,37 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 	var head := wood
 	if id.begins_with("stone_"):
 		head = Color(0.55, 0.55, 0.57)
-	elif id.begins_with("iron_") and d.tool != "":
+	elif id.begins_with("iron_"):
 		head = Color(0.85, 0.85, 0.9)
-	elif id.begins_with("diamond_") and d.tool != "":
+	elif id.begins_with("diamond_"):
 		head = Color(0.35, 0.9, 0.88)
+	elif id.begins_with("leather_"):
+		head = Color(0.63, 0.4, 0.2)
+
+	# Ruestungsteile: einfache Silhouetten in Materialfarbe
+	if d.armor_slot >= 0:
+		match d.armor_slot:
+			0:  # Helm: Bogen mit Augenschlitz
+				for x in range(4, 12):
+					for y in range(4, 9):
+						if not (y > 6 and x > 5 and x < 10):
+							_px(img, x, y, head)
+			1:  # Brustpanzer
+				for x in range(4, 12):
+					for y in range(3, 12):
+						if not (y < 5 and x > 6 and x < 9):
+							_px(img, x, y, head)
+			2:  # Beinschutz: zwei Beine mit Bund
+				for y in range(3, 13):
+					for x in [4, 5, 10, 11]:
+						_px(img, x, y, head)
+				for x in range(4, 12):
+					_px(img, x, 3, head)
+			3:  # Stiefel
+				for p in [[3, 9], [4, 9], [3, 10], [4, 10], [3, 11], [4, 11], [5, 11],
+						[10, 9], [11, 9], [10, 10], [11, 10], [10, 11], [11, 11], [12, 11]]:
+					_px(img, p[0], p[1], head)
+		return img
 
 	if d.tool != "":
 		# Stiel diagonal von unten links zur Mitte
@@ -237,6 +295,24 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 			_blob(img, Color(0.45, 0.4, 0.18), 5)
 			_px(img, 7, 8, Color(0.3, 0.5, 0.2))
 			_px(img, 10, 10, Color(0.3, 0.5, 0.2))
+		"leather":
+			_blob(img, Color(0.63, 0.4, 0.2), 5)
+		"feather":
+			for i in 9:
+				_px(img, 4 + i, 12 - i, Color(0.92, 0.92, 0.9))
+				_px(img, 5 + i, 12 - i, Color(0.8, 0.8, 0.78))
+			_px(img, 4, 12, wood)
+		"beef_raw", "steak":
+			_blob(img, Color(0.85, 0.3, 0.3) if id == "beef_raw" else Color(0.5, 0.3, 0.15), 5)
+		"chicken_raw", "chicken_cooked":
+			_blob(img, Color(0.95, 0.8, 0.75) if id == "chicken_raw" else Color(0.8, 0.55, 0.3), 4)
+			_px(img, 5, 12, Color(0.95, 0.93, 0.85))  # Knochen
+			_px(img, 4, 13, Color(0.95, 0.93, 0.85))
+		"gunpowder":
+			for i in 14:
+				var gx := 3 + (i * 7) % 10
+				var gy := 5 + (i * 5) % 8
+				_px(img, gx, gy, Color(0.35, 0.35, 0.38))
 		"bow":
 			var string_c := Color(0.85, 0.85, 0.78)
 			for pt in [[5, 2], [4, 3], [3, 4], [3, 6], [3, 8], [3, 10], [4, 11], [5, 12]]:

@@ -107,8 +107,67 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 			max_y = maxi(max_y, maxi(h, SEA_LEVEL))
 
 	max_y = maxi(max_y, _plant_trees(cpos, data))
+	max_y = maxi(max_y, _plant_vegetation(cpos, data))
+	_carve_dungeon(cpos, data)
 	return {"data": data, "max_y": max_y,
 		"light": LightEngine.compute_skylight(data, max_y)}
+
+
+## Deko-Vegetation: hohes Gras + Blumen auf Wiesen, Kakteen in der Wueste.
+func _plant_vegetation(cpos: Vector2i, data: PackedByteArray) -> int:
+	var max_y := 0
+	for x in Chunk.SIZE:
+		for z in Chunk.SIZE:
+			var wx := cpos.x * Chunk.SIZE + x
+			var wz := cpos.y * Chunk.SIZE + z
+			var rng := RandomNumberGenerator.new()
+			rng.seed = _hash2(wx ^ 0x2545F491, wz)
+			var r := rng.randf()
+			var h := height_at(wx, wz)
+			if h <= SEA_LEVEL or h + 4 >= Chunk.HEIGHT:
+				continue
+			var surface := data[Chunk.index(x, h, z)]
+			var above := Chunk.index(x, h + 1, z)
+			if surface == BlockDB.GRASS and data[above] == BlockDB.AIR:
+				if r < 0.08:
+					data[above] = BlockDB.TALL_GRASS
+				elif r < 0.095:
+					data[above] = BlockDB.FLOWER_RED if rng.randf() < 0.5 else BlockDB.FLOWER_YELLOW
+				else:
+					continue
+				max_y = maxi(max_y, h + 1)
+			elif surface == BlockDB.SAND and data[above] == BlockDB.AIR \
+					and biome_at(wx, wz) == Biome.DESERT and r < 0.006:
+				var cactus_h := 1 + rng.randi() % 3
+				for dy in cactus_h:
+					data[Chunk.index(x, h + 1 + dy, z)] = BlockDB.CACTUS
+				max_y = maxi(max_y, h + cactus_h)
+	return max_y
+
+
+## Selten: unterirdischer Raum mit Loot-Truhe. Die Truhe bekommt ihren Inhalt
+## beim ersten Oeffnen (Game.create_chest_with_loot) - platzierte Spieler-
+## Truhen haben immer schon einen Zustand und sind davon nicht betroffen.
+func _carve_dungeon(cpos: Vector2i, data: PackedByteArray) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _hash2(cpos.x * 31 + 17, cpos.y * 53 + 29)
+	if rng.randf() > 0.22:
+		return
+	var w := 5 + rng.randi() % 3
+	var d := 5 + rng.randi() % 3
+	var h := 3 + rng.randi() % 2
+	var ox := 2 + rng.randi() % (Chunk.SIZE - w - 4)
+	var oz := 2 + rng.randi() % (Chunk.SIZE - d - 4)
+	var oy := 10 + rng.randi() % 30
+	for dx in w:
+		for dz in d:
+			# Boden unter dem Raum verfestigen (falls eine Hoehle darunter liegt)
+			var floor_i := Chunk.index(ox + dx, oy - 1, oz + dz)
+			if data[floor_i] == BlockDB.AIR or data[floor_i] == BlockDB.WATER:
+				data[floor_i] = BlockDB.STONE
+			for dy in h:
+				data[Chunk.index(ox + dx, oy + dy, oz + dz)] = BlockDB.AIR
+	data[Chunk.index(ox + (w >> 1), oy, oz + (d >> 1))] = BlockDB.CHEST
 
 
 ## Baeume: deterministisch pro Weltposition. Stamm nur mit 2 Block Rand zum

@@ -36,7 +36,7 @@ func _process(delta: float) -> void:
 			_set_hunger(hunger - 0.5)  # Regeneration kostet Saettigung
 			changed.emit()
 		elif hunger <= 0.0 and health > 1.0:
-			damage(1.0)  # Verhungern (nie unter 1 HP)
+			damage(1.0, true)  # Verhungern (nie unter 1 HP, Ruestung egal)
 
 
 ## Vom Controller pro Physik-Frame gemeldet: Sprinten kostet extra Hunger.
@@ -45,9 +45,15 @@ func on_moved(vel: Vector3, sprinting: bool) -> void:
 		_drain_accu += get_physics_process_delta_time() / 12.0
 
 
-func damage(amount: float) -> void:
+## bypass_armor: true fuer Fallschaden/Verhungern (Ruestung hilft da nicht).
+func damage(amount: float, bypass_armor := false) -> void:
 	if _dead or amount <= 0.0:
 		return
+	if not bypass_armor and Game.player:
+		# Minecraft-Formel: 4 % Reduktion pro Ruestungspunkt (max. 80 %)
+		var pts: int = Game.player.inventory.armor_points()
+		amount *= 1.0 - 0.04 * clampf(pts, 0, 20)
+		Game.player.inventory.damage_armor()
 	health = maxf(health - amount, 0.0)
 	changed.emit()
 	if Game.hud:

@@ -22,11 +22,46 @@ var _place_cd := 0.0
 
 func setup(p: PlayerController) -> void:
 	player = p
+	# Physik-Ray nur noch fuer Kreaturen; Bloecke findet ein Voxel-Raycast
+	# (DDA) direkt in den Chunk-Daten - dadurch sind auch Pflanzen und
+	# Fackeln ohne Kollisionsbox exakt anvisierbar.
 	ray = RayCast3D.new()
 	ray.target_position = Vector3(0, 0, -REACH)
-	ray.collision_mask = 1 | 4  # Welt + Gegner
+	ray.collision_mask = 4
 	p.camera.add_child(ray)
 	_build_highlight()
+
+
+## Voxel-Raycast (Amanatides & Woo): laeuft Zelle fuer Zelle durch die Welt.
+## Rueckgabe: {"pos": Vector3i, "normal": Vector3i, "dist": float} oder {}.
+func _voxel_raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
+	var pos := Vector3i(from.floor())
+	var step := Vector3i(signf(dir.x), signf(dir.y), signf(dir.z))
+	var t_max := Vector3.INF
+	var t_delta := Vector3.INF
+	for axis in 3:
+		if absf(dir[axis]) > 0.0001:
+			t_delta[axis] = absf(1.0 / dir[axis])
+			var boundary := float(pos[axis] + (1 if step[axis] > 0 else 0))
+			t_max[axis] = (boundary - from[axis]) / dir[axis]
+	var normal := Vector3i.ZERO
+	var t := 0.0
+	while t <= max_dist:
+		var id: int = Game.chunk_manager.get_block(pos)
+		if id != BlockDB.AIR and id != BlockDB.WATER:
+			return {"pos": pos, "normal": normal, "dist": t}
+		# zur naechsten Zellgrenze springen (kleinstes t_max gewinnt)
+		var axis := 0
+		if t_max.y < t_max.x:
+			axis = 1
+		if t_max.z < t_max[axis]:
+			axis = 2
+		t = t_max[axis]
+		t_max[axis] += t_delta[axis]
+		pos[axis] += step[axis]
+		normal = Vector3i.ZERO
+		normal[axis] = -step[axis]
+	return {}
 
 
 ## Drahtgitter-Box (12 Kanten) per ImmediateMesh - kein Asset noetig.
@@ -63,10 +98,15 @@ func _physics_process(delta: float) -> void:
 		highlight.visible = false
 		return
 
-	var collider: Object = ray.get_collider() if ray.is_colliding() else null
+	var cam_pos := player.camera.global_position
+	var cam_dir := -player.camera.global_transform.basis.z
+	var block_hit := _voxel_raycast(cam_pos, cam_dir, REACH)
 
 	# --------------------------------------------- Kreatur anvisiert ---
-	var mob := collider as Mob
+	var mob := (ray.get_collider() if ray.is_colliding() else null) as Mob
+	if mob != null and not block_hit.is_empty() \
+			and ray.get_collision_point().distance_to(cam_pos) > float(block_hit.dist):
+		mob = null  # ein Block verdeckt die Kreatur
 	if mob != null:
 		highlight.visible = false
 		_dig_progress = 0.0
@@ -81,16 +121,14 @@ func _physics_process(delta: float) -> void:
 		return
 
 	# ------------------------------------------------- Block anvisiert ---
-	if collider == null:
+	if block_hit.is_empty():
 		_stop_digging()
 		highlight.visible = false
 		_handle_use(Vector3i.ZERO, Vector3i.ZERO, false)  # Bogen/Essen in die Luft
 		return
 
-	var point := ray.get_collision_point()
-	var normal := ray.get_collision_normal()
-	var block_pos := Vector3i((point - normal * 0.5).floor())
-	var place_pos := Vector3i((point + normal * 0.5).floor())
+	var block_pos: Vector3i = block_hit.pos
+	var place_pos: Vector3i = block_hit.pos + block_hit.normal
 
 	highlight.visible = true
 	highlight.global_position = Vector3(block_pos)
@@ -157,13 +195,32 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 		for stack in Game.remove_furnace(pos):
 			ItemEntity.spawn_stack(stack, center)
 	elif block_id == BlockDB.CHEST:
+		if not Game.chests.has(pos):
+			Game.create_chest_with_loot(pos)  # ungeoeffnete Dungeon-Truhe
 		for stack in Game.remove_chest(pos):
 			ItemEntity.spawn_stack(stack, center)
 	Game.chunk_manager.set_block(pos, BlockDB.AIR)
+	_pop_supported_above(pos)
 	_spawn_break_particles(pos, block_id)
 	Sfx.play_at("break", center)
 	_dig_progress = 0.0
 	Game.hud.set_dig_progress(-1.0)
+
+
+## Pflanzen/Fackeln/Kakteen ueber einem entfernten Block "abknicken" lassen.
+func _pop_supported_above(pos: Vector3i) -> void:
+	var above := pos + Vector3i(0, 1, 0)
+	while true:
+		var id: int = Game.chunk_manager.get_block(above)
+		if id != BlockDB.TORCH and id != BlockDB.FLOWER_RED \
+				and id != BlockDB.FLOWER_YELLOW and id != BlockDB.TALL_GRASS \
+				and id != BlockDB.CACTUS:
+			break
+		var drop: String = BlockDB.get_def(id).drop
+		if drop != "":
+			ItemEntity.spawn_id(drop, 1, Vector3(above) + Vector3(0.5, 0.4, 0.5))
+		Game.chunk_manager.set_block(above, BlockDB.AIR)
+		above += Vector3i(0, 1, 0)
 
 
 ## Kleine Wuerfel-Partikel in der Durchschnittsfarbe des Blocks.
@@ -210,7 +267,8 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 			return
 		if target_id == BlockDB.CHEST:
 			if not Game.chests.has(block_pos):
-				Game.create_chest(block_pos)
+				# Truhe ohne Zustand = vom Weltgenerator (Dungeon) -> Loot!
+				Game.create_chest_with_loot(block_pos)
 			Game.open_container(ContainerUI.Mode.CHEST, block_pos)
 			return
 		if target_id == BlockDB.BED:
@@ -237,18 +295,27 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 	if block < 0:
 		return
 	var cell: int = Game.chunk_manager.get_block(place_pos)
-	if cell != BlockDB.AIR and cell != BlockDB.WATER:
+	# Hohes Gras darf ueberbaut werden (wie in Minecraft)
+	if cell != BlockDB.AIR and cell != BlockDB.WATER and cell != BlockDB.TALL_GRASS:
 		return
-	# Fackeln und Betten brauchen einen festen Block darunter, kein Wasser
-	if block == BlockDB.TORCH or block == BlockDB.BED:
-		var below: int = Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
-		if cell == BlockDB.WATER or not BlockDB.is_solid(below):
-			return
-	# Nicht im eigenen Koerper platzieren
+	# Untergrund-Regeln: Fackel/Bett auf Festem, Pflanzen auf Gras/Erde,
+	# Kakteen auf Sand (oder Kaktus) - jeweils nicht im Wasser
+	var below: int = Game.chunk_manager.get_block(place_pos + Vector3i(0, -1, 0))
+	match block:
+		BlockDB.TORCH, BlockDB.BED:
+			if cell == BlockDB.WATER or not BlockDB.is_solid(below):
+				return
+		BlockDB.FLOWER_RED, BlockDB.FLOWER_YELLOW, BlockDB.TALL_GRASS:
+			if cell == BlockDB.WATER or (below != BlockDB.GRASS and below != BlockDB.DIRT):
+				return
+		BlockDB.CACTUS:
+			if cell == BlockDB.WATER or (below != BlockDB.SAND and below != BlockDB.CACTUS):
+				return
+	# Nicht im eigenen Koerper platzieren (durchlaufbare Bloecke sind ok)
 	var block_box := AABB(Vector3(place_pos), Vector3.ONE)
 	var player_box := AABB(player.global_position - Vector3(0.4, 0.0, 0.4),
 		Vector3(0.8, 1.85, 0.8))
-	if block != BlockDB.TORCH and block_box.intersects(player_box):
+	if BlockDB.is_solid(block) and block_box.intersects(player_box):
 		return
 	Game.chunk_manager.set_block(place_pos, block)
 	if block == BlockDB.FURNACE:

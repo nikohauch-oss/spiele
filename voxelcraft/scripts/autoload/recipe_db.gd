@@ -11,6 +11,9 @@ var smelting := {
 	"iron_ore": {"result": "iron_ingot", "time": 8.0},
 	"log": {"result": "coal", "time": 8.0},  # Holzkohle
 	"porkchop_raw": {"result": "porkchop_cooked", "time": 6.0},
+	"beef_raw": {"result": "steak", "time": 6.0},
+	"chicken_raw": {"result": "chicken_cooked", "time": 6.0},
+	"sand": {"result": "glass", "time": 6.0},
 }
 
 var shapeless := [
@@ -28,6 +31,9 @@ var shaped := [
 	{"pattern": [" SL", "S L", " SL"], "key": {"S": "stick", "L": "leaves"}, "result": "bow", "count": 1},
 	{"pattern": ["F", "S", "L"], "key": {"F": "stone", "S": "stick", "L": "leaves"},
 		"result": "arrow", "count": 4},
+	# Mit echter Feder (Huhn) gibt es mehr Pfeile
+	{"pattern": ["F", "S", "E"], "key": {"F": "stone", "S": "stick", "E": "feather"},
+		"result": "arrow", "count": 8},
 ]
 
 
@@ -44,6 +50,17 @@ func _ready() -> void:
 			"result": "%s_shovel" % m[0], "count": 1})
 		shaped.append({"pattern": ["M", "M", "S"], "key": key,
 			"result": "%s_sword" % m[0], "count": 1})
+	# Ruestung fuer Leder/Eisen/Diamant
+	for m in [["leather", "leather"], ["iron", "iron_ingot"], ["diamond", "diamond"]]:
+		var key := {"M": m[1]}
+		shaped.append({"pattern": ["MMM", "M M"], "key": key,
+			"result": "%s_helmet" % m[0], "count": 1})
+		shaped.append({"pattern": ["M M", "MMM", "MMM"], "key": key,
+			"result": "%s_chestplate" % m[0], "count": 1})
+		shaped.append({"pattern": ["MMM", "M M", "M M"], "key": key,
+			"result": "%s_leggings" % m[0], "count": 1})
+		shaped.append({"pattern": ["M M", "M M"], "key": key,
+			"result": "%s_boots" % m[0], "count": 1})
 
 
 ## grid: Array aus w*w Item-Ids ("" = leer, zeilenweise).

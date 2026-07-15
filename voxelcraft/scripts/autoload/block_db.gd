@@ -8,6 +8,7 @@ enum {
 	AIR, GRASS, DIRT, STONE, SAND, LOG, LEAVES, WATER,
 	COAL_ORE, IRON_ORE, PLANKS, CRAFTING_TABLE, FURNACE, BEDROCK,
 	TORCH, CHEST, DIAMOND_ORE, BED,
+	FLOWER_RED, FLOWER_YELLOW, TALL_GRASS, CACTUS, GLASS,
 	BLOCK_COUNT,
 }
 
@@ -63,11 +64,26 @@ var defs := {
 		"hardness": 9.0, "tool": "pickaxe", "min_tier": 3, "drop": "diamond"},
 	BED: {"id": "bed", "name": "Bett", "tiles": ["bed_top", "bed_side", "planks"],
 		"hardness": 1.2, "tool": "axe", "see_through": true},
+	FLOWER_RED: {"id": "flower_red", "name": "Mohnblume",
+		"tiles": ["flower_red", "flower_red", "flower_red"],
+		"hardness": 0.05, "solid": false, "see_through": true},
+	FLOWER_YELLOW: {"id": "flower_yellow", "name": "Butterblume",
+		"tiles": ["flower_yellow", "flower_yellow", "flower_yellow"],
+		"hardness": 0.05, "solid": false, "see_through": true},
+	TALL_GRASS: {"id": "tall_grass", "name": "Hohes Gras",
+		"tiles": ["tall_grass", "tall_grass", "tall_grass"],
+		"hardness": 0.05, "solid": false, "see_through": true, "drop": ""},
+	CACTUS: {"id": "cactus", "name": "Kaktus",
+		"tiles": ["cactus_top", "cactus_side", "cactus_top"], "hardness": 0.6},
+	GLASS: {"id": "glass", "name": "Glas", "tiles": ["glass", "glass", "glass"],
+		"hardness": 0.5, "see_through": true},
 }
 
 var atlas_texture: ImageTexture
 var opaque_material: ShaderMaterial
 var water_material: ShaderMaterial
+var deco_material: ShaderMaterial   # Pflanzen/Fackeln: Cutout, beidseitig, keine Kollision
+var glass_material: ShaderMaterial  # Glas: echte Transparenz, mit Kollision
 
 var _tile_index := {}       # Kachel-Name -> Index im Atlas
 var _tile_avg := {}         # Kachel-Name -> Durchschnittsfarbe (Abbau-Partikel)
@@ -159,7 +175,8 @@ func _build_atlas() -> void:
 	var kinds := ["grass_top", "grass_side", "dirt", "stone", "sand", "log_side",
 		"log_top", "leaves", "water", "coal_ore", "iron_ore", "planks",
 		"table_top", "table_side", "furnace_front", "bedrock",
-		"torch", "chest_top", "chest_side", "diamond_ore", "bed_top", "bed_side"]
+		"torch", "chest_top", "chest_side", "diamond_ore", "bed_top", "bed_side",
+		"flower_red", "flower_yellow", "tall_grass", "cactus_side", "cactus_top", "glass"]
 	var img := Image.create_empty(ATLAS_TILES * TILE, ATLAS_TILES * TILE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 0, 1))  # Magenta = "fehlende Kachel"
 	for i in kinds.size():
@@ -173,13 +190,20 @@ func _build_atlas() -> void:
 
 
 ## Durchschnittsfarbe einer Kachel (fuer Abbau-Partikel).
+## Transparente Pixel (Pflanzen, Glas-Innenflaeche) zaehlen nicht mit.
 func _average_tile(img: Image, ox: int, oy: int) -> Color:
 	var sum := Vector3.ZERO
+	var n := 0
 	for py in TILE:
 		for px in TILE:
 			var c := img.get_pixel(ox + px, oy + py)
+			if c.a < 0.5:
+				continue
 			sum += Vector3(c.r, c.g, c.b)
-	sum /= float(TILE * TILE)
+			n += 1
+	if n == 0:
+		return Color.WHITE
+	sum /= float(n)
 	return Color(sum.x, sum.y, sum.z)
 
 
@@ -207,6 +231,9 @@ void fragment() {
 func _build_materials() -> void:
 	opaque_material = _make_chunk_material("", "")
 	water_material = _make_chunk_material(", cull_disabled", "\tALPHA = 0.72;")
+	deco_material = _make_chunk_material(", cull_disabled",
+		"\tALPHA = tex.a;\n\tALPHA_SCISSOR_THRESHOLD = 0.5;")
+	glass_material = _make_chunk_material("", "\tALPHA = tex.a;")
 
 
 func _make_chunk_material(modes: String, extra: String) -> ShaderMaterial:
@@ -303,6 +330,38 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 						c = _vary(Color(0.55, 0.4, 0.22), rng, 0.05)
 						if py % 4 == 3:
 							c = c.darkened(0.3)
+				"flower_red", "flower_yellow":
+					# Pflanzen: transparenter Hintergrund (Cutout-Material)
+					c = Color(0, 0, 0, 0)
+					if px == 8 and py >= 7:
+						c = _vary(Color(0.25, 0.55, 0.2), rng, 0.05)  # Stiel
+					elif Vector2(px - 8, py - 4).length() <= 2.4:
+						c = _vary(Color(0.85, 0.15, 0.1), rng, 0.05) if kind == "flower_red" \
+							else _vary(Color(0.95, 0.8, 0.15), rng, 0.05)
+						if px == 8 and py == 4:
+							c = Color(0.35, 0.25, 0.1)  # Bluetenmitte
+				"tall_grass":
+					c = Color(0, 0, 0, 0)
+					if px % 3 == 2:
+						var blade_h := 6 + (px * 5) % 7
+						if py >= 16 - blade_h:
+							c = _vary(Color(0.3, 0.58, 0.2), rng, 0.08)
+				"cactus_side":
+					c = _vary(Color(0.2, 0.55, 0.25), rng, 0.05)
+					if px == 0 or px == 15:
+						c = c.darkened(0.3)
+					elif px % 4 == 1 and py % 4 == 2:
+						c = Color(0.85, 0.9, 0.7)  # Stacheln
+				"cactus_top":
+					c = _vary(Color(0.25, 0.6, 0.3), rng, 0.04)
+					if px == 0 or px == 15 or py == 0 or py == 15:
+						c = c.darkened(0.3)
+				"glass":
+					c = Color(0.82, 0.88, 0.95, 0.2)  # fast durchsichtig
+					if px == 0 or px == 15 or py == 0 or py == 15:
+						c = Color(0.85, 0.9, 0.95, 1.0)  # Rahmen
+					elif px - py == 4 or px - py == 5:
+						c = Color(1, 1, 1, 0.45)  # Lichtreflex
 			img.set_pixel(ox + px, oy + py, c)
 	# Erz-Sprenkel als 2x2-Kluempchen nachtraeglich aufmalen
 	if kind.ends_with("_ore"):

@@ -46,9 +46,10 @@ func _find_spot() -> Dictionary:
 	var ground: int = Game.chunk_manager.get_ground_y(wx, wz)
 	if ground < 0 or ground + 3 >= Chunk.HEIGHT:
 		return {}  # Chunk (noch) nicht geladen
-	# 2 Bloecke freie Luft ueber dem Boden noetig
-	if Game.chunk_manager.get_block(Vector3i(wx, ground + 1, wz)) != BlockDB.AIR \
-			or Game.chunk_manager.get_block(Vector3i(wx, ground + 2, wz)) != BlockDB.AIR:
+	# 2 Bloecke Platz ueber dem Boden noetig (Pflanzen/Gras stoeren nicht)
+	var feet: int = Game.chunk_manager.get_block(Vector3i(wx, ground + 1, wz))
+	var head: int = Game.chunk_manager.get_block(Vector3i(wx, ground + 2, wz))
+	if BlockDB.is_solid(feet) or feet == BlockDB.WATER or BlockDB.is_solid(head):
 		return {}
 	return {"wx": wx, "wz": wz, "ground": ground}
 
@@ -62,8 +63,15 @@ func _try_spawn_zombie() -> void:
 	# Fackelschutz: in beleuchteten Bereichen (Blocklicht >= 8) spawnt nichts
 	if Game.chunk_manager.light_get(Vector3i(spot.wx, spot.ground + 1, spot.wz), false) >= 8:
 		return
-	# 30 % Skelette, sonst Zombies
-	var monster: Mob = SkeletonMob.new() if randf() < 0.3 else Zombie.new()
+	# Monster-Mix: 20 % Creeper, 30 % Skelette, 50 % Zombies
+	var r := randf()
+	var monster: Mob
+	if r < 0.2:
+		monster = Creeper.new()
+	elif r < 0.5:
+		monster = SkeletonMob.new()
+	else:
+		monster = Zombie.new()
 	_spawn(monster, _zombies, spot)
 
 
@@ -73,10 +81,17 @@ func _try_spawn_animal() -> void:
 	var spot := _find_spot()
 	if spot.is_empty():
 		return
-	# Schweine gibt es nur auf Gras (Wiese/Wald)
+	# Tiere gibt es nur auf Gras (Wiese/Wald)
 	if Game.chunk_manager.get_block(Vector3i(spot.wx, spot.ground, spot.wz)) != BlockDB.GRASS:
 		return
-	_spawn(Animal.new(), _animals, spot)
+	# Arten-Mix: 40 % Schwein, 30 % Kuh, 30 % Huhn
+	var r := randf()
+	var s := Animal.Species.PIG
+	if r > 0.7:
+		s = Animal.Species.CHICKEN
+	elif r > 0.4:
+		s = Animal.Species.COW
+	_spawn(Animal.create(s), _animals, spot)
 
 
 func _spawn(mob: Mob, parent: Node3D, spot: Dictionary) -> void:

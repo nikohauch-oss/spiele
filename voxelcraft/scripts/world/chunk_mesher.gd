@@ -40,11 +40,17 @@ const FACES := [
 ## Rueckgabe: {"mesh": ArrayMesh oder null, "shape": ConcavePolygonShape3D oder null}
 static func build(data: PackedByteArray, light: PackedByteArray,
 		neighbors: Dictionary, nlights: Dictionary, max_y: int) -> Dictionary:
-	var st := SurfaceTool.new()        # opake Bloecke (+ Fackeln, wg. Anvisierbarkeit)
-	var st_water := SurfaceTool.new()  # transparentes Wasser (eigene Surface)
+	var st := SurfaceTool.new()        # opake Bloecke (mit Kollision)
+	var st_glass := SurfaceTool.new()  # Glas (transparent, mit Kollision)
+	var st_deco := SurfaceTool.new()   # Pflanzen/Fackeln (Cutout, KEINE Kollision)
+	var st_water := SurfaceTool.new()  # Wasser (transparent, keine Kollision)
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st_glass.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st_deco.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st_water.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var v_count := 0
+	var g_count := 0
+	var d_count := 0
 	var w_count := 0
 	var top := mini(max_y, Chunk.HEIGHT - 1)
 
@@ -56,9 +62,13 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 				if id == BlockDB.AIR:
 					continue
 				if id == BlockDB.TORCH:
-					# Schmaler Stab (2/16 breit, 10/16 hoch) in der Zellenmitte
-					v_count = _add_scaled_box(st, x, y, z, Vector3(0.4375, 0.0, 0.4375),
-						Vector3(0.5625, 0.625, 0.5625), id, light[col_base + y], false, v_count)
+					# Schmaler Stab in der Zellenmitte; Deko-Surface = durchlaufbar
+					d_count = _add_scaled_box(st_deco, x, y, z, Vector3(0.4375, 0.0, 0.4375),
+						Vector3(0.5625, 0.625, 0.5625), id, light[col_base + y], false, d_count)
+					continue
+				if id == BlockDB.FLOWER_RED or id == BlockDB.FLOWER_YELLOW \
+						or id == BlockDB.TALL_GRASS:
+					d_count = _add_cross(st_deco, x, y, z, id, light[col_base + y], d_count)
 					continue
 				if id == BlockDB.BED:
 					# Halbhohe Liegeflaeche, leicht eingerueckt gegen Z-Fighting
@@ -66,6 +76,7 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 						Vector3(0.99, 0.5625, 0.99), id, light[col_base + y], true, v_count)
 					continue
 				var is_water := id == BlockDB.WATER
+				var is_glass := id == BlockDB.GLASS
 				for f: Dictionary in FACES:
 					var n: Vector3i = f.n
 					var nx := x + n.x
@@ -73,14 +84,20 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 					var nz := z + n.z
 					var nb := _block_at(nx, ny, nz, data, neighbors)
 					if is_water:
-						# Wasserflaechen gegen Luft/Fackeln, nie gegen Wasser/Feste
+						# Wasserflaechen gegen Luft/Deko, nie gegen Wasser/Feste
 						if BlockDB.is_solid(nb) or nb == BlockDB.WATER:
+							continue
+					elif is_glass:
+						# Glas gegen Durchsichtiges, aber nicht Glas-an-Glas
+						if not BlockDB.is_see_through(nb) or nb == BlockDB.GLASS:
 							continue
 					elif not BlockDB.is_see_through(nb):
 						continue  # Nachbar opak -> Flaeche unsichtbar
 					var lb := _light_at(nx, ny, nz, light, nlights)
 					if is_water:
 						w_count = _add_face(st_water, f, x, y, z, id, lb, w_count)
+					elif is_glass:
+						g_count = _add_face(st_glass, f, x, y, z, id, lb, g_count)
 					else:
 						v_count = _add_face(st, f, x, y, z, id, lb, v_count)
 
@@ -89,13 +106,47 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 	if v_count > 0:
 		st.set_material(BlockDB.opaque_material)
 		mesh = st.commit()
-		# Kollision nur aus der opaken Surface (Wasser bleibt begehbar/schwimmbar)
+	if g_count > 0:
+		st_glass.set_material(BlockDB.glass_material)
+		mesh = st_glass.commit(mesh)
+	# Kollision aus Opak + Glas; Deko und Wasser kommen erst danach dazu
+	if mesh != null:
 		result.shape = mesh.create_trimesh_shape()
+	if d_count > 0:
+		st_deco.set_material(BlockDB.deco_material)
+		mesh = st_deco.commit(mesh)
 	if w_count > 0:
 		st_water.set_material(BlockDB.water_material)
 		mesh = st_water.commit(mesh)
 	result.mesh = mesh
 	return result
+
+
+## Pflanze als zwei diagonale Kreuz-Quads (beidseitig sichtbar via cull_disabled).
+static func _add_cross(st: SurfaceTool, x: int, y: int, z: int,
+		block_id: int, light_byte: int, v_count: int) -> int:
+	var base_uv := BlockDB.uv_base(block_id, 1)
+	var span := BlockDB.UV_STEP - BlockDB.UV_INSET * 2.0
+	var color := Color(LIGHT_CURVE[light_byte & 15], LIGHT_CURVE[light_byte >> 4], 1.0)
+	var origin := Vector3(x, y, z)
+	var quads := [
+		[Vector3(0.1, 0, 0.1), Vector3(0.9, 0, 0.9)],
+		[Vector3(0.9, 0, 0.1), Vector3(0.1, 0, 0.9)],
+	]
+	var uvs := [Vector2(0, 1), Vector2(0, 0), Vector2(1, 0), Vector2(1, 1)]
+	for q: Array in quads:
+		var a: Vector3 = q[0]
+		var b: Vector3 = q[1]
+		var verts := [origin + a, origin + a + Vector3.UP, origin + b + Vector3.UP, origin + b]
+		for i in 4:
+			st.set_color(color)
+			st.set_normal(Vector3.UP)
+			st.set_uv(base_uv + Vector2(BlockDB.UV_INSET, BlockDB.UV_INSET) + uvs[i] * span)
+			st.add_vertex(verts[i])
+		for idx in [0, 1, 2, 0, 2, 3]:
+			st.add_index(v_count + idx)
+		v_count += 4
+	return v_count
 
 
 static func _add_face(st: SurfaceTool, f: Dictionary, x: int, y: int, z: int,

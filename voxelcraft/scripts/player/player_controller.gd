@@ -26,7 +26,8 @@ var interaction: PlayerInteraction
 var stats: PlayerStats
 var inventory := Inventory.new()
 
-var _fall_peak := 0.0  # hoechster Punkt seit Verlassen des Bodens (Fallschaden)
+var _fall_peak := 0.0   # hoechster Punkt seit Verlassen des Bodens (Fallschaden)
+var _step_accum := 0.0  # zurueckgelegte Strecke bis zum naechsten Schrittgeraeusch
 
 
 func _ready() -> void:
@@ -66,8 +67,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * MOUSE_SENSITIVITY,
+		var sens: float = MOUSE_SENSITIVITY * Game.settings.get("sensitivity", 1.0)
+		rotate_y(-event.relative.x * sens)
+		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * sens,
 			-PI / 2.0, PI / 2.0)
 	elif event.is_action_pressed("toggle_creative"):
 		creative = not creative
@@ -108,6 +110,15 @@ func _physics_process(delta: float) -> void:
 	var target_fov := 82.0 if (sprinting and input_dir != Vector2.ZERO) else 75.0
 	camera.fov = lerpf(camera.fov, target_fov, minf(10.0 * delta, 1.0))
 
+	# Schrittgeraeusche je nach Untergrund
+	if not flying and is_on_floor() and not is_in_water():
+		_step_accum += Vector2(velocity.x, velocity.z).length() * delta
+		if _step_accum >= 2.3:
+			_step_accum = 0.0
+			_play_step_sound()
+	else:
+		_step_accum = 0.0
+
 	# Notfall: aus der Welt gefallen (sollte dank Grundgestein nicht passieren)
 	if global_position.y < -20.0:
 		global_position = Game.spawn_point
@@ -144,7 +155,7 @@ func _walk(delta: float, wish: Vector3, sprinting: bool) -> void:
 			# Fallschaden beim Aufprall
 			var fall := _fall_peak - global_position.y
 			if fall > 3.5 and not creative:
-				stats.damage(floorf(fall - 3.0))
+				stats.damage(floorf(fall - 3.0), true)  # Ruestung schuetzt nicht vor Stuerzen
 			_fall_peak = global_position.y
 			if not Game.ui_open and Input.is_action_pressed("jump"):
 				velocity.y = JUMP_VELOCITY
@@ -165,6 +176,24 @@ func is_in_water() -> bool:
 ## Ist die Kamera unter Wasser? (fuer den HUD-Blaufilter)
 func is_head_in_water() -> bool:
 	return Game.chunk_manager.get_block(Vector3i(camera.global_position.floor())) == BlockDB.WATER
+
+
+func _play_step_sound() -> void:
+	var below: int = Game.chunk_manager.get_block(
+		Vector3i((global_position + Vector3(0, -0.1, 0)).floor()))
+	var kind := ""
+	match below:
+		BlockDB.GRASS, BlockDB.LEAVES, BlockDB.TALL_GRASS:
+			kind = "step_grass"
+		BlockDB.SAND, BlockDB.DIRT:
+			kind = "step_sand"
+		BlockDB.PLANKS, BlockDB.LOG, BlockDB.CRAFTING_TABLE, BlockDB.CHEST, BlockDB.BED:
+			kind = "step_wood"
+		BlockDB.AIR, BlockDB.WATER:
+			return
+		_:
+			kind = "step_stone"
+	Sfx.play(kind, -16.0)
 
 
 ## Q: 1 Stueck des gewaehlten Items in Blickrichtung werfen (Werkzeuge komplett).

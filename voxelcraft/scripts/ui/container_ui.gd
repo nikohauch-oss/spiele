@@ -11,7 +11,7 @@ extends Control
 
 enum Mode { PLAYER, TABLE, FURNACE, CHEST }
 # Slot-Herkunft fuer die Klick-Logik
-enum Area { INV, CRAFT, RESULT, F_IN, F_FUEL, F_OUT, CHEST }
+enum Area { INV, CRAFT, RESULT, F_IN, F_FUEL, F_OUT, CHEST, ARMOR }
 
 var inv: Inventory  # wird von HUD.bind gesetzt
 var mode := Mode.PLAYER
@@ -27,6 +27,7 @@ var _top_area: VBoxContainer
 var _inv_slots: Array[SlotUI] = []
 var _craft_slots: Array[SlotUI] = []
 var _chest_slots: Array[SlotUI] = []
+var _armor_slots: Array[SlotUI] = []
 var _result_slot: SlotUI
 var _f_in: SlotUI
 var _f_fuel: SlotUI
@@ -140,6 +141,7 @@ func _build_top_area() -> void:
 		c.queue_free()
 	_craft_slots.clear()
 	_chest_slots.clear()
+	_armor_slots.clear()
 	var titles := {Mode.PLAYER: "Crafting", Mode.TABLE: "Werkbank",
 		Mode.FURNACE: "Ofen", Mode.CHEST: "Truhe"}
 	_top_area.add_child(_label(titles[mode]))
@@ -174,6 +176,16 @@ func _build_top_area() -> void:
 			_chest_slots.append(s)
 			grid.add_child(s)
 	else:
+		if mode == Mode.PLAYER:
+			# Ruestungs-Slots links (Helm, Brustpanzer, Beinschutz, Stiefel)
+			var armor_col := VBoxContainer.new()
+			armor_col.add_theme_constant_override("separation", 4)
+			row.add_child(armor_col)
+			for i in 4:
+				var a := _make_slot(Area.ARMOR, i)
+				a.tooltip_text = ["Helm", "Brustpanzer", "Beinschutz", "Stiefel"][i]
+				_armor_slots.append(a)
+				armor_col.add_child(a)
 		var grid := GridContainer.new()
 		grid.columns = craft_w
 		grid.add_theme_constant_override("h_separation", 4)
@@ -211,6 +223,11 @@ func _on_slot_clicked(area: int, index: int, button: int) -> void:
 			furnace.output = _take_only(furnace.output)
 		Area.CHEST:
 			chest.slots[index] = _click_stack(chest.slots[index], button)
+		Area.ARMOR:
+			# Nur passende Ruestungsteile ablegen; Entnehmen geht immer
+			if cursor == null or ItemDB.armor_slot(cursor.id) == index:
+				inv.armor[index] = _click_stack(inv.armor[index], button)
+				inv.notify_changed()
 	_refresh_all()
 
 
@@ -222,7 +239,12 @@ func _shift_transfer(area: int, index: int) -> void:
 			var stack = inv.slots[index]
 			if stack == null:
 				return
-			if mode == Mode.CHEST:
+			# Ruestung per Shift-Klick direkt anlegen (im Inventar-Modus)
+			var aslot := ItemDB.armor_slot(stack.id)
+			if mode == Mode.PLAYER and aslot >= 0 and inv.armor[aslot] == null:
+				inv.armor[aslot] = stack
+				inv.slots[index] = null
+			elif mode == Mode.CHEST:
 				inv.slots[index] = _add_to_slots(stack, chest.slots, range(ChestState.SIZE))
 			elif mode == Mode.FURNACE:
 				# Brennstoffe in den Brennstoff-Slot, alles andere in die Eingabe
@@ -246,6 +268,8 @@ func _shift_transfer(area: int, index: int) -> void:
 			furnace.fuel = inv.add_stack(furnace.fuel)
 		Area.F_OUT:
 			furnace.output = inv.add_stack(furnace.output)
+		Area.ARMOR:
+			inv.armor[index] = inv.add_stack(inv.armor[index])
 		Area.RESULT:
 			# So oft craften, wie Zutaten und Rezept es hergeben
 			for _round in 64:
@@ -398,6 +422,8 @@ func _refresh_all() -> void:
 		for i in _chest_slots.size():
 			_chest_slots[i].set_stack(chest.slots[i])
 	else:
+		for i in _armor_slots.size():
+			_armor_slots[i].set_stack(inv.armor[i])
 		for i in _craft_slots.size():
 			_craft_slots[i].set_stack(craft_grid[i])
 		var recipe := _current_recipe()

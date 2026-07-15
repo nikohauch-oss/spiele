@@ -8,9 +8,49 @@ const MIX_RATE := 22050
 var _streams := {}
 
 
+var _rain_player: AudioStreamPlayer
+
+
 func _ready() -> void:
-	for kind in ["break", "place", "pop", "eat", "hurt", "hit", "shoot", "click"]:
+	for kind in ["break", "place", "pop", "eat", "hurt", "hit", "shoot", "click",
+			"hiss", "explosion", "step_grass", "step_stone", "step_wood", "step_sand"]:
 		_streams[kind] = _synthesize(kind)
+	# Dauerhafter Regen-Loop (Lautstaerke wird ein-/ausgeblendet)
+	_rain_player = AudioStreamPlayer.new()
+	_rain_player.stream = _make_rain_loop()
+	_rain_player.volume_db = -60.0
+	add_child(_rain_player)
+
+
+## Regen ein-/ausblenden (weicher Uebergang).
+func set_rain(on: bool) -> void:
+	if on and not _rain_player.playing:
+		_rain_player.play()
+	create_tween().tween_property(_rain_player, "volume_db", -16.0 if on else -60.0, 2.0)
+
+
+## 2-Sekunden-Rauschschleife als Regen (nahtlos geloopt).
+func _make_rain_loop() -> AudioStreamWAV:
+	var count := MIX_RATE * 2
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	var last := 0.0
+	for i in count:
+		# leicht gefiltertes Rauschen (Tiefpass ueber Mittelung)
+		last = last * 0.6 + rng.randf_range(-1, 1) * 0.4
+		var v := int(clampf(last * 0.5, -1.0, 1.0) * 32000.0)
+		data[i * 2] = v & 0xFF
+		data[i * 2 + 1] = (v >> 8) & 0xFF
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = MIX_RATE
+	stream.data = data
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = count
+	return stream
 
 
 ## Nicht-positional (UI, eigener Spieler)
@@ -58,6 +98,12 @@ func _synthesize(kind: String) -> AudioStreamWAV:
 			dur = 0.2
 		"click":
 			dur = 0.06
+		"hiss":
+			dur = 1.4
+		"explosion":
+			dur = 0.8
+		"step_grass", "step_stone", "step_wood", "step_sand":
+			dur = 0.1
 
 	var count := int(MIX_RATE * dur)
 	var rng := RandomNumberGenerator.new()
@@ -88,6 +134,18 @@ func _synthesize(kind: String) -> AudioStreamWAV:
 				s = rng.randf_range(-1, 1) * sin(PI * t / dur) * 0.55
 			"click":    # UI-Tick
 				s = sin(TAU * 900.0 * t) * exp(-70.0 * t)
+			"hiss":     # Creeper-Zischen: anschwellendes Rauschen
+				s = rng.randf_range(-1, 1) * 0.4 * minf(t / dur * 1.6, 1.0)
+			"explosion":  # tiefer Knall mit langem Ausklang
+				s = (rng.randf_range(-1, 1) * 0.7 + sin(TAU * 55.0 * t) * 0.8) * exp(-5.0 * t)
+			"step_grass":
+				s = rng.randf_range(-1, 1) * 0.3 * exp(-28.0 * t)
+			"step_stone":
+				s = (rng.randf_range(-1, 1) * 0.3 + sin(TAU * 500.0 * t) * 0.1) * exp(-48.0 * t)
+			"step_wood":
+				s = (sin(TAU * 160.0 * t) * 0.3 + rng.randf_range(-1, 1) * 0.18) * exp(-32.0 * t)
+			"step_sand":
+				s = rng.randf_range(-1, 1) * 0.26 * exp(-16.0 * t)
 		var v := int(clampf(s, -1.0, 1.0) * 32000.0)
 		data[i * 2] = v & 0xFF
 		data[i * 2 + 1] = (v >> 8) & 0xFF

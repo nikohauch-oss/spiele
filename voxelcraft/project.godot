@@ -8,7 +8,7 @@ config_version=5
 
 config/name="VoxelCraft"
 config/description="Voxel-Sandbox-Spiel: Chunks, prozedurale Welt, Crafting"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/Menu.tscn"
 config/features=PackedStringArray("4.3")
 
 [autoload]
