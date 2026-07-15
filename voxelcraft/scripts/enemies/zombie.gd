@@ -1,9 +1,9 @@
 class_name Zombie
-extends CharacterBody3D
-## Einfacher Zombie-Gegner:
+extends Mob
+## Zombie-Gegner:
 ##  - wandert ziellos, verfolgt den Spieler in Sichtweite (direktes Steering)
 ##  - springt automatisch, wenn ein Block im Weg steht (Minecraft-Verhalten)
-##  - Nahkampfangriff mit Cooldown, Rueckstoss beim Getroffenwerden
+##  - Nahkampfangriff mit Cooldown, droppt verrottetes Fleisch
 ##  - verschwindet am Tag oder bei zu grosser Entfernung
 ##
 ## Hinweis: bewusst ohne NavigationAgent3D - ein Navmesh laesst sich auf einer
@@ -12,51 +12,22 @@ extends CharacterBody3D
 
 const WALK_SPEED := 1.2
 const CHASE_SPEED := 2.8
-const GRAVITY := 27.0
 const JUMP_VELOCITY := 8.0
 const AGGRO_RANGE := 18.0
 const ATTACK_RANGE := 1.7
 const ATTACK_DAMAGE := 3.0
 const DESPAWN_RANGE := 64.0
 
-var health := 20.0
-
 var _wander_dir := Vector3.ZERO
 var _wander_timer := 0.0
 var _attack_cd := 0.0
-var _body_parts: Array[MeshInstance3D] = []
 
 
 func _ready() -> void:
-	collision_layer = 4  # Layer 3 = Gegner (vom Spieler-Raycast getroffen)
-	collision_mask = 1
-
-	var shape := CapsuleShape3D.new()
-	shape.radius = 0.35
-	shape.height = 1.9
-	var cs := CollisionShape3D.new()
-	cs.shape = shape
-	cs.position.y = 0.95
-	add_child(cs)
-
-	# Klotz-Koerper aus zwei Boxen (keine Assets noetig)
-	_add_box(Vector3(0.55, 1.4, 0.32), Vector3(0, 0.7, 0), Color(0.2, 0.5, 0.25))
-	_add_box(Vector3(0.5, 0.5, 0.5), Vector3(0, 1.7, 0), Color(0.3, 0.65, 0.3))
-
-
-func _add_box(size: Vector3, pos: Vector3, color: Color) -> void:
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 1.0
-	mesh.material = mat
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.position = pos
-	mi.set_meta("base_color", color)
-	add_child(mi)
-	_body_parts.append(mi)
+	health = 20.0
+	add_capsule(0.35, 1.9)
+	add_box(Vector3(0.55, 1.4, 0.32), Vector3(0, 0.7, 0), Color(0.2, 0.5, 0.25))  # Rumpf
+	add_box(Vector3(0.5, 0.5, 0.5), Vector3(0, 1.7, 0), Color(0.3, 0.65, 0.3))    # Kopf
 
 
 func _physics_process(delta: float) -> void:
@@ -106,15 +77,6 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 
-func take_damage(amount: float, from_dir: Vector3) -> void:
-	health -= amount
-	# Rueckstoss + kurzes rotes Aufblitzen
-	velocity += Vector3(from_dir.x, 0, from_dir.z).normalized() * 7.0 + Vector3(0, 4.5, 0)
-	for part in _body_parts:
-		var box := part.mesh as BoxMesh
-		var mat := box.material as StandardMaterial3D
-		var base: Color = part.get_meta("base_color")
-		mat.albedo_color = base.lerp(Color.RED, 0.7)
-		create_tween().tween_property(mat, "albedo_color", base, 0.25)
-	if health <= 0.0:
-		queue_free()
+func _on_death() -> void:
+	if randf() < 0.5:
+		ItemEntity.spawn_id("rotten_flesh", 1, global_position + Vector3(0, 0.8, 0))

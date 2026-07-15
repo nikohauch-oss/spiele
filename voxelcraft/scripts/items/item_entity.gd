@@ -12,6 +12,7 @@ const PICKUP_RANGE := 1.0
 const LIFETIME := 300.0    # Sekunden bis zum Despawn
 
 var stack: Dictionary  # {"id", "count"[, "durability"]}
+var pickup_delay := 0.35  # weggeworfene Items haben eine laengere Sperre
 
 var _velocity := Vector3.ZERO
 var _age := 0.0
@@ -32,6 +33,18 @@ static func spawn_id(id: String, count: int, pos: Vector3) -> void:
 	spawn_stack(Inventory.make_stack(id, count), pos)
 
 
+## Gezielt werfen (Taste Q): eigener Impuls + Sperre gegen Sofort-Wiederaufheben.
+static func throw_stack(s: Dictionary, pos: Vector3, vel: Vector3) -> void:
+	if s == null or Game.world == null:
+		return
+	var e := ItemEntity.new()
+	e.stack = s
+	e.pickup_delay = 1.5
+	Game.world.add_child(e)
+	e.global_position = pos
+	e._velocity = vel
+
+
 func _ready() -> void:
 	var sprite := Sprite3D.new()
 	sprite.texture = ItemDB.icon(stack.id)
@@ -50,7 +63,7 @@ func _process(delta: float) -> void:
 		return
 
 	var player = Game.player
-	if player and not player.frozen:
+	if player and not player.frozen and _age >= pickup_delay:
 		var target: Vector3 = player.global_position + Vector3(0, 0.9, 0)
 		var dist := global_position.distance_to(target)
 		if dist < PICKUP_RANGE:

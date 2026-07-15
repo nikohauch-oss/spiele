@@ -28,9 +28,11 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
 - Block-Abbau per Raycast mit Abbauzeit je Blockhärte/Werkzeug
   (inkl. Drahtgitter-Highlight + Fortschrittsbalken), Blöcke platzieren
 - Inventar mit 36 Slots (9er-Hotbar + Hauptinventar), Maus-Drag wie in
-  Minecraft (Linksklick = Stapel, Rechtsklick = einzeln/halbieren)
+  Minecraft (Linksklick = Stapel, Rechtsklick = einzeln/halbieren,
+  **Shift-Klick** = Schnelltransfer, **Q** = Item wegwerfen)
 - Abgebaute Blöcke fallen als **Item-Drops** (3D-Entities) heraus und werden
-  per Magnet-Radius automatisch eingesammelt
+  per Magnet-Radius automatisch eingesammelt; Abbau erzeugt **Partikel**
+  in der Blockfarbe
 
 **Crafting**
 - 2×2-Crafting im Inventar, 3×3 an der Werkbank (geformte + formlose Rezepte,
@@ -47,7 +49,10 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
 **Extras**
 - Tag-Nacht-Zyklus (rotierende Sonne, Himmels-/Nebel-/Ambientfarben)
 - Zombies spawnen nachts, verfolgen den Spieler und greifen an —
-  **aber nicht in fackelbeleuchteten Bereichen** (Blocklicht ≥ 8)
+  **aber nicht in fackelbeleuchteten Bereichen** (Blocklicht ≥ 8);
+  sie droppen verrottetes Fleisch
+- **Schweine** spawnen tagsüber auf Grasflächen, fliehen bei Schlägen und
+  droppen rohes Schweinefleisch — im Ofen braten (roh 3 / gebraten 8 Hunger)
 - Healthbar + Hunger-System (Sprinten macht hungrig, Essen: Äpfel aus
   Blättern; hoher Hunger regeneriert, leerer Hunger zehrt)
 - Speichern/Laden: Seed + nur veränderte Chunks + Spieler + Öfen
@@ -65,6 +70,8 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
 | `Linke Maustaste` | Block abbauen (halten) / Gegner angreifen |
 | `Rechte Maustaste` | Block platzieren / Werkbank & Ofen öffnen / essen |
 | `E` | Inventar öffnen/schließen |
+| `Q` | Gewähltes Item wegwerfen |
+| `Shift`+Klick | Stack schnell verschieben (Inventar ↔ Truhe/Ofen) |
 | `1–9` / Mausrad | Hotbar-Slot wählen |
 | `F3` | Debug-Overlay (FPS, Position, Chunks) |
 | `F5` / `F9` / `F10` | Speichern / letzten Stand laden / neue Welt |
@@ -104,8 +111,10 @@ voxelcraft/
     │   ├── hud.gd           Fadenkreuz, Hotbar, Herzen/Hunger, Debug, Toasts
     │   └── container_ui.gd  Inventar / Werkbank / Ofen (ein gemeinsames Fenster)
     └── enemies/
+        ├── mob.gd           Basisklasse: Klotz-Koerper, Schaden, Rueckstoss
         ├── zombie.gd        Gegner-KI (Verfolgen, Springen, Angreifen)
-        └── zombie_spawner.gd  Nacht-Spawns um den Spieler
+        ├── animal.gd        Schwein (wandern, fliehen, Fleisch-Drop)
+        └── mob_spawner.gd   Spawns um den Spieler (nachts Zombies, tags Tiere)
 ```
 
 ## Architektur-Entscheidungen
@@ -150,6 +159,6 @@ voxelcraft/
 
 - Greedy Meshing (Flächen zusammenfassen) für noch weniger Vertices
 - Fließendes Wasser, Glas (Sand schmelzen), Nicht-Würfel-Blöcke (Stufen, Zäune)
-- Sounds, Schrittgeräusche, Partikel beim Abbauen
-- Mehr Gegner (Skelette mit Fernkampf), Rüstung, passive Tiere als Nahrungsquelle
+- Sounds und Schrittgeräusche
+- Mehr Gegner (Skelette mit Fernkampf), Rüstung, Betten (Nacht überspringen)
 - Hauptmenü mit mehreren Welt-Slots

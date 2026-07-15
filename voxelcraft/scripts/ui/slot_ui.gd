@@ -3,7 +3,7 @@ extends Panel
 ## Ein Item-Slot (Hotbar, Inventar, Crafting, Ofen):
 ## zeigt Icon, Stapelzahl und Haltbarkeitsbalken; meldet Klicks per Signal.
 
-signal clicked(index: int, button: int)
+signal clicked(index: int, button: int, shift: bool)
 
 const SLOT_SIZE := 44.0
 
@@ -58,7 +58,7 @@ func _init(idx := 0) -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed \
 			and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT):
-		clicked.emit(index, event.button_index)
+		clicked.emit(index, event.button_index, event.shift_pressed)
 		accept_event()
 
 

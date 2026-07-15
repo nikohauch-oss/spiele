@@ -55,9 +55,9 @@ func _ready() -> void:
 	add_child(Game.hud)
 	Game.hud.bind(player)
 
-	# --- Gegner ---
-	var spawner := ZombieSpawner.new()
-	spawner.name = "Zombies"
+	# --- Kreaturen (Zombies nachts, Schweine tagsueber) ---
+	var spawner := MobSpawner.new()
+	spawner.name = "Mobs"
 	add_child(spawner)
 
 	_apply_save(save)

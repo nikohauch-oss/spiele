@@ -10,6 +10,7 @@ extends Node
 var smelting := {
 	"iron_ore": {"result": "iron_ingot", "time": 8.0},
 	"log": {"result": "coal", "time": 8.0},  # Holzkohle
+	"porkchop_raw": {"result": "porkchop_cooked", "time": 6.0},
 }
 
 var shapeless := [

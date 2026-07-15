@@ -65,16 +65,16 @@ func _physics_process(delta: float) -> void:
 
 	var collider: Object = ray.get_collider() if ray.is_colliding() else null
 
-	# ------------------------------------------------ Gegner anvisiert ---
-	var zombie := collider as Zombie
-	if zombie != null:
+	# --------------------------------------------- Kreatur anvisiert ---
+	var mob := collider as Mob
+	if mob != null:
 		highlight.visible = false
 		_dig_progress = 0.0
 		Game.hud.set_dig_progress(-1.0)
 		if Input.is_action_pressed("attack") and _attack_cd <= 0.0:
 			_attack_cd = ATTACK_COOLDOWN
 			var dir := -player.camera.global_transform.basis.z
-			zombie.take_damage(ItemDB.attack_damage(player.inventory.selected_id()), dir)
+			mob.take_damage(ItemDB.attack_damage(player.inventory.selected_id()), dir)
 			if player.inventory.damage_selected():
 				Game.hud.toast("Werkzeug zerbrochen!")
 		return
@@ -149,8 +149,36 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 		for stack in Game.remove_chest(pos):
 			ItemEntity.spawn_stack(stack, center)
 	Game.chunk_manager.set_block(pos, BlockDB.AIR)
+	_spawn_break_particles(pos, block_id)
 	_dig_progress = 0.0
 	Game.hud.set_dig_progress(-1.0)
+
+
+## Kleine Wuerfel-Partikel in der Durchschnittsfarbe des Blocks.
+func _spawn_break_particles(pos: Vector3i, block_id: int) -> void:
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = 14
+	p.lifetime = 0.5
+	p.explosiveness = 1.0
+	p.direction = Vector3.UP
+	p.spread = 60.0
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 3.5
+	p.gravity = Vector3(0, -14, 0)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(0.3, 0.3, 0.3)
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.08, 0.08, 0.08)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = BlockDB.avg_color(block_id)
+	mesh.material = mat
+	p.mesh = mesh
+	Game.world.add_child(p)
+	p.global_position = Vector3(pos) + Vector3(0.5, 0.5, 0.5)
+	p.emitting = true
+	p.finished.connect(p.queue_free)  # raeumt sich selbst auf
 
 
 # ------------------------------------------------------- Benutzen/Platzieren ---

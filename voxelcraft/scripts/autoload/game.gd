@@ -45,6 +45,7 @@ func _setup_input() -> void:
 	_add_key("descend", KEY_SHIFT)     # Sinken im Flugmodus
 	_add_key("toggle_creative", KEY_F)
 	_add_key("inventory", KEY_E)
+	_add_key("drop_item", KEY_Q)
 	_add_key("debug", KEY_F3)
 	_add_key("save_world", KEY_F5)
 	_add_key("load_world", KEY_F9)

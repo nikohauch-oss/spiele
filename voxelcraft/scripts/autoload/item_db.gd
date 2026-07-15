@@ -36,6 +36,9 @@ func _ready() -> void:
 	_reg({"id": "iron_ingot", "name": "Eisenbarren"})
 	_reg({"id": "diamond", "name": "Diamant"})
 	_reg({"id": "apple", "name": "Apfel", "food": 4})
+	_reg({"id": "porkchop_raw", "name": "Rohes Schweinefleisch", "food": 3})
+	_reg({"id": "porkchop_cooked", "name": "Gebratenes Schweinefleisch", "food": 8})
+	_reg({"id": "rotten_flesh", "name": "Verrottetes Fleisch", "food": 2})
 
 	# --- Werkzeuge: [Prefix, Anzeigename, Stufe, Tempo, Haltbarkeit, Bonus-Schaden] ---
 	for m in [["wooden", "Holz", 1, 4.0, 60, 0], ["stone", "Stein", 2, 8.0, 132, 1],
@@ -219,6 +222,17 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 			_px(img, 8, 3, wood)
 			_px(img, 8, 4, wood)
 			_px(img, 9, 3, Color(0.3, 0.6, 0.2))
+		"porkchop_raw", "porkchop_cooked":
+			var meat := Color(0.92, 0.5, 0.55) if id == "porkchop_raw" else Color(0.62, 0.38, 0.2)
+			_blob(img, meat, 4)
+			# Knochenansatz unten links
+			_px(img, 4, 11, Color(0.95, 0.93, 0.85))
+			_px(img, 3, 12, Color(0.95, 0.93, 0.85))
+			_px(img, 4, 12, Color(0.88, 0.85, 0.78))
+		"rotten_flesh":
+			_blob(img, Color(0.45, 0.4, 0.18), 5)
+			_px(img, 7, 8, Color(0.3, 0.5, 0.2))
+			_px(img, 10, 10, Color(0.3, 0.5, 0.2))
 	return img
 
 

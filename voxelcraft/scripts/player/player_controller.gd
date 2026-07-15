@@ -73,6 +73,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		creative = not creative
 		if Game.hud:
 			Game.hud.toast("Kreativmodus AN" if creative else "Kreativmodus AUS")
+	elif event.is_action_pressed("drop_item"):
+		_drop_selected()
 	elif event is InputEventMouseButton and event.pressed:
 		# Mausrad: Hotbar durchschalten
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -101,6 +103,10 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	stats.on_moved(velocity, sprinting and input_dir != Vector2.ZERO)
+
+	# Sprint-Gefuehl: Sichtfeld beim Rennen leicht aufziehen
+	var target_fov := 82.0 if (sprinting and input_dir != Vector2.ZERO) else 75.0
+	camera.fov = lerpf(camera.fov, target_fov, minf(10.0 * delta, 1.0))
 
 	# Notfall: aus der Welt gefallen (sollte dank Grundgestein nicht passieren)
 	if global_position.y < -20.0:
@@ -159,6 +165,20 @@ func is_in_water() -> bool:
 ## Ist die Kamera unter Wasser? (fuer den HUD-Blaufilter)
 func is_head_in_water() -> bool:
 	return Game.chunk_manager.get_block(Vector3i(camera.global_position.floor())) == BlockDB.WATER
+
+
+## Q: 1 Stueck des gewaehlten Items in Blickrichtung werfen (Werkzeuge komplett).
+func _drop_selected() -> void:
+	var s = inventory.selected_stack()
+	if s == null:
+		return
+	var one := {"id": s.id, "count": 1}
+	if s.has("durability"):
+		one.durability = s.durability
+	var dir := -camera.global_transform.basis.z
+	ItemEntity.throw_stack(one, camera.global_position + dir * 0.4,
+		dir * 5.0 + Vector3(0, 1.5, 0))
+	inventory.consume_selected()
 
 
 func respawn() -> void:

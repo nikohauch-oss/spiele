@@ -68,6 +68,8 @@ var opaque_material: ShaderMaterial
 var water_material: ShaderMaterial
 
 var _tile_index := {}       # Kachel-Name -> Index im Atlas
+var _tile_avg := {}         # Kachel-Name -> Durchschnittsfarbe (Abbau-Partikel)
+var _avg_colors := []       # Block-Id -> Durchschnittsfarbe der Seitenkachel
 var _by_string_id := {}     # "grass" -> GRASS
 # Schnelle Lookups fuer den Mesher-Thread (nur lesend -> threadsicher)
 var _see_through := PackedByteArray()
@@ -113,6 +115,7 @@ func _finalize_defs() -> void:
 	_see_through.resize(BLOCK_COUNT)
 	_solid.resize(BLOCK_COUNT)
 	_uv_base.resize(BLOCK_COUNT)
+	_avg_colors.resize(BLOCK_COUNT)
 	for b in BLOCK_COUNT:
 		var d: Dictionary = defs[b]
 		# Defaults ergaenzen, damit alle Zugriffe ohne has()-Checks auskommen
@@ -136,9 +139,16 @@ func _finalize_defs() -> void:
 				var idx: int = _tile_index[d.tiles[slot]]
 				@warning_ignore("integer_division")
 				uvs.append(Vector2(idx % ATLAS_TILES, idx / ATLAS_TILES) * UV_STEP)
+			_avg_colors[b] = _tile_avg.get(d.tiles[1], Color.WHITE)
 		else:
 			uvs = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
+			_avg_colors[b] = Color.WHITE
 		_uv_base[b] = uvs
+
+
+## Durchschnittsfarbe der Seitenkachel eines Blocks (Abbau-Partikel).
+func avg_color(block_id: int) -> Color:
+	return _avg_colors[block_id]
 
 
 # ------------------------------------------------------------------ Atlas ---
@@ -152,9 +162,23 @@ func _build_atlas() -> void:
 	img.fill(Color(1, 0, 1))  # Magenta = "fehlende Kachel"
 	for i in kinds.size():
 		_tile_index[kinds[i]] = i
+		var ox := (i % ATLAS_TILES) * TILE
 		@warning_ignore("integer_division")
-		_paint_tile(img, (i % ATLAS_TILES) * TILE, (i / ATLAS_TILES) * TILE, kinds[i])
+		var oy := (i / ATLAS_TILES) * TILE
+		_paint_tile(img, ox, oy, kinds[i])
+		_tile_avg[kinds[i]] = _average_tile(img, ox, oy)
 	atlas_texture = ImageTexture.create_from_image(img)
+
+
+## Durchschnittsfarbe einer Kachel (fuer Abbau-Partikel).
+func _average_tile(img: Image, ox: int, oy: int) -> Color:
+	var sum := Vector3.ZERO
+	for py in TILE:
+		for px in TILE:
+			var c := img.get_pixel(ox + px, oy + py)
+			sum += Vector3(c.r, c.g, c.b)
+	sum /= float(TILE * TILE)
+	return Color(sum.x, sum.y, sum.z)
 
 
 ## Chunk-Shader: Vertex-Farbe traegt das gebackene Voxel-Licht

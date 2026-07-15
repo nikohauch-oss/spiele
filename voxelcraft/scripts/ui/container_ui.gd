@@ -214,6 +214,93 @@ func _on_slot_clicked(area: int, index: int, button: int) -> void:
 	_refresh_all()
 
 
+## Shift-Linksklick: Stack direkt verschieben (wie in Minecraft) -
+## Inventar <-> Truhe/Ofen/Craftingfeld bzw. Hotbar <-> Hauptinventar.
+func _shift_transfer(area: int, index: int) -> void:
+	match area:
+		Area.INV:
+			var stack = inv.slots[index]
+			if stack == null:
+				return
+			if mode == Mode.CHEST:
+				inv.slots[index] = _add_to_slots(stack, chest.slots, range(ChestState.SIZE))
+			elif mode == Mode.FURNACE:
+				# Brennstoffe in den Brennstoff-Slot, alles andere in die Eingabe
+				if ItemDB.fuel_time(stack.id) > 0.0:
+					inv.slots[index] = _merge_into_single(stack, furnace, "fuel")
+				else:
+					inv.slots[index] = _merge_into_single(stack, furnace, "input")
+			else:
+				# zwischen Hotbar und Hauptinventar wechseln
+				var target := range(Inventory.HOTBAR, Inventory.SIZE) if index < Inventory.HOTBAR \
+					else range(0, Inventory.HOTBAR)
+				inv.slots[index] = _add_to_slots(stack, inv.slots, target)
+			inv.notify_changed()
+		Area.CHEST:
+			chest.slots[index] = inv.add_stack(chest.slots[index])
+		Area.CRAFT:
+			craft_grid[index] = inv.add_stack(craft_grid[index])
+		Area.F_IN:
+			furnace.input = inv.add_stack(furnace.input)
+		Area.F_FUEL:
+			furnace.fuel = inv.add_stack(furnace.fuel)
+		Area.F_OUT:
+			furnace.output = inv.add_stack(furnace.output)
+		Area.RESULT:
+			# So oft craften, wie Zutaten und Rezept es hergeben
+			for _round in 64:
+				var recipe := _current_recipe()
+				if recipe.is_empty():
+					break
+				var rest: int = inv.add_item(recipe.result, recipe.count)
+				if rest > 0 and Game.player:
+					ItemEntity.spawn_id(recipe.result, rest,
+						Game.player.global_position + Vector3(0, 0.5, 0))
+				for i in craft_grid.size():
+					if craft_grid[i] != null:
+						craft_grid[i].count -= 1
+						if craft_grid[i].count <= 0:
+							craft_grid[i] = null
+				if rest > 0:
+					break  # Inventar voll
+
+
+## Stack in eine Slot-Liste einsortieren (erst stapeln, dann leere Slots).
+## Rueckgabe: Rest-Stack oder null.
+func _add_to_slots(stack, slots: Array, indices) -> Variant:
+	if not stack.has("durability"):
+		var maxs: int = ItemDB.max_stack(stack.id)
+		for i: int in indices:
+			var s = slots[i]
+			if s != null and s.id == stack.id and s.count < maxs:
+				var take: int = mini(maxs - s.count, stack.count)
+				s.count += take
+				stack.count -= take
+				if stack.count <= 0:
+					return null
+	for i: int in indices:
+		if slots[i] == null:
+			slots[i] = stack
+			return null
+	return stack
+
+
+## Stack mit einem Einzel-Slot (Ofen-Eingabe/-Brennstoff) zusammenfuehren.
+func _merge_into_single(stack, obj, prop: String) -> Variant:
+	var cur = obj.get(prop)
+	if cur == null:
+		obj.set(prop, stack)
+		return null
+	if cur.id == stack.id and not stack.has("durability"):
+		var maxs: int = ItemDB.max_stack(stack.id)
+		var take: int = mini(maxs - cur.count, stack.count)
+		cur.count += take
+		stack.count -= take
+		if stack.count <= 0:
+			return null
+	return stack
+
+
 ## Standard-Klickverhalten zwischen Cursor und Slot. Gibt den neuen Slot-Inhalt zurueck.
 func _click_stack(slot, button: int):
 	if button == MOUSE_BUTTON_LEFT:
@@ -338,8 +425,12 @@ func _update_cursor() -> void:
 
 func _make_slot(area: int, index: int) -> SlotUI:
 	var s := SlotUI.new(index)
-	s.clicked.connect(func(idx: int, button: int) -> void:
-		_on_slot_clicked(area, idx, button))
+	s.clicked.connect(func(idx: int, button: int, shift: bool) -> void:
+		if shift and button == MOUSE_BUTTON_LEFT:
+			_shift_transfer(area, idx)
+			_refresh_all()
+		else:
+			_on_slot_clicked(area, idx, button))
 	if area == Area.INV:
 		_inv_slots.append(s)
 	return s
