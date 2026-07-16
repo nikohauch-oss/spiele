@@ -1,0 +1,5133 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Item class="Workspace" referent="RBX17">
+	</Item>
+	<Item class="Players" referent="RBX18">
+	</Item>
+	<Item class="Lighting" referent="RBX19">
+	</Item>
+	<Item class="ReplicatedStorage" referent="RBX21">
+		<Item class="Folder" referent="RBX20">
+			<Properties>
+				<string name="Name">Shared</string>
+			</Properties>
+			<Item class="ModuleScript" referent="RBX1">
+				<Properties>
+					<string name="Name">GameData</string>
+					<ProtectedString name="Source">-- ============================================================
+-- MONSTERWELT - Zentrale Spieldaten
+-- Typen, Attacken, alle 18 Monster (mit 3D-Bauplan!),
+-- Items, Routen, Trainer und Balancing.
+-- Eigene Monster hinzufuegen? Einfach hier eintragen!
+-- ============================================================
+
+local GameData = {}
+
+GameData.MAX_LEVEL = 50
+GameData.TEAM_SIZE = 6
+GameData.BOX_SIZE = 60
+GameData.START_COINS = 300
+
+-- ========== TYPEN ==========
+GameData.TypeColors = {
+	["Feuer"] = Color3.fromRGB(240, 110, 50),
+	["Wasser"] = Color3.fromRGB(70, 140, 240),
+	["Pflanze"] = Color3.fromRGB(100, 190, 80),
+	["Elektro"] = Color3.fromRGB(250, 205, 50),
+	["Normal"] = Color3.fromRGB(180, 170, 160),
+}
+
+-- Effektivitaet: Wasser &gt; Feuer &gt; Pflanze &gt; Wasser, Elektro &gt; Wasser
+local EFFECT = {
+	["Feuer"] = { ["Pflanze"] = 2, ["Wasser"] = 0.5, ["Feuer"] = 0.5 },
+	["Wasser"] = { ["Feuer"] = 2, ["Pflanze"] = 0.5, ["Wasser"] = 0.5 },
+	["Pflanze"] = { ["Wasser"] = 2, ["Feuer"] = 0.5, ["Pflanze"] = 0.5 },
+	["Elektro"] = { ["Wasser"] = 2, ["Pflanze"] = 0.5, ["Elektro"] = 0.5 },
+	["Normal"] = {},
+}
+
+function GameData.TypeMultiplier(attackType, defenderType)
+	local row = EFFECT[attackType]
+	if row and row[defenderType] then
+		return row[defenderType]
+	end
+	return 1
+end
+
+-- ========== ATTACKEN ==========
+-- effect = { status = "brand"/"schock", chance = 0..1 }
+GameData.Moves = {
+	-- Normal
+	tackle = { name = "Tackle", typ = "Normal", power = 40 },
+	kratzer = { name = "Kratzer", typ = "Normal", power = 40 },
+	koerperwurf = { name = "Körperwurf", typ = "Normal", power = 65 },
+	hyperschlag = { name = "Hyperschlag", typ = "Normal", power = 90 },
+	-- Feuer
+	funkenregen = { name = "Funkenregen", typ = "Feuer", power = 40 },
+	glutbiss = { name = "Glutbiss", typ = "Feuer", power = 55, effect = { status = "brand", chance = 0.2 } },
+	flammenwerfer = { name = "Flammenwerfer", typ = "Feuer", power = 80, effect = { status = "brand", chance = 0.15 } },
+	feuersturm = { name = "Feuersturm", typ = "Feuer", power = 100, effect = { status = "brand", chance = 0.2 } },
+	-- Wasser
+	wasserspritzer = { name = "Wasserspritzer", typ = "Wasser", power = 40 },
+	blubbstrahl = { name = "Blubbstrahl", typ = "Wasser", power = 55 },
+	aquawelle = { name = "Aquawelle", typ = "Wasser", power = 80 },
+	hydrokanone = { name = "Hydrokanone", typ = "Wasser", power = 100 },
+	-- Pflanze
+	blattschuss = { name = "Blattschuss", typ = "Pflanze", power = 40 },
+	rankenschlag = { name = "Rankenschlag", typ = "Pflanze", power = 55 },
+	blattklinge = { name = "Blattklinge", typ = "Pflanze", power = 80 },
+	solarblitz = { name = "Solarblitz", typ = "Pflanze", power = 100 },
+	-- Elektro
+	blitzfunke = { name = "Blitzfunke", typ = "Elektro", power = 40, effect = { status = "schock", chance = 0.1 } },
+	stromstoss = { name = "Stromstoß", typ = "Elektro", power = 55, effect = { status = "schock", chance = 0.15 } },
+	blitzhammer = { name = "Blitzhammer", typ = "Elektro", power = 80, effect = { status = "schock", chance = 0.2 } },
+	megavolt = { name = "Megavolt", typ = "Elektro", power = 100, effect = { status = "schock", chance = 0.25 } },
+}
+
+GameData.StatusNames = { brand = "Brand", schock = "Schock" }
+
+-- ========== MONSTER ==========
+-- build = Bauplan fuer die 3D-Figur (MonsterFactory):
+--   body  = Rumpf (shape Ball/Block/Cylinder, size {b,h,t}, color {r,g,b})
+--   head  = Kopf-Kugel (size, offset {x,y,z}), -z ist VORNE
+--   legs  = Anzahl Beine (0/2/4), legHeight
+--   parts = weitere Teile (Ohren, Schwanz, Flossen, Fluegel, ...)
+GameData.Species = {
+	-- ===== STARTER: FEUER =====
+	flarix = {
+		name = "Flarix", typ = "Feuer", starter = true,
+		desc = "Ein hitziges Energiebündel mit Flammenschweif.",
+		base = { hp = 58, atk = 62, def = 50, spd = 62 },
+		learnset = { { 1, "kratzer" }, { 1, "funkenregen" }, { 7, "glutbiss" }, { 13, "flammenwerfer" } },
+		evolveLevel = 16, evolveTo = "flammgor",
+		build = {
+			body = { shape = "Ball", size = { 2.4, 2.0, 2.8 }, color = { 235, 90, 45 } },
+			head = { size = 1.6, offset = { 0, 1.0, -1.3 }, color = { 240, 105, 55 } },
+			legs = 4, legHeight = 0.7,
+			parts = {
+				{ shape = "Wedge", size = { 0.5, 0.7, 0.5 }, offset = { -0.5, 1.8, -1.3 }, color = { 200, 60, 30 }, name = "OhrL" },
+				{ shape = "Wedge", size = { 0.5, 0.7, 0.5 }, offset = { 0.5, 1.8, -1.3 }, color = { 200, 60, 30 }, name = "OhrR" },
+				{ shape = "Ball", size = { 0.9, 0.9, 0.9 }, offset = { 0, 0.9, 1.7 }, color = { 255, 140, 30 }, material = "Neon", name = "Flamme1" },
+				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { 0, 1.4, 2.1 }, color = { 255, 220, 80 }, material = "Neon", name = "Flamme2" },
+			},
+		},
+	},
+	flammgor = {
+		name = "Flammgor", typ = "Feuer", noWild = true,
+		desc = "Sein Rückenkamm lodert bei jedem Angriff auf.",
+		base = { hp = 82, atk = 86, def = 68, spd = 78 },
+		learnset = { { 1, "funkenregen" }, { 1, "glutbiss" }, { 13, "flammenwerfer" }, { 22, "feuersturm" } },
+		build = {
+			body = { shape = "Block", size = { 3.2, 2.6, 4.2 }, color = { 200, 60, 30 } },
+			head = { size = 2.2, offset = { 0, 1.7, -2.1 }, color = { 215, 75, 40 } },
+			legs = 4, legHeight = 1.0,
+			parts = {
+				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { 0, 3.0, -2.1 }, color = { 255, 220, 80 }, material = "Neon", name = "Horn" },
+				{ shape = "Wedge", size = { 0.7, 1.2, 1.2 }, offset = { 0, 1.9, -0.6 }, color = { 255, 140, 30 }, material = "Neon", name = "Kamm1" },
+				{ shape = "Wedge", size = { 0.7, 1.0, 1.1 }, offset = { 0, 1.8, 0.7 }, color = { 255, 140, 30 }, material = "Neon", name = "Kamm2" },
+				{ shape = "Ball", size = { 1.2, 1.2, 1.2 }, offset = { 0, 1.0, 2.6 }, color = { 255, 140, 30 }, material = "Neon", name = "Flamme1" },
+				{ shape = "Ball", size = { 0.7, 0.7, 0.7 }, offset = { 0, 1.6, 3.1 }, color = { 255, 220, 80 }, material = "Neon", name = "Flamme2" },
+			},
+		},
+	},
+
+	-- ===== STARTER: WASSER =====
+	aquani = {
+		name = "Aquani", typ = "Wasser", starter = true,
+		desc = "Ein verspielter Wasserfloh, der nie stillsitzt.",
+		base = { hp = 62, atk = 56, def = 58, spd = 56 },
+		learnset = { { 1, "tackle" }, { 1, "wasserspritzer" }, { 7, "blubbstrahl" }, { 13, "aquawelle" } },
+		evolveLevel = 16, evolveTo = "wellodon",
+		build = {
+			body = { shape = "Ball", size = { 2.3, 2.1, 2.5 }, color = { 70, 140, 230 } },
+			head = { size = 1.7, offset = { 0, 1.1, -1.2 }, color = { 110, 180, 240 } },
+			legs = 2, legHeight = 0.6,
+			parts = {
+				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { -0.9, 2.0, -1.2 }, color = { 110, 180, 240 }, name = "OhrL" },
+				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { 0.9, 2.0, -1.2 }, color = { 110, 180, 240 }, name = "OhrR" },
+				{ shape = "Wedge", size = { 1.6, 0.4, 1.4 }, offset = { 0, 0.1, 1.7 }, rot = { 0, 180, 0 }, color = { 50, 110, 200 }, name = "Flosse" },
+			},
+		},
+	},
+	wellodon = {
+		name = "Wellodon", typ = "Wasser", noWild = true,
+		desc = "Ein sanfter Riese, der Wellen mit der Flosse lenkt.",
+		base = { hp = 88, atk = 76, def = 82, spd = 64 },
+		learnset = { { 1, "wasserspritzer" }, { 1, "blubbstrahl" }, { 13, "aquawelle" }, { 22, "hydrokanone" } },
+		build = {
+			body = { shape = "Block", size = { 3.4, 2.5, 4.4 }, color = { 40, 100, 200 } },
+			head = { size = 2.2, offset = { 0, 1.5, -2.3 }, color = { 70, 140, 230 } },
+			legs = 4, legHeight = 0.9,
+			parts = {
+				{ shape = "Wedge", size = { 0.6, 1.4, 1.6 }, offset = { 0, 2.0, 0.2 }, color = { 90, 170, 250 }, name = "Rueckenflosse" },
+				{ shape = "Wedge", size = { 0.4, 1.0, 1.2 }, offset = { -1.9, 0.6, -0.4 }, rot = { 0, 0, -30 }, color = { 90, 170, 250 }, name = "FlosseL" },
+				{ shape = "Wedge", size = { 0.4, 1.0, 1.2 }, offset = { 1.9, 0.6, -0.4 }, rot = { 0, 0, 30 }, color = { 90, 170, 250 }, name = "FlosseR" },
+				{ shape = "Wedge", size = { 2.0, 0.5, 1.8 }, offset = { 0, 0.3, 2.9 }, rot = { 0, 180, 0 }, color = { 90, 170, 250 }, name = "Schwanzflosse" },
+			},
+		},
+	},
+
+	-- ===== STARTER: PFLANZE =====
+	sproessli = {
+		name = "Sprössli", typ = "Pflanze", starter = true,
+		desc = "Auf seinem Kopf wächst ein frisches Blatt.",
+		base = { hp = 60, atk = 58, def = 56, spd = 58 },
+		learnset = { { 1, "tackle" }, { 1, "blattschuss" }, { 7, "rankenschlag" }, { 13, "blattklinge" } },
+		evolveLevel = 16, evolveTo = "florassor",
+		build = {
+			body = { shape = "Ball", size = { 2.1, 2.0, 2.2 }, color = { 110, 190, 90 } },
+			head = { size = 1.7, offset = { 0, 1.2, -1.0 }, color = { 130, 205, 105 } },
+			legs = 2, legHeight = 0.6,
+			parts = {
+				{ shape = "Block", size = { 0.5, 1.1, 0.5 }, offset = { -0.6, 2.3, -1.0 }, rot = { 0, 0, 12 }, color = { 80, 150, 65 }, name = "OhrL" },
+				{ shape = "Block", size = { 0.5, 1.1, 0.5 }, offset = { 0.6, 2.3, -1.0 }, rot = { 0, 0, -12 }, color = { 80, 150, 65 }, name = "OhrR" },
+				{ shape = "Block", size = { 0.15, 0.6, 0.15 }, offset = { 0, 2.3, -1.0 }, color = { 70, 130, 55 }, name = "Stiel" },
+				{ shape = "Ball", size = { 1.1, 0.25, 1.6 }, offset = { 0, 2.7, -1.0 }, color = { 90, 200, 70 }, name = "Blatt" },
+				{ shape = "Ball", size = { 0.5, 0.5, 0.5 }, offset = { 0, 0.4, 1.3 }, color = { 235, 245, 230 }, name = "Puschel" },
+			},
+		},
+	},
+	florassor = {
+		name = "Florassor", typ = "Pflanze", noWild = true,
+		desc = "Trägt eine ganze Blumenwiese auf dem Rücken.",
+		base = { hp = 86, atk = 78, def = 80, spd = 62 },
+		learnset = { { 1, "blattschuss" }, { 1, "rankenschlag" }, { 13, "blattklinge" }, { 22, "solarblitz" } },
+		build = {
+			body = { shape = "Block", size = { 3.3, 2.5, 4.2 }, color = { 70, 160, 80 } },
+			head = { size = 2.1, offset = { 0, 1.5, -2.2 }, color = { 95, 180, 95 } },
+			legs = 4, legHeight = 0.9,
+			parts = {
+				{ shape = "Ball", size = { 2.2, 0.5, 2.2 }, offset = { 0, 1.9, 0.4 }, color = { 90, 200, 70 }, name = "Blattkranz" },
+				{ shape = "Ball", size = { 0.9, 0.9, 0.9 }, offset = { 0, 2.4, 0.4 }, color = { 255, 200, 60 }, name = "Bluete" },
+				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { -0.7, 2.2, 0.4 }, color = { 245, 130, 180 }, name = "Blume1" },
+				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { 0.7, 2.2, 0.4 }, color = { 245, 130, 180 }, name = "Blume2" },
+				{ shape = "Block", size = { 0.6, 0.6, 1.6 }, offset = { 0, 0.6, 2.7 }, color = { 70, 160, 80 }, name = "Schwanz" },
+			},
+		},
+	},
+
+	-- ===== WILDE MONSTER =====
+	mopsel = {
+		name = "Mopsel", typ = "Normal",
+		desc = "Knabbert einfach alles an. Wirklich alles.",
+		base = { hp = 45, atk = 48, def = 40, spd = 55 },
+		learnset = { { 1, "tackle" }, { 5, "kratzer" }, { 10, "koerperwurf" } },
+		evolveLevel = 14, evolveTo = "mopsulor",
+		build = {
+			body = { shape = "Ball", size = { 1.9, 1.7, 2.1 }, color = { 170, 140, 110 } },
+			head = { size = 1.4, offset = { 0, 0.9, -1.0 }, color = { 180, 150, 120 } },
+			legs = 2, legHeight = 0.5,
+			parts = {
+				{ shape = "Ball", size = { 0.7, 0.7, 0.25 }, offset = { -0.6, 1.7, -1.0 }, color = { 150, 120, 95 }, name = "OhrL" },
+				{ shape = "Ball", size = { 0.7, 0.7, 0.25 }, offset = { 0.6, 1.7, -1.0 }, color = { 150, 120, 95 }, name = "OhrR" },
+				{ shape = "Block", size = { 0.18, 0.18, 1.6 }, offset = { 0, 0.5, 1.6 }, rot = { -20, 0, 0 }, color = { 140, 110, 90 }, name = "Schwanz" },
+			},
+		},
+	},
+	mopsulor = {
+		name = "Mopsulor", typ = "Normal", noWild = true,
+		desc = "Aus dem Knabbern ist Kraft geworden.",
+		base = { hp = 70, atk = 72, def = 58, spd = 72 },
+		learnset = { { 1, "tackle" }, { 1, "koerperwurf" }, { 18, "hyperschlag" } },
+		build = {
+			body = { shape = "Ball", size = { 2.9, 2.5, 3.1 }, color = { 150, 115, 85 } },
+			head = { size = 2.0, offset = { 0, 1.4, -1.5 }, color = { 165, 130, 100 } },
+			legs = 4, legHeight = 0.8,
+			parts = {
+				{ shape = "Ball", size = { 0.9, 0.9, 0.3 }, offset = { -0.85, 2.5, -1.5 }, color = { 130, 100, 75 }, name = "OhrL" },
+				{ shape = "Ball", size = { 0.9, 0.9, 0.3 }, offset = { 0.85, 2.5, -1.5 }, color = { 130, 100, 75 }, name = "OhrR" },
+				{ shape = "Block", size = { 0.25, 0.25, 2.2 }, offset = { 0, 0.9, 2.3 }, rot = { -25, 0, 0 }, color = { 120, 95, 70 }, name = "Schwanz" },
+				{ shape = "Block", size = { 0.5, 0.5, 0.2 }, offset = { 0, 0.65, -2.42 }, color = { 250, 250, 250 }, name = "Zahn" },
+			},
+		},
+	},
+	flauschi = {
+		name = "Flauschi", typ = "Normal",
+		desc = "Weich wie eine Wolke, schläft am liebsten im Gras.",
+		base = { hp = 55, atk = 45, def = 50, spd = 48 },
+		learnset = { { 1, "tackle" }, { 6, "kratzer" }, { 12, "koerperwurf" } },
+		build = {
+			body = { shape = "Ball", size = { 2.3, 2.1, 2.3 }, color = { 242, 242, 242 } },
+			head = { size = 1.3, offset = { 0, 1.0, -1.3 }, color = { 220, 205, 195 } },
+			legs = 2, legHeight = 0.5,
+			parts = {
+				{ shape = "Block", size = { 1.5, 0.25, 0.9 }, offset = { -1.6, 0.9, 0 }, rot = { 0, 0, 18 }, color = { 250, 250, 250 }, name = "FluegelL" },
+				{ shape = "Block", size = { 1.5, 0.25, 0.9 }, offset = { 1.6, 0.9, 0 }, rot = { 0, 0, -18 }, color = { 250, 250, 250 }, name = "FluegelR" },
+				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { 0, 0.4, 1.3 }, color = { 250, 250, 250 }, name = "Puschel" },
+			},
+		},
+	},
+	zappli = {
+		name = "Zappli", typ = "Elektro",
+		desc = "Sein Fell knistert. Streicheln auf eigene Gefahr!",
+		base = { hp = 48, atk = 55, def = 40, spd = 70 },
+		learnset = { { 1, "kratzer" }, { 1, "blitzfunke" }, { 8, "stromstoss" }, { 14, "blitzhammer" } },
+		evolveLevel = 18, evolveTo = "voltarex",
+		build = {
+			body = { shape = "Ball", size = { 2.0, 1.8, 2.2 }, color = { 250, 210, 60 } },
+			head = { size = 1.5, offset = { 0, 1.0, -1.1 }, color = { 252, 220, 80 } },
+			legs = 4, legHeight = 0.6,
+			parts = {
+				{ shape = "Wedge", size = { 0.45, 0.8, 0.45 }, offset = { -0.55, 1.9, -1.1 }, color = { 60, 60, 60 }, name = "OhrL" },
+				{ shape = "Wedge", size = { 0.45, 0.8, 0.45 }, offset = { 0.55, 1.9, -1.1 }, color = { 60, 60, 60 }, name = "OhrR" },
+				{ shape = "Block", size = { 0.3, 0.3, 1.0 }, offset = { 0, 0.9, 1.5 }, rot = { -35, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz1" },
+				{ shape = "Block", size = { 0.3, 0.3, 0.8 }, offset = { 0, 1.5, 2.0 }, rot = { 35, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz2" },
+			},
+		},
+	},
+	voltarex = {
+		name = "Voltarex", typ = "Elektro", noWild = true,
+		desc = "Ein Gewitter auf vier Beinen.",
+		base = { hp = 74, atk = 82, def = 60, spd = 95 },
+		learnset = { { 1, "blitzfunke" }, { 1, "stromstoss" }, { 14, "blitzhammer" }, { 22, "megavolt" } },
+		build = {
+			body = { shape = "Block", size = { 2.9, 2.3, 3.9 }, color = { 240, 190, 40 } },
+			head = { size = 2.0, offset = { 0, 1.5, -2.0 }, color = { 248, 205, 60 } },
+			legs = 4, legHeight = 1.0,
+			parts = {
+				{ shape = "Ball", size = { 0.5, 0.5, 0.5 }, offset = { 0, 2.7, -2.0 }, color = { 120, 240, 255 }, material = "Neon", name = "Horn" },
+				{ shape = "Ball", size = { 0.45, 0.45, 0.45 }, offset = { -1.5, 1.6, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "FunkeL" },
+				{ shape = "Ball", size = { 0.45, 0.45, 0.45 }, offset = { 1.5, 1.6, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "FunkeR" },
+				{ shape = "Block", size = { 0.35, 0.35, 1.4 }, offset = { 0, 1.2, 2.4 }, rot = { -30, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz1" },
+				{ shape = "Block", size = { 0.35, 0.35, 1.0 }, offset = { 0, 2.0, 3.0 }, rot = { 30, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz2" },
+			},
+		},
+	},
+	blinki = {
+		name = "Blinki", typ = "Elektro",
+		desc = "Nachts leuchtet sein Hinterteil wie eine Laterne.",
+		base = { hp = 50, atk = 52, def = 42, spd = 66 },
+		learnset = { { 1, "blitzfunke" }, { 8, "stromstoss" }, { 15, "blitzhammer" } },
+		build = {
+			body = { shape = "Ball", size = { 1.7, 1.5, 1.9 }, color = { 90, 90, 120 } },
+			head = { size = 1.3, offset = { 0, 0.8, -1.0 }, color = { 105, 105, 135 }, eyeScale = 1.4 },
+			legs = 2, legHeight = 0.45,
+			parts = {
+				{ shape = "Ball", size = { 1.2, 1.2, 1.2 }, offset = { 0, 0.3, 1.3 }, color = { 200, 255, 120 }, material = "Neon", name = "Leuchte" },
+				{ shape = "Block", size = { 1.2, 0.15, 0.7 }, offset = { -1.2, 1.1, 0 }, rot = { 0, 0, 25 }, color = { 200, 220, 255 }, transparency = 0.4, name = "FluegelL" },
+				{ shape = "Block", size = { 1.2, 0.15, 0.7 }, offset = { 1.2, 1.1, 0 }, rot = { 0, 0, -25 }, color = { 200, 220, 255 }, transparency = 0.4, name = "FluegelR" },
+			},
+		},
+	},
+	quallino = {
+		name = "Quallino", typ = "Wasser",
+		desc = "Schwebt gemütlich umher und wabbelt freundlich.",
+		base = { hp = 58, atk = 50, def = 60, spd = 45 },
+		learnset = { { 1, "wasserspritzer" }, { 8, "blubbstrahl" }, { 15, "aquawelle" } },
+		build = {
+			body = { shape = "Ball", size = { 2.5, 1.7, 2.5 }, color = { 150, 120, 230 }, transparency = 0.2 },
+			legs = 0, groundClearance = 1.4,
+			parts = {
+				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { -0.7, -1.2, -0.5 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel1" },
+				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { 0.7, -1.2, -0.5 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel2" },
+				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { -0.7, -1.2, 0.6 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel3" },
+				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { 0.7, -1.2, 0.6 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel4" },
+			},
+		},
+	},
+	flossi = {
+		name = "Flossi", typ = "Wasser",
+		desc = "Hüpft erstaunlich weit für einen Fisch.",
+		base = { hp = 46, atk = 52, def = 42, spd = 60 },
+		learnset = { { 1, "tackle" }, { 1, "wasserspritzer" }, { 9, "blubbstrahl" }, { 16, "aquawelle" } },
+		build = {
+			body = { shape = "Ball", size = { 1.7, 1.6, 2.5 }, color = { 240, 140, 60 } },
+			legs = 0,
+			parts = {
+				{ shape = "Wedge", size = { 0.4, 1.1, 1.0 }, offset = { 0, 1.2, 0.3 }, color = { 250, 170, 90 }, name = "Rueckenflosse" },
+				{ shape = "Wedge", size = { 0.35, 1.3, 1.1 }, offset = { 0, 0.2, 1.7 }, rot = { 0, 180, 0 }, color = { 250, 170, 90 }, name = "Schwanzflosse" },
+				{ shape = "Wedge", size = { 0.25, 0.6, 0.7 }, offset = { -1.0, -0.2, -0.3 }, rot = { 0, 0, -40 }, color = { 250, 170, 90 }, name = "FlosseL" },
+				{ shape = "Wedge", size = { 0.25, 0.6, 0.7 }, offset = { 1.0, -0.2, -0.3 }, rot = { 0, 0, 40 }, color = { 250, 170, 90 }, name = "FlosseR" },
+			},
+		},
+	},
+	pilzli = {
+		name = "Pilzli", typ = "Pflanze",
+		desc = "Versteckt sich gern zwischen echten Pilzen.",
+		base = { hp = 56, atk = 54, def = 56, spd = 38 },
+		learnset = { { 1, "blattschuss" }, { 8, "rankenschlag" }, { 15, "blattklinge" } },
+		build = {
+			body = { shape = "Cylinder", size = { 1.4, 1.5, 1.5 }, rot = { 0, 0, 90 }, color = { 235, 220, 190 } },
+			legs = 2, legHeight = 0.4,
+			parts = {
+				{ shape = "Ball", size = { 2.6, 1.2, 2.6 }, offset = { 0, 1.1, 0 }, color = { 200, 60, 60 }, name = "Kappe" },
+				{ shape = "Ball", size = { 0.5, 0.3, 0.5 }, offset = { -0.7, 1.6, -0.5 }, color = { 250, 245, 235 }, name = "Punkt1" },
+				{ shape = "Ball", size = { 0.5, 0.3, 0.5 }, offset = { 0.6, 1.6, 0.4 }, color = { 250, 245, 235 }, name = "Punkt2" },
+				{ shape = "Ball", size = { 0.4, 0.25, 0.4 }, offset = { 0.1, 1.75, -0.2 }, color = { 250, 245, 235 }, name = "Punkt3" },
+			},
+		},
+	},
+	dorni = {
+		name = "Dorni", typ = "Pflanze",
+		desc = "Ein wandelnder Kaktus. Bitte nicht umarmen.",
+		base = { hp = 55, atk = 60, def = 62, spd = 35 },
+		learnset = { { 1, "kratzer" }, { 1, "blattschuss" }, { 9, "rankenschlag" }, { 16, "blattklinge" } },
+		build = {
+			body = { shape = "Cylinder", size = { 2.0, 1.7, 1.7 }, rot = { 0, 0, 90 }, color = { 90, 170, 70 } },
+			legs = 2, legHeight = 0.45,
+			parts = {
+				{ shape = "Cylinder", size = { 1.0, 0.55, 0.55 }, offset = { -1.1, 0.5, 0 }, rot = { 0, 0, 60 }, color = { 90, 170, 70 }, name = "ArmL" },
+				{ shape = "Cylinder", size = { 1.0, 0.55, 0.55 }, offset = { 1.1, 0.5, 0 }, rot = { 0, 0, -60 }, color = { 90, 170, 70 }, name = "ArmR" },
+				{ shape = "Ball", size = { 0.7, 0.5, 0.7 }, offset = { 0, 1.3, 0 }, color = { 245, 130, 180 }, name = "Bluete" },
+				{ shape = "Wedge", size = { 0.2, 0.4, 0.2 }, offset = { -0.6, 0.9, -0.6 }, color = { 240, 245, 230 }, name = "Dorn1" },
+				{ shape = "Wedge", size = { 0.2, 0.4, 0.2 }, offset = { 0.6, 0.9, 0.5 }, color = { 240, 245, 230 }, name = "Dorn2" },
+			},
+		},
+	},
+	glutmops = {
+		name = "Glutmops", typ = "Feuer",
+		desc = "Schnauft kleine Rauchwölkchen, wenn er rennt.",
+		base = { hp = 60, atk = 64, def = 48, spd = 55 },
+		learnset = { { 1, "tackle" }, { 1, "funkenregen" }, { 9, "glutbiss" }, { 16, "flammenwerfer" } },
+		build = {
+			body = { shape = "Ball", size = { 2.1, 1.8, 2.3 }, color = { 130, 75, 50 } },
+			head = { size = 1.6, offset = { 0, 0.9, -1.2 }, color = { 145, 85, 60 } },
+			legs = 4, legHeight = 0.6,
+			parts = {
+				{ shape = "Ball", size = { 0.6, 0.6, 0.3 }, offset = { -0.65, 1.7, -1.2 }, color = { 110, 60, 40 }, name = "OhrL" },
+				{ shape = "Ball", size = { 0.6, 0.6, 0.3 }, offset = { 0.65, 1.7, -1.2 }, color = { 110, 60, 40 }, name = "OhrR" },
+				{ shape = "Ball", size = { 0.8, 0.7, 0.7 }, offset = { 0, 0.5, -2.0 }, color = { 90, 50, 35 }, name = "Schnauze" },
+				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { 0, 0.8, 1.5 }, color = { 255, 140, 30 }, material = "Neon", name = "Glutschwanz" },
+			},
+		},
+	},
+	brockel = {
+		name = "Brockel", typ = "Normal",
+		desc = "Sieht aus wie ein Stein. Ist auch fast einer.",
+		base = { hp = 62, atk = 55, def = 75, spd = 30 },
+		learnset = { { 1, "tackle" }, { 7, "kratzer" }, { 12, "koerperwurf" }, { 18, "hyperschlag" } },
+		build = {
+			body = { shape = "Block", size = { 2.3, 1.9, 2.3 }, color = { 135, 135, 135 }, material = "Slate" },
+			legs = 4, legHeight = 0.5,
+			parts = {
+				{ shape = "Ball", size = { 1.4, 0.4, 1.4 }, offset = { 0, 1.05, 0.2 }, color = { 100, 160, 80 }, name = "Moos" },
+				{ shape = "Block", size = { 0.7, 0.5, 0.6 }, offset = { -0.9, 1.05, -0.6 }, rot = { 15, 20, 0 }, color = { 120, 120, 120 }, material = "Slate", name = "Brocken" },
+			},
+		},
+	},
+}
+
+GameData.Starters = { "flarix", "aquani", "sproessli" }
+
+-- ========== ITEMS ==========
+GameData.Items = {
+	fangkugel = { name = "Fangkugel", desc = "Fängt wilde Monster. Besser bei wenig KP!", price = 150, ball = true },
+	trank = { name = "Trank", desc = "Heilt 30 KP.", price = 200, heal = 30 },
+	rotebeere = { name = "Rote Beere", desc = "Heilt 20 KP.", price = 80, heal = 20 },
+	blaubeere = { name = "Blaubeere", desc = "Heilt Statusprobleme (Brand/Schock).", price = 100, cure = true },
+	goldapfel = { name = "Goldapfel", desc = "Füllt KP komplett und heilt Status.", price = 600, heal = "full", cure = true },
+}
+GameData.ItemOrder = { "fangkugel", "trank", "rotebeere", "blaubeere", "goldapfel" }
+GameData.StartItems = { fangkugel = 5, trank = 2 }
+
+-- ========== ROUTEN &amp; GRAS ==========
+GameData.Routes = {
+	route1 = {
+		name = "Route 1", levelMin = 3, levelMax = 7,
+		pool = { { "mopsel", 30 }, { "flauschi", 22 }, { "zappli", 16 }, { "pilzli", 14 }, { "flossi", 12 }, { "glutmops", 6 } },
+	},
+	route2 = {
+		name = "Route 2", levelMin = 8, levelMax = 14,
+		pool = { { "blinki", 18 }, { "quallino", 16 }, { "dorni", 16 }, { "glutmops", 14 }, { "brockel", 14 }, { "flossi", 10 }, { "mopsel", 8 }, { "zappli", 4 } },
+	},
+}
+
+-- Hohes Gras: { x1, z1, x2, z2, route }
+GameData.GrassPatches = {
+	{ 110, -25, 175, 25, "route1" },
+	{ 205, -32, 268, 14, "route1" },
+	{ 295, -18, 355, 32, "route1" },
+	{ -42, -205, 25, -140, "route2" },
+	{ -18, -296, 55, -238, "route2" },
+}
+
+-- ========== TRAINER ==========
+GameData.Trainers = {
+	{
+		id = "timo", name = "Trainer Timo", pos = { 185, 4 },
+		greeting = "Hey! Zeig mir, was dein Team kann!",
+		team = { { "mopsel", 6 }, { "flauschi", 7 } },
+		reward = 150, shirt = { 220, 80, 80 },
+	},
+	{
+		id = "lena", name = "Trainerin Lena", pos = { 278, -8 },
+		greeting = "Meine Monster sind blitzschnell!",
+		team = { { "zappli", 8 }, { "pilzli", 8 } },
+		reward = 200, shirt = { 240, 200, 70 },
+	},
+	{
+		id = "rocko", name = "Ranger Rocko", pos = { 8, -222 },
+		greeting = "Niemand kommt an mir vorbei!",
+		team = { { "glutmops", 12 }, { "quallino", 12 }, { "brockel", 13 } },
+		reward = 350, shirt = { 90, 140, 90 },
+	},
+}
+
+-- ========== FORMELN ==========
+
+function GameData.StatsFor(speciesId, level)
+	local sp = GameData.Species[speciesId]
+	local b = sp.base
+	return {
+		maxHp = math.floor(b.hp * (0.5 + level * 0.07)) + 12,
+		atk = math.floor(b.atk * (0.36 + level * 0.055)) + 4,
+		def = math.floor(b.def * (0.36 + level * 0.055)) + 4,
+		spd = math.floor(b.spd * (0.36 + level * 0.055)) + 4,
+	}
+end
+
+function GameData.XpToNext(level)
+	return 15 * level + 20
+end
+
+function GameData.XpGain(enemyLevel, isTrainer)
+	local gain = enemyLevel * 12
+	if isTrainer then
+		gain = math.floor(gain * 1.3)
+	end
+	return gain
+end
+
+-- Fangchance: besser bei wenig KP, etwas schwerer bei hohem Level
+function GameData.CatchChance(level, hpFrac)
+	local c = (0.8 - 0.62 * hpFrac) * (1.05 - level * 0.008)
+	if c &lt; 0.05 then c = 0.05 end
+	if c &gt; 0.95 then c = 0.95 end
+	return c
+end
+
+function GameData.MovesFor(speciesId, level)
+	local sp = GameData.Species[speciesId]
+	local known = {}
+	for _, entry in ipairs(sp.learnset) do
+		if level &gt;= entry[1] then
+			table.insert(known, entry[2])
+		end
+	end
+	while #known &gt; 4 do
+		table.remove(known, 1)
+	end
+	return known
+end
+
+function GameData.MoveLearnedAt(speciesId, level)
+	local sp = GameData.Species[speciesId]
+	for _, entry in ipairs(sp.learnset) do
+		if entry[1] == level then
+			return entry[2]
+		end
+	end
+	return nil
+end
+
+return GameData
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX2">
+				<Properties>
+					<string name="Name">MonsterFactory</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Baut aus dem "build"-Bauplan in GameData eine richtige
+-- 3D-Monster-Figur aus Parts (Rumpf, Kopf, Augen, Beine, ...).
+-- Vorne ist -Z, damit CFrame.lookAt die Figur richtig dreht.
+-- Wird von Server UND Client benutzt (Client: Mini-Bilder).
+-- ============================================================
+
+local GameData = require(script.Parent:WaitForChild("GameData"))
+
+local MonsterFactory = {}
+
+local function c3(rgb)
+	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+end
+
+local function makePart(spec, scale)
+	local part
+	if spec.shape == "Wedge" then
+		part = Instance.new("WedgePart")
+	else
+		part = Instance.new("Part")
+		if spec.shape == "Ball" then
+			part.Shape = Enum.PartType.Ball
+		elseif spec.shape == "Cylinder" then
+			part.Shape = Enum.PartType.Cylinder
+		end
+	end
+	part.Size = Vector3.new(spec.size[1] * scale, spec.size[2] * scale, spec.size[3] * scale)
+	part.Color = c3(spec.color)
+	part.Material = spec.material and Enum.Material[spec.material] or Enum.Material.SmoothPlastic
+	part.Transparency = spec.transparency or 0
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CastShadow = true
+	part.Name = spec.name or "Teil"
+	return part
+end
+
+local function offsetCFrame(spec, scale)
+	local off = spec.offset or { 0, 0, 0 }
+	local cf = CFrame.new(off[1] * scale, off[2] * scale, off[3] * scale)
+	if spec.rot then
+		cf = cf * CFrame.Angles(math.rad(spec.rot[1]), math.rad(spec.rot[2]), math.rad(spec.rot[3]))
+	end
+	return cf
+end
+
+local function weldTo(root, part)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = root
+	weld.Part1 = part
+	weld.Parent = root
+	part.Anchored = false
+end
+
+-- Augen (2 weisse Kugeln mit Pupillen) vorne an ein Teil setzen.
+-- zForward = wie weit nach vorne (in Studs, unskaliert)
+local function addEyes(model, root, attachCF, size, zForward, eyeScale, scale)
+	local eyeD = size * 0.3 * (eyeScale or 1) * scale
+	for _, side in ipairs({ -1, 1 }) do
+		local white = Instance.new("Part")
+		white.Shape = Enum.PartType.Ball
+		white.Size = Vector3.new(eyeD, eyeD, eyeD)
+		white.Color = Color3.fromRGB(250, 250, 250)
+		white.Material = Enum.Material.SmoothPlastic
+		white.CanCollide = false
+		white.CanQuery = false
+		white.Name = "Auge"
+		white.CFrame = root.CFrame * attachCF
+			* CFrame.new(side * size * 0.26 * scale, size * 0.12 * scale, -zForward * scale)
+		white.Parent = model
+		weldTo(root, white)
+
+		local pupil = Instance.new("Part")
+		pupil.Shape = Enum.PartType.Ball
+		pupil.Size = Vector3.new(eyeD * 0.5, eyeD * 0.5, eyeD * 0.5)
+		pupil.Color = Color3.fromRGB(25, 25, 30)
+		pupil.Material = Enum.Material.SmoothPlastic
+		pupil.CanCollide = false
+		pupil.CanQuery = false
+		pupil.Name = "Pupille"
+		pupil.CFrame = white.CFrame * CFrame.new(0, 0, -eyeD * 0.34)
+		pupil.Parent = model
+		weldTo(root, pupil)
+	end
+end
+
+-- Baut die Figur. scaleMul: 1 = normal, kleiner fuer Tisch-Figuren.
+-- Rueckgabe: Model (PrimaryPart = Rumpf), Attribut "RootHeight" =
+-- Abstand Rumpfmitte -&gt; Boden, fuers Hinstellen.
+function MonsterFactory.Create(speciesId, scaleMul)
+	local scale = scaleMul or 1
+	local sp = GameData.Species[speciesId]
+	local build = sp.build
+
+	local model = Instance.new("Model")
+	model.Name = sp.name
+
+	-- Rumpf (Wurzel, verankert). Bei gedrehten Koerpern (z.B.
+	-- stehende Zylinder) ist die Wurzel ein unsichtbarer Block,
+	-- damit alle Offsets gerade bleiben - der sichtbare Koerper
+	-- wird als gedrehtes Teil angeschweisst.
+	local body
+	local bodySize = build.body.size
+	if build.body.rot then
+		local bounding = { bodySize[1], bodySize[2], bodySize[3] }
+		if build.body.rot[3] ~= 0 then
+			bounding = { bodySize[2], bodySize[1], bodySize[3] }
+		end
+		body = makePart({ shape = "Block", size = bounding, color = build.body.color, transparency = 1, name = "Rumpf" }, scale)
+		bodySize = bounding
+		local visible = makePart({
+			shape = build.body.shape, size = build.body.size,
+			color = build.body.color, material = build.body.material,
+			transparency = build.body.transparency, name = "Koerper",
+		}, scale)
+		visible.CFrame = body.CFrame * offsetCFrame({ offset = { 0, 0, 0 }, rot = build.body.rot }, scale)
+		visible.Parent = model
+		body.Anchored = true
+		body.CanQuery = true
+		body.Parent = model
+		model.PrimaryPart = body
+		weldTo(body, visible)
+	else
+		body = makePart({
+			shape = build.body.shape,
+			size = build.body.size,
+			color = build.body.color,
+			material = build.body.material,
+			transparency = build.body.transparency,
+			name = "Rumpf",
+		}, scale)
+		body.Anchored = true
+		body.CanQuery = true
+		body.Parent = model
+		model.PrimaryPart = body
+	end
+
+	local bodyH = bodySize[2] * scale
+	local legs = build.legs or 0
+	local legH = (build.legHeight or 0.6) * scale
+
+	-- Beine
+	if legs &gt; 0 then
+		local bx = bodySize[1] * scale * 0.32
+		local bz = bodySize[3] * scale * 0.3
+		local positions = {}
+		if legs &gt;= 4 then
+			positions = { { -bx, -bz }, { bx, -bz }, { -bx, bz }, { bx, bz } }
+		else
+			positions = { { -bx * 0.8, 0 }, { bx * 0.8, 0 } }
+		end
+		local legColor = c3(build.body.color):Lerp(Color3.new(0, 0, 0), 0.25)
+		for i, p in ipairs(positions) do
+			local leg = Instance.new("Part")
+			leg.Shape = Enum.PartType.Cylinder
+			leg.Size = Vector3.new(legH, 0.55 * scale, 0.55 * scale)
+			leg.Color = legColor
+			leg.Material = Enum.Material.SmoothPlastic
+			leg.CanCollide = false
+			leg.CanQuery = false
+			leg.Name = "Bein" .. i
+			leg.CFrame = body.CFrame * CFrame.new(p[1], -bodyH / 2 - legH / 2 + 0.15 * scale, p[2])
+				* CFrame.Angles(0, 0, math.rad(90))
+			leg.Parent = model
+			weldTo(body, leg)
+		end
+	end
+
+	-- Kopf + Augen
+	if build.head then
+		local hs = build.head.size * scale
+		local head = Instance.new("Part")
+		head.Shape = Enum.PartType.Ball
+		head.Size = Vector3.new(hs, hs, hs)
+		head.Color = c3(build.head.color or build.body.color)
+		head.Material = Enum.Material.SmoothPlastic
+		head.CanCollide = false
+		head.CanQuery = false
+		head.Name = "Kopf"
+		local hcf = offsetCFrame({ offset = build.head.offset }, scale)
+		head.CFrame = body.CFrame * hcf
+		head.Parent = model
+		weldTo(body, head)
+		addEyes(model, body, hcf, build.head.size, build.head.size * 0.38, build.head.eyeScale, scale)
+	else
+		-- Augen direkt vorne auf dem Rumpf
+		addEyes(model, body, CFrame.new(0, bodyH * 0.15, 0), bodySize[1] * 0.8, bodySize[3] * 0.48, build.eyeScale, scale)
+	end
+
+	-- Weitere Teile (Ohren, Schwaenze, Flossen, Fluegel, ...)
+	if build.parts then
+		for _, spec in ipairs(build.parts) do
+			local part = makePart(spec, scale)
+			part.CFrame = body.CFrame * offsetCFrame(spec, scale)
+			part.Parent = model
+			weldTo(body, part)
+		end
+	end
+
+	local rootHeight = bodyH / 2
+	if legs &gt; 0 then
+		rootHeight = rootHeight + legH - 0.15 * scale
+	end
+	if build.groundClearance then
+		rootHeight = rootHeight + build.groundClearance * scale
+	end
+	model:SetAttribute("RootHeight", rootHeight)
+	model:SetAttribute("SpeciesId", speciesId)
+	return model
+end
+
+-- Stellt das Monster so hin, dass es auf dem Boden steht und
+-- Richtung "lookAt" schaut.
+function MonsterFactory.PlaceOnGround(model, position, lookAt)
+	local h = model:GetAttribute("RootHeight") or 1.5
+	local pos = Vector3.new(position.X, position.Y + h, position.Z)
+	local target = Vector3.new(lookAt.X, pos.Y, lookAt.Z)
+	model:PivotTo(CFrame.lookAt(pos, target))
+end
+
+return MonsterFactory
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX3">
+				<Properties>
+					<string name="Name">Remotes</string>
+					<ProtectedString name="Source">-- Verwaltet alle RemoteEvents zwischen Server und Client.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = {}
+
+local FOLDER_NAME = "MonsterweltRemotes"
+
+local NAMES = {
+	"ClientReady", -- Client -&gt; Server: UI geladen, bitte Daten senden
+	"DataSync", -- Server -&gt; Client: Team/Box/Items/Muenzen
+	"Notify", -- Server -&gt; Client: Toast-Nachricht
+	"StarterAsk", -- Server -&gt; Client: "Willst du X nehmen?"
+	"StarterChoose", -- Client -&gt; Server: Starter bestaetigt
+	"BattleStart", -- Server -&gt; Client: Kampf beginnt
+	"BattleUpdate", -- Server -&gt; Client: Rundenergebnis
+	"BattleAction", -- Client -&gt; Server: Aktion
+	"TeamAction", -- Client -&gt; Server: Team/Box verwalten
+	"UseItem", -- Client -&gt; Server: Item ausserhalb des Kampfes
+	"ShopBuy", -- Client -&gt; Server: Item kaufen
+	"OpenUi", -- Server -&gt; Client: "shop" / "box" oeffnen
+}
+
+function Remotes.InitServer()
+	local folder = Instance.new("Folder")
+	folder.Name = FOLDER_NAME
+	for _, name in ipairs(NAMES) do
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = name
+		ev.Parent = folder
+	end
+	folder.Parent = ReplicatedStorage
+end
+
+function Remotes.Get(name)
+	local folder = ReplicatedStorage:WaitForChild(FOLDER_NAME)
+	return folder:WaitForChild(name)
+end
+
+return Remotes
+</ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="ServerScriptService" referent="RBX23">
+		<Item class="Folder" referent="RBX22">
+			<Properties>
+				<string name="Name">Server</string>
+			</Properties>
+			<Item class="Script" referent="RBX4">
+				<Properties>
+					<string name="Name">Main</string>
+					<ProtectedString name="Source">-- ============================================================
+-- MONSTERWELT - Server-Start
+-- Baut die Welt und startet alle Systeme.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+-- RemoteEvents zuerst, damit der Client nichts verpasst
+Remotes.InitServer()
+
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local WorldBuilder = require(script.Parent:WaitForChild("WorldBuilder"))
+local CompanionService = require(script.Parent:WaitForChild("CompanionService"))
+local BattleService = require(script.Parent:WaitForChild("BattleService"))
+local RoamService = require(script.Parent:WaitForChild("RoamService"))
+local TrainerService = require(script.Parent:WaitForChild("TrainerService"))
+local FarmService = require(script.Parent:WaitForChild("FarmService"))
+
+PlayerData.Init()
+WorldBuilder.Build()
+CompanionService.Init()
+BattleService.Init()
+
+-- Wilde Begegnungen (Gras + herumlaufende Monster)
+RoamService.Init(function(player, speciesId, level, roamerModel)
+	return BattleService.TryStartWild(player, speciesId, level, roamerModel)
+end)
+
+-- Trainer-Herausforderungen
+TrainerService.Init(function(player, trainerDef)
+	return BattleService.TryStartTrainer(player, trainerDef)
+end)
+
+FarmService.Init()
+
+-- Querverbindungen
+PlayerData.IsBusy = BattleService.IsInBattle
+PlayerData.OnTeamChanged = function(player)
+	CompanionService.Refresh(player)
+end
+
+print("[Monsterwelt] Server gestartet - viel Spaß beim Fangen!")
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX5">
+				<Properties>
+					<string name="Name">PlayerData</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Spielerdaten: Team, Box, Muenzen, Items, Speichern &amp; Laden
+-- ============================================================
+
+local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local PlayerData = {}
+
+-- Wird von Main.server gesetzt:
+PlayerData.IsBusy = function(_player) return false end -- im Kampf?
+PlayerData.OnTeamChanged = function(_player) end -- Begleiter aktualisieren
+
+local sessions = {}
+local store = nil
+local storeOk = false
+
+local DataSyncRemote = nil
+local NotifyRemote = nil
+
+-- ---------- Monster-Instanzen ----------
+
+function PlayerData.NewMon(speciesId, level)
+	local stats = GameData.StatsFor(speciesId, level)
+	return { id = speciesId, level = level, xp = 0, hp = stats.maxHp, status = nil }
+end
+
+function PlayerData.MaxHpOf(mon)
+	return GameData.StatsFor(mon.id, mon.level).maxHp
+end
+
+local function defaultData()
+	local items = {}
+	for id, count in pairs(GameData.StartItems) do
+		items[id] = count
+	end
+	return {
+		team = {}, box = {}, items = items,
+		coins = GameData.START_COINS,
+		starter = false, catches = 0, beatenTrainers = {},
+	}
+end
+
+-- ---------- Laden/Speichern absichern ----------
+
+local function sanitizeMon(raw)
+	if type(raw) ~= "table" then return nil end
+	if type(raw.id) ~= "string" or not GameData.Species[raw.id] then return nil end
+	local level = math.floor(tonumber(raw.level) or 1)
+	if level &lt; 1 then level = 1 end
+	if level &gt; GameData.MAX_LEVEL then level = GameData.MAX_LEVEL end
+	local mon = PlayerData.NewMon(raw.id, level)
+	local maxHp = PlayerData.MaxHpOf(mon)
+	local xp = math.floor(tonumber(raw.xp) or 0)
+	if xp &lt; 0 then xp = 0 end
+	mon.xp = xp
+	local hp = math.floor(tonumber(raw.hp) or maxHp)
+	if hp &lt; 0 then hp = 0 end
+	if hp &gt; maxHp then hp = maxHp end
+	mon.hp = hp
+	if raw.status == "brand" or raw.status == "schock" then
+		mon.status = raw.status
+	end
+	return mon
+end
+
+local function sanitize(raw)
+	local data = defaultData()
+	if type(raw) ~= "table" then return data end
+	if type(raw.team) == "table" then
+		for _, rawMon in ipairs(raw.team) do
+			local mon = sanitizeMon(rawMon)
+			if mon and #data.team &lt; GameData.TEAM_SIZE then
+				table.insert(data.team, mon)
+			end
+		end
+	end
+	if type(raw.box) == "table" then
+		for _, rawMon in ipairs(raw.box) do
+			local mon = sanitizeMon(rawMon)
+			if mon and #data.box &lt; GameData.BOX_SIZE then
+				table.insert(data.box, mon)
+			end
+		end
+	end
+	if type(raw.items) == "table" then
+		data.items = {}
+		for id, count in pairs(raw.items) do
+			if GameData.Items[id] and type(count) == "number" and count &gt; 0 then
+				data.items[id] = math.floor(count)
+			end
+		end
+	end
+	if type(raw.beatenTrainers) == "table" then
+		data.beatenTrainers = {}
+		for id, v in pairs(raw.beatenTrainers) do
+			if v then data.beatenTrainers[id] = true end
+		end
+	end
+	data.coins = math.max(0, math.floor(tonumber(raw.coins) or GameData.START_COINS))
+	data.catches = math.floor(tonumber(raw.catches) or 0)
+	data.starter = (raw.starter == true) and (#data.team &gt; 0)
+	return data
+end
+
+local function keyFor(player)
+	return "p_" .. player.UserId
+end
+
+local function saveNow(player)
+	local session = sessions[player]
+	if not session or not storeOk then return end
+	local payload = {
+		team = session.team, box = session.box, items = session.items,
+		coins = session.coins, starter = session.starter,
+		catches = session.catches, beatenTrainers = session.beatenTrainers,
+	}
+	local ok, err = pcall(function()
+		store:SetAsync(keyFor(player), payload)
+	end)
+	if not ok then
+		warn("[Monsterwelt] Speichern fehlgeschlagen fuer " .. player.Name .. ": " .. tostring(err))
+	end
+end
+
+-- ---------- Oeffentliche API ----------
+
+function PlayerData.SessionOf(player)
+	return sessions[player]
+end
+
+function PlayerData.Notify(player, msg, kind)
+	if NotifyRemote then
+		NotifyRemote:FireClient(player, msg, kind or "info")
+	end
+end
+
+local function updateLeaderstats(player)
+	local session = sessions[player]
+	local stats = player:FindFirstChild("leaderstats")
+	if not session or not stats then return end
+	local coins = stats:FindFirstChild("Münzen")
+	if coins then coins.Value = session.coins end
+	local caught = stats:FindFirstChild("Gefangen")
+	if caught then caught.Value = session.catches end
+end
+
+function PlayerData.Sync(player)
+	local session = sessions[player]
+	if not session or not DataSyncRemote then return end
+	updateLeaderstats(player)
+	DataSyncRemote:FireClient(player, {
+		team = session.team, box = session.box, items = session.items,
+		coins = session.coins, starter = session.starter,
+	})
+	PlayerData.OnTeamChanged(player)
+end
+
+function PlayerData.AddCoins(player, amount)
+	local session = sessions[player]
+	if not session then return end
+	session.coins = math.max(0, session.coins + amount)
+end
+
+function PlayerData.GiveItem(player, itemId, count)
+	local session = sessions[player]
+	if not session or not GameData.Items[itemId] then return end
+	session.items[itemId] = (session.items[itemId] or 0) + (count or 1)
+end
+
+-- Verbraucht 1x Item. Gibt true zurueck, wenn vorhanden.
+function PlayerData.TakeItem(player, itemId)
+	local session = sessions[player]
+	if not session then return false end
+	local count = session.items[itemId] or 0
+	if count &lt; 1 then return false end
+	if count == 1 then
+		session.items[itemId] = nil
+	else
+		session.items[itemId] = count - 1
+	end
+	return true
+end
+
+-- Heil-/Beeren-Wirkung auf ein Monster anwenden.
+-- Gibt (erfolgreich, Nachricht) zurueck.
+function PlayerData.ApplyItemEffect(mon, itemId)
+	local item = GameData.Items[itemId]
+	local sp = GameData.Species[mon.id]
+	if item.ball then
+		return false, "Fangkugeln kannst du nur im Kampf werfen!"
+	end
+	local maxHp = GameData.StatsFor(mon.id, mon.level).maxHp
+	local didSomething = false
+	if item.heal then
+		if mon.hp &lt; maxHp then
+			if item.heal == "full" then
+				mon.hp = maxHp
+			else
+				mon.hp = math.min(maxHp, mon.hp + item.heal)
+			end
+			didSomething = true
+		end
+	end
+	if item.cure and mon.status then
+		mon.status = nil
+		didSomething = true
+	end
+	if not didSomething then
+		return false, "Das würde gerade nichts bringen."
+	end
+	return true, sp.name .. " fühlt sich besser! (" .. item.name .. ")"
+end
+
+function PlayerData.GiveStarter(player, speciesId)
+	local session = sessions[player]
+	if not session or session.starter then return end
+	local valid = false
+	for _, id in ipairs(GameData.Starters) do
+		if id == speciesId then valid = true end
+	end
+	if not valid then return end
+	table.insert(session.team, PlayerData.NewMon(speciesId, 5))
+	session.starter = true
+	PlayerData.Sync(player)
+	PlayerData.Notify(player, GameData.Species[speciesId].name .. " ist jetzt dein Partner! Viel Erfolg!", "good")
+end
+
+function PlayerData.AddCaught(player, speciesId, level)
+	local session = sessions[player]
+	if not session then return nil end
+	local mon = PlayerData.NewMon(speciesId, level)
+	local dest = nil
+	if #session.team &lt; GameData.TEAM_SIZE then
+		table.insert(session.team, mon)
+		dest = "Team"
+	elseif #session.box &lt; GameData.BOX_SIZE then
+		table.insert(session.box, mon)
+		dest = "Box"
+	end
+	if dest then
+		session.catches = session.catches + 1
+	end
+	PlayerData.Sync(player)
+	return dest
+end
+
+function PlayerData.HealAll(player)
+	local session = sessions[player]
+	if not session then return end
+	for _, mon in ipairs(session.team) do
+		mon.hp = PlayerData.MaxHpOf(mon)
+		mon.status = nil
+	end
+	PlayerData.Sync(player)
+end
+
+-- ---------- Remote-Handler ----------
+
+local function onTeamAction(player, op, index)
+	local session = sessions[player]
+	if not session then return end
+	if PlayerData.IsBusy(player) then
+		PlayerData.Notify(player, "Nicht mitten im Kampf!", "bad")
+		return
+	end
+	index = math.floor(tonumber(index) or 0)
+	if op == "leader" then
+		if index &gt;= 2 and index &lt;= #session.team then
+			local mon = table.remove(session.team, index)
+			table.insert(session.team, 1, mon)
+		end
+	elseif op == "toBox" then
+		if index &gt;= 1 and index &lt;= #session.team and #session.team &gt; 1 and #session.box &lt; GameData.BOX_SIZE then
+			local mon = table.remove(session.team, index)
+			table.insert(session.box, mon)
+		end
+	elseif op == "fromBox" then
+		if index &gt;= 1 and index &lt;= #session.box and #session.team &lt; GameData.TEAM_SIZE then
+			local mon = table.remove(session.box, index)
+			table.insert(session.team, mon)
+		end
+	end
+	PlayerData.Sync(player)
+end
+
+local function onUseItem(player, itemId, teamIndex)
+	local session = sessions[player]
+	if not session or type(itemId) ~= "string" or not GameData.Items[itemId] then return end
+	if PlayerData.IsBusy(player) then
+		PlayerData.Notify(player, "Benutze den Beutel im Kampf über das Kampfmenü!", "bad")
+		return
+	end
+	teamIndex = math.floor(tonumber(teamIndex) or 0)
+	local mon = session.team[teamIndex]
+	if not mon then return end
+	if (session.items[itemId] or 0) &lt; 1 then return end
+	local ok, msg = PlayerData.ApplyItemEffect(mon, itemId)
+	if ok then
+		PlayerData.TakeItem(player, itemId)
+		PlayerData.Sync(player)
+		PlayerData.Notify(player, msg, "good")
+	else
+		PlayerData.Notify(player, msg, "bad")
+	end
+end
+
+local function onShopBuy(player, itemId)
+	local session = sessions[player]
+	if not session or type(itemId) ~= "string" then return end
+	local item = GameData.Items[itemId]
+	if not item or not item.price then return end
+	if session.coins &lt; item.price then
+		PlayerData.Notify(player, "Nicht genug Münzen! (" .. item.price .. " nötig)", "bad")
+		return
+	end
+	session.coins = session.coins - item.price
+	PlayerData.GiveItem(player, itemId, 1)
+	PlayerData.Sync(player)
+	PlayerData.Notify(player, item.name .. " gekauft!", "good")
+end
+
+-- ---------- Spieler-Lebenszyklus ----------
+
+local function onPlayerAdded(player)
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+	local coins = Instance.new("IntValue")
+	coins.Name = "Münzen"
+	coins.Parent = stats
+	local caught = Instance.new("IntValue")
+	caught.Name = "Gefangen"
+	caught.Parent = stats
+	stats.Parent = player
+
+	local raw = nil
+	if storeOk then
+		local ok, result = pcall(function()
+			return store:GetAsync(keyFor(player))
+		end)
+		if ok then
+			raw = result
+		else
+			warn("[Monsterwelt] Laden fehlgeschlagen fuer " .. player.Name .. ": " .. tostring(result))
+		end
+	end
+	sessions[player] = sanitize(raw)
+	updateLeaderstats(player)
+end
+
+local function onClientReady(player)
+	local waited = 0
+	while not sessions[player] and player.Parent and waited &lt; 15 do
+		task.wait(0.25)
+		waited = waited + 0.25
+	end
+	local session = sessions[player]
+	if not session then return end
+	PlayerData.Sync(player)
+	if session.starter then
+		PlayerData.Notify(player, "Willkommen zurück, " .. player.DisplayName .. "!", "info")
+	else
+		PlayerData.Notify(player, "Willkommen! Hol dir dein erstes Monster im Labor (gelbes Gebäude)!", "info")
+	end
+end
+
+function PlayerData.Init()
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore("Monsterwelt_v1")
+	end)
+	if ok then
+		store = result
+		storeOk = true
+	else
+		warn("[Monsterwelt] Kein DataStore-Zugriff (im Studio: API-Zugriff aktivieren). Es wird nicht gespeichert.")
+	end
+
+	DataSyncRemote = Remotes.Get("DataSync")
+	NotifyRemote = Remotes.Get("Notify")
+
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	for _, player in ipairs(Players:GetPlayers()) do
+		task.spawn(onPlayerAdded, player)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		saveNow(player)
+		sessions[player] = nil
+	end)
+
+	Remotes.Get("ClientReady").OnServerEvent:Connect(onClientReady)
+	Remotes.Get("TeamAction").OnServerEvent:Connect(function(player, op, index)
+		if type(op) == "string" then
+			onTeamAction(player, op, index)
+		end
+	end)
+	Remotes.Get("UseItem").OnServerEvent:Connect(onUseItem)
+	Remotes.Get("ShopBuy").OnServerEvent:Connect(onShopBuy)
+	Remotes.Get("StarterChoose").OnServerEvent:Connect(function(player, speciesId)
+		if type(speciesId) == "string" then
+			PlayerData.GiveStarter(player, speciesId)
+		end
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(120)
+			for player in pairs(sessions) do
+				saveNow(player)
+			end
+		end
+	end)
+
+	game:BindToClose(function()
+		for player in pairs(sessions) do
+			saveNow(player)
+		end
+	end)
+end
+
+return PlayerData
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX6">
+				<Properties>
+					<string name="Name">WorldBuilder</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Baut die komplette Welt per Code:
+-- Stadt (Haeuser, Wege, Laternen, Brunnen), Monster-Center,
+-- Labor mit Startern, Shop, Farm-Gelaende, Routen mit hohem
+-- Gras, See mit Bruecke, Tag/Nacht-Wechsel, Musik.
+-- ============================================================
+
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+
+local WorldBuilder = {}
+
+local MAP_HALF = 450
+local DAY_LENGTH = 480 -- Sekunden fuer einen ganzen Tag
+local MUSIC_ID = 0 -- Eigene Musik? Audio-ID hier eintragen (0 = aus)
+
+local rng = Random.new(1234567)
+local folder = nil
+local lamps = {}
+local healRing = nil
+local healLight = nil
+
+WorldBuilder.PlazaSpawn = Vector3.new(10, 4, 20)
+
+-- ---------- Helfer ----------
+
+local function part(props, parent)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	p.Parent = parent or folder
+	return p
+end
+
+local function wedge(props, parent)
+	local p = Instance.new("WedgePart")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	p.Parent = parent or folder
+	return p
+end
+
+local function uprightCyl(x, y, z)
+	return CFrame.new(x, y, z) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+local function c3(r, g, b)
+	return Color3.fromRGB(r, g, b)
+end
+
+-- ---------- NPC-Figur (auch fuer Trainer/Farmer) ----------
+
+function WorldBuilder.MakeNpc(opts)
+	local model = Instance.new("Model")
+	model.Name = opts.name
+	local pos = opts.pos
+	local face = opts.faceTo or Vector3.new(0, 0, 0)
+	local base = CFrame.lookAt(Vector3.new(pos.X, 3.1, pos.Z), Vector3.new(face.X, 3.1, face.Z))
+
+	local function np(props, cf)
+		local p = part(props, model)
+		p.CFrame = base * cf
+		p.CanQuery = false
+		return p
+	end
+
+	local shirt = opts.shirt or { 90, 120, 200 }
+	local pants = c3(60, 60, 80)
+	local skin = c3(245, 215, 180)
+
+	np({ Size = Vector3.new(0.9, 2.0, 0.9), Color = pants, Name = "BeinL" }, CFrame.new(-0.55, -2.1, 0))
+	np({ Size = Vector3.new(0.9, 2.0, 0.9), Color = pants, Name = "BeinR" }, CFrame.new(0.55, -2.1, 0))
+	local torso = np({ Size = Vector3.new(2.2, 2.2, 1.1), Color = c3(shirt[1], shirt[2], shirt[3]), Name = "Torso" }, CFrame.new(0, 0, 0))
+	np({ Size = Vector3.new(0.8, 2.0, 0.8), Color = c3(shirt[1], shirt[2], shirt[3]), Name = "ArmL" }, CFrame.new(-1.5, -0.1, 0))
+	np({ Size = Vector3.new(0.8, 2.0, 0.8), Color = c3(shirt[1], shirt[2], shirt[3]), Name = "ArmR" }, CFrame.new(1.5, -0.1, 0))
+	local head = np({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.7, 1.7, 1.7), Color = skin, Name = "Kopf" }, CFrame.new(0, 1.95, 0))
+	np({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.75, 0.8, 1.75), Color = opts.hair and c3(opts.hair[1], opts.hair[2], opts.hair[3]) or c3(90, 60, 40), Name = "Haare" }, CFrame.new(0, 2.5, 0.1))
+	np({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.22, 0.22, 0.22), Color = c3(25, 25, 30), Name = "AugeL" }, CFrame.new(-0.32, 2.05, -0.75))
+	np({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.22, 0.22, 0.22), Color = c3(25, 25, 30), Name = "AugeR" }, CFrame.new(0.32, 2.05, -0.75))
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(220, 44)
+	billboard.StudsOffset = Vector3.new(0, 2.4, 0)
+	billboard.MaxDistance = 90
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = opts.name
+	label.TextColor3 = c3(255, 255, 255)
+	label.TextStrokeTransparency = 0.2
+	label.Parent = billboard
+	billboard.Parent = head
+
+	if opts.prompt then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = opts.prompt.action
+		prompt.ObjectText = opts.name
+		prompt.HoldDuration = 0.25
+		prompt.MaxActivationDistance = 12
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = torso
+		prompt.Triggered:Connect(opts.prompt.callback)
+	end
+
+	model.Parent = folder
+	return model
+end
+
+-- ---------- Gebaeude ----------
+
+-- Baut ein Haus. Front = lokale -Z-Richtung (yaw drehen).
+-- opts: pos, w, d, h, yaw, wallColor, roofColor, name,
+--       enterable (Tuer offen?), furnish (Moebel?)
+local function makeBuilding(opts)
+	local w, d, h = opts.w, opts.d, opts.h
+	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
+	local wall = opts.wallColor
+	local wt = 1 -- Wanddicke
+	local doorW, doorH = 6, 7
+
+	local function bp(props, cf, parent)
+		local p = part(props, parent)
+		p.CFrame = base * cf
+		return p
+	end
+
+	-- Boden
+	bp({ Size = Vector3.new(w, 0.4, d), Color = c3(200, 180, 150), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.2, 0))
+	-- Rueckwand
+	bp({ Size = Vector3.new(w, h, wt), Color = wall }, CFrame.new(0, h / 2, d / 2 - wt / 2))
+	-- Seitenwaende
+	bp({ Size = Vector3.new(wt, h, d), Color = wall }, CFrame.new(-w / 2 + wt / 2, h / 2, 0))
+	bp({ Size = Vector3.new(wt, h, d), Color = wall }, CFrame.new(w / 2 - wt / 2, h / 2, 0))
+	-- Frontwand mit Tueroeffnung
+	local sideW = (w - doorW) / 2
+	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
+	-- Tuerrahmen
+	bp({ Size = Vector3.new(0.5, doorH, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(0.5, doorH, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(0, doorH, -d / 2 + wt / 2))
+	-- Geschlossene Tuer, falls nicht betretbar
+	if not opts.enterable then
+		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(120, 80, 50), Material = Enum.Material.Wood }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+	end
+	-- Fenster an den Seiten
+	for _, sx in ipairs({ -1, 1 }) do
+		bp({ Size = Vector3.new(0.3, 2.4, 3 ), Color = c3(170, 220, 255), Material = Enum.Material.Glass, Transparency = 0.3 },
+			CFrame.new(sx * (w / 2 - wt / 2), h * 0.55, -d * 0.18))
+		bp({ Size = Vector3.new(0.3, 2.4, 3 ), Color = c3(170, 220, 255), Material = Enum.Material.Glass, Transparency = 0.3 },
+			CFrame.new(sx * (w / 2 - wt / 2), h * 0.55, d * 0.2))
+	end
+	-- Satteldach aus zwei Keilen (senkrechte Seite zum First)
+	local roofH = h * 0.45
+	wedge({ Size = Vector3.new(w + 2, roofH, d / 2 + 1), Color = opts.roofColor, Material = Enum.Material.Slate,
+		CFrame = base * CFrame.new(0, h + roofH / 2, -(d / 2 + 1) / 2 + 0.5) })
+	wedge({ Size = Vector3.new(w + 2, roofH, d / 2 + 1), Color = opts.roofColor, Material = Enum.Material.Slate,
+		CFrame = base * CFrame.new(0, h + roofH / 2, (d / 2 + 1) / 2 - 0.5) * CFrame.Angles(0, math.rad(180), 0) })
+	-- Deckenplatte, damit es innen dunkel/geschlossen wirkt
+	bp({ Size = Vector3.new(w, 0.4, d), Color = wall }, CFrame.new(0, h + 0.2, 0))
+
+	-- Schild ueber der Tuer
+	if opts.name then
+		local sign = bp({ Size = Vector3.new(9, 1.8, 0.4), Color = c3(245, 240, 225) }, CFrame.new(0, doorH + 1.6, -d / 2 - 0.3))
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.Text = opts.name
+		label.TextColor3 = c3(60, 45, 30)
+		label.Parent = gui
+		gui.Parent = sign
+	end
+
+	-- Einfache Moebel
+	if opts.furnish then
+		-- Bett
+		bp({ Size = Vector3.new(4, 1, 6.5), Color = c3(150, 100, 60), Material = Enum.Material.Wood }, CFrame.new(-w / 2 + 3, 0.9, d / 2 - 4.5))
+		bp({ Size = Vector3.new(3.6, 0.6, 6.1), Color = c3(230, 230, 240) }, CFrame.new(-w / 2 + 3, 1.6, d / 2 - 4.5))
+		bp({ Size = Vector3.new(3, 0.5, 1.6), Color = c3(255, 150, 160) }, CFrame.new(-w / 2 + 3, 2.05, d / 2 - 2.4))
+		-- Tisch + Stuehle
+		bp({ Size = Vector3.new(4, 0.4, 4), Color = c3(170, 120, 70), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 4.5, 2.4, d / 2 - 5))
+		bp({ Size = Vector3.new(0.5, 2.2, 0.5), Color = c3(140, 95, 55) }, CFrame.new(w / 2 - 4.5, 1.1, d / 2 - 5))
+		for _, off in ipairs({ { -3, 0 }, { 3, 0 } }) do
+			bp({ Size = Vector3.new(1.8, 0.4, 1.8), Color = c3(190, 140, 90) }, CFrame.new(w / 2 - 4.5 + off[1], 1.4, d / 2 - 5 + off[2]))
+			bp({ Size = Vector3.new(0.4, 1.4, 0.4), Color = c3(160, 115, 70) }, CFrame.new(w / 2 - 4.5 + off[1], 0.7, d / 2 - 5 + off[2]))
+		end
+		-- Teppich
+		bp({ Size = Vector3.new(6, 0.12, 5), Color = c3(200, 90, 90), Material = Enum.Material.Fabric }, CFrame.new(0, 0.46, -d * 0.1))
+		-- Regal
+		bp({ Size = Vector3.new(3.5, 4.5, 1), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 2.6, 2.65, -d / 2 + 3))
+	end
+
+	return base
+end
+
+-- ---------- Stadt-Deko ----------
+
+local function makeLamp(x, z)
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(7.5, 0.5, 0.5), Color = c3(60, 60, 70), Material = Enum.Material.Metal, CFrame = uprightCyl(x, 3.75, z) })
+	local bulb = part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), Color = c3(255, 235, 170), Material = Enum.Material.Neon, CFrame = CFrame.new(x, 7.8, z) })
+	local light = Instance.new("PointLight")
+	light.Color = c3(255, 225, 150)
+	light.Range = 22
+	light.Brightness = 1.4
+	light.Enabled = false
+	light.Parent = bulb
+	table.insert(lamps, { bulb = bulb, light = light })
+end
+
+local function makeBench(x, z, yaw)
+	local base = CFrame.new(x, 0, z) * CFrame.Angles(0, math.rad(yaw), 0)
+	part({ Size = Vector3.new(5, 0.4, 1.6), Color = c3(160, 110, 65), Material = Enum.Material.Wood, CFrame = base * CFrame.new(0, 1.4, 0) })
+	part({ Size = Vector3.new(5, 1.4, 0.35), Color = c3(160, 110, 65), Material = Enum.Material.Wood, CFrame = base * CFrame.new(0, 2.4, 0.75) })
+	part({ Size = Vector3.new(0.4, 1.4, 1.4), Color = c3(70, 70, 80), CFrame = base * CFrame.new(-2.1, 0.7, 0) })
+	part({ Size = Vector3.new(0.4, 1.4, 1.4), Color = c3(70, 70, 80), CFrame = base * CFrame.new(2.1, 0.7, 0) })
+end
+
+local function makeFlowerbed(x, z)
+	part({ Size = Vector3.new(7, 0.6, 4), Color = c3(105, 75, 50), Material = Enum.Material.Ground, CFrame = CFrame.new(x, 0.3, z) })
+	local colors = { c3(245, 120, 140), c3(255, 205, 80), c3(160, 130, 240), c3(255, 255, 255) }
+	for i = 1, 8 do
+		part({
+			Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7),
+			Color = colors[(i % #colors) + 1], CanCollide = false,
+			CFrame = CFrame.new(x + rng:NextNumber(-2.8, 2.8), 0.9, z + rng:NextNumber(-1.4, 1.4)),
+		})
+	end
+end
+
+local function makeTree(x, z)
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(7, 1.8, 1.8), Color = c3(105, 70, 45), Material = Enum.Material.Wood, CFrame = uprightCyl(x, 3.5, z) })
+	local size = rng:NextNumber(7, 11)
+	part({
+		Shape = Enum.PartType.Ball, Size = Vector3.new(size, size * 0.9, size),
+		Color = c3(60 + rng:NextInteger(0, 40), 140 + rng:NextInteger(0, 40), 60 + rng:NextInteger(0, 30)),
+		Material = Enum.Material.Grass, CanCollide = false,
+		CFrame = CFrame.new(x, 7 + size * 0.2, z),
+	})
+end
+
+local function makeBush(x, z)
+	part({
+		Shape = Enum.PartType.Ball, Size = Vector3.new(3.4, 2.6, 3.4),
+		Color = c3(70, 150, 75), Material = Enum.Material.Grass, CanCollide = false,
+		CFrame = CFrame.new(x, 1.2, z),
+	})
+end
+
+local function makeRock(x, z, size)
+	part({
+		Shape = Enum.PartType.Ball, Size = Vector3.new(size, size * 0.8, size),
+		Color = c3(140, 140, 145), Material = Enum.Material.Slate,
+		CFrame = CFrame.new(x, size * 0.25, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 3), 0),
+	})
+end
+
+local function makeFountain()
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 16, 16), Color = c3(185, 190, 200), Material = Enum.Material.Marble, CFrame = uprightCyl(0, 1, 0) })
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 13, 13), Color = c3(90, 170, 250), Material = Enum.Material.Glass, Transparency = 0.3, CanCollide = false, CFrame = uprightCyl(0, 2, 0) })
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(4.5, 1.6, 1.6), Color = c3(185, 190, 200), Material = Enum.Material.Marble, CFrame = uprightCyl(0, 4.2, 0) })
+	local top = part({ Shape = Enum.PartType.Ball, Size = Vector3.new(3, 3, 3), Color = c3(120, 200, 255), Material = Enum.Material.Neon, Transparency = 0.2, CanCollide = false, CFrame = CFrame.new(0, 7, 0) })
+	local light = Instance.new("PointLight")
+	light.Color = c3(120, 200, 255)
+	light.Range = 20
+	light.Parent = top
+end
+
+-- ---------- Spezialgebaeude ----------
+
+local function buildMonsterCenter()
+	local base = makeBuilding({
+		pos = Vector3.new(-48, 0, -12), yaw = -90, w = 26, d = 20, h = 10,
+		wallColor = c3(245, 240, 235), roofColor = c3(210, 60, 60),
+		name = "Monster-Center", enterable = true,
+	})
+	local function bp(props, cf)
+		local p = part(props)
+		p.CFrame = base * cf
+		return p
+	end
+	-- Theke
+	bp({ Size = Vector3.new(10, 3, 2), Color = c3(225, 120, 130) }, CFrame.new(0, 1.5, 5))
+	local counterTop = bp({ Size = Vector3.new(10.6, 0.4, 2.6), Color = c3(250, 250, 250) }, CFrame.new(0, 3.2, 5))
+	-- Heil-Ring ueber der Theke (leuchtet beim Heilen)
+	healRing = bp({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 6, 6), Color = c3(140, 230, 170), Material = Enum.Material.Neon, Transparency = 0.85, CanCollide = false }, CFrame.new(0, 6.5, 4) * CFrame.Angles(0, 0, math.rad(90)))
+	healLight = Instance.new("PointLight")
+	healLight.Color = c3(140, 230, 170)
+	healLight.Range = 18
+	healLight.Brightness = 0
+	healLight.Parent = healRing
+	-- Schwester hinter der Theke
+	local counterWorld = base * CFrame.new(0, 0, 7.5)
+	local frontWorld = base * CFrame.new(0, 0, -5)
+	WorldBuilder.MakeNpc({
+		name = "Schwester Amara", shirt = { 245, 160, 180 }, hair = { 250, 190, 120 },
+		pos = counterWorld.Position, faceTo = frontWorld.Position,
+	})
+	-- Heil-Prompt an der Theke
+	local healPrompt = Instance.new("ProximityPrompt")
+	healPrompt.ActionText = "Heilen"
+	healPrompt.ObjectText = "Team heilen (kostenlos)"
+	healPrompt.HoldDuration = 0.3
+	healPrompt.MaxActivationDistance = 10
+	healPrompt.RequiresLineOfSight = false
+	healPrompt.Parent = counterTop
+	local lastHeal = {}
+	healPrompt.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHeal[player] and now - lastHeal[player] &lt; 4 then return end
+		lastHeal[player] = now
+		PlayerData.HealAll(player)
+		PlayerData.Notify(player, "Dein Team wurde vollständig geheilt!", "heal")
+		WorldBuilder.PlayHealEffect()
+	end)
+	-- PC mit Box-System
+	local pc = bp({ Size = Vector3.new(3, 4.5, 2), Color = c3(120, 125, 140), Material = Enum.Material.Metal }, CFrame.new(-9, 2.25, 6.5))
+	bp({ Size = Vector3.new(2.4, 1.8, 0.3), Color = c3(120, 230, 255), Material = Enum.Material.Neon }, CFrame.new(-9, 3.4, 5.4))
+	local pcPrompt = Instance.new("ProximityPrompt")
+	pcPrompt.ActionText = "Box öffnen"
+	pcPrompt.ObjectText = "Monster-PC"
+	pcPrompt.HoldDuration = 0.25
+	pcPrompt.MaxActivationDistance = 8
+	pcPrompt.RequiresLineOfSight = false
+	pcPrompt.Parent = pc
+	local OpenUi = Remotes.Get("OpenUi")
+	pcPrompt.Triggered:Connect(function(player)
+		OpenUi:FireClient(player, "box")
+	end)
+	-- Pflanzen
+	bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2.4, 2), Color = c3(80, 170, 90), CanCollide = false }, CFrame.new(9, 2.6, 7))
+	bp({ Size = Vector3.new(1.4, 1.4, 1.4), Color = c3(200, 120, 80) }, CFrame.new(9, 0.9, 7))
+end
+
+local function buildLab()
+	local base = makeBuilding({
+		pos = Vector3.new(46, 0, -16), yaw = 90, w = 26, d = 20, h = 10,
+		wallColor = c3(250, 235, 180), roofColor = c3(230, 180, 60),
+		name = "Labor", enterable = true,
+	})
+	local function bp(props, cf)
+		local p = part(props)
+		p.CFrame = base * cf
+		return p
+	end
+	-- Professor hinten im Labor
+	local profWorld = base * CFrame.new(0, 0, 7)
+	local frontWorld = base * CFrame.new(0, 0, -6)
+	WorldBuilder.MakeNpc({
+		name = "Professorin Eiche", shirt = { 250, 250, 250 }, hair = { 130, 130, 140 },
+		pos = profWorld.Position, faceTo = frontWorld.Position,
+		prompt = {
+			action = "Reden",
+			callback = function(player)
+				local session = PlayerData.SessionOf(player)
+				if session and session.starter then
+					PlayerData.Notify(player, "Professorin Eiche: Wie läuft dein Abenteuer? Fang viele Monster!", "info")
+				else
+					PlayerData.Notify(player, "Professorin Eiche: Such dir eines der drei Monster auf den Tischen aus!", "info")
+				end
+			end,
+		},
+	})
+	-- 3 Tische mit Starter-Figuren
+	local StarterAsk = Remotes.Get("StarterAsk")
+	local xOffsets = { -7, 0, 7 }
+	for i, speciesId in ipairs(GameData.Starters) do
+		local tableCf = CFrame.new(xOffsets[i], 0, 1)
+		bp({ Size = Vector3.new(4.5, 2.6, 4.5), Color = c3(200, 205, 215) }, tableCf * CFrame.new(0, 1.3, 0))
+		local top = bp({ Size = Vector3.new(5, 0.4, 5), Color = c3(240, 240, 245) }, tableCf * CFrame.new(0, 2.8, 0))
+		-- Figur auf dem Tisch
+		local figure = MonsterFactory.Create(speciesId, 0.55)
+		local worldTop = (base * tableCf * CFrame.new(0, 3, 0)).Position
+		local lookWorld = (base * CFrame.new(xOffsets[i], 0, -10)).Position
+		MonsterFactory.PlaceOnGround(figure, worldTop, lookWorld)
+		figure.Parent = folder
+		-- Prompt
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Wählen"
+		prompt.ObjectText = GameData.Species[speciesId].name
+		prompt.HoldDuration = 0.25
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = top
+		prompt.Triggered:Connect(function(player)
+			local session = PlayerData.SessionOf(player)
+			if not session then return end
+			if session.starter then
+				PlayerData.Notify(player, "Du hast schon ein Partner-Monster!", "bad")
+			else
+				StarterAsk:FireClient(player, speciesId)
+			end
+		end)
+	end
+end
+
+local function buildShop()
+	local base = makeBuilding({
+		pos = Vector3.new(-44, 0, 36), yaw = -90, w = 22, d = 18, h = 9,
+		wallColor = c3(235, 240, 250), roofColor = c3(70, 110, 220),
+		name = "Markt", enterable = true,
+	})
+	local function bp(props, cf)
+		local p = part(props)
+		p.CFrame = base * cf
+		return p
+	end
+	local counter = bp({ Size = Vector3.new(9, 3, 2), Color = c3(120, 150, 220) }, CFrame.new(0, 1.5, 4.5))
+	bp({ Size = Vector3.new(9.6, 0.4, 2.6), Color = c3(250, 250, 250) }, CFrame.new(0, 3.2, 4.5))
+	-- Regale mit bunten Waren
+	for _, sx in ipairs({ -8, 8 }) do
+		bp({ Size = Vector3.new(3, 5, 1.2), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(sx, 2.9, 6.5))
+		for i = 1, 3 do
+			bp({ Size = Vector3.new(0.9, 0.9, 0.9), Color = c3(100 + i * 40, 80 + i * 30, 200 - i * 30), CanCollide = false }, CFrame.new(sx - 1 + i * 0.7, 1.6 + i, 6.2))
+		end
+	end
+	local counterWorld = base * CFrame.new(0, 0, 6.5)
+	local frontWorld = base * CFrame.new(0, 0, -5)
+	WorldBuilder.MakeNpc({
+		name = "Händler Bodo", shirt = { 90, 160, 240 }, hair = { 60, 45, 35 },
+		pos = counterWorld.Position, faceTo = frontWorld.Position,
+	})
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Einkaufen"
+	prompt.ObjectText = "Markt"
+	prompt.HoldDuration = 0.25
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = counter
+	local OpenUi = Remotes.Get("OpenUi")
+	prompt.Triggered:Connect(function(player)
+		OpenUi:FireClient(player, "shop")
+	end)
+end
+
+-- ---------- Gras, See, Grenzen ----------
+
+local function buildGrassPatches()
+	for _, patch in ipairs(GameData.GrassPatches) do
+		local x1, z1, x2, z2 = patch[1], patch[2], patch[3], patch[4]
+		local w, d = x2 - x1, z2 - z1
+		local cx, cz = (x1 + x2) / 2, (z1 + z2) / 2
+		-- dunklere Grasflaeche
+		part({
+			Size = Vector3.new(w, 0.24, d), Color = c3(65, 130, 60),
+			Material = Enum.Material.Grass, CanCollide = false, CanQuery = false, CanTouch = false,
+			CFrame = CFrame.new(cx, 0.06, cz),
+		})
+		-- Grasbueschel
+		local count = math.floor(w * d / 60)
+		for _ = 1, count do
+			local gx = rng:NextNumber(x1 + 1, x2 - 1)
+			local gz = rng:NextNumber(z1 + 1, z2 - 1)
+			local tuftBase = CFrame.new(gx, 1.1, gz) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0)
+			for i = 0, 1 do
+				part({
+					Size = Vector3.new(1.6, 2.2, 0.18), Color = c3(55, 120, 50),
+					Material = Enum.Material.Grass, CanCollide = false, CanQuery = false, CanTouch = false,
+					CFrame = tuftBase * CFrame.Angles(0, math.rad(i * 90), 0),
+				})
+			end
+		end
+	end
+end
+
+local function buildLake()
+	-- Wasser
+	part({
+		Size = Vector3.new(86, 1.6, 64), Color = c3(70, 150, 230),
+		Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false, CanQuery = false, CanTouch = false,
+		CFrame = CFrame.new(32, -0.5, -330),
+	})
+	-- Sandrand
+	part({ Size = Vector3.new(92, 0.2, 70), Color = c3(225, 205, 150), Material = Enum.Material.Sand, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(32, 0.04, -330) })
+	-- Gelaender rund um den See (mit Luecken fuer die Bruecke bei x=32)
+	local function rail(x, z, w, d)
+		part({ Size = Vector3.new(w, 2.4, d), Color = c3(150, 105, 65), Material = Enum.Material.Wood, Transparency = 0.1, CFrame = CFrame.new(x, 1.2, z) })
+	end
+	rail(6, -298, 40, 0.6) -- Nordseite links der Bruecke
+	rail(59, -298, 32, 0.6) -- Nordseite rechts
+	rail(6, -362, 40, 0.6) -- Suedseite links
+	rail(59, -362, 32, 0.6) -- Suedseite rechts
+	rail(-11, -330, 0.6, 65) -- Westseite
+	rail(75, -330, 0.6, 65) -- Ostseite
+	-- Bruecke
+	part({ Size = Vector3.new(8, 0.6, 74), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 1.0, -330) })
+	wedge({ Size = Vector3.new(8, 1.3, 4), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 0.65, -295) * CFrame.Angles(0, math.rad(180), 0) })
+	wedge({ Size = Vector3.new(8, 1.3, 4), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 0.65, -365) })
+	part({ Size = Vector3.new(0.5, 2.2, 74), Color = c3(150, 105, 65), Material = Enum.Material.Wood, CFrame = CFrame.new(28.2, 2.1, -330) })
+	part({ Size = Vector3.new(0.5, 2.2, 74), Color = c3(150, 105, 65), Material = Enum.Material.Wood, CFrame = CFrame.new(35.8, 2.1, -330) })
+end
+
+-- ---------- Heil-Effekt ----------
+
+function WorldBuilder.PlayHealEffect()
+	if not healRing then return end
+	healRing.Transparency = 0.1
+	healLight.Brightness = 3
+	local tween = TweenService:Create(healRing, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.85 })
+	tween:Play()
+	TweenService:Create(healLight, TweenInfo.new(1.6), { Brightness = 0 }):Play()
+end
+
+-- ---------- Tag/Nacht ----------
+
+local function startDayNight()
+	local t0 = os.clock()
+	task.spawn(function()
+		while true do
+			local elapsed = os.clock() - t0
+			local clockTime = (8 + (elapsed / DAY_LENGTH) * 24) % 24
+			Lighting.ClockTime = clockTime
+			local night = clockTime &gt;= 18.5 or clockTime &lt; 6
+			for _, lamp in ipairs(lamps) do
+				lamp.light.Enabled = night
+				lamp.bulb.Material = night and Enum.Material.Neon or Enum.Material.SmoothPlastic
+			end
+			task.wait(3)
+		end
+	end)
+end
+
+-- ---------- Hauptaufbau ----------
+
+function WorldBuilder.Build()
+	folder = Instance.new("Folder")
+	folder.Name = "MonsterweltMap"
+
+	-- Boden + Grenzen
+	part({ Size = Vector3.new(MAP_HALF * 2, 2, MAP_HALF * 2), Color = c3(106, 170, 80), Material = Enum.Material.Grass, CFrame = CFrame.new(0, -1, 0) })
+	for _, def in ipairs({
+		{ Vector3.new(MAP_HALF * 2, 80, 4), CFrame.new(0, 40, -MAP_HALF) },
+		{ Vector3.new(MAP_HALF * 2, 80, 4), CFrame.new(0, 40, MAP_HALF) },
+		{ Vector3.new(4, 80, MAP_HALF * 2), CFrame.new(-MAP_HALF, 40, 0) },
+		{ Vector3.new(4, 80, MAP_HALF * 2), CFrame.new(MAP_HALF, 40, 0) },
+	}) do
+		part({ Size = def[1], CFrame = def[2], Transparency = 1 })
+	end
+
+	-- Spawn
+	local spawnLoc = Instance.new("SpawnLocation")
+	spawnLoc.Size = Vector3.new(12, 1, 12)
+	spawnLoc.CFrame = CFrame.new(10, 0.5, 20)
+	spawnLoc.Anchored = true
+	spawnLoc.Duration = 0
+	spawnLoc.Color = c3(235, 235, 240)
+	spawnLoc.TopSurface = Enum.SurfaceType.Smooth
+	spawnLoc.Parent = folder
+
+	-- Stadtplatz + Wege
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 46, 46), Color = c3(190, 185, 175), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = uprightCyl(0, 0.02, 0) })
+	part({ Size = Vector3.new(190, 0.24, 8), Color = c3(200, 195, 185), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(0, 0.05, 0) })
+	part({ Size = Vector3.new(8, 0.24, 170), Color = c3(200, 195, 185), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(0, 0.05, -10) })
+
+	makeFountain()
+
+	-- Gebaeude
+	buildMonsterCenter()
+	buildLab()
+	buildShop()
+	makeBuilding({ pos = Vector3.new(28, 0, 62), yaw = 0, w = 16, d = 14, h = 8, wallColor = c3(240, 200, 160), roofColor = c3(180, 90, 70), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(68, 0, 24), yaw = 90, w = 15, d = 13, h = 8, wallColor = c3(200, 225, 240), roofColor = c3(90, 120, 160), enterable = false })
+	makeBuilding({ pos = Vector3.new(-20, 0, -74), yaw = 180, w = 16, d = 14, h = 8, wallColor = c3(225, 240, 210), roofColor = c3(110, 150, 90), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(26, 0, -72), yaw = 180, w = 14, d = 12, h = 7, wallColor = c3(245, 225, 235), roofColor = c3(190, 110, 150), enterable = false })
+	makeBuilding({ pos = Vector3.new(-80, 0, 62), yaw = -90, w = 16, d = 14, h = 8, wallColor = c3(235, 220, 190), roofColor = c3(140, 100, 160), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(-76, 0, -60), yaw = -90, w = 14, d = 12, h = 7, wallColor = c3(215, 235, 235), roofColor = c3(80, 140, 150), enterable = false })
+
+	-- Laternen
+	for _, p in ipairs({
+		{ -80, 6 }, { -50, -6 }, { 50, 6 }, { 80, -6 },
+		{ 6, -80 }, { -6, -50 }, { 6, 50 }, { -6, 75 },
+		{ 18, 14 }, { -18, -14 },
+	}) do
+		makeLamp(p[1], p[2])
+	end
+
+	-- Baenke, Beete
+	makeBench(0, 16, 180)
+	makeBench(-16, -4, 90)
+	makeBench(16, -6, -90)
+	makeFlowerbed(-14, 14)
+	makeFlowerbed(16, -18)
+	makeFlowerbed(40, 8)
+
+	-- Baeume &amp; Buesche in der Stadt
+	for _, p in ipairs({ { 42, 40 }, { -30, 55 }, { 55, -40 }, { -55, 20 }, { -40, -40 }, { 12, 78 }, { 80, 40 } }) do
+		makeTree(p[1], p[2])
+	end
+	for _, p in ipairs({ { 24, 30 }, { -26, 24 }, { 34, -30 }, { -34, -24 }, { 60, 50 } }) do
+		makeBush(p[1], p[2])
+	end
+
+	-- Wilde Baeume ausserhalb der Stadt (Routen einrahmen)
+	for _ = 1, 120 do
+		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+		local inTown = math.abs(x) &lt; 100 and math.abs(z) &lt; 100
+		local onRoute1 = x &gt; 95 and x &lt; 380 and math.abs(z) &lt; 48
+		local onRoute2 = z &lt; -95 and z &gt; -390 and math.abs(x - 15) &lt; 70
+		if not inTown and not onRoute1 and not onRoute2 then
+			makeTree(x, z)
+		end
+	end
+	for _ = 1, 40 do
+		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+		if not (math.abs(x) &lt; 60 and math.abs(z) &lt; 60) then
+			makeBush(x, z)
+		end
+	end
+
+	-- Felsen auf den Routen
+	for _, p in ipairs({ { 190, 30, 4 }, { 240, -24, 5 }, { 320, 20, 4 }, { -30, -170, 5 }, { 40, -210, 4 }, { -10, -260, 6 }, { 60, -380, 5 } }) do
+		makeRock(p[1], p[2], p[3])
+	end
+
+	buildGrassPatches()
+	buildLake()
+
+	folder.Parent = workspace
+
+	-- Licht &amp; Stimmung
+	Lighting.Brightness = 2.4
+	Lighting.Ambient = c3(115, 115, 125)
+	Lighting.OutdoorAmbient = c3(160, 170, 185)
+	startDayNight()
+
+	-- Hintergrundmusik (optional, ID oben eintragen)
+	if MUSIC_ID ~= 0 then
+		local ok = pcall(function()
+			local music = Instance.new("Sound")
+			music.SoundId = "rbxassetid://" .. MUSIC_ID
+			music.Looped = true
+			music.Volume = 0.25
+			music.Name = "Hintergrundmusik"
+			music.Parent = SoundService
+			music:Play()
+		end)
+		if not ok then
+			warn("[Monsterwelt] Musik konnte nicht geladen werden.")
+		end
+	end
+end
+
+return WorldBuilder
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX7">
+				<Properties>
+					<string name="Name">CompanionService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Begleiter: Das erste Team-Monster laeuft dem Spieler
+-- hinterher. Laeuft auf dem Server, damit ALLE Spieler die
+-- Begleiter der anderen sehen.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+
+local CompanionService = {}
+
+local companions = {} -- [player] = { model, speciesId }
+local folder = nil
+
+local function destroyCompanion(player)
+	local comp = companions[player]
+	if comp then
+		if comp.model then
+			comp.model:Destroy()
+		end
+		companions[player] = nil
+	end
+end
+
+-- Baut den Begleiter neu, wenn sich das erste Team-Monster aendert
+function CompanionService.Refresh(player)
+	local session = PlayerData.SessionOf(player)
+	local wantedId = nil
+	if session and session.team[1] then
+		wantedId = session.team[1].id
+	end
+	local comp = companions[player]
+	if comp and comp.speciesId == wantedId then
+		return
+	end
+	destroyCompanion(player)
+	if not wantedId then return end
+
+	local model = MonsterFactory.Create(wantedId, 0.8)
+	model.Name = player.Name .. "s " .. model.Name
+	local character = player.Character
+	local startPos = Vector3.new(0, 0, 20)
+	if character and character.PrimaryPart then
+		startPos = character.PrimaryPart.Position + Vector3.new(-3, -2.5, 3)
+	end
+	MonsterFactory.PlaceOnGround(model, Vector3.new(startPos.X, 0, startPos.Z), startPos + Vector3.new(0, 0, -4))
+	model.Parent = folder
+	companions[player] = { model = model, speciesId = wantedId }
+end
+
+local function updateLoop()
+	while true do
+		task.wait(0.12)
+		for player, comp in pairs(companions) do
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			local body = comp.model and comp.model.PrimaryPart
+			if root and body then
+				-- Zielpunkt: schraeg hinter dem Spieler
+				local targetCf = root.CFrame * CFrame.new(-2.6, 0, 3.4)
+				local h = comp.model:GetAttribute("RootHeight") or 1.5
+				local target = Vector3.new(targetCf.X, h, targetCf.Z)
+				local current = body.Position
+				local dist = (Vector3.new(target.X, 0, target.Z) - Vector3.new(current.X, 0, current.Z)).Magnitude
+				if dist &gt; 40 then
+					-- Zu weit weg: teleportieren
+					comp.model:PivotTo(CFrame.lookAt(target, target + root.CFrame.LookVector))
+				elseif dist &gt; 1.2 then
+					-- Weich hinterherlaufen (mit kleinem Hopser)
+					local alpha = math.min(1, 0.22)
+					local newPos = current:Lerp(target, alpha)
+					local hop = math.abs(math.sin(os.clock() * 8)) * 0.35
+					local look = Vector3.new(target.X, newPos.Y, target.Z)
+					if (look - newPos).Magnitude &gt; 0.1 then
+						comp.model:PivotTo(CFrame.lookAt(Vector3.new(newPos.X, h + hop, newPos.Z), Vector3.new(look.X, h + hop, look.Z)))
+					end
+				end
+			end
+		end
+	end
+end
+
+function CompanionService.Init()
+	folder = Instance.new("Folder")
+	folder.Name = "Begleiter"
+	folder.Parent = workspace
+
+	Players.PlayerRemoving:Connect(destroyCompanion)
+	local function hookPlayer(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			CompanionService.Refresh(player)
+		end)
+	end
+	Players.PlayerAdded:Connect(hookPlayer)
+	for _, player in ipairs(Players:GetPlayers()) do
+		hookPlayer(player)
+	end
+	task.spawn(updateLoop)
+end
+
+return CompanionService
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX8">
+				<Properties>
+					<string name="Name">BattleService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Rundenbasiertes Kampfsystem (Server).
+-- Beide Monster stehen als 3D-Figuren auf einer Kampf-Buehne
+-- hoch ueber der Welt; die Kamera des Spielers faehrt hin.
+-- Der Server berechnet alles, der Client animiert nur.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local WorldBuilder = require(script.Parent:WaitForChild("WorldBuilder"))
+local RoamService = require(script.Parent:WaitForChild("RoamService"))
+
+local BattleService = {}
+
+local STAGE_COUNT = 8
+
+local rng = Random.new()
+local battles = {} -- [player] = Kampfzustand
+local stages = {} -- { base, folder, busy }
+local BattleStartRemote = nil
+local BattleUpdateRemote = nil
+
+-- ---------- Kampf-Buehnen ----------
+
+local function buildStages()
+	local stageFolder = Instance.new("Folder")
+	stageFolder.Name = "Kampfarenen"
+	for i = 1, STAGE_COUNT do
+		local base = Vector3.new(-600 + i * 150, 240, 900)
+		local folder = Instance.new("Folder")
+		folder.Name = "Arena" .. i
+
+		local function p(props)
+			local prt = Instance.new("Part")
+			prt.Anchored = true
+			prt.TopSurface = Enum.SurfaceType.Smooth
+			prt.BottomSurface = Enum.SurfaceType.Smooth
+			for k, v in pairs(props) do
+				prt[k] = v
+			end
+			prt.Parent = folder
+			return prt
+		end
+
+		-- Boden der Buehne
+		p({ Size = Vector3.new(46, 1, 28), Color = Color3.fromRGB(120, 170, 100), Material = Enum.Material.Grass, CFrame = CFrame.new(base) })
+		p({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 10, 10), Color = Color3.fromRGB(220, 215, 200), Material = Enum.Material.Concrete, CanCollide = false,
+			CFrame = CFrame.new(base + Vector3.new(-10, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+		p({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 10, 10), Color = Color3.fromRGB(220, 215, 200), Material = Enum.Material.Concrete, CanCollide = false,
+			CFrame = CFrame.new(base + Vector3.new(10, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+
+		-- Kamerapunkt fuer den Client
+		local cam = p({ Size = Vector3.new(1, 1, 1), Transparency = 1, CanCollide = false, Name = "KameraPunkt" })
+		cam.CFrame = CFrame.lookAt(base + Vector3.new(-16, 9, 16), base + Vector3.new(3, 3, 0))
+
+		folder.Parent = stageFolder
+		table.insert(stages, { base = base, folder = folder, busy = false })
+	end
+	stageFolder.Parent = workspace
+end
+
+local function takeStage()
+	for _, stage in ipairs(stages) do
+		if not stage.busy then
+			stage.busy = true
+			return stage
+		end
+	end
+	return nil
+end
+
+-- Monster-Figur auf die Buehne stellen. side = "ally"/"enemy"
+local function spawnStageModel(state, side, speciesId)
+	local stage = state.stage
+	local counterKey = side .. "Counter"
+	state[counterKey] = (state[counterKey] or 0) + 1
+	local name = (side == "ally" and "AllyMon" or "EnemyMon") .. state[counterKey]
+
+	local oldKey = side .. "Model"
+	if state[oldKey] then
+		state[oldKey]:Destroy()
+		state[oldKey] = nil
+	end
+
+	local model = MonsterFactory.Create(speciesId, 1.1)
+	model.Name = name
+	local x = (side == "ally") and -10 or 10
+	local pos = stage.base + Vector3.new(x, 0.6, 0)
+	local look = stage.base + Vector3.new(-x, 0.6, 0)
+	MonsterFactory.PlaceOnGround(model, pos, look)
+	model.Parent = stage.folder
+	state[oldKey] = model
+	return name
+end
+
+-- ---------- Ansichten ----------
+
+local function movesView(moveIds)
+	local list = {}
+	for _, moveId in ipairs(moveIds) do
+		local move = GameData.Moves[moveId]
+		table.insert(list, { name = move.name, typ = move.typ, power = move.power })
+	end
+	return list
+end
+
+local function allyView(mon)
+	local sp = GameData.Species[mon.id]
+	local stats = GameData.StatsFor(mon.id, mon.level)
+	return {
+		name = sp.name, typ = sp.typ, level = mon.level,
+		hp = mon.hp, maxHp = stats.maxHp, status = mon.status,
+		xp = mon.xp, xpNext = GameData.XpToNext(mon.level),
+		moves = movesView(GameData.MovesFor(mon.id, mon.level)),
+	}
+end
+
+local function enemyView(enemy)
+	local sp = GameData.Species[enemy.id]
+	return {
+		name = sp.name, typ = sp.typ, level = enemy.level,
+		hp = enemy.hp, maxHp = enemy.stats.maxHp, status = enemy.status,
+	}
+end
+
+local function teamView(session)
+	local list = {}
+	for _, mon in ipairs(session.team) do
+		local sp = GameData.Species[mon.id]
+		table.insert(list, {
+			name = sp.name, typ = sp.typ, level = mon.level,
+			hp = mon.hp, maxHp = GameData.StatsFor(mon.id, mon.level).maxHp,
+			status = mon.status,
+		})
+	end
+	return list
+end
+
+-- ---------- Helfer ----------
+
+local function push(events, event)
+	table.insert(events, event)
+end
+
+local function setFrozen(player, frozen)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	if frozen then
+		humanoid.WalkSpeed = 0
+		humanoid.JumpHeight = 0
+	else
+		humanoid.WalkSpeed = 16
+		humanoid.JumpHeight = 7.2
+	end
+end
+
+local function calcDamage(attLevel, attAtk, defDef, moveId, attackerTyp, defenderTyp)
+	local move = GameData.Moves[moveId]
+	local stab = (move.typ == attackerTyp) and 1.5 or 1
+	local mult = GameData.TypeMultiplier(move.typ, defenderTyp)
+	local base = ((2 * attLevel / 5 + 2) * move.power * attAtk / math.max(defDef, 1)) / 30 + 3
+	local dmg = math.floor(base * stab * mult * (0.85 + rng:NextNumber() * 0.15))
+	if dmg &lt; 1 then dmg = 1 end
+	return dmg, mult
+end
+
+local function pushEffectiveness(events, mult)
+	if mult &gt; 1 then
+		push(events, { t = "text", msg = "Es ist sehr effektiv!" })
+	elseif mult &lt; 1 then
+		push(events, { t = "text", msg = "Es ist nicht sehr effektiv..." })
+	end
+end
+
+-- Statuseffekt einer Attacke anwenden (falls Glueck)
+local function maybeApplyStatus(events, move, target, targetName, side)
+	if not move.effect or target.status or target.hp &lt;= 0 then return end
+	if rng:NextNumber() &lt; move.effect.chance then
+		target.status = move.effect.status
+		if target.status == "brand" then
+			push(events, { t = "text", msg = targetName .. " wurde verbrannt!" })
+		else
+			push(events, { t = "text", msg = targetName .. " steht unter Schock!" })
+		end
+		push(events, { t = "status", side = side, status = target.status })
+	end
+end
+
+-- Ist das Monster wegen Schock handlungsunfaehig?
+local function checkSchock(events, target, targetName)
+	if target.status == "schock" and rng:NextNumber() &lt; 0.3 then
+		push(events, { t = "text", msg = targetName .. " ist gelähmt vor Schock und kann nicht angreifen!" })
+		return true
+	end
+	return false
+end
+
+-- ---------- Angriffe ----------
+
+local function allyAttack(session, state, events, moveId)
+	local mon = session.team[state.monIndex]
+	local sp = GameData.Species[mon.id]
+	if checkSchock(events, mon, sp.name) then return false end
+	local stats = GameData.StatsFor(mon.id, mon.level)
+	local move = GameData.Moves[moveId]
+	local enemySp = GameData.Species[state.enemy.id]
+	local dmg, mult = calcDamage(mon.level, stats.atk, state.enemy.stats.def, moveId, sp.typ, enemySp.typ)
+	state.enemy.hp = math.max(0, state.enemy.hp - dmg)
+	push(events, { t = "text", msg = sp.name .. " setzt " .. move.name .. " ein!" })
+	push(events, { t = "hit", side = "enemy" })
+	push(events, { t = "hp", side = "enemy", hp = state.enemy.hp })
+	pushEffectiveness(events, mult)
+	maybeApplyStatus(events, move, state.enemy, enemySp.name, "enemy")
+	if state.enemy.hp &lt;= 0 then
+		push(events, { t = "text", msg = enemySp.name .. " wurde besiegt!" })
+		push(events, { t = "faint", side = "enemy" })
+		return true
+	end
+	return false
+end
+
+local function chooseEnemyMove(state, defenderTyp)
+	local total = 0
+	local weights = {}
+	for _, moveId in ipairs(state.enemy.moves) do
+		local move = GameData.Moves[moveId]
+		local w = move.power * GameData.TypeMultiplier(move.typ, defenderTyp)
+		table.insert(weights, { moveId, w })
+		total = total + w
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, entry in ipairs(weights) do
+		roll = roll - entry[2]
+		if roll &lt;= 0 then
+			return entry[1]
+		end
+	end
+	return state.enemy.moves[1]
+end
+
+local function enemyAttack(session, state, events)
+	local mon = session.team[state.monIndex]
+	local monSp = GameData.Species[mon.id]
+	local enemySp = GameData.Species[state.enemy.id]
+	if checkSchock(events, state.enemy, enemySp.name) then return false end
+	local moveId = chooseEnemyMove(state, monSp.typ)
+	local move = GameData.Moves[moveId]
+	local myStats = GameData.StatsFor(mon.id, mon.level)
+	local dmg, mult = calcDamage(state.enemy.level, state.enemy.stats.atk, myStats.def, moveId, enemySp.typ, monSp.typ)
+	mon.hp = math.max(0, mon.hp - dmg)
+	push(events, { t = "text", msg = enemySp.name .. " setzt " .. move.name .. " ein!" })
+	push(events, { t = "hit", side = "ally" })
+	push(events, { t = "hp", side = "ally", hp = mon.hp })
+	pushEffectiveness(events, mult)
+	maybeApplyStatus(events, move, mon, monSp.name, "ally")
+	if mon.hp &lt;= 0 then
+		push(events, { t = "text", msg = monSp.name .. " wurde besiegt!" })
+		push(events, { t = "faint", side = "ally" })
+		return true
+	end
+	return false
+end
+
+-- Brand-Schaden am Rundenende. Gibt (enemyDown, allyDown) zurueck.
+local function burnTick(session, state, events)
+	local enemyDown, allyDown = false, false
+	if state.enemy.hp &gt; 0 and state.enemy.status == "brand" then
+		local sp = GameData.Species[state.enemy.id]
+		state.enemy.hp = math.max(0, state.enemy.hp - math.max(1, math.floor(state.enemy.stats.maxHp / 12)))
+		push(events, { t = "text", msg = sp.name .. " leidet unter dem Brand!" })
+		push(events, { t = "hp", side = "enemy", hp = state.enemy.hp })
+		if state.enemy.hp &lt;= 0 then
+			push(events, { t = "text", msg = sp.name .. " wurde besiegt!" })
+			push(events, { t = "faint", side = "enemy" })
+			enemyDown = true
+		end
+	end
+	local mon = session.team[state.monIndex]
+	if not enemyDown and mon.hp &gt; 0 and mon.status == "brand" then
+		local sp = GameData.Species[mon.id]
+		local maxHp = GameData.StatsFor(mon.id, mon.level).maxHp
+		mon.hp = math.max(0, mon.hp - math.max(1, math.floor(maxHp / 12)))
+		push(events, { t = "text", msg = sp.name .. " leidet unter dem Brand!" })
+		push(events, { t = "hp", side = "ally", hp = mon.hp })
+		if mon.hp &lt;= 0 then
+			push(events, { t = "text", msg = sp.name .. " wurde besiegt!" })
+			push(events, { t = "faint", side = "ally" })
+			allyDown = true
+		end
+	end
+	return enemyDown, allyDown
+end
+
+-- ---------- EP, Level, Entwicklung ----------
+
+local function awardXp(session, state, events)
+	local mon = session.team[state.monIndex]
+	local gain = GameData.XpGain(state.enemy.level, state.mode == "trainer")
+	mon.xp = mon.xp + gain
+	push(events, { t = "text", msg = GameData.Species[mon.id].name .. " erhält " .. gain .. " EP!" })
+	local changed = false
+	while mon.level &lt; GameData.MAX_LEVEL and mon.xp &gt;= GameData.XpToNext(mon.level) do
+		mon.xp = mon.xp - GameData.XpToNext(mon.level)
+		local oldMax = GameData.StatsFor(mon.id, mon.level).maxHp
+		mon.level = mon.level + 1
+		local newMax = GameData.StatsFor(mon.id, mon.level).maxHp
+		mon.hp = math.min(newMax, mon.hp + (newMax - oldMax))
+		changed = true
+		state.leveled[state.monIndex] = true
+		local sp = GameData.Species[mon.id]
+		push(events, { t = "text", msg = sp.name .. " ist jetzt Level " .. mon.level .. "!" })
+		local learned = GameData.MoveLearnedAt(mon.id, mon.level)
+		if learned then
+			push(events, { t = "text", msg = sp.name .. " lernt " .. GameData.Moves[learned].name .. "!" })
+		end
+	end
+	if changed then
+		push(events, { t = "ally", view = allyView(mon) })
+	end
+end
+
+-- Entwicklungen NACH dem Kampf (wie im Vorbild-Spiel)
+local function processEvolutions(player, session, state)
+	for index in pairs(state.leveled) do
+		local mon = session.team[index]
+		if mon then
+			local sp = GameData.Species[mon.id]
+			if sp.evolveLevel and sp.evolveTo and mon.level &gt;= sp.evolveLevel then
+				local oldName = sp.name
+				mon.id = sp.evolveTo
+				mon.hp = GameData.StatsFor(mon.id, mon.level).maxHp
+				mon.status = nil
+				PlayerData.Notify(player, "WOW! " .. oldName .. " entwickelt sich zu " .. GameData.Species[mon.id].name .. "!", "good")
+			end
+		end
+	end
+end
+
+-- ---------- Kampf-Ende ----------
+
+local function handleAllyFaint(player, session, state, events)
+	local anyAlive = false
+	for _, mon in ipairs(session.team) do
+		if mon.hp &gt; 0 then
+			anyAlive = true
+		end
+	end
+	if anyAlive then
+		state.forcedSwitch = true
+		push(events, { t = "text", msg = "Wähle dein nächstes Monster!" })
+	else
+		state.over = true
+		state.result = "niederlage"
+		push(events, { t = "text", msg = "Alle deine Monster sind K.O.! Du wachst im Monster-Center auf..." })
+	end
+end
+
+local function cleanup(player, state)
+	if state.charConn then
+		state.charConn:Disconnect()
+	end
+	if state.allyModel then state.allyModel:Destroy() end
+	if state.enemyModel then state.enemyModel:Destroy() end
+	if state.stage then state.stage.busy = false end
+	battles[player] = nil
+	setFrozen(player, false)
+end
+
+local function finishBattle(player, session, state)
+	cleanup(player, state)
+	processEvolutions(player, session, state)
+	if state.result == "niederlage" then
+		PlayerData.HealAll(player)
+		local character = player.Character
+		if character then
+			character:PivotTo(CFrame.new(WorldBuilder.PlazaSpawn))
+		end
+	end
+	PlayerData.Sync(player)
+end
+
+-- ---------- Kampfstart ----------
+
+local function baseChecks(player)
+	if battles[player] then return nil end
+	local session = PlayerData.SessionOf(player)
+	if not session then return nil end
+	if not session.starter or #session.team == 0 then
+		return nil
+	end
+	local aliveIndex = nil
+	for i, mon in ipairs(session.team) do
+		if mon.hp &gt; 0 then
+			aliveIndex = i
+			break
+		end
+	end
+	if not aliveIndex then
+		PlayerData.Notify(player, "Deine Monster sind alle K.O.! Lass sie im Monster-Center heilen.", "bad")
+		return nil
+	end
+	return session, aliveIndex
+end
+
+local function makeEnemy(speciesId, level)
+	local stats = GameData.StatsFor(speciesId, level)
+	return {
+		id = speciesId, level = level, hp = stats.maxHp,
+		stats = stats, moves = GameData.MovesFor(speciesId, level), status = nil,
+	}
+end
+
+local function startBattle(player, session, aliveIndex, mode, enemy, trainerDef)
+	local stage = takeStage()
+	if not stage then
+		PlayerData.Notify(player, "Alle Kampfarenen sind gerade belegt. Versuch es gleich nochmal!", "bad")
+		return false
+	end
+
+	local state = {
+		mode = mode, stage = stage, monIndex = aliveIndex,
+		enemy = enemy, trainer = trainerDef, trainerTeamIndex = 1,
+		forcedSwitch = false, over = false, result = nil, busy = false,
+		leveled = {}, charConn = nil,
+	}
+	battles[player] = state
+	setFrozen(player, true)
+
+	local allyName = spawnStageModel(state, "ally", session.team[aliveIndex].id)
+	local enemyName = spawnStageModel(state, "enemy", enemy.id)
+
+	state.charConn = player.CharacterAdded:Connect(function()
+		if battles[player] == state then
+			cleanup(player, state)
+			BattleUpdateRemote:FireClient(player, { events = {}, over = true, result = "abbruch", forcedSwitch = false })
+		end
+	end)
+
+	BattleStartRemote:FireClient(player, {
+		mode = mode,
+		trainerName = trainerDef and trainerDef.name or nil,
+		stageName = stage.folder.Name,
+		allyModel = allyName,
+		enemyModel = enemyName,
+		enemy = enemyView(enemy),
+		ally = allyView(session.team[aliveIndex]),
+		team = teamView(session),
+		monIndex = aliveIndex,
+		canCatch = mode == "wild",
+		canFlee = mode == "wild",
+		items = session.items,
+	})
+	return true
+end
+
+-- Wilder Kampf (aus Gras oder von herumlaufendem Monster)
+function BattleService.TryStartWild(player, speciesId, level, roamerModel)
+	local session, aliveIndex = baseChecks(player)
+	if not session then return false end
+	if roamerModel then
+		local rec = RoamService.Take(roamerModel)
+		if not rec then return false end
+	end
+	local sp = GameData.Species[speciesId]
+	PlayerData.Notify(player, "Ein wildes " .. sp.name .. " (Lv. " .. level .. ") greift an!", "info")
+	return startBattle(player, session, aliveIndex, "wild", makeEnemy(speciesId, level), nil)
+end
+
+-- Trainerkampf
+function BattleService.TryStartTrainer(player, trainerDef)
+	local session, aliveIndex = baseChecks(player)
+	if not session then return false end
+	local first = trainerDef.team[1]
+	return startBattle(player, session, aliveIndex, "trainer", makeEnemy(first[1], first[2]), trainerDef)
+end
+
+function BattleService.IsInBattle(player)
+	return battles[player] ~= nil
+end
+
+-- ---------- Sieg-Logik ----------
+
+-- Gegner besiegt: EP + ggf. naechstes Trainer-Monster
+local function onEnemyDefeated(player, session, state, events)
+	awardXp(session, state, events)
+	if state.mode == "trainer" then
+		local nextIndex = state.trainerTeamIndex + 1
+		local nextDef = state.trainer.team[nextIndex]
+		if nextDef then
+			state.trainerTeamIndex = nextIndex
+			state.enemy = makeEnemy(nextDef[1], nextDef[2])
+			local name = spawnStageModel(state, "enemy", state.enemy.id)
+			push(events, { t = "text", msg = state.trainer.name .. " schickt " .. GameData.Species[state.enemy.id].name .. " (Lv. " .. state.enemy.level .. ")!" })
+			push(events, { t = "enemyModel", name = name })
+			push(events, { t = "enemy", view = enemyView(state.enemy) })
+			return
+		end
+		-- Trainer besiegt!
+		session.beatenTrainers[state.trainer.id] = true
+		PlayerData.AddCoins(player, state.trainer.reward)
+		push(events, { t = "text", msg = "Du hast " .. state.trainer.name .. " besiegt! +" .. state.trainer.reward .. " Münzen!" })
+		state.over = true
+		state.result = "sieg"
+	else
+		state.over = true
+		state.result = "sieg"
+	end
+end
+
+-- Rundenende: Brand-Schaden + Folgen
+local function endOfRound(player, session, state, events)
+	if state.over or state.forcedSwitch then return end
+	local enemyDown, allyDown = burnTick(session, state, events)
+	if enemyDown then
+		onEnemyDefeated(player, session, state, events)
+	elseif allyDown then
+		handleAllyFaint(player, session, state, events)
+	end
+end
+
+-- ---------- Aktionen ----------
+
+local function doEnemyTurnAfterPlayerAction(player, session, state, events)
+	local allyDown = enemyAttack(session, state, events)
+	if allyDown then
+		handleAllyFaint(player, session, state, events)
+	end
+end
+
+local function resolveAction(player, state, session, action, events)
+	local kind = action.kind
+	if state.forcedSwitch and kind ~= "switch" then
+		return
+	end
+
+	if kind == "move" then
+		local mon = session.team[state.monIndex]
+		local myMoves = GameData.MovesFor(mon.id, mon.level)
+		local index = math.floor(tonumber(action.index) or 0)
+		local moveId = myMoves[index]
+		if not moveId then return end
+		local myStats = GameData.StatsFor(mon.id, mon.level)
+		if myStats.spd &gt;= state.enemy.stats.spd then
+			local enemyDown = allyAttack(session, state, events, moveId)
+			if enemyDown then
+				onEnemyDefeated(player, session, state, events)
+			else
+				doEnemyTurnAfterPlayerAction(player, session, state, events)
+			end
+		else
+			local allyDown = enemyAttack(session, state, events)
+			if allyDown then
+				handleAllyFaint(player, session, state, events)
+			else
+				local enemyDown = allyAttack(session, state, events, moveId)
+				if enemyDown then
+					onEnemyDefeated(player, session, state, events)
+				end
+			end
+		end
+		endOfRound(player, session, state, events)
+
+	elseif kind == "item" then
+		local itemId = action.item
+		local item = type(itemId) == "string" and GameData.Items[itemId]
+		if not item then return end
+
+		if item.ball then
+			-- Fangkugel werfen
+			if state.mode == "trainer" then
+				push(events, { t = "text", msg = "Man darf keine Monster von Trainern fangen!" })
+				return
+			end
+			if not PlayerData.TakeItem(player, "fangkugel") then
+				push(events, { t = "text", msg = "Keine Fangkugeln mehr! Kauf welche im Markt." })
+				return
+			end
+			local enemySp = GameData.Species[state.enemy.id]
+			push(events, { t = "text", msg = "Du wirfst eine Fangkugel auf " .. enemySp.name .. "..." })
+			local chance = GameData.CatchChance(state.enemy.level, state.enemy.hp / state.enemy.stats.maxHp)
+			local success = rng:NextNumber() &lt; chance
+			push(events, { t = "ball", wobbles = success and 3 or rng:NextInteger(1, 2), success = success })
+			if success then
+				local dest = PlayerData.AddCaught(player, state.enemy.id, state.enemy.level)
+				if dest then
+					push(events, { t = "text", msg = "GEFANGEN! " .. enemySp.name .. " gehört jetzt dir! (" .. dest .. ")" })
+					awardXp(session, state, events)
+					state.over = true
+					state.result = "gefangen"
+				else
+					push(events, { t = "text", msg = "Kein Platz mehr in Team und Box!" })
+				end
+			else
+				push(events, { t = "text", msg = "Oh nein! " .. enemySp.name .. " hat sich befreit!" })
+				doEnemyTurnAfterPlayerAction(player, session, state, events)
+				endOfRound(player, session, state, events)
+			end
+		else
+			-- Heil-Item auf das aktive Monster
+			local mon = session.team[state.monIndex]
+			if (session.items[itemId] or 0) &lt; 1 then
+				push(events, { t = "text", msg = "Davon hast du nichts mehr!" })
+				return
+			end
+			local ok, msg = PlayerData.ApplyItemEffect(mon, itemId)
+			if not ok then
+				push(events, { t = "text", msg = msg })
+				return
+			end
+			PlayerData.TakeItem(player, itemId)
+			push(events, { t = "text", msg = msg })
+			push(events, { t = "hp", side = "ally", hp = mon.hp })
+			push(events, { t = "status", side = "ally", status = mon.status })
+			doEnemyTurnAfterPlayerAction(player, session, state, events)
+			endOfRound(player, session, state, events)
+		end
+
+	elseif kind == "switch" then
+		local index = math.floor(tonumber(action.index) or 0)
+		if index &lt; 1 or index &gt; #session.team or index == state.monIndex then return end
+		local target = session.team[index]
+		if target.hp &lt;= 0 then return end
+		local wasForced = state.forcedSwitch
+		state.forcedSwitch = false
+		state.monIndex = index
+		local name = spawnStageModel(state, "ally", target.id)
+		push(events, { t = "text", msg = "Los, " .. GameData.Species[target.id].name .. "!" })
+		push(events, { t = "allyModel", name = name })
+		push(events, { t = "ally", view = allyView(target) })
+		if not wasForced then
+			doEnemyTurnAfterPlayerAction(player, session, state, events)
+			endOfRound(player, session, state, events)
+		end
+
+	elseif kind == "run" then
+		if state.mode == "trainer" then
+			push(events, { t = "text", msg = "Aus einem Trainerkampf kann man nicht fliehen!" })
+			return
+		end
+		local mon = session.team[state.monIndex]
+		local myStats = GameData.StatsFor(mon.id, mon.level)
+		local bonus = (myStats.spd - state.enemy.stats.spd) * 0.008
+		if bonus &gt; 0.25 then bonus = 0.25 end
+		if bonus &lt; -0.25 then bonus = -0.25 end
+		if rng:NextNumber() &lt; 0.7 + bonus then
+			push(events, { t = "text", msg = "Du bist entkommen!" })
+			state.over = true
+			state.result = "geflohen"
+		else
+			push(events, { t = "text", msg = "Du kommst nicht weg!" })
+			doEnemyTurnAfterPlayerAction(player, session, state, events)
+			endOfRound(player, session, state, events)
+		end
+	end
+end
+
+local function onBattleAction(player, action)
+	local state = battles[player]
+	if not state or state.busy or state.over then return end
+	if type(action) ~= "table" or type(action.kind) ~= "string" then return end
+	local session = PlayerData.SessionOf(player)
+	if not session then return end
+
+	state.busy = true
+	local events = {}
+	local ok, err = pcall(function()
+		resolveAction(player, state, session, action, events)
+	end)
+	if not ok then
+		warn("[Monsterwelt] Kampf-Fehler: " .. tostring(err))
+		state.busy = false
+		return
+	end
+
+	local mon = session.team[state.monIndex]
+	BattleUpdateRemote:FireClient(player, {
+		events = events,
+		ally = mon and allyView(mon) or nil,
+		enemy = enemyView(state.enemy),
+		team = teamView(session),
+		monIndex = state.monIndex,
+		over = state.over,
+		result = state.result,
+		forcedSwitch = state.forcedSwitch,
+		items = session.items,
+	})
+
+	if state.over then
+		finishBattle(player, session, state)
+	else
+		state.busy = false
+	end
+end
+
+function BattleService.Init()
+	buildStages()
+	BattleStartRemote = Remotes.Get("BattleStart")
+	BattleUpdateRemote = Remotes.Get("BattleUpdate")
+	Remotes.Get("BattleAction").OnServerEvent:Connect(onBattleAction)
+	Players.PlayerRemoving:Connect(function(player)
+		local state = battles[player]
+		if state then
+			cleanup(player, state)
+		end
+	end)
+end
+
+return BattleService
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX9">
+				<Properties>
+					<string name="Name">RoamService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Wilde Monster:
+-- 1) Sichtbar herumhuepfende Monster im hohen Gras (anlaufen!)
+-- 2) Zufallsbegegnungen beim Laufen durchs hohe Gras
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+
+local RoamService = {}
+
+local ROAMERS_PER_PATCH = 2
+local STEP_CHANCE = 0.09 -- Chance pro Gras-"Schritt"
+
+local rng = Random.new()
+local folder = nil
+local records = {} -- [model] = { id, level, patchIndex }
+local onWildBattle = nil -- Callback: (player, speciesId, level, modelOderNil) -&gt; bool
+
+-- ---------- Helfer ----------
+
+local function pickFromPool(pool)
+	local total = 0
+	for _, entry in ipairs(pool) do
+		total = total + entry[2]
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, entry in ipairs(pool) do
+		roll = roll - entry[2]
+		if roll &lt;= 0 then
+			return entry[1]
+		end
+	end
+	return pool[1][1]
+end
+
+local function randomInPatch(patch)
+	return Vector3.new(rng:NextNumber(patch[1] + 3, patch[3] - 3), 0, rng:NextNumber(patch[2] + 3, patch[4] - 3))
+end
+
+local function patchAt(pos)
+	for i, patch in ipairs(GameData.GrassPatches) do
+		if pos.X &gt;= patch[1] and pos.X &lt;= patch[3] and pos.Z &gt;= patch[2] and pos.Z &lt;= patch[4] then
+			return i, patch
+		end
+	end
+	return nil, nil
+end
+
+-- ---------- Herumlaufende Monster ----------
+
+function RoamService.Take(model)
+	local rec = records[model]
+	if not rec then return nil end
+	records[model] = nil
+	model:Destroy()
+	return rec
+end
+
+local function hopTo(model, root, targetPos)
+	-- Ein Hopser: hoch-vorwaerts, dann runter
+	local h = model:GetAttribute("RootHeight") or 1.5
+	local current = root.Position
+	local flatTarget = Vector3.new(targetPos.X, h, targetPos.Z)
+	local look = CFrame.lookAt(current, Vector3.new(flatTarget.X, current.Y, flatTarget.Z))
+	local mid = current:Lerp(flatTarget, 0.5) + Vector3.new(0, 1.4, 0)
+	local t1 = TweenService:Create(root, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = CFrame.lookAt(mid, mid + look.LookVector) })
+	t1:Play()
+	t1.Completed:Wait()
+	if not root.Parent then return false end
+	local t2 = TweenService:Create(root, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.lookAt(flatTarget, flatTarget + look.LookVector) })
+	t2:Play()
+	t2.Completed:Wait()
+	return root.Parent ~= nil
+end
+
+local function roamLoop(model, root, patch)
+	while model.Parent and root.Parent do
+		local target = randomInPatch(patch)
+		local hops = math.floor((Vector3.new(target.X, 0, target.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude / 4)
+		for _ = 1, math.max(1, hops) do
+			if not model.Parent or not root.Parent then return end
+			local current = root.Position
+			local dir = Vector3.new(target.X - current.X, 0, target.Z - current.Z)
+			if dir.Magnitude &lt; 3 then break end
+			local nextPos = current + dir.Unit * math.min(4, dir.Magnitude)
+			if not hopTo(model, root, nextPos) then return end
+			task.wait(rng:NextNumber(0.1, 0.5))
+		end
+		task.wait(rng:NextNumber(1, 3))
+	end
+end
+
+local function spawnRoamer(patchIndex)
+	local patch = GameData.GrassPatches[patchIndex]
+	local route = GameData.Routes[patch[5]]
+	local speciesId = pickFromPool(route.pool)
+	local level = rng:NextInteger(route.levelMin, route.levelMax)
+	local sp = GameData.Species[speciesId]
+
+	local model = MonsterFactory.Create(speciesId, 1)
+	local pos = randomInPatch(patch)
+	MonsterFactory.PlaceOnGround(model, pos, pos + Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)))
+
+	-- Namensschild
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(200, 56)
+	billboard.StudsOffset = Vector3.new(0, 3.2, 0)
+	billboard.MaxDistance = 100
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = sp.name .. "  Lv. " .. level
+	label.TextColor3 = GameData.TypeColors[sp.typ]
+	label.TextStrokeTransparency = 0.2
+	label.Parent = billboard
+	billboard.Parent = model.PrimaryPart
+
+	records[model] = { id = speciesId, level = level, patchIndex = patchIndex }
+
+	-- Beruehrung startet den Kampf
+	local touched = false
+	for _, child in ipairs(model:GetDescendants()) do
+		if child:IsA("BasePart") then
+			child.Touched:Connect(function(hit)
+				if touched then return end
+				local character = hit.Parent
+				local player = character and Players:GetPlayerFromCharacter(character)
+				if not player then return end
+				if not records[model] then return end
+				touched = true
+				local started = onWildBattle(player, speciesId, level, model)
+				if not started then
+					touched = false
+				end
+			end)
+		end
+	end
+
+	model.Parent = folder
+	task.spawn(roamLoop, model, model.PrimaryPart, patch)
+end
+
+local function roamerManager()
+	while true do
+		for patchIndex in ipairs(GameData.GrassPatches) do
+			local count = 0
+			for _, rec in pairs(records) do
+				if rec.patchIndex == patchIndex then
+					count = count + 1
+				end
+			end
+			if count &lt; ROAMERS_PER_PATCH then
+				spawnRoamer(patchIndex)
+			end
+		end
+		task.wait(5)
+	end
+end
+
+-- ---------- Zufallsbegegnungen im Gras ----------
+
+local lastPos = {} -- [player] = Vector3
+
+local function grassLoop()
+	while true do
+		task.wait(0.4)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if root then
+				local pos = root.Position
+				local prev = lastPos[player]
+				lastPos[player] = pos
+				local patchIndex, patch = patchAt(pos)
+				if patchIndex and prev then
+					local moved = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(prev.X, 0, prev.Z)).Magnitude
+					if moved &gt; 2 and rng:NextNumber() &lt; STEP_CHANCE then
+						local route = GameData.Routes[patch[5]]
+						local speciesId = pickFromPool(route.pool)
+						local level = rng:NextInteger(route.levelMin, route.levelMax)
+						onWildBattle(player, speciesId, level, nil)
+					end
+				end
+			end
+		end
+	end
+end
+
+function RoamService.Init(wildBattleCallback)
+	onWildBattle = wildBattleCallback
+	folder = Instance.new("Folder")
+	folder.Name = "WildeMonster"
+	folder.Parent = workspace
+	task.spawn(roamerManager)
+	task.spawn(grassLoop)
+	Players.PlayerRemoving:Connect(function(player)
+		lastPos[player] = nil
+	end)
+end
+
+return RoamService
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX10">
+				<Properties>
+					<string name="Name">TrainerService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Trainer-NPCs auf den Routen: Wer vorbeilaeuft, wird zum
+-- Kampf herausgefordert. Sieg bringt Muenzen (einmalig).
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local WorldBuilder = require(script.Parent:WaitForChild("WorldBuilder"))
+
+local TrainerService = {}
+
+local CHALLENGE_DISTANCE = 13
+
+local onTrainerBattle = nil -- Callback: (player, trainerDef) -&gt; bool
+local cooldown = {} -- [player] = { [trainerId] = Zeitpunkt }
+
+local function trainerPosition(def)
+	return Vector3.new(def.pos[1], 0, def.pos[2])
+end
+
+local function detectionLoop()
+	while true do
+		task.wait(0.5)
+		for _, def in ipairs(GameData.Trainers) do
+			local tpos = trainerPosition(def)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local session = PlayerData.SessionOf(player)
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if session and session.starter and root and not session.beatenTrainers[def.id] then
+					local dist = (Vector3.new(root.Position.X, 0, root.Position.Z) - tpos).Magnitude
+					if dist &lt; CHALLENGE_DISTANCE then
+						local cd = cooldown[player]
+						local last = cd and cd[def.id]
+						if not last or os.clock() - last &gt; 20 then
+							cooldown[player] = cooldown[player] or {}
+							cooldown[player][def.id] = os.clock()
+							local started = onTrainerBattle(player, def)
+							if started then
+								PlayerData.Notify(player, def.name .. ": " .. def.greeting, "info")
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function TrainerService.MarkBeaten(player, trainerId)
+	local session = PlayerData.SessionOf(player)
+	if session then
+		session.beatenTrainers[trainerId] = true
+	end
+end
+
+function TrainerService.Init(trainerBattleCallback)
+	onTrainerBattle = trainerBattleCallback
+
+	-- Trainer-Figuren aufstellen
+	for _, def in ipairs(GameData.Trainers) do
+		local pos = trainerPosition(def)
+		WorldBuilder.MakeNpc({
+			name = def.name,
+			shirt = def.shirt,
+			pos = pos,
+			faceTo = Vector3.new(0, 0, 0),
+			prompt = {
+				action = "Herausfordern",
+				callback = function(player)
+					local session = PlayerData.SessionOf(player)
+					if not session or not session.starter then
+						PlayerData.Notify(player, "Hol dir zuerst ein Monster im Labor!", "bad")
+						return
+					end
+					if session.beatenTrainers[def.id] then
+						PlayerData.Notify(player, def.name .. ": Du hast mich schon besiegt. Stark!", "info")
+						return
+					end
+					local started = onTrainerBattle(player, def)
+					if started then
+						PlayerData.Notify(player, def.name .. ": " .. def.greeting, "info")
+					end
+				end,
+			},
+		})
+	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		cooldown[player] = nil
+	end)
+	task.spawn(detectionLoop)
+end
+
+return TrainerService
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX11">
+				<Properties>
+					<string name="Name">FarmService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Beeren-Farm am Stadtrand:
+-- Fruechte pflücken (Buesche + Baeume), Job beim Farmer:
+-- 8 Fruechte sammeln -&gt; Muenzen. Bueusche wachsen nach.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local WorldBuilder = require(script.Parent:WaitForChild("WorldBuilder"))
+
+local FarmService = {}
+
+local BASKET_SIZE = 8
+local JOB_REWARD = 150
+
+local rng = Random.new(777)
+local folder = nil
+local jobs = {} -- [player] = { count = n }
+
+local function c3(r, g, b)
+	return Color3.fromRGB(r, g, b)
+end
+
+local function part(props)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	p.Parent = folder
+	return p
+end
+
+-- ---------- Ernte-Logik ----------
+
+local function giveFruit(player, itemId, itemName)
+	PlayerData.GiveItem(player, itemId, 1)
+	local job = jobs[player]
+	local msg = itemName .. " gepflückt!"
+	if job then
+		if job.count &lt; BASKET_SIZE then
+			job.count = job.count + 1
+		end
+		if job.count &gt;= BASKET_SIZE then
+			msg = msg .. " Korb voll (" .. BASKET_SIZE .. "/" .. BASKET_SIZE .. ") - zurück zum Farmer!"
+		else
+			msg = msg .. " Korb: " .. job.count .. "/" .. BASKET_SIZE
+		end
+	end
+	PlayerData.Sync(player)
+	PlayerData.Notify(player, msg, "good")
+end
+
+-- Busch mit Beeren + Nachwachsen
+local function makeBerryBush(x, z, blue)
+	local bush = part({
+		Shape = Enum.PartType.Ball, Size = Vector3.new(3.6, 2.8, 3.6),
+		Color = c3(75, 155, 80), Material = Enum.Material.Grass,
+		CFrame = CFrame.new(x, 1.3, z),
+	})
+	local berryColor = blue and c3(80, 110, 235) or c3(220, 60, 70)
+	local berries = {}
+	for i = 1, 4 do
+		local ang = i * 1.55
+		table.insert(berries, part({
+			Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7),
+			Color = berryColor, Material = Enum.Material.SmoothPlastic, CanCollide = false,
+			CFrame = CFrame.new(x + math.cos(ang) * 1.4, 1.6 + (i % 2) * 0.7, z + math.sin(ang) * 1.4),
+		}))
+	end
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Pflücken"
+	prompt.ObjectText = blue and "Blaubeeren-Busch" or "Beeren-Busch"
+	prompt.HoldDuration = 0.4
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = bush
+
+	local ready = true
+	prompt.Triggered:Connect(function(player)
+		if not ready then return end
+		ready = false
+		prompt.Enabled = false
+		for _, berry in ipairs(berries) do
+			berry.Transparency = 1
+		end
+		if blue then
+			giveFruit(player, "blaubeere", "Blaubeere")
+		else
+			giveFruit(player, "rotebeere", "Rote Beere")
+		end
+		task.delay(rng:NextNumber(60, 120), function()
+			for _, berry in ipairs(berries) do
+				berry.Transparency = 0
+			end
+			prompt.Enabled = true
+			ready = true
+		end)
+	end)
+end
+
+-- Obstbaum mit Goldaepfeln
+local function makeAppleTree(x, z)
+	part({
+		Shape = Enum.PartType.Cylinder, Size = Vector3.new(8, 2, 2),
+		Color = c3(110, 75, 48), Material = Enum.Material.Wood,
+		CFrame = CFrame.new(x, 4, z) * CFrame.Angles(0, 0, math.rad(90)),
+	})
+	part({
+		Shape = Enum.PartType.Ball, Size = Vector3.new(9, 8, 9),
+		Color = c3(80, 165, 75), Material = Enum.Material.Grass, CanCollide = false,
+		CFrame = CFrame.new(x, 9, z),
+	})
+	local apples = {}
+	for i = 1, 3 do
+		local ang = i * 2.1
+		table.insert(apples, part({
+			Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.9, 0.9),
+			Color = c3(255, 205, 60), Material = Enum.Material.Neon, CanCollide = false,
+			CFrame = CFrame.new(x + math.cos(ang) * 3.4, 7 + (i % 2) * 1.6, z + math.sin(ang) * 3.4),
+		}))
+	end
+	local trunk = part({ Size = Vector3.new(1, 1, 1), Transparency = 1, CanCollide = false, CFrame = CFrame.new(x, 3, z) })
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Pflücken"
+	prompt.ObjectText = "Goldapfel-Baum"
+	prompt.HoldDuration = 0.6
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = trunk
+
+	local ready = true
+	prompt.Triggered:Connect(function(player)
+		if not ready then return end
+		ready = false
+		prompt.Enabled = false
+		for _, apple in ipairs(apples) do
+			apple.Transparency = 1
+		end
+		giveFruit(player, "goldapfel", "Goldapfel")
+		task.delay(rng:NextNumber(180, 260), function()
+			for _, apple in ipairs(apples) do
+				apple.Transparency = 0
+			end
+			prompt.Enabled = true
+			ready = true
+		end)
+	end)
+end
+
+-- ---------- Aufbau ----------
+
+function FarmService.Init()
+	folder = Instance.new("Folder")
+	folder.Name = "BeerenFarm"
+	folder.Parent = workspace
+
+	local cx, cz = -140, 100 -- Zentrum des Obstgartens
+
+	-- Ackerboden + Zaun
+	part({ Size = Vector3.new(70, 0.3, 56), Color = c3(150, 115, 80), Material = Enum.Material.Ground, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(cx, 0.06, cz) })
+	local function fence(x, z, w, d)
+		part({ Size = Vector3.new(w, 2.6, d), Color = c3(160, 115, 70), Material = Enum.Material.Wood, CFrame = CFrame.new(x, 1.3, z) })
+	end
+	fence(cx, cz - 28, 70, 0.6)
+	fence(cx - 35, cz, 0.6, 56)
+	fence(cx + 35, cz - 8, 0.6, 40) -- Luecke als Eingang (Osten)
+	fence(cx, cz + 28, 70, 0.6)
+
+	-- Beerenbuesche in Reihen
+	for row = 0, 1 do
+		for i = 0, 3 do
+			makeBerryBush(cx - 24 + i * 12, cz - 14 + row * 14, false)
+		end
+	end
+	makeBerryBush(cx - 24, cz + 16, true)
+	makeBerryBush(cx - 4, cz + 16, true)
+
+	-- Obstbaeume
+	makeAppleTree(cx + 20, cz + 14)
+	makeAppleTree(cx + 24, cz - 4)
+	makeAppleTree(cx + 12, cz + 22)
+
+	-- Farmer am Eingang
+	WorldBuilder.MakeNpc({
+		name = "Farmer Willi",
+		shirt = { 110, 160, 80 }, hair = { 200, 180, 140 },
+		pos = Vector3.new(cx + 38, 0, cz + 16),
+		faceTo = Vector3.new(0, 0, 20),
+		prompt = {
+			action = "Reden",
+			callback = function(player)
+				local job = jobs[player]
+				if not job then
+					jobs[player] = { count = 0 }
+					PlayerData.Notify(player, "Farmer Willi: Pflück mir " .. BASKET_SIZE .. " Früchte, dann gibt's " .. JOB_REWARD .. " Münzen!", "info")
+				elseif job.count &gt;= BASKET_SIZE then
+					jobs[player] = nil
+					PlayerData.AddCoins(player, JOB_REWARD)
+					PlayerData.Sync(player)
+					PlayerData.Notify(player, "Farmer Willi: Super Arbeit! Hier sind " .. JOB_REWARD .. " Münzen!", "good")
+				else
+					PlayerData.Notify(player, "Farmer Willi: Der Korb ist noch nicht voll (" .. job.count .. "/" .. BASKET_SIZE .. ").", "info")
+				end
+			end,
+		},
+	})
+
+	-- Hinweisschild
+	local sign = part({ Size = Vector3.new(7, 3, 0.4), Color = c3(240, 230, 205), CFrame = CFrame.lookAt(Vector3.new(cx + 42, 4, cz + 8), Vector3.new(0, 4, 0)) })
+	part({ Size = Vector3.new(0.7, 4, 0.7), Color = c3(120, 85, 55), Material = Enum.Material.Wood, CFrame = CFrame.new(cx + 42, 2, cz + 8) })
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = "Beeren-Farm\nFrüchte-Job beim Farmer!"
+	label.TextColor3 = c3(60, 45, 30)
+	label.Parent = gui
+	gui.Parent = sign
+
+	Players.PlayerRemoving:Connect(function(player)
+		jobs[player] = nil
+	end)
+end
+
+return FarmService
+</ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="ServerStorage" referent="RBX24">
+	</Item>
+	<Item class="StarterGui" referent="RBX25">
+	</Item>
+	<Item class="StarterPack" referent="RBX26">
+	</Item>
+	<Item class="StarterPlayer" referent="RBX29">
+		<Item class="StarterPlayerScripts" referent="RBX28">
+			<Item class="Folder" referent="RBX27">
+				<Properties>
+					<string name="Name">Client</string>
+				</Properties>
+				<Item class="LocalScript" referent="RBX12">
+					<Properties>
+						<string name="Name">Main</string>
+						<ProtectedString name="Source">-- ============================================================
+-- MONSTERWELT - Client-Start
+-- Verbindet UI und Server, Tasten: B = Beutel, T = Team.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+local HudUi = require(script.Parent:WaitForChild("HudUi"))
+local MenuUi = require(script.Parent:WaitForChild("MenuUi"))
+local BattleUi = require(script.Parent:WaitForChild("BattleUi"))
+
+-- ---------- RemoteEvents ----------
+local ClientReady = Remotes.Get("ClientReady")
+local DataSync = Remotes.Get("DataSync")
+local Notify = Remotes.Get("Notify")
+local StarterAsk = Remotes.Get("StarterAsk")
+local StarterChoose = Remotes.Get("StarterChoose")
+local BattleStart = Remotes.Get("BattleStart")
+local BattleUpdate = Remotes.Get("BattleUpdate")
+local BattleAction = Remotes.Get("BattleAction")
+local TeamAction = Remotes.Get("TeamAction")
+local UseItem = Remotes.Get("UseItem")
+local ShopBuy = Remotes.Get("ShopBuy")
+local OpenUi = Remotes.Get("OpenUi")
+
+-- ---------- UI aufbauen ----------
+local inBattle = false
+
+HudUi.Init({
+	onToggleBag = function()
+		if not inBattle then
+			MenuUi.ToggleBag()
+		end
+	end,
+	onToggleTeam = function()
+		if not inBattle then
+			MenuUi.ToggleTeam(false)
+		end
+	end,
+})
+
+MenuUi.Init({
+	onTeamAction = function(op, index)
+		TeamAction:FireServer(op, index)
+	end,
+	onUseItem = function(itemId, teamIndex)
+		UseItem:FireServer(itemId, teamIndex)
+	end,
+	onShopBuy = function(itemId)
+		ShopBuy:FireServer(itemId)
+	end,
+	onStarterChoose = function(speciesId)
+		StarterChoose:FireServer(speciesId)
+	end,
+})
+
+BattleUi.Init(function(action)
+	BattleAction:FireServer(action)
+end)
+
+-- ---------- Server-Nachrichten ----------
+DataSync.OnClientEvent:Connect(function(data)
+	HudUi.SetData(data)
+	MenuUi.SetData(data)
+end)
+
+Notify.OnClientEvent:Connect(function(msg, kind)
+	if kind == "heal" then
+		UiKit.PlayHealJingle()
+	end
+	UiKit.Toast(msg, kind)
+end)
+
+StarterAsk.OnClientEvent:Connect(function(speciesId)
+	MenuUi.ShowStarterAsk(speciesId)
+end)
+
+OpenUi.OnClientEvent:Connect(function(which)
+	if inBattle then return end
+	if which == "shop" then
+		MenuUi.OpenShop()
+	elseif which == "box" then
+		MenuUi.ToggleTeam(true)
+	end
+end)
+
+BattleStart.OnClientEvent:Connect(function(payload)
+	inBattle = true
+	MenuUi.CloseAll()
+	BattleUi.Start(payload)
+end)
+
+BattleUpdate.OnClientEvent:Connect(function(payload)
+	if payload.over then
+		inBattle = false
+	end
+	BattleUi.Update(payload)
+end)
+
+-- ---------- Tasten ----------
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or inBattle then return end
+	if input.KeyCode == Enum.KeyCode.B then
+		MenuUi.ToggleBag()
+	elseif input.KeyCode == Enum.KeyCode.T then
+		MenuUi.ToggleTeam(false)
+	end
+end)
+
+-- ---------- Fertig ----------
+ClientReady:FireServer()
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX13">
+					<Properties>
+						<string name="Name">UiKit</string>
+						<ProtectedString name="Source">-- ============================================================
+-- UI-Helfer: Panels, Knoepfe, HP-Balken, Toasts, Sounds
+-- und 3D-Mini-Bilder (ViewportFrames) der Monster.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+
+local UiKit = {}
+
+UiKit.Colors = {
+	Panel = Color3.fromRGB(40, 44, 62),
+	PanelLight = Color3.fromRGB(58, 63, 88),
+	Text = Color3.fromRGB(255, 255, 255),
+	TextDim = Color3.fromRGB(190, 190, 210),
+	Good = Color3.fromRGB(90, 200, 110),
+	Bad = Color3.fromRGB(230, 90, 90),
+	Accent = Color3.fromRGB(255, 190, 60),
+	Blue = Color3.fromRGB(80, 150, 255),
+}
+
+-- ---------- Sounds (eingebaute Roblox-Sounds) ----------
+
+local function makeSound(id, volume)
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = volume
+	sound.Parent = SoundService
+	return sound
+end
+
+local sounds = {
+	click = makeSound("rbxasset://sounds/electronicpingshort.wav", 0.35),
+	hit = makeSound("rbxasset://sounds/swordslash.wav", 0.4),
+	catch = makeSound("rbxasset://sounds/snap.mp3", 0.6),
+	swoosh = makeSound("rbxasset://sounds/swoosh.wav", 0.5),
+}
+
+function UiKit.Play(name)
+	local sound = sounds[name]
+	if sound then
+		pcall(function()
+			SoundService:PlayLocalSound(sound)
+		end)
+	end
+end
+
+-- Kleine Heil-Melodie (3 Toene aufsteigend)
+function UiKit.PlayHealJingle()
+	task.spawn(function()
+		for i = 1, 3 do
+			local sound = sounds.click:Clone()
+			sound.PlaybackSpeed = 0.9 + i * 0.25
+			sound.Parent = SoundService
+			pcall(function()
+				SoundService:PlayLocalSound(sound)
+			end)
+			task.delay(2, function()
+				sound:Destroy()
+			end)
+			task.wait(0.18)
+		end
+	end)
+end
+
+function UiKit.Click()
+	UiKit.Play("click")
+end
+
+-- ---------- Grundbausteine ----------
+
+local function playerGui()
+	return Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+function UiKit.Mk(className, props)
+	local inst = Instance.new(className)
+	local parent = nil
+	for k, v in pairs(props) do
+		if k == "Parent" then
+			parent = v
+		else
+			inst[k] = v
+		end
+	end
+	if parent then
+		inst.Parent = parent
+	end
+	return inst
+end
+
+function UiKit.Screen(name, displayOrder)
+	return UiKit.Mk("ScreenGui", {
+		Name = name,
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = displayOrder or 1,
+		Parent = playerGui(),
+	})
+end
+
+function UiKit.Round(inst, px)
+	UiKit.Mk("UICorner", { CornerRadius = UDim.new(0, px or 10), Parent = inst })
+	return inst
+end
+
+function UiKit.Stroke(inst, color, thickness)
+	UiKit.Mk("UIStroke", {
+		Color = color or Color3.fromRGB(15, 15, 25),
+		Thickness = thickness or 2,
+		Parent = inst,
+	})
+	return inst
+end
+
+function UiKit.Label(props)
+	local defaults = {
+		BackgroundTransparency = 1,
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = UiKit.Colors.Text,
+	}
+	for k, v in pairs(props) do
+		defaults[k] = v
+	end
+	return UiKit.Mk("TextLabel", defaults)
+end
+
+function UiKit.Button(props, callback)
+	local defaults = {
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = UiKit.Colors.Text,
+		BackgroundColor3 = UiKit.Colors.PanelLight,
+		AutoButtonColor = true,
+		BorderSizePixel = 0,
+	}
+	for k, v in pairs(props) do
+		defaults[k] = v
+	end
+	local btn = UiKit.Mk("TextButton", defaults)
+	UiKit.Round(btn, 10)
+	UiKit.Stroke(btn)
+	UiKit.Mk("UIPadding", {
+		PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4),
+		PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6),
+		Parent = btn,
+	})
+	if callback then
+		btn.Activated:Connect(function()
+			UiKit.Click()
+			callback()
+		end)
+	end
+	return btn
+end
+
+function UiKit.Constrain(label, maxSize)
+	UiKit.Mk("UITextSizeConstraint", { MaxTextSize = maxSize, Parent = label })
+	return label
+end
+
+-- ---------- HP-Balken ----------
+
+function UiKit.HpBar(props)
+	local frame = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(25, 25, 38),
+		BorderSizePixel = 0,
+		Size = props.Size,
+		Position = props.Position,
+		AnchorPoint = props.AnchorPoint or Vector2.new(0, 0),
+		Parent = props.Parent,
+	})
+	UiKit.Round(frame, 6)
+	local fill = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Good,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 1, 0),
+		Parent = frame,
+	})
+	UiKit.Round(fill, 6)
+
+	local api = { frame = frame }
+	function api.Set(hp, maxHp, instant)
+		local frac = 0
+		if maxHp &gt; 0 then
+			frac = math.max(0, math.min(1, hp / maxHp))
+		end
+		local color = UiKit.Colors.Good
+		if frac &lt;= 0.25 then
+			color = UiKit.Colors.Bad
+		elseif frac &lt;= 0.5 then
+			color = UiKit.Colors.Accent
+		end
+		fill.BackgroundColor3 = color
+		local goal = UDim2.new(frac, 0, 1, 0)
+		if instant then
+			fill.Size = goal
+		else
+			TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = goal }):Play()
+		end
+	end
+	return api
+end
+
+-- ---------- 3D-Mini-Bild eines Monsters ----------
+
+function UiKit.MonsterViewport(props)
+	local vf = UiKit.Mk("ViewportFrame", {
+		BackgroundColor3 = props.BackgroundColor3 or Color3.fromRGB(30, 32, 48),
+		BackgroundTransparency = props.BackgroundTransparency or 0,
+		Size = props.Size,
+		Position = props.Position,
+		Ambient = Color3.fromRGB(200, 200, 210),
+		LightColor = Color3.fromRGB(255, 255, 255),
+		Parent = props.Parent,
+	})
+	UiKit.Round(vf, 8)
+
+	local api = { frame = vf }
+	function api.SetSpecies(speciesId)
+		for _, child in ipairs(vf:GetChildren()) do
+			child:Destroy()
+		end
+		if not speciesId then return end
+		local model = MonsterFactory.Create(speciesId, 1)
+		model:PivotTo(CFrame.new(0, 0, 0))
+		model.Parent = vf
+		local camera = Instance.new("Camera")
+		local extents = model:GetExtentsSize()
+		local dist = math.max(extents.X, extents.Y, extents.Z) * 1.35 + 1
+		camera.CFrame = CFrame.lookAt(Vector3.new(dist * 0.55, extents.Y * 0.35, -dist), Vector3.new(0, 0, 0))
+		camera.Parent = vf
+		vf.CurrentCamera = camera
+	end
+	return api
+end
+
+-- ---------- Toasts ----------
+
+local toastContainer = nil
+
+local function ensureToasts()
+	if toastContainer and toastContainer.Parent then
+		return toastContainer
+	end
+	local gui = UiKit.Screen("MonsterToasts", 50)
+	toastContainer = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 12),
+		Size = UDim2.new(0.56, 0, 0.32, 0),
+		Parent = gui,
+	})
+	UiKit.Mk("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 6),
+		Parent = toastContainer,
+	})
+	return toastContainer
+end
+
+function UiKit.Toast(msg, kind)
+	local container = ensureToasts()
+	local color = UiKit.Colors.Panel
+	if kind == "good" or kind == "heal" then
+		color = Color3.fromRGB(35, 90, 50)
+	elseif kind == "bad" then
+		color = Color3.fromRGB(105, 40, 45)
+	end
+	local toast = UiKit.Mk("TextLabel", {
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.08,
+		Font = Enum.Font.FredokaOne,
+		TextColor3 = UiKit.Colors.Text,
+		TextSize = 18,
+		Text = "  " .. msg .. "  ",
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.new(0, 0, 0, 34),
+		Parent = container,
+	})
+	UiKit.Round(toast, 10)
+	UiKit.Stroke(toast)
+	task.delay(4, function()
+		if toast.Parent then
+			local tween = TweenService:Create(toast, TweenInfo.new(0.4), { TextTransparency = 1, BackgroundTransparency = 1 })
+			tween:Play()
+			tween.Completed:Wait()
+			toast:Destroy()
+		end
+	end)
+end
+
+return UiKit
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX14">
+					<Properties>
+						<string name="Name">HudUi</string>
+						<ProtectedString name="Source">-- ============================================================
+-- HUD: Team-Anzeige oben links (mit 3D-Mini-Bildern),
+-- Muenzen oben rechts, Menue-Knoepfe, Hinweis unten.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+
+local HudUi = {}
+
+local gui = nil
+local teamContainer = nil
+local coinsLabel = nil
+local callbacks = nil
+
+function HudUi.SetData(data)
+	if not data then return end
+	coinsLabel.Text = "🪙 " .. data.coins
+
+	-- Team-Karten neu aufbauen
+	for _, child in ipairs(teamContainer:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	for i, mon in ipairs(data.team) do
+		local sp = GameData.Species[mon.id]
+		local stats = GameData.StatsFor(mon.id, mon.level)
+		local card = UiKit.Mk("Frame", {
+			BackgroundColor3 = UiKit.Colors.Panel,
+			BackgroundTransparency = 0.15,
+			Size = UDim2.new(1, 0, 0, 54),
+			LayoutOrder = i,
+			Parent = teamContainer,
+		})
+		UiKit.Round(card, 10)
+		UiKit.Stroke(card)
+
+		local viewport = UiKit.MonsterViewport({
+			Size = UDim2.new(0, 46, 0, 46),
+			Position = UDim2.new(0, 4, 0, 4),
+			Parent = card,
+		})
+		viewport.SetSpecies(mon.id)
+
+		UiKit.Constrain(UiKit.Label({
+			Text = sp.name .. "  Lv. " .. mon.level,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0, 56, 0, 4),
+			Size = UDim2.new(1, -60, 0, 20),
+			Parent = card,
+		}), 16)
+
+		local bar = UiKit.HpBar({
+			Position = UDim2.new(0, 56, 0, 27),
+			Size = UDim2.new(1, -100, 0, 11),
+			Parent = card,
+		})
+		bar.Set(mon.hp, stats.maxHp, true)
+
+		UiKit.Constrain(UiKit.Label({
+			Text = mon.hp .. "/" .. stats.maxHp .. (mon.status and ("  •  " .. GameData.StatusNames[mon.status]) or ""),
+			TextColor3 = mon.status and UiKit.Colors.Bad or UiKit.Colors.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0, 56, 0, 39),
+			Size = UDim2.new(1, -60, 0, 13),
+			Parent = card,
+		}), 12)
+
+		UiKit.Constrain(UiKit.Label({
+			Text = i == 1 and "★" or "",
+			TextColor3 = UiKit.Colors.Accent,
+			Position = UDim2.new(1, -24, 0, 4),
+			Size = UDim2.new(0, 20, 0, 20),
+			Parent = card,
+		}), 16)
+	end
+end
+
+function HudUi.Init(cb)
+	callbacks = cb
+	gui = UiKit.Screen("MonsterHud", 5)
+
+	-- Team oben links
+	teamContainer = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 10, 0, 12),
+		Size = UDim2.new(0, 190, 0, 360),
+		Parent = gui,
+	})
+	UiKit.Mk("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 5),
+		Parent = teamContainer,
+	})
+
+	-- Muenzen oben rechts
+	coinsLabel = UiKit.Constrain(UiKit.Label({
+		Text = "🪙 0",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -14, 0, 12),
+		Size = UDim2.new(0, 160, 0, 32),
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextStrokeTransparency = 0.4,
+		Parent = gui,
+	}), 26)
+
+	-- Menue-Knoepfe unten links
+	local buttons = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 14, 1, -14),
+		Size = UDim2.new(0, 140, 0, 104),
+		Parent = gui,
+	})
+	UiKit.Mk("UIListLayout", {
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 8),
+		Parent = buttons,
+	})
+	UiKit.Constrain(UiKit.Button({
+		Text = "🎒 Beutel (B)",
+		BackgroundColor3 = Color3.fromRGB(190, 130, 60),
+		Size = UDim2.new(1, 0, 0, 44),
+		LayoutOrder = 1,
+		Parent = buttons,
+	}, function()
+		callbacks.onToggleBag()
+	end), 18)
+	UiKit.Constrain(UiKit.Button({
+		Text = "⭐ Team (T)",
+		BackgroundColor3 = UiKit.Colors.Blue,
+		Size = UDim2.new(1, 0, 0, 44),
+		LayoutOrder = 2,
+		Parent = buttons,
+	}, function()
+		callbacks.onToggleTeam()
+	end), 18)
+
+	-- Hinweis unten Mitte
+	UiKit.Constrain(UiKit.Label({
+		Text = "Lauf durchs hohe Gras, um wilde Monster zu finden!",
+		TextStrokeTransparency = 0.4,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -10),
+		Size = UDim2.new(0.6, 0, 0, 20),
+		Parent = gui,
+	}), 16)
+end
+
+return HudUi
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX15">
+					<Properties>
+						<string name="Name">MenuUi</string>
+						<ProtectedString name="Source">-- ============================================================
+-- Menues: Beutel (B), Team (T), Box-PC, Shop und
+-- Starter-Bestaetigung im Labor.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+
+local MenuUi = {}
+
+local data = nil
+local callbacks = nil
+
+local gui = nil
+local bagPanel = nil
+local bagScroll = nil
+local teamPanel = nil
+local teamTitle = nil
+local teamScroll = nil
+local teamBoxMode = false
+local shopPanel = nil
+local shopScroll = nil
+local shopCoins = nil
+local starterModal = nil
+
+-- ---------- Grundgeruest ----------
+
+local function makePanel(title, size)
+	local panel = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = size,
+		Visible = false,
+		Parent = gui,
+	})
+	UiKit.Round(panel, 14)
+	UiKit.Stroke(panel, Color3.fromRGB(15, 15, 25), 3)
+	local titleLabel = UiKit.Label({
+		Text = title,
+		Size = UDim2.new(1, -60, 0, 32),
+		Position = UDim2.new(0, 14, 0, 8),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = panel,
+	})
+	UiKit.Button({
+		Text = "X",
+		BackgroundColor3 = UiKit.Colors.Bad,
+		Size = UDim2.new(0, 32, 0, 32),
+		Position = UDim2.new(1, -40, 0, 8),
+		Parent = panel,
+	}, function()
+		panel.Visible = false
+	end)
+	return panel, titleLabel
+end
+
+local function makeScroll(panel, topOffset)
+	local scroll = UiKit.Mk("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 10, 0, topOffset),
+		Size = UDim2.new(1, -20, 1, -topOffset - 10),
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6,
+		Parent = panel,
+	})
+	UiKit.Mk("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 6),
+		Parent = scroll,
+	})
+	return scroll
+end
+
+local function clearRows(container)
+	for _, child in ipairs(container:GetChildren()) do
+		if child:IsA("Frame") or child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+end
+
+-- ---------- Beutel ----------
+
+local function askTarget(itemId)
+	-- Overlay: Auf welches Monster anwenden?
+	local overlay = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.4,
+		Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 8,
+		Parent = gui,
+	})
+	local box = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0, 320, 0, 90 + #data.team * 44),
+		ZIndex = 8,
+		Parent = overlay,
+	})
+	UiKit.Round(box, 12)
+	UiKit.Stroke(box)
+	local title = UiKit.Label({
+		Text = GameData.Items[itemId].name .. " benutzen auf:",
+		Size = UDim2.new(1, -16, 0, 30),
+		Position = UDim2.new(0, 8, 0, 8),
+		ZIndex = 8,
+		Parent = box,
+	})
+	UiKit.Constrain(title, 20)
+	for i, mon in ipairs(data.team) do
+		local sp = GameData.Species[mon.id]
+		local stats = GameData.StatsFor(mon.id, mon.level)
+		local btn = UiKit.Button({
+			Text = sp.name .. "  Lv." .. mon.level .. "  (" .. mon.hp .. "/" .. stats.maxHp .. ")",
+			Size = UDim2.new(1, -20, 0, 36),
+			Position = UDim2.new(0, 10, 0, 40 + (i - 1) * 44),
+			ZIndex = 8,
+			Parent = box,
+		}, function()
+			overlay:Destroy()
+			callbacks.onUseItem(itemId, i)
+		end)
+		btn.ZIndex = 8
+		UiKit.Constrain(btn, 16)
+	end
+	local cancel = UiKit.Button({
+		Text = "Abbrechen",
+		BackgroundColor3 = UiKit.Colors.Bad,
+		Size = UDim2.new(1, -20, 0, 32),
+		Position = UDim2.new(0, 10, 1, -40),
+		ZIndex = 8,
+		Parent = box,
+	}, function()
+		overlay:Destroy()
+	end)
+	cancel.ZIndex = 8
+	UiKit.Constrain(cancel, 16)
+end
+
+local function renderBag()
+	if not data then return end
+	clearRows(bagScroll)
+	local order = 1
+	local empty = true
+	for _, itemId in ipairs(GameData.ItemOrder) do
+		local count = data.items[itemId] or 0
+		if count &gt; 0 then
+			empty = false
+			local item = GameData.Items[itemId]
+			local row = UiKit.Mk("Frame", {
+				BackgroundColor3 = UiKit.Colors.PanelLight,
+				Size = UDim2.new(1, -8, 0, 58),
+				LayoutOrder = order,
+				Parent = bagScroll,
+			})
+			UiKit.Round(row, 10)
+			UiKit.Constrain(UiKit.Label({
+				Text = item.name .. "  x" .. count,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Position = UDim2.new(0, 10, 0, 5),
+				Size = UDim2.new(0.72, 0, 0, 22),
+				Parent = row,
+			}), 18)
+			UiKit.Constrain(UiKit.Label({
+				Text = item.desc,
+				TextColor3 = UiKit.Colors.TextDim,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Position = UDim2.new(0, 10, 0, 30),
+				Size = UDim2.new(0.72, 0, 0, 20),
+				Parent = row,
+			}), 13)
+			if not item.ball then
+				UiKit.Constrain(UiKit.Button({
+					Text = "Benutzen",
+					BackgroundColor3 = UiKit.Colors.Good,
+					Position = UDim2.new(1, -102, 0.5, -16),
+					Size = UDim2.new(0, 94, 0, 32),
+					Parent = row,
+				}, function()
+					if data and #data.team &gt; 0 then
+						askTarget(itemId)
+					end
+				end), 15)
+			end
+			order = order + 1
+		end
+	end
+	if empty then
+		UiKit.Label({
+			Text = "Dein Beutel ist leer. Kauf etwas im Markt!",
+			TextColor3 = UiKit.Colors.TextDim,
+			Size = UDim2.new(1, -8, 0, 40),
+			LayoutOrder = 1,
+			Parent = bagScroll,
+		})
+	end
+end
+
+-- ---------- Team / Box ----------
+
+local function addMonRow(order, mon, isTeam, index)
+	local sp = GameData.Species[mon.id]
+	local stats = GameData.StatsFor(mon.id, mon.level)
+	local row = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.PanelLight,
+		Size = UDim2.new(1, -8, 0, 62),
+		LayoutOrder = order,
+		Parent = teamScroll,
+	})
+	UiKit.Round(row, 10)
+
+	local viewport = UiKit.MonsterViewport({
+		Size = UDim2.new(0, 52, 0, 52),
+		Position = UDim2.new(0, 5, 0, 5),
+		Parent = row,
+	})
+	viewport.SetSpecies(mon.id)
+
+	UiKit.Constrain(UiKit.Label({
+		Text = sp.name .. "  Lv. " .. mon.level .. "  (" .. sp.typ .. ")",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 64, 0, 5),
+		Size = UDim2.new(0.5, 0, 0, 22),
+		Parent = row,
+	}), 17)
+	UiKit.Constrain(UiKit.Label({
+		Text = "KP " .. mon.hp .. "/" .. stats.maxHp .. (mon.status and ("  •  " .. GameData.StatusNames[mon.status]) or ""),
+		TextColor3 = mon.status and UiKit.Colors.Bad or UiKit.Colors.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 64, 0, 29),
+		Size = UDim2.new(0.35, 0, 0, 16),
+		Parent = row,
+	}), 14)
+	local bar = UiKit.HpBar({
+		Position = UDim2.new(0, 64, 0, 48),
+		Size = UDim2.new(0.32, 0, 0, 9),
+		Parent = row,
+	})
+	bar.Set(mon.hp, stats.maxHp, true)
+
+	if isTeam then
+		if index &gt; 1 then
+			UiKit.Constrain(UiKit.Button({
+				Text = "Anführer",
+				BackgroundColor3 = UiKit.Colors.Blue,
+				Position = UDim2.new(0.62, 0, 0.5, -16),
+				Size = UDim2.new(0.17, 0, 0, 32),
+				Parent = row,
+			}, function()
+				callbacks.onTeamAction("leader", index)
+			end), 14)
+		end
+		if teamBoxMode and data and #data.team &gt; 1 then
+			UiKit.Constrain(UiKit.Button({
+				Text = "→ Box",
+				Position = UDim2.new(0.81, 0, 0.5, -16),
+				Size = UDim2.new(0.16, 0, 0, 32),
+				Parent = row,
+			}, function()
+				callbacks.onTeamAction("toBox", index)
+			end), 14)
+		end
+	else
+		if data and #data.team &lt; GameData.TEAM_SIZE then
+			UiKit.Constrain(UiKit.Button({
+				Text = "→ Team",
+				BackgroundColor3 = UiKit.Colors.Good,
+				Position = UDim2.new(0.78, 0, 0.5, -16),
+				Size = UDim2.new(0.19, 0, 0, 32),
+				Parent = row,
+			}, function()
+				callbacks.onTeamAction("fromBox", index)
+			end), 14)
+		end
+	end
+end
+
+local function renderTeam()
+	if not data then return end
+	teamTitle.Text = teamBoxMode and "Monster-PC (Team &amp; Box)" or "Dein Team"
+	clearRows(teamScroll)
+	local order = 1
+	for i, mon in ipairs(data.team) do
+		addMonRow(order, mon, true, i)
+		order = order + 1
+	end
+	if teamBoxMode then
+		local header = UiKit.Label({
+			Text = "Box (" .. #data.box .. "/" .. GameData.BOX_SIZE .. ")",
+			TextColor3 = UiKit.Colors.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Size = UDim2.new(1, -8, 0, 26),
+			LayoutOrder = order,
+			Parent = teamScroll,
+		})
+		header.Name = "BoxHeader"
+		order = order + 1
+		for i, mon in ipairs(data.box) do
+			addMonRow(order, mon, false, i)
+			order = order + 1
+		end
+	end
+end
+
+-- ---------- Shop ----------
+
+local function renderShop()
+	if not data then return end
+	shopCoins.Text = "Deine Münzen: 🪙 " .. data.coins
+	clearRows(shopScroll)
+	for i, itemId in ipairs(GameData.ItemOrder) do
+		local item = GameData.Items[itemId]
+		local row = UiKit.Mk("Frame", {
+			BackgroundColor3 = UiKit.Colors.PanelLight,
+			Size = UDim2.new(1, -8, 0, 58),
+			LayoutOrder = i,
+			Parent = shopScroll,
+		})
+		UiKit.Round(row, 10)
+		UiKit.Constrain(UiKit.Label({
+			Text = item.name .. "  –  🪙 " .. item.price,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0, 10, 0, 5),
+			Size = UDim2.new(0.7, 0, 0, 22),
+			Parent = row,
+		}), 18)
+		UiKit.Constrain(UiKit.Label({
+			Text = item.desc,
+			TextColor3 = UiKit.Colors.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0, 10, 0, 30),
+			Size = UDim2.new(0.7, 0, 0, 20),
+			Parent = row,
+		}), 13)
+		UiKit.Constrain(UiKit.Button({
+			Text = "Kaufen",
+			BackgroundColor3 = UiKit.Colors.Good,
+			Position = UDim2.new(1, -96, 0.5, -16),
+			Size = UDim2.new(0, 88, 0, 32),
+			Parent = row,
+		}, function()
+			callbacks.onShopBuy(itemId)
+		end), 15)
+	end
+end
+
+-- ---------- Starter-Bestaetigung ----------
+
+function MenuUi.ShowStarterAsk(speciesId)
+	if starterModal then
+		starterModal:Destroy()
+	end
+	local sp = GameData.Species[speciesId]
+	starterModal = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.45,
+		Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 9,
+		Parent = gui,
+	})
+	local box = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0, 380, 0, 330),
+		ZIndex = 9,
+		Parent = starterModal,
+	})
+	UiKit.Round(box, 14)
+	UiKit.Stroke(box, GameData.TypeColors[sp.typ], 3)
+	UiKit.Constrain(UiKit.Label({
+		Text = sp.name .. " (" .. sp.typ .. ")",
+		TextColor3 = GameData.TypeColors[sp.typ],
+		Position = UDim2.new(0, 0, 0, 10),
+		Size = UDim2.new(1, 0, 0, 34),
+		ZIndex = 9,
+		Parent = box,
+	}), 26)
+	local viewport = UiKit.MonsterViewport({
+		Size = UDim2.new(0, 130, 0, 130),
+		Position = UDim2.new(0.5, -65, 0, 50),
+		Parent = box,
+	})
+	viewport.frame.ZIndex = 9
+	viewport.SetSpecies(speciesId)
+	UiKit.Constrain(UiKit.Label({
+		Text = sp.desc .. "\n\nWillst du " .. sp.name .. " als Partner nehmen?",
+		TextWrapped = true,
+		TextScaled = false,
+		TextSize = 16,
+		Position = UDim2.new(0, 20, 0, 186),
+		Size = UDim2.new(1, -40, 0, 80),
+		ZIndex = 9,
+		Parent = box,
+	}), 16)
+	local yes = UiKit.Button({
+		Text = "Ja, nehmen!",
+		BackgroundColor3 = UiKit.Colors.Good,
+		Position = UDim2.new(0, 20, 1, -50),
+		Size = UDim2.new(0.45, -25, 0, 38),
+		ZIndex = 9,
+		Parent = box,
+	}, function()
+		starterModal:Destroy()
+		starterModal = nil
+		callbacks.onStarterChoose(speciesId)
+	end)
+	yes.ZIndex = 9
+	local no = UiKit.Button({
+		Text = "Lieber nicht",
+		BackgroundColor3 = UiKit.Colors.Bad,
+		Position = UDim2.new(0.55, 5, 1, -50),
+		Size = UDim2.new(0.45, -25, 0, 38),
+		ZIndex = 9,
+		Parent = box,
+	}, function()
+		starterModal:Destroy()
+		starterModal = nil
+	end)
+	no.ZIndex = 9
+end
+
+-- ---------- Oeffentliche API ----------
+
+function MenuUi.SetData(newData)
+	data = newData
+	if bagPanel.Visible then renderBag() end
+	if teamPanel.Visible then renderTeam() end
+	if shopPanel.Visible then renderShop() end
+end
+
+function MenuUi.CloseAll()
+	bagPanel.Visible = false
+	teamPanel.Visible = false
+	shopPanel.Visible = false
+	if starterModal then
+		starterModal:Destroy()
+		starterModal = nil
+	end
+end
+
+function MenuUi.ToggleBag()
+	teamPanel.Visible = false
+	shopPanel.Visible = false
+	bagPanel.Visible = not bagPanel.Visible
+	if bagPanel.Visible then renderBag() end
+end
+
+function MenuUi.ToggleTeam(boxMode)
+	bagPanel.Visible = false
+	shopPanel.Visible = false
+	if teamPanel.Visible and teamBoxMode == (boxMode == true) then
+		teamPanel.Visible = false
+		return
+	end
+	teamBoxMode = boxMode == true
+	teamPanel.Visible = true
+	renderTeam()
+end
+
+function MenuUi.OpenShop()
+	MenuUi.CloseAll()
+	shopPanel.Visible = true
+	renderShop()
+end
+
+function MenuUi.Init(cb)
+	callbacks = cb
+	gui = UiKit.Screen("MonsterMenus", 10)
+
+	bagPanel = makePanel("Beutel", UDim2.new(0, 420, 0, 440))
+	bagScroll = makeScroll(bagPanel, 48)
+
+	teamPanel, teamTitle = makePanel("Dein Team", UDim2.new(0, 480, 0, 520))
+	teamScroll = makeScroll(teamPanel, 48)
+
+	shopPanel = makePanel("Markt", UDim2.new(0, 430, 0, 480))
+	shopCoins = UiKit.Constrain(UiKit.Label({
+		Text = "",
+		TextColor3 = UiKit.Colors.Accent,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 14, 0, 42),
+		Size = UDim2.new(1, -28, 0, 22),
+		Parent = shopPanel,
+	}), 18)
+	shopScroll = makeScroll(shopPanel, 70)
+end
+
+return MenuUi
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX16">
+					<Properties>
+						<string name="Name">BattleUi</string>
+						<ProtectedString name="Source">-- ============================================================
+-- Kampf-Oberflaeche:
+-- feste Kampf-Kamera auf die Buehne, Menue (Kampf/Beutel/
+-- Team/Flucht), KP-Balken, Kampftext, Fangkugel-Animation.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+
+local BattleUi = {}
+
+local sendAction = nil
+local gui = nil
+local state = nil
+local locked = false
+local bobConn = nil
+
+-- UI-Referenzen
+local logLabel, buttonsArea, mainGrid, movesFrame, bagFrame, switchFrame
+local resultBanner, resultText
+local enemyName, enemyInfo, enemyBar
+local allyName, allyInfo, allyHpText, allyBar, xpFill
+
+local function setLog(msg)
+	logLabel.Text = msg
+end
+
+-- ---------- Anzeige ----------
+
+local function statusText(status)
+	if status then
+		return "  •  " .. GameData.StatusNames[status]
+	end
+	return ""
+end
+
+local function renderEnemy(instant)
+	if not state or not state.enemy then return end
+	local e = state.enemy
+	enemyName.Text = e.name .. "   Lv. " .. e.level
+	enemyInfo.Text = e.typ .. statusText(e.status)
+	enemyInfo.TextColor3 = e.status and UiKit.Colors.Bad or GameData.TypeColors[e.typ]
+	enemyBar.Set(e.hp, e.maxHp, instant)
+end
+
+local function renderAlly(instant)
+	if not state or not state.ally then return end
+	local a = state.ally
+	allyName.Text = a.name .. "   Lv. " .. a.level
+	allyInfo.Text = a.typ .. statusText(a.status)
+	allyInfo.TextColor3 = a.status and UiKit.Colors.Bad or GameData.TypeColors[a.typ]
+	allyBar.Set(a.hp, a.maxHp, instant)
+	allyHpText.Text = a.hp .. " / " .. a.maxHp
+	local frac = 0
+	if a.xpNext and a.xpNext &gt; 0 then
+		frac = math.max(0, math.min(1, a.xp / a.xpNext))
+	end
+	xpFill.Size = UDim2.new(frac, 0, 1, 0)
+end
+
+-- ---------- Buehnen-Modelle &amp; Kamera ----------
+
+local function fetchModel(side, name)
+	if not state or not state.stageFolder then return end
+	local model = state.stageFolder:WaitForChild(name, 5)
+	if model then
+		state[side .. "Model"] = model
+		state[side .. "Base"] = model:GetPivot()
+	end
+end
+
+local function startBobbing()
+	if bobConn then bobConn:Disconnect() end
+	bobConn = RunService.RenderStepped:Connect(function()
+		if not state then return end
+		local t = os.clock()
+		if state.allyModel and state.allyModel.Parent and state.allyBase then
+			state.allyModel:PivotTo(state.allyBase * CFrame.new(0, math.abs(math.sin(t * 3)) * 0.35, 0))
+		end
+		if state.enemyModel and state.enemyModel.Parent and state.enemyBase then
+			state.enemyModel:PivotTo(state.enemyBase * CFrame.new(0, math.abs(math.sin(t * 3 + 1.4)) * 0.35, 0))
+		end
+	end)
+end
+
+local function stopBobbing()
+	if bobConn then
+		bobConn:Disconnect()
+		bobConn = nil
+	end
+end
+
+local function flashHit(side)
+	local model = state and state[side .. "Model"]
+	if not model or not model.Parent then return end
+	UiKit.Play("hit")
+	local highlight = Instance.new("Highlight")
+	highlight.FillColor = Color3.fromRGB(255, 70, 70)
+	highlight.FillTransparency = 0.4
+	highlight.OutlineTransparency = 1
+	highlight.Parent = model
+	task.delay(0.25, function()
+		highlight:Destroy()
+	end)
+end
+
+local function faintAnim(side)
+	local model = state and state[side .. "Model"]
+	local base = state and state[side .. "Base"]
+	if not model or not model.Parent or not base then return end
+	for i = 1, 6 do
+		if not model.Parent then return end
+		model:PivotTo(base * CFrame.new(0, -i * 0.5, 0) * CFrame.Angles(0, 0, math.rad(i * 13)))
+		task.wait(0.06)
+	end
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			TweenService:Create(part, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+		end
+	end
+end
+
+-- Fangkugel-Wurf mit Wackeln
+local function ballAnimation(wobbles, success)
+	if not state or not state.enemyBase then
+		task.wait(0.5)
+		return
+	end
+	local startPos = (state.allyBase or state.enemyBase).Position + Vector3.new(0, 2.5, 0)
+	local endPos = state.enemyBase.Position + Vector3.new(0, 1.2, 0)
+
+	local ball = Instance.new("Part")
+	ball.Shape = Enum.PartType.Ball
+	ball.Size = Vector3.new(1.2, 1.2, 1.2)
+	ball.Color = Color3.fromRGB(220, 60, 60)
+	ball.Material = Enum.Material.SmoothPlastic
+	ball.Anchored = true
+	ball.CanCollide = false
+	ball.CFrame = CFrame.new(startPos)
+	ball.Parent = workspace
+	local stripe = Instance.new("Part")
+	stripe.Shape = Enum.PartType.Cylinder
+	stripe.Size = Vector3.new(0.3, 1.26, 1.26)
+	stripe.Color = Color3.fromRGB(245, 245, 245)
+	stripe.Anchored = true
+	stripe.CanCollide = false
+	stripe.Parent = workspace
+
+	UiKit.Play("swoosh")
+	-- Wurf-Bogen
+	local flightTime = 0.55
+	local t0 = os.clock()
+	while true do
+		local alpha = (os.clock() - t0) / flightTime
+		if alpha &gt;= 1 then break end
+		local pos = startPos:Lerp(endPos, alpha) + Vector3.new(0, math.sin(alpha * math.pi) * 4, 0)
+		ball.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, alpha * 12)
+		stripe.CFrame = ball.CFrame * CFrame.Angles(0, 0, math.rad(90))
+		RunService.RenderStepped:Wait()
+	end
+	ball.CFrame = CFrame.new(endPos)
+	stripe.CFrame = ball.CFrame * CFrame.Angles(0, 0, math.rad(90))
+
+	-- Monster "verschwindet" in der Kugel
+	if state.enemyModel and state.enemyModel.Parent then
+		for _, part in ipairs(state.enemyModel:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Transparency = 1
+			end
+		end
+	end
+
+	-- Wackeln
+	for _ = 1, wobbles do
+		task.wait(0.25)
+		UiKit.Play("click")
+		for _, angle in ipairs({ 18, -18, 0 }) do
+			ball.CFrame = CFrame.new(endPos) * CFrame.Angles(0, 0, math.rad(angle))
+			stripe.CFrame = ball.CFrame * CFrame.Angles(0, 0, math.rad(90))
+			task.wait(0.1)
+		end
+	end
+	task.wait(0.3)
+
+	if success then
+		UiKit.Play("catch")
+		ball.Color = Color3.fromRGB(150, 150, 150)
+		task.wait(0.6)
+	else
+		-- Kugel platzt auf, Monster kommt zurueck
+		if state.enemyModel and state.enemyModel.Parent then
+			for _, part in ipairs(state.enemyModel:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.Transparency = 0
+				end
+			end
+		end
+	end
+	ball:Destroy()
+	stripe:Destroy()
+end
+
+local function enterCamera()
+	if not state or not state.stageFolder then return end
+	local camPoint = state.stageFolder:FindFirstChild("KameraPunkt")
+	if not camPoint then return end
+	local camera = workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Scriptable
+	local tween = TweenService:Create(camera, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = camPoint.CFrame })
+	tween:Play()
+end
+
+local function exitCamera()
+	local camera = workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Custom
+	local character = Players.LocalPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		camera.CameraSubject = humanoid
+	end
+end
+
+-- ---------- Untermenues ----------
+
+local function showMain()
+	mainGrid.Visible = true
+	movesFrame.Visible = false
+	bagFrame.Visible = false
+	switchFrame.Visible = false
+end
+
+local function send(action)
+	if locked then return end
+	locked = true
+	buttonsArea.Visible = false
+	sendAction(action)
+end
+
+local function clearButtons(frame)
+	for _, child in ipairs(frame:GetChildren()) do
+		if child:IsA("TextButton") or child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+end
+
+local function showMoves()
+	clearButtons(movesFrame)
+	for i, move in ipairs(state.ally.moves) do
+		UiKit.Constrain(UiKit.Button({
+			Text = move.name .. "\n" .. move.typ .. " • Stärke " .. move.power,
+			BackgroundColor3 = GameData.TypeColors[move.typ]:Lerp(Color3.new(0, 0, 0), 0.35),
+			LayoutOrder = i,
+			Parent = movesFrame,
+		}, function()
+			send({ kind = "move", index = i })
+		end), 17)
+	end
+	UiKit.Constrain(UiKit.Button({
+		Text = "Zurück",
+		BackgroundColor3 = Color3.fromRGB(90, 90, 110),
+		LayoutOrder = 9,
+		Parent = movesFrame,
+	}, showMain), 17)
+	mainGrid.Visible = false
+	movesFrame.Visible = true
+	bagFrame.Visible = false
+	switchFrame.Visible = false
+end
+
+local function showBag()
+	clearButtons(bagFrame)
+	local order = 1
+	local any = false
+	for _, itemId in ipairs(GameData.ItemOrder) do
+		local count = (state.items and state.items[itemId]) or 0
+		if count &gt; 0 then
+			any = true
+			local item = GameData.Items[itemId]
+			UiKit.Constrain(UiKit.Button({
+				Text = item.name .. " x" .. count,
+				BackgroundColor3 = item.ball and Color3.fromRGB(190, 70, 70) or Color3.fromRGB(80, 140, 90),
+				LayoutOrder = order,
+				Parent = bagFrame,
+			}, function()
+				send({ kind = "item", item = itemId })
+			end), 16)
+			order = order + 1
+		end
+	end
+	if not any then
+		UiKit.Constrain(UiKit.Label({
+			Text = "Beutel leer!",
+			LayoutOrder = 1,
+			Size = UDim2.new(0.3, 0, 0.4, 0),
+			Parent = bagFrame,
+		}), 16)
+	end
+	UiKit.Constrain(UiKit.Button({
+		Text = "Zurück",
+		BackgroundColor3 = Color3.fromRGB(90, 90, 110),
+		LayoutOrder = 9,
+		Parent = bagFrame,
+	}, showMain), 16)
+	mainGrid.Visible = false
+	movesFrame.Visible = false
+	bagFrame.Visible = true
+	switchFrame.Visible = false
+end
+
+local function showSwitch(forced)
+	clearButtons(switchFrame)
+	for i, mon in ipairs(state.team) do
+		local usable = mon.hp &gt; 0 and i ~= state.monIndex
+		local label = mon.name .. " Lv." .. mon.level .. "\n" .. mon.hp .. "/" .. mon.maxHp
+		if mon.hp &lt;= 0 then
+			label = mon.name .. "\nK.O."
+		elseif i == state.monIndex then
+			label = mon.name .. "\nim Kampf"
+		end
+		UiKit.Constrain(UiKit.Button({
+			Text = label,
+			BackgroundColor3 = usable and GameData.TypeColors[mon.typ]:Lerp(Color3.new(0, 0, 0), 0.4) or Color3.fromRGB(60, 60, 70),
+			LayoutOrder = i,
+			Parent = switchFrame,
+		}, function()
+			if usable then
+				send({ kind = "switch", index = i })
+			end
+		end), 15)
+	end
+	if not forced then
+		UiKit.Constrain(UiKit.Button({
+			Text = "Zurück",
+			BackgroundColor3 = Color3.fromRGB(90, 90, 110),
+			LayoutOrder = 9,
+			Parent = switchFrame,
+		}, showMain), 15)
+	end
+	mainGrid.Visible = false
+	movesFrame.Visible = false
+	bagFrame.Visible = false
+	switchFrame.Visible = true
+end
+
+-- ---------- Ablauf ----------
+
+local RESULTS = {
+	sieg = { text = "SIEG! 🏆", color = Color3.fromRGB(60, 160, 80) },
+	gefangen = { text = "GEFANGEN! 🎉", color = Color3.fromRGB(70, 130, 220) },
+	geflohen = { text = "Entkommen!", color = Color3.fromRGB(120, 120, 140) },
+	niederlage = { text = "K.O. ...", color = Color3.fromRGB(170, 60, 60) },
+}
+
+function BattleUi.Start(payload)
+	state = {
+		mode = payload.mode,
+		ally = payload.ally,
+		enemy = payload.enemy,
+		team = payload.team,
+		monIndex = payload.monIndex,
+		items = payload.items,
+		canCatch = payload.canCatch,
+		canFlee = payload.canFlee,
+	}
+	local arenas = workspace:WaitForChild("Kampfarenen", 5)
+	state.stageFolder = arenas and arenas:WaitForChild(payload.stageName, 5) or nil
+	fetchModel("ally", payload.allyModel)
+	fetchModel("enemy", payload.enemyModel)
+
+	locked = false
+	renderAlly(true)
+	renderEnemy(true)
+	if payload.mode == "trainer" then
+		setLog(payload.trainerName .. " will kämpfen! " .. payload.enemy.name .. " (Lv. " .. payload.enemy.level .. ") kommt raus!")
+	else
+		setLog("Ein wildes " .. payload.enemy.name .. " (Lv. " .. payload.enemy.level .. ") erscheint!")
+	end
+	resultBanner.Visible = false
+	buttonsArea.Visible = true
+	showMain()
+	gui.Enabled = true
+	enterCamera()
+	startBobbing()
+end
+
+function BattleUi.Update(payload)
+	task.spawn(function()
+		if not state then
+			if payload.over then
+				gui.Enabled = false
+				exitCamera()
+				stopBobbing()
+			end
+			return
+		end
+		buttonsArea.Visible = false
+
+		for _, ev in ipairs(payload.events) do
+			if ev.t == "text" then
+				setLog(ev.msg)
+				task.wait(1.05)
+			elseif ev.t == "hp" then
+				if ev.side == "enemy" and state.enemy then
+					state.enemy.hp = ev.hp
+					enemyBar.Set(ev.hp, state.enemy.maxHp, false)
+				elseif state.ally then
+					state.ally.hp = ev.hp
+					allyBar.Set(ev.hp, state.ally.maxHp, false)
+					allyHpText.Text = ev.hp .. " / " .. state.ally.maxHp
+				end
+				task.wait(0.5)
+			elseif ev.t == "hit" then
+				flashHit(ev.side)
+				task.wait(0.2)
+			elseif ev.t == "faint" then
+				faintAnim(ev.side)
+				task.wait(0.4)
+			elseif ev.t == "status" then
+				if ev.side == "enemy" and state.enemy then
+					state.enemy.status = ev.status
+					renderEnemy(true)
+				elseif state.ally then
+					state.ally.status = ev.status
+					renderAlly(true)
+				end
+			elseif ev.t == "ally" then
+				state.ally = ev.view
+				renderAlly(true)
+				task.wait(0.3)
+			elseif ev.t == "enemy" then
+				state.enemy = ev.view
+				renderEnemy(true)
+				task.wait(0.3)
+			elseif ev.t == "allyModel" then
+				fetchModel("ally", ev.name)
+				task.wait(0.2)
+			elseif ev.t == "enemyModel" then
+				fetchModel("enemy", ev.name)
+				task.wait(0.2)
+			elseif ev.t == "ball" then
+				ballAnimation(ev.wobbles, ev.success)
+			end
+		end
+
+		if payload.ally then state.ally = payload.ally end
+		if payload.enemy then state.enemy = payload.enemy end
+		if payload.team then state.team = payload.team end
+		if payload.monIndex then state.monIndex = payload.monIndex end
+		if payload.items then state.items = payload.items end
+		renderAlly(true)
+		renderEnemy(true)
+
+		if payload.over then
+			local info = RESULTS[payload.result]
+			if info then
+				resultText.Text = info.text
+				resultBanner.BackgroundColor3 = info.color
+				resultBanner.Visible = true
+				task.wait(1.6)
+			end
+			gui.Enabled = false
+			exitCamera()
+			stopBobbing()
+			state = nil
+			locked = false
+		else
+			locked = false
+			buttonsArea.Visible = true
+			if payload.forcedSwitch then
+				setLog("Wähle dein nächstes Monster!")
+				showSwitch(true)
+			else
+				showMain()
+			end
+		end
+	end)
+end
+
+-- ---------- Aufbau ----------
+
+function BattleUi.Init(sender)
+	sendAction = sender
+	gui = UiKit.Screen("MonsterBattle", 20)
+	gui.Enabled = false
+
+	-- Gegner-Karte oben rechts
+	local enemyCard = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.98, 0, 0.05, 0),
+		Size = UDim2.new(0.32, 0, 0.14, 0),
+		Parent = gui,
+	})
+	UiKit.Round(enemyCard, 12)
+	UiKit.Stroke(enemyCard)
+	enemyName = UiKit.Constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.07, 0),
+		Size = UDim2.new(0.9, 0, 0.36, 0),
+		Parent = enemyCard,
+	}), 24)
+	enemyInfo = UiKit.Constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.44, 0),
+		Size = UDim2.new(0.9, 0, 0.18, 0),
+		Parent = enemyCard,
+	}), 15)
+	enemyBar = UiKit.HpBar({
+		Position = UDim2.new(0.05, 0, 0.68, 0),
+		Size = UDim2.new(0.9, 0, 0.18, 0),
+		Parent = enemyCard,
+	})
+
+	-- Eigene Karte unten links
+	local allyCard = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0.02, 0, 0.72, 0),
+		Size = UDim2.new(0.32, 0, 0.17, 0),
+		Parent = gui,
+	})
+	UiKit.Round(allyCard, 12)
+	UiKit.Stroke(allyCard)
+	allyName = UiKit.Constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.05, 0),
+		Size = UDim2.new(0.9, 0, 0.3, 0),
+		Parent = allyCard,
+	}), 24)
+	allyInfo = UiKit.Constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.37, 0),
+		Size = UDim2.new(0.55, 0, 0.15, 0),
+		Parent = allyCard,
+	}), 14)
+	allyHpText = UiKit.Constrain(UiKit.Label({
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextColor3 = UiKit.Colors.TextDim,
+		Position = UDim2.new(0.6, 0, 0.37, 0),
+		Size = UDim2.new(0.35, 0, 0.15, 0),
+		Parent = allyCard,
+	}), 14)
+	allyBar = UiKit.HpBar({
+		Position = UDim2.new(0.05, 0, 0.57, 0),
+		Size = UDim2.new(0.9, 0, 0.16, 0),
+		Parent = allyCard,
+	})
+	local xpBack = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(25, 25, 38),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0.05, 0, 0.8, 0),
+		Size = UDim2.new(0.9, 0, 0.08, 0),
+		Parent = allyCard,
+	})
+	UiKit.Round(xpBack, 4)
+	xpFill = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(120, 160, 255),
+		BorderSizePixel = 0,
+		Size = UDim2.new(0, 0, 1, 0),
+		Parent = xpBack,
+	})
+	UiKit.Round(xpFill, 4)
+
+	-- Untere Leiste
+	local bottom = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0.99, 0),
+		Size = UDim2.new(0.96, 0, 0.25, 0),
+		Parent = gui,
+	})
+	UiKit.Round(bottom, 14)
+	UiKit.Stroke(bottom)
+
+	logLabel = UiKit.Constrain(UiKit.Label({
+		Text = "",
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Position = UDim2.new(0.02, 0, 0.08, 0),
+		Size = UDim2.new(0.52, 0, 0.84, 0),
+		Parent = bottom,
+	}), 24)
+
+	buttonsArea = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0.56, 0, 0.05, 0),
+		Size = UDim2.new(0.42, 0, 0.9, 0),
+		Parent = bottom,
+	})
+
+	local function grid(parent, cols)
+		UiKit.Mk("UIGridLayout", {
+			CellSize = UDim2.new(1 / cols - 0.02, 0, 0.45, 0),
+			CellPadding = UDim2.new(0.02, 0, 0.07, 0),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = parent,
+		})
+	end
+
+	mainGrid = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = buttonsArea })
+	grid(mainGrid, 2)
+	UiKit.Constrain(UiKit.Button({ Text = "Kampf", BackgroundColor3 = Color3.fromRGB(200, 70, 70), LayoutOrder = 1, Parent = mainGrid }, function()
+		showMoves()
+	end), 24)
+	UiKit.Constrain(UiKit.Button({ Text = "Beutel", BackgroundColor3 = Color3.fromRGB(190, 130, 60), LayoutOrder = 2, Parent = mainGrid }, function()
+		showBag()
+	end), 24)
+	UiKit.Constrain(UiKit.Button({ Text = "Team", BackgroundColor3 = Color3.fromRGB(210, 170, 60), LayoutOrder = 3, Parent = mainGrid }, function()
+		showSwitch(false)
+	end), 24)
+	UiKit.Constrain(UiKit.Button({ Text = "Flucht", BackgroundColor3 = Color3.fromRGB(110, 110, 130), LayoutOrder = 4, Parent = mainGrid }, function()
+		send({ kind = "run" })
+	end), 24)
+
+	movesFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
+	grid(movesFrame, 3)
+	bagFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
+	grid(bagFrame, 3)
+	switchFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
+	grid(switchFrame, 3)
+
+	-- Ergebnis-Banner
+	resultBanner = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(60, 160, 80),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.4, 0),
+		Size = UDim2.new(0.44, 0, 0.16, 0),
+		Visible = false,
+		ZIndex = 10,
+		Parent = gui,
+	})
+	UiKit.Round(resultBanner, 16)
+	UiKit.Stroke(resultBanner, Color3.fromRGB(255, 255, 255), 3)
+	resultText = UiKit.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 10,
+		Parent = resultBanner,
+	})
+end
+
+return BattleUi
+</ProtectedString>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="SoundService" referent="RBX30">
+	</Item>
+</roblox>
