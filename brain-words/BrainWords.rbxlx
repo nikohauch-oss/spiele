@@ -1,0 +1,2988 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Item class="Workspace" referent="RBX12">
+	</Item>
+	<Item class="Players" referent="RBX13">
+	</Item>
+	<Item class="Lighting" referent="RBX14">
+	</Item>
+	<Item class="ReplicatedStorage" referent="RBX16">
+		<Item class="Folder" referent="RBX15">
+			<Properties>
+				<string name="Name">Shared</string>
+			</Properties>
+			<Item class="ModuleScript" referent="RBX1">
+				<Properties>
+					<string name="Name">GameData</string>
+					<ProtectedString name="Source">-- ============================================================
+-- BRAIN WORDS - Zentrale Spieldaten
+-- Typen, Attacken, alle Brain Words, Zonen und Balancing.
+-- Hier kannst du eigene Brain Words hinzufuegen!
+-- ============================================================
+
+local GameData = {}
+
+GameData.MAX_LEVEL = 50
+GameData.TEAM_SIZE = 6
+GameData.BOX_SIZE = 60
+
+-- ========== TYPEN ==========
+-- Jeder Typ schlaegt genau einen anderen Typ (doppelter Schaden)
+-- und ist schwach gegen den Typ, der ihn schlaegt (halber Schaden).
+-- Kreis: Laut &gt; Schlau &gt; Cool &gt; Chaos &gt; Suess &gt; Gruselig &gt; Laut
+
+local BEATS = {
+	["Laut"] = "Schlau",
+	["Schlau"] = "Cool",
+	["Cool"] = "Chaos",
+	["Chaos"] = "Süß",
+	["Süß"] = "Gruselig",
+	["Gruselig"] = "Laut",
+}
+
+GameData.Types = { "Laut", "Schlau", "Cool", "Chaos", "Süß", "Gruselig" }
+
+GameData.TypeColors = {
+	["Laut"] = Color3.fromRGB(255, 130, 50),
+	["Schlau"] = Color3.fromRGB(70, 140, 255),
+	["Cool"] = Color3.fromRGB(0, 195, 215),
+	["Chaos"] = Color3.fromRGB(215, 70, 220),
+	["Süß"] = Color3.fromRGB(255, 115, 185),
+	["Gruselig"] = Color3.fromRGB(125, 105, 170),
+}
+
+function GameData.TypeMultiplier(attackType, defenderType)
+	if BEATS[attackType] == defenderType then
+		return 2
+	end
+	if BEATS[defenderType] == attackType then
+		return 0.5
+	end
+	return 1
+end
+
+-- ========== SELTENHEIT ==========
+GameData.Rarities = {
+	["Häufig"] = { order = 1, color = Color3.fromRGB(200, 200, 200), catchBase = 0.55, xpMult = 1.0 },
+	["Mittel"] = { order = 2, color = Color3.fromRGB(110, 220, 110), catchBase = 0.40, xpMult = 1.2 },
+	["Selten"] = { order = 3, color = Color3.fromRGB(90, 170, 255), catchBase = 0.25, xpMult = 1.5 },
+	["Episch"] = { order = 4, color = Color3.fromRGB(205, 100, 255), catchBase = 0.15, xpMult = 2.0 },
+	["Legendär"] = { order = 5, color = Color3.fromRGB(255, 200, 40), catchBase = 0.08, xpMult = 3.0 },
+}
+
+-- ========== ATTACKEN ==========
+-- power 40 = Basis, 65 = mittel, 90 = stark
+GameData.Moves = {
+	-- Chaos
+	memewurf = { name = "Meme-Wurf", typ = "Chaos", power = 40 },
+	skibidisturm = { name = "Skibidi-Sturm", typ = "Chaos", power = 65 },
+	totaleschaos = { name = "Totales Chaos", typ = "Chaos", power = 90 },
+	-- Laut
+	bruhruf = { name = "Bruh-Ruf", typ = "Laut", power = 40 },
+	ohrenbetaeuber = { name = "Ohrenbetäuber", typ = "Laut", power = 65 },
+	megaschrei = { name = "Mega-Schrei", typ = "Laut", power = 90 },
+	-- Cool
+	augenrollen = { name = "Augenrollen", typ = "Cool", power = 40 },
+	eiskalterblick = { name = "Eiskalter Blick", typ = "Cool", power = 65 },
+	sigmaschlag = { name = "Sigma-Schlag", typ = "Cool", power = 90 },
+	-- Suess
+	knuddelattacke = { name = "Knuddel-Attacke", typ = "Süß", power = 40 },
+	zuckerschock = { name = "Zuckerschock", typ = "Süß", power = 65 },
+	herzhurrikan = { name = "Herz-Hurrikan", typ = "Süß", power = 90 },
+	-- Gruselig
+	buh = { name = "Buh!", typ = "Gruselig", power = 40 },
+	albtraum = { name = "Albtraum", typ = "Gruselig", power = 65 },
+	ohioschock = { name = "Ohio-Schock", typ = "Gruselig", power = 90 },
+	-- Schlau
+	faktencheck = { name = "Faktencheck", typ = "Schlau", power = 40 },
+	galaxybrain = { name = "Galaxy-Brain", typ = "Schlau", power = 65 },
+	iqblitz = { name = "1000-IQ-Blitz", typ = "Schlau", power = 90 },
+}
+
+-- ========== BRAIN WORDS ==========
+-- base = Grundwerte (hp, atk, def, spd), ca. 40 (schwach) bis 105 (legendaer)
+-- learnset = { {Level, AttackenId}, ... } - die letzten 4 werden gekonnt
+-- evolveLevel/evolveTo = Entwicklung
+-- noWild = erscheint nicht in freier Wildbahn (Starter &amp; Entwicklungen)
+GameData.Species = {
+	-- ===== STARTER =====
+	sigma = {
+		name = "Sigma", typ = "Cool", rarity = "Selten", noWild = true,
+		desc = "Steht einfach nur cool rum und gewinnt trotzdem.",
+		base = { hp = 58, atk = 60, def = 55, spd = 65 },
+		learnset = { { 1, "augenrollen" }, { 1, "bruhruf" }, { 8, "eiskalterblick" }, { 16, "sigmaschlag" } },
+		evolveLevel = 18, evolveTo = "gigasigma",
+	},
+	gigasigma = {
+		name = "Giga-Sigma", typ = "Cool", rarity = "Episch", noWild = true,
+		desc = "Das ultimative Vorbild. Grindset: aktiviert.",
+		base = { hp = 80, atk = 84, def = 74, spd = 82 },
+		learnset = { { 1, "augenrollen" }, { 1, "eiskalterblick" }, { 16, "sigmaschlag" }, { 24, "iqblitz" } },
+	},
+	skibidi = {
+		name = "Skibidi", typ = "Chaos", rarity = "Selten", noWild = true,
+		desc = "Singt ohne Pause dasselbe Lied. Niemand weiß, warum.",
+		base = { hp = 62, atk = 62, def = 50, spd = 60 },
+		learnset = { { 1, "memewurf" }, { 1, "buh" }, { 8, "skibidisturm" }, { 16, "totaleschaos" } },
+		evolveLevel = 18, evolveTo = "megaskibidi",
+	},
+	megaskibidi = {
+		name = "Mega-Skibidi", typ = "Chaos", rarity = "Episch", noWild = true,
+		desc = "Jetzt mit noch mehr Ohrwurm. Hilfe.",
+		base = { hp = 86, atk = 82, def = 66, spd = 76 },
+		learnset = { { 1, "memewurf" }, { 1, "skibidisturm" }, { 16, "totaleschaos" }, { 24, "megaschrei" } },
+	},
+	slay = {
+		name = "Slay", typ = "Süß", rarity = "Selten", noWild = true,
+		desc = "Sieht immer perfekt aus. Immer. Sogar im Kampf.",
+		base = { hp = 60, atk = 58, def = 58, spd = 62 },
+		learnset = { { 1, "knuddelattacke" }, { 1, "augenrollen" }, { 8, "zuckerschock" }, { 16, "herzhurrikan" } },
+		evolveLevel = 18, evolveTo = "slayqueen",
+	},
+	slayqueen = {
+		name = "Slay-Queen", typ = "Süß", rarity = "Episch", noWild = true,
+		desc = "Regiert den Laufsteg UND das Schlachtfeld.",
+		base = { hp = 82, atk = 78, def = 78, spd = 78 },
+		learnset = { { 1, "knuddelattacke" }, { 1, "zuckerschock" }, { 16, "herzhurrikan" }, { 24, "sigmaschlag" } },
+	},
+
+	-- ===== HAEUFIG =====
+	bruh = {
+		name = "Bruh", typ = "Laut", rarity = "Häufig",
+		desc = "Sagt nur ein einziges Wort. Das reicht völlig.",
+		base = { hp = 45, atk = 50, def = 40, spd = 50 },
+		learnset = { { 1, "bruhruf" }, { 6, "memewurf" }, { 12, "ohrenbetaeuber" } },
+		evolveLevel = 14, evolveTo = "megabruh",
+	},
+	megabruh = {
+		name = "Mega-Bruh", typ = "Laut", rarity = "Mittel", noWild = true,
+		desc = "BRUH. In Großbuchstaben.",
+		base = { hp = 66, atk = 70, def = 55, spd = 62 },
+		learnset = { { 1, "bruhruf" }, { 1, "ohrenbetaeuber" }, { 20, "megaschrei" } },
+	},
+	sus = {
+		name = "Sus", typ = "Gruselig", rarity = "Häufig",
+		desc = "Verhält sich extrem verdächtig. Extrem.",
+		base = { hp = 45, atk = 46, def = 46, spd = 52 },
+		learnset = { { 1, "buh" }, { 6, "memewurf" }, { 12, "albtraum" } },
+		evolveLevel = 16, evolveTo = "extremsus",
+	},
+	extremsus = {
+		name = "Extrem-Sus", typ = "Gruselig", rarity = "Mittel", noWild = true,
+		desc = "War definitiv nicht in der Lüftung. Definitiv.",
+		base = { hp = 66, atk = 66, def = 62, spd = 66 },
+		learnset = { { 1, "buh" }, { 1, "albtraum" }, { 20, "ohioschock" } },
+	},
+	yeet = {
+		name = "Yeet", typ = "Laut", rarity = "Häufig",
+		desc = "Wirft alles durch die Gegend. Auch sich selbst.",
+		base = { hp = 42, atk = 55, def = 38, spd = 58 },
+		learnset = { { 1, "bruhruf" }, { 8, "ohrenbetaeuber" }, { 18, "megaschrei" } },
+	},
+	npc = {
+		name = "NPC", typ = "Schlau", rarity = "Häufig",
+		desc = "Wiederholt denselben Satz. Für immer.",
+		base = { hp = 50, atk = 42, def = 50, spd = 40 },
+		learnset = { { 1, "faktencheck" }, { 8, "galaxybrain" }, { 14, "memewurf" } },
+		evolveLevel = 20, evolveTo = "bossnpc",
+	},
+	bossnpc = {
+		name = "Boss-NPC", typ = "Schlau", rarity = "Selten", noWild = true,
+		desc = "Hat plötzlich einen eigenen Willen. Oh oh.",
+		base = { hp = 76, atk = 70, def = 76, spd = 55 },
+		learnset = { { 1, "faktencheck" }, { 1, "galaxybrain" }, { 22, "iqblitz" } },
+	},
+
+	-- ===== MITTEL =====
+	cringe = {
+		name = "Cringe", typ = "Gruselig", rarity = "Mittel",
+		desc = "Tut weh, wenn man hinschaut. Bitte nicht hinschauen.",
+		base = { hp = 55, atk = 60, def = 48, spd = 55 },
+		learnset = { { 1, "buh" }, { 9, "albtraum" }, { 17, "ohioschock" } },
+	},
+	delulu = {
+		name = "Delulu", typ = "Schlau", rarity = "Mittel",
+		desc = "Lebt in seiner eigenen Welt. Und ist sehr glücklich dort.",
+		base = { hp = 58, atk = 60, def = 50, spd = 55 },
+		learnset = { { 1, "faktencheck" }, { 9, "galaxybrain" }, { 17, "iqblitz" } },
+	},
+	bussin = {
+		name = "Bussin", typ = "Süß", rarity = "Mittel",
+		desc = "Schmeckt angeblich unfassbar gut. Angeblich.",
+		base = { hp = 62, atk = 55, def = 58, spd = 48 },
+		learnset = { { 1, "knuddelattacke" }, { 9, "zuckerschock" }, { 17, "herzhurrikan" } },
+	},
+	mewing = {
+		name = "Mewing", typ = "Cool", rarity = "Mittel",
+		desc = "Redet nicht. Zeigt nur schweigend auf sein Kinn.",
+		base = { hp = 56, atk = 58, def = 56, spd = 58 },
+		learnset = { { 1, "augenrollen" }, { 9, "eiskalterblick" }, { 17, "sigmaschlag" } },
+	},
+	fanum = {
+		name = "Fanum", typ = "Chaos", rarity = "Mittel",
+		desc = "Nimmt sich einfach deine Pommes. Das ist die Steuer!",
+		base = { hp = 58, atk = 62, def = 50, spd = 60 },
+		learnset = { { 1, "memewurf" }, { 9, "skibidisturm" }, { 17, "totaleschaos" } },
+	},
+
+	-- ===== SELTEN =====
+	tralalero = {
+		name = "Tralalero", typ = "Chaos", rarity = "Selten",
+		desc = "Trägt Turnschuhe und schwimmt trotzdem super schnell.",
+		base = { hp = 70, atk = 72, def = 60, spd = 72 },
+		learnset = { { 1, "memewurf" }, { 1, "augenrollen" }, { 10, "skibidisturm" }, { 18, "totaleschaos" } },
+	},
+	bombardiro = {
+		name = "Bombardiro", typ = "Laut", rarity = "Selten",
+		desc = "Fliegt vorbei und macht dabei SEHR viel Lärm.",
+		base = { hp = 68, atk = 78, def = 58, spd = 66 },
+		learnset = { { 1, "bruhruf" }, { 10, "ohrenbetaeuber" }, { 18, "megaschrei" } },
+	},
+	sahur = {
+		name = "Tung-Sahur", typ = "Gruselig", rarity = "Selten",
+		desc = "Klopft dreimal. Öffne niemals die Tür.",
+		base = { hp = 72, atk = 70, def = 64, spd = 60 },
+		learnset = { { 1, "buh" }, { 10, "albtraum" }, { 18, "ohioschock" } },
+	},
+	cappuccina = {
+		name = "Cappuccina", typ = "Süß", rarity = "Selten",
+		desc = "Tanzt Ballett und ist immer perfekt aufgeschäumt.",
+		base = { hp = 66, atk = 64, def = 66, spd = 70 },
+		learnset = { { 1, "knuddelattacke" }, { 10, "zuckerschock" }, { 18, "herzhurrikan" } },
+	},
+	rizzler = {
+		name = "Rizzler", typ = "Cool", rarity = "Selten",
+		desc = "Überzeugt jeden von allem. Einfach so.",
+		base = { hp = 64, atk = 70, def = 58, spd = 76 },
+		learnset = { { 1, "augenrollen" }, { 10, "eiskalterblick" }, { 18, "sigmaschlag" } },
+	},
+
+	-- ===== EPISCH =====
+	ohio = {
+		name = "Ohio", typ = "Gruselig", rarity = "Episch",
+		desc = "Dort ist alles möglich. Leider wirklich ALLES.",
+		base = { hp = 80, atk = 84, def = 70, spd = 68 },
+		learnset = { { 1, "buh" }, { 1, "albtraum" }, { 14, "ohioschock" }, { 22, "totaleschaos" } },
+	},
+	goofy = {
+		name = "Goofy", typ = "Chaos", rarity = "Episch",
+		desc = "Zu albern, um besiegt zu werden.",
+		base = { hp = 84, atk = 78, def = 72, spd = 64 },
+		learnset = { { 1, "memewurf" }, { 1, "skibidisturm" }, { 14, "totaleschaos" }, { 22, "megaschrei" } },
+	},
+
+	-- ===== LEGENDAER =====
+	aura = {
+		name = "Aura", typ = "Cool", rarity = "Legendär",
+		desc = "+10.000 Aura, nur weil es aufgetaucht ist.",
+		base = { hp = 95, atk = 95, def = 85, spd = 95 },
+		learnset = { { 1, "eiskalterblick" }, { 1, "galaxybrain" }, { 12, "sigmaschlag" }, { 20, "iqblitz" } },
+	},
+	lordbrainrot = {
+		name = "Lord Brainrot", typ = "Chaos", rarity = "Legendär",
+		desc = "Der König aller Brain Words. Fast unaufhaltbar.",
+		base = { hp = 105, atk = 100, def = 90, spd = 85 },
+		learnset = { { 1, "skibidisturm" }, { 1, "albtraum" }, { 12, "totaleschaos" }, { 20, "megaschrei" } },
+	},
+}
+
+-- Starter zur Auswahl am Anfang
+GameData.Starters = { "sigma", "skibidi", "slay" }
+
+-- Reihenfolge im Brain-Dex
+GameData.DexOrder = {
+	"sigma", "gigasigma", "skibidi", "megaskibidi", "slay", "slayqueen",
+	"bruh", "megabruh", "yeet", "sus", "extremsus", "npc", "bossnpc",
+	"cringe", "delulu", "bussin", "mewing", "fanum",
+	"tralalero", "bombardiro", "sahur", "cappuccina", "rizzler",
+	"ohio", "goofy", "aura", "lordbrainrot",
+}
+
+-- ========== ZONEN ==========
+GameData.Zones = {
+	{
+		id = "wiese", name = "Meme-Wiese",
+		center = Vector3.new(120, 0, 0), radius = 70,
+		levelMin = 2, levelMax = 6, maxActive = 7,
+		color = Color3.fromRGB(140, 215, 100),
+		pool = {
+			{ "bruh", 28 }, { "yeet", 24 }, { "sus", 24 }, { "npc", 18 },
+			{ "bussin", 7 }, { "mewing", 7 }, { "fanum", 5 }, { "rizzler", 2 },
+		},
+	},
+	{
+		id = "wald", name = "Chaos-Wald",
+		center = Vector3.new(-120, 0, -50), radius = 75,
+		levelMin = 5, levelMax = 12, maxActive = 7,
+		color = Color3.fromRGB(70, 150, 90),
+		pool = {
+			{ "fanum", 20 }, { "mewing", 17 }, { "delulu", 17 }, { "bussin", 15 },
+			{ "yeet", 12 }, { "cringe", 10 }, { "tralalero", 5 }, { "cappuccina", 4 }, { "goofy", 1 },
+		},
+	},
+	{
+		id = "grube", name = "Gruselgrube",
+		center = Vector3.new(10, 0, -160), radius = 65,
+		levelMin = 9, levelMax = 16, maxActive = 6,
+		color = Color3.fromRGB(110, 90, 150),
+		pool = {
+			{ "sus", 16 }, { "cringe", 22 }, { "sahur", 14 }, { "delulu", 12 },
+			{ "bombardiro", 12 }, { "npc", 10 }, { "ohio", 4 }, { "goofy", 2 },
+		},
+	},
+	{
+		id = "gipfel", name = "Legenden-Gipfel",
+		center = Vector3.new(-40, 0, 170), radius = 62,
+		levelMin = 14, levelMax = 24, maxActive = 5,
+		color = Color3.fromRGB(235, 205, 120),
+		pool = {
+			{ "rizzler", 15 }, { "tralalero", 13 }, { "bombardiro", 13 }, { "sahur", 12 },
+			{ "cappuccina", 12 }, { "cringe", 9 }, { "ohio", 7 }, { "goofy", 7 },
+			{ "aura", 2 }, { "lordbrainrot", 1 },
+		},
+	},
+}
+
+-- ========== FORMELN ==========
+
+-- Kampfwerte eines Brain Words auf einem bestimmten Level
+function GameData.StatsFor(speciesId, level)
+	local sp = GameData.Species[speciesId]
+	local b = sp.base
+	return {
+		maxHp = math.floor(b.hp * (0.5 + level * 0.07)) + 12,
+		atk = math.floor(b.atk * (0.36 + level * 0.055)) + 4,
+		def = math.floor(b.def * (0.36 + level * 0.055)) + 4,
+		spd = math.floor(b.spd * (0.36 + level * 0.055)) + 4,
+	}
+end
+
+-- Benoetigte EP fuer das naechste Level
+function GameData.XpToNext(level)
+	return 25 * level + 25
+end
+
+-- EP-Belohnung fuer einen besiegten/gefangenen Gegner
+function GameData.XpGain(enemyLevel, rarityName)
+	local r = GameData.Rarities[rarityName]
+	return math.floor(enemyLevel * 10 * r.xpMult)
+end
+
+-- Fangchance (0..1): je weniger HP der Gegner hat, desto besser
+function GameData.CatchChance(rarityName, hpFrac)
+	local r = GameData.Rarities[rarityName]
+	local c = r.catchBase * (1.65 - 1.3 * hpFrac)
+	if c &lt; 0.03 then c = 0.03 end
+	if c &gt; 0.95 then c = 0.95 end
+	return c
+end
+
+-- Die (bis zu 4) Attacken, die ein Brain Word auf diesem Level kann
+function GameData.MovesFor(speciesId, level)
+	local sp = GameData.Species[speciesId]
+	local known = {}
+	for _, entry in ipairs(sp.learnset) do
+		if level &gt;= entry[1] then
+			table.insert(known, entry[2])
+		end
+	end
+	while #known &gt; 4 do
+		table.remove(known, 1)
+	end
+	return known
+end
+
+-- Neue Attacke, die GENAU auf diesem Level gelernt wird (oder nil)
+function GameData.MoveLearnedAt(speciesId, level)
+	local sp = GameData.Species[speciesId]
+	for _, entry in ipairs(sp.learnset) do
+		if entry[1] == level then
+			return entry[2]
+		end
+	end
+	return nil
+end
+
+return GameData
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX2">
+				<Properties>
+					<string name="Name">Remotes</string>
+					<ProtectedString name="Source">-- Verwaltet alle RemoteEvents zwischen Server und Client.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = {}
+
+local FOLDER_NAME = "BrainWordsRemotes"
+
+local NAMES = {
+	"ClientReady", -- Client -&gt; Server: UI ist geladen, bitte Daten senden
+	"DataSync", -- Server -&gt; Client: Team/Box/Dex-Daten
+	"Notify", -- Server -&gt; Client: kleine Nachricht (Toast)
+	"StarterOffer", -- Server -&gt; Client: Starterauswahl anzeigen
+	"StarterChoose", -- Client -&gt; Server: gewaehlter Starter
+	"BattleStart", -- Server -&gt; Client: Kampf beginnt
+	"BattleUpdate", -- Server -&gt; Client: Rundenergebnis
+	"BattleAction", -- Client -&gt; Server: Aktion (Angriff/Fangen/...)
+	"TeamAction", -- Client -&gt; Server: Team verwalten
+}
+
+-- Wird einmal vom Server aufgerufen
+function Remotes.InitServer()
+	local folder = Instance.new("Folder")
+	folder.Name = FOLDER_NAME
+	for _, name in ipairs(NAMES) do
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = name
+		ev.Parent = folder
+	end
+	folder.Parent = ReplicatedStorage
+end
+
+-- Holt ein RemoteEvent (wartet notfalls, bis es existiert)
+function Remotes.Get(name)
+	local folder = ReplicatedStorage:WaitForChild(FOLDER_NAME)
+	return folder:WaitForChild(name)
+end
+
+return Remotes
+</ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="ServerScriptService" referent="RBX18">
+		<Item class="Folder" referent="RBX17">
+			<Properties>
+				<string name="Name">Server</string>
+			</Properties>
+			<Item class="Script" referent="RBX3">
+				<Properties>
+					<string name="Name">Main</string>
+					<ProtectedString name="Source">-- ============================================================
+-- BRAIN WORDS - Server-Start
+-- Baut die Welt, laedt die Spielerdaten und startet alles.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+-- RemoteEvents zuerst, damit der Client nichts verpasst
+Remotes.InitServer()
+
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local MapBuilder = require(script.Parent:WaitForChild("MapBuilder"))
+local SpawnService = require(script.Parent:WaitForChild("SpawnService"))
+local BattleService = require(script.Parent:WaitForChild("BattleService"))
+
+MapBuilder.Build()
+PlayerData.Init()
+BattleService.Init()
+
+-- Waehrend eines Kampfes darf das Team nicht umgebaut werden
+PlayerData.IsBusy = BattleService.IsInBattle
+
+-- Klick auf ein wildes Brain Word -&gt; Kampf starten
+SpawnService.Init(function(player, model)
+	BattleService.TryStartWild(player, model)
+end)
+
+print("[BrainWords] Server gestartet - viel Spaß beim Fangen!")
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX4">
+				<Properties>
+					<string name="Name">PlayerData</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Spielerdaten: Team, Box, Brain-Dex, Speichern &amp; Laden
+-- ============================================================
+
+local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local PlayerData = {}
+
+-- Wird von Main.server mit BattleService.IsInBattle ueberschrieben,
+-- damit man das Team nicht mitten im Kampf umbauen kann.
+PlayerData.IsBusy = function(_player)
+	return false
+end
+
+local sessions = {} -- [player] = { team, box, dex, catches, starter }
+local store = nil
+local storeOk = false
+
+local DataSyncRemote = nil
+local NotifyRemote = nil
+local StarterOfferRemote = nil
+
+-- ---------- Hilfsfunktionen ----------
+
+function PlayerData.NewMon(speciesId, level)
+	local stats = GameData.StatsFor(speciesId, level)
+	return { id = speciesId, level = level, xp = 0, hp = stats.maxHp }
+end
+
+function PlayerData.MaxHpOf(mon)
+	return GameData.StatsFor(mon.id, mon.level).maxHp
+end
+
+local function defaultData()
+	return { team = {}, box = {}, dex = {}, catches = 0, starter = false }
+end
+
+-- Geladene Daten absichern (falls alte/kaputte Speicherstaende existieren)
+local function sanitizeMon(raw)
+	if type(raw) ~= "table" then return nil end
+	if type(raw.id) ~= "string" or not GameData.Species[raw.id] then return nil end
+	local level = math.floor(tonumber(raw.level) or 1)
+	if level &lt; 1 then level = 1 end
+	if level &gt; GameData.MAX_LEVEL then level = GameData.MAX_LEVEL end
+	local mon = PlayerData.NewMon(raw.id, level)
+	local maxHp = PlayerData.MaxHpOf(mon)
+	local xp = math.floor(tonumber(raw.xp) or 0)
+	if xp &lt; 0 then xp = 0 end
+	mon.xp = xp
+	local hp = math.floor(tonumber(raw.hp) or maxHp)
+	if hp &lt; 0 then hp = 0 end
+	if hp &gt; maxHp then hp = maxHp end
+	mon.hp = hp
+	return mon
+end
+
+local function sanitize(raw)
+	local data = defaultData()
+	if type(raw) ~= "table" then return data end
+	if type(raw.team) == "table" then
+		for _, rawMon in ipairs(raw.team) do
+			local mon = sanitizeMon(rawMon)
+			if mon and #data.team &lt; GameData.TEAM_SIZE then
+				table.insert(data.team, mon)
+			end
+		end
+	end
+	if type(raw.box) == "table" then
+		for _, rawMon in ipairs(raw.box) do
+			local mon = sanitizeMon(rawMon)
+			if mon and #data.box &lt; GameData.BOX_SIZE then
+				table.insert(data.box, mon)
+			end
+		end
+	end
+	if type(raw.dex) == "table" then
+		for id, v in pairs(raw.dex) do
+			if v and GameData.Species[id] then
+				data.dex[id] = true
+			end
+		end
+	end
+	data.catches = math.floor(tonumber(raw.catches) or 0)
+	data.starter = (raw.starter == true) and (#data.team &gt; 0)
+	return data
+end
+
+local function keyFor(player)
+	return "p_" .. player.UserId
+end
+
+local function saveNow(player)
+	local session = sessions[player]
+	if not session or not storeOk then return end
+	local payload = {
+		team = session.team,
+		box = session.box,
+		dex = session.dex,
+		catches = session.catches,
+		starter = session.starter,
+	}
+	local ok, err = pcall(function()
+		store:SetAsync(keyFor(player), payload)
+	end)
+	if not ok then
+		warn("[BrainWords] Speichern fehlgeschlagen fuer " .. player.Name .. ": " .. tostring(err))
+	end
+end
+
+-- ---------- Oeffentliche API ----------
+
+function PlayerData.SessionOf(player)
+	return sessions[player]
+end
+
+function PlayerData.Notify(player, msg, kind)
+	if NotifyRemote then
+		NotifyRemote:FireClient(player, msg, kind or "info")
+	end
+end
+
+local function updateLeaderstats(player)
+	local session = sessions[player]
+	local stats = player:FindFirstChild("leaderstats")
+	if not session or not stats then return end
+	local caught = stats:FindFirstChild("Gefangen")
+	if caught then caught.Value = session.catches end
+	local best = 0
+	for _, mon in ipairs(session.team) do
+		if mon.level &gt; best then best = mon.level end
+	end
+	local bestVal = stats:FindFirstChild("Bestes Lv")
+	if bestVal then bestVal.Value = best end
+end
+
+function PlayerData.Sync(player)
+	local session = sessions[player]
+	if not session or not DataSyncRemote then return end
+	updateLeaderstats(player)
+	DataSyncRemote:FireClient(player, {
+		team = session.team,
+		box = session.box,
+		dex = session.dex,
+		catches = session.catches,
+		starter = session.starter,
+	})
+end
+
+function PlayerData.GiveStarter(player, speciesId)
+	local session = sessions[player]
+	if not session or session.starter then return end
+	local valid = false
+	for _, id in ipairs(GameData.Starters) do
+		if id == speciesId then valid = true end
+	end
+	if not valid then return end
+	table.insert(session.team, PlayerData.NewMon(speciesId, 5))
+	session.dex[speciesId] = true
+	session.starter = true
+	PlayerData.Sync(player)
+	PlayerData.Notify(player, GameData.Species[speciesId].name .. " ist jetzt dein Partner! Viel Erfolg!", "good")
+end
+
+-- Fuegt ein gefangenes Brain Word hinzu. Gibt "Team", "Box" oder nil zurueck.
+function PlayerData.AddCaught(player, speciesId, level)
+	local session = sessions[player]
+	if not session then return nil end
+	local mon = PlayerData.NewMon(speciesId, level)
+	local dest = nil
+	if #session.team &lt; GameData.TEAM_SIZE then
+		table.insert(session.team, mon)
+		dest = "Team"
+	elseif #session.box &lt; GameData.BOX_SIZE then
+		table.insert(session.box, mon)
+		dest = "Box"
+	end
+	if dest then
+		session.dex[speciesId] = true
+		session.catches = session.catches + 1
+	end
+	PlayerData.Sync(player)
+	return dest
+end
+
+function PlayerData.HealAll(player)
+	local session = sessions[player]
+	if not session then return end
+	for _, mon in ipairs(session.team) do
+		mon.hp = PlayerData.MaxHpOf(mon)
+	end
+	PlayerData.Sync(player)
+end
+
+-- Team-Verwaltung aus dem Menue
+function PlayerData.HandleTeamAction(player, op, index)
+	local session = sessions[player]
+	if not session then return end
+	if PlayerData.IsBusy(player) then
+		PlayerData.Notify(player, "Nicht mitten im Kampf!", "bad")
+		return
+	end
+	index = math.floor(tonumber(index) or 0)
+	if op == "leader" then
+		if index &gt;= 2 and index &lt;= #session.team then
+			local mon = table.remove(session.team, index)
+			table.insert(session.team, 1, mon)
+		end
+	elseif op == "toBox" then
+		if index &gt;= 1 and index &lt;= #session.team and #session.team &gt; 1 and #session.box &lt; GameData.BOX_SIZE then
+			local mon = table.remove(session.team, index)
+			table.insert(session.box, mon)
+		end
+	elseif op == "fromBox" then
+		if index &gt;= 1 and index &lt;= #session.box and #session.team &lt; GameData.TEAM_SIZE then
+			local mon = table.remove(session.box, index)
+			table.insert(session.team, mon)
+		end
+	end
+	PlayerData.Sync(player)
+end
+
+-- ---------- Spieler-Lebenszyklus ----------
+
+local function onPlayerAdded(player)
+	-- Leaderboard
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+	local caught = Instance.new("IntValue")
+	caught.Name = "Gefangen"
+	caught.Value = 0
+	caught.Parent = stats
+	local best = Instance.new("IntValue")
+	best.Name = "Bestes Lv"
+	best.Value = 0
+	best.Parent = stats
+	stats.Parent = player
+
+	-- Daten laden
+	local raw = nil
+	if storeOk then
+		local ok, result = pcall(function()
+			return store:GetAsync(keyFor(player))
+		end)
+		if ok then
+			raw = result
+		else
+			warn("[BrainWords] Laden fehlgeschlagen fuer " .. player.Name .. ": " .. tostring(result))
+		end
+	end
+	sessions[player] = sanitize(raw)
+	updateLeaderstats(player)
+end
+
+local function onPlayerRemoving(player)
+	saveNow(player)
+	sessions[player] = nil
+end
+
+-- Client meldet: UI ist bereit -&gt; Daten schicken, ggf. Starterauswahl
+local function onClientReady(player)
+	-- Kurz warten, falls die Daten noch geladen werden
+	local waited = 0
+	while not sessions[player] and player.Parent and waited &lt; 15 do
+		task.wait(0.25)
+		waited = waited + 0.25
+	end
+	local session = sessions[player]
+	if not session then return end
+	PlayerData.Sync(player)
+	if not session.starter then
+		StarterOfferRemote:FireClient(player, GameData.Starters)
+	else
+		PlayerData.Notify(player, "Willkommen zurück, " .. player.DisplayName .. "!", "info")
+	end
+end
+
+function PlayerData.Init()
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore("BrainWords_v1")
+	end)
+	if ok then
+		store = result
+		storeOk = true
+	else
+		warn("[BrainWords] Kein DataStore-Zugriff (im Studio: API-Zugriff in den Spieleinstellungen aktivieren). Es wird nicht gespeichert.")
+	end
+
+	DataSyncRemote = Remotes.Get("DataSync")
+	NotifyRemote = Remotes.Get("Notify")
+	StarterOfferRemote = Remotes.Get("StarterOffer")
+
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	for _, player in ipairs(Players:GetPlayers()) do
+		task.spawn(onPlayerAdded, player)
+	end
+	Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+	Remotes.Get("ClientReady").OnServerEvent:Connect(onClientReady)
+	Remotes.Get("StarterChoose").OnServerEvent:Connect(function(player, speciesId)
+		if type(speciesId) == "string" then
+			PlayerData.GiveStarter(player, speciesId)
+		end
+	end)
+	Remotes.Get("TeamAction").OnServerEvent:Connect(function(player, op, index)
+		if type(op) == "string" then
+			PlayerData.HandleTeamAction(player, op, index)
+		end
+	end)
+
+	-- Automatisch alle 2 Minuten speichern
+	task.spawn(function()
+		while true do
+			task.wait(120)
+			for player in pairs(sessions) do
+				saveNow(player)
+			end
+		end
+	end)
+
+	-- Beim Schliessen des Servers alle speichern
+	game:BindToClose(function()
+		for player in pairs(sessions) do
+			saveNow(player)
+		end
+	end)
+end
+
+return PlayerData
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX5">
+				<Properties>
+					<string name="Name">MapBuilder</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Baut die komplette Spielwelt per Code:
+-- Boden, Zonen, Schilder, Heil-Brunnen, Baeume, Deko.
+-- ============================================================
+
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+
+local MapBuilder = {}
+
+local MAP_HALF = 310 -- halbe Kartengroesse
+local rng = Random.new(20240521)
+
+local function part(props, parent)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		p[k] = v
+	end
+	p.Parent = parent
+	return p
+end
+
+-- Aufrecht stehender Zylinder (Zylinder-Achse ist standardmaessig X)
+local function uprightCylinderCFrame(x, y, z)
+	return CFrame.new(x, y, z) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+local function makeTree(folder, x, z)
+	part({
+		Name = "Baumstamm",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(7, 1.8, 1.8),
+		CFrame = uprightCylinderCFrame(x, 3.5, z),
+		Color = Color3.fromRGB(105, 70, 45),
+		Material = Enum.Material.Wood,
+	}, folder)
+	local leafColors = {
+		Color3.fromRGB(70, 155, 70),
+		Color3.fromRGB(90, 175, 75),
+		Color3.fromRGB(60, 140, 90),
+	}
+	local size = rng:NextNumber(7, 11)
+	part({
+		Name = "Blaetter",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(size, size, size),
+		CFrame = CFrame.new(x, 7 + size * 0.25, z),
+		Color = leafColors[rng:NextInteger(1, #leafColors)],
+		Material = Enum.Material.Grass,
+		CanCollide = false,
+	}, folder)
+end
+
+local function makeSign(folder, zone)
+	local flat = Vector3.new(zone.center.X, 0, zone.center.Z)
+	local dir = (Vector3.new(0, 0, 0) - flat).Unit
+	local pos = flat + dir * (zone.radius + 8)
+
+	part({
+		Name = "Pfosten",
+		Size = Vector3.new(0.8, 5, 0.8),
+		CFrame = CFrame.new(pos.X, 2.5, pos.Z),
+		Color = Color3.fromRGB(120, 85, 55),
+		Material = Enum.Material.Wood,
+	}, folder)
+
+	local board = part({
+		Name = "Schild_" .. zone.id,
+		Size = Vector3.new(9, 4, 0.5),
+		CFrame = CFrame.lookAt(Vector3.new(pos.X, 5.5, pos.Z), Vector3.new(0, 5.5, 0)),
+		Color = Color3.fromRGB(235, 225, 200),
+		Material = Enum.Material.SmoothPlastic,
+	}, folder)
+
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, 0, 0.55, 0)
+		title.BackgroundTransparency = 1
+		title.Font = Enum.Font.FredokaOne
+		title.TextScaled = true
+		title.TextColor3 = Color3.fromRGB(50, 40, 30)
+		title.Text = zone.name
+		title.Parent = gui
+		local sub = Instance.new("TextLabel")
+		sub.Position = UDim2.new(0, 0, 0.55, 0)
+		sub.Size = UDim2.new(1, 0, 0.45, 0)
+		sub.BackgroundTransparency = 1
+		sub.Font = Enum.Font.FredokaOne
+		sub.TextScaled = true
+		sub.TextColor3 = Color3.fromRGB(110, 90, 60)
+		sub.Text = "Level " .. zone.levelMin .. " - " .. zone.levelMax
+		sub.Parent = gui
+		gui.Parent = board
+	end
+end
+
+local function makeFountain(folder)
+	local base = part({
+		Name = "Brunnen",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(2, 18, 18),
+		CFrame = uprightCylinderCFrame(0, 1, 0),
+		Color = Color3.fromRGB(180, 185, 195),
+		Material = Enum.Material.Marble,
+	}, folder)
+
+	part({
+		Name = "BrunnenWasser",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1, 15, 15),
+		CFrame = uprightCylinderCFrame(0, 2, 0),
+		Color = Color3.fromRGB(80, 170, 255),
+		Material = Enum.Material.Neon,
+		Transparency = 0.25,
+		CanCollide = false,
+	}, folder)
+
+	local orb = part({
+		Name = "HeilKugel",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(5, 5, 5),
+		CFrame = CFrame.new(0, 7, 0),
+		Color = Color3.fromRGB(120, 200, 255),
+		Material = Enum.Material.Neon,
+		Transparency = 0.15,
+		CanCollide = false,
+	}, folder)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(120, 200, 255)
+	light.Range = 30
+	light.Brightness = 1.5
+	light.Parent = orb
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(300, 60)
+	billboard.StudsOffset = Vector3.new(0, 5, 0)
+	billboard.MaxDistance = 120
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = "Heil-Brunnen"
+	label.TextColor3 = Color3.fromRGB(160, 220, 255)
+	label.TextStrokeTransparency = 0.3
+	label.Parent = billboard
+	billboard.Parent = orb
+
+	-- Unsichtbare Heilzone
+	local healZone = part({
+		Name = "HeilZone",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(8, 24, 24),
+		CFrame = uprightCylinderCFrame(0, 4, 0),
+		Transparency = 1,
+		CanCollide = false,
+	}, folder)
+
+	local lastHeal = {} -- [player] = Zeitpunkt
+	healZone.Touched:Connect(function(hit)
+		local character = hit.Parent
+		if not character then return end
+		local player = Players:GetPlayerFromCharacter(character)
+		if not player then return end
+		local now = os.clock()
+		if lastHeal[player] and now - lastHeal[player] &lt; 6 then return end
+		lastHeal[player] = now
+		PlayerData.HealAll(player)
+		PlayerData.Notify(player, "Deine Brain Words wurden geheilt!", "good")
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastHeal[player] = nil
+	end)
+end
+
+function MapBuilder.Build()
+	local folder = Instance.new("Folder")
+	folder.Name = "BrainWordsMap"
+
+	-- Boden
+	part({
+		Name = "Boden",
+		Size = Vector3.new(MAP_HALF * 2, 2, MAP_HALF * 2),
+		CFrame = CFrame.new(0, -1, 0),
+		Color = Color3.fromRGB(106, 170, 80),
+		Material = Enum.Material.Grass,
+	}, folder)
+
+	-- Unsichtbare Waende, damit niemand herunterfaellt
+	local wallDefs = {
+		{ Vector3.new(MAP_HALF * 2, 60, 4), CFrame.new(0, 30, -MAP_HALF) },
+		{ Vector3.new(MAP_HALF * 2, 60, 4), CFrame.new(0, 30, MAP_HALF) },
+		{ Vector3.new(4, 60, MAP_HALF * 2), CFrame.new(-MAP_HALF, 30, 0) },
+		{ Vector3.new(4, 60, MAP_HALF * 2), CFrame.new(MAP_HALF, 30, 0) },
+	}
+	for _, def in ipairs(wallDefs) do
+		part({ Name = "Wand", Size = def[1], CFrame = def[2], Transparency = 1 }, folder)
+	end
+
+	-- Spawn
+	local spawnLoc = Instance.new("SpawnLocation")
+	spawnLoc.Size = Vector3.new(14, 1, 14)
+	spawnLoc.CFrame = CFrame.new(0, 0.5, 34)
+	spawnLoc.Anchored = true
+	spawnLoc.Duration = 0
+	spawnLoc.Color = Color3.fromRGB(230, 230, 240)
+	spawnLoc.Material = Enum.Material.SmoothPlastic
+	spawnLoc.TopSurface = Enum.SurfaceType.Smooth
+	spawnLoc.Parent = folder
+
+	-- Zonen (farbige Flaechen + Schilder)
+	for _, zone in ipairs(GameData.Zones) do
+		part({
+			Name = "Zone_" .. zone.id,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.3, zone.radius * 2, zone.radius * 2),
+			CFrame = uprightCylinderCFrame(zone.center.X, -0.05, zone.center.Z),
+			Color = zone.color,
+			Material = Enum.Material.Grass,
+			Transparency = 0.2,
+			CanCollide = false,
+			CanQuery = false,
+			CanTouch = false,
+		}, folder)
+		makeSign(folder, zone)
+	end
+
+	-- Kristalle auf dem Legenden-Gipfel
+	local gipfel = GameData.Zones[#GameData.Zones]
+	for _ = 1, 7 do
+		local ang = rng:NextNumber(0, math.pi * 2)
+		local dist = rng:NextNumber(10, gipfel.radius * 0.8)
+		local x = gipfel.center.X + math.cos(ang) * dist
+		local z = gipfel.center.Z + math.sin(ang) * dist
+		local h = rng:NextNumber(4, 8)
+		part({
+			Name = "Kristall",
+			Size = Vector3.new(2, h, 2),
+			CFrame = CFrame.new(x, h * 0.4, z) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 6), rng:NextNumber(-0.3, 0.3)),
+			Color = Color3.fromRGB(255, 220, 120),
+			Material = Enum.Material.Neon,
+			Transparency = 0.2,
+			CanCollide = false,
+		}, folder)
+	end
+
+	-- Baeume verstreuen (nicht direkt am Spawn/Brunnen)
+	for _ = 1, 34 do
+		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+		if math.sqrt(x * x + z * z) &gt; 45 then
+			makeTree(folder, x, z)
+		end
+	end
+
+	-- Steine
+	for _ = 1, 12 do
+		local x = rng:NextNumber(-MAP_HALF + 15, MAP_HALF - 15)
+		local z = rng:NextNumber(-MAP_HALF + 15, MAP_HALF - 15)
+		if math.sqrt(x * x + z * z) &gt; 40 then
+			local size = rng:NextNumber(3, 6)
+			part({
+				Name = "Stein",
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.new(size, size, size),
+				CFrame = CFrame.new(x, size * 0.25, z),
+				Color = Color3.fromRGB(140, 140, 145),
+				Material = Enum.Material.Slate,
+			}, folder)
+		end
+	end
+
+	makeFountain(folder)
+	folder.Parent = workspace
+
+	-- Licht &amp; Stimmung
+	Lighting.ClockTime = 13.5
+	Lighting.Brightness = 2.5
+	Lighting.Ambient = Color3.fromRGB(120, 120, 130)
+	Lighting.OutdoorAmbient = Color3.fromRGB(165, 175, 190)
+end
+
+return MapBuilder
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX6">
+				<Properties>
+					<string name="Name">SpawnService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Laesst wilde Brain Words in den Zonen erscheinen.
+-- Jedes wilde Brain Word ist eine leuchtende Kugel mit
+-- schwebendem Namen und einem "Kaempfen!"-Knopf (Taste E).
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+
+local SpawnService = {}
+
+local LIFETIME = 130 -- Sekunden, bis ein unberuehrtes Brain Word verschwindet
+
+local rng = Random.new()
+local records = {} -- [model] = { id, level, zoneId, born }
+local folder = nil
+local onPromptTriggered = nil -- Callback aus Main (startet den Kampf)
+
+local function pickSpecies(zone)
+	local total = 0
+	for _, entry in ipairs(zone.pool) do
+		total = total + entry[2]
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, entry in ipairs(zone.pool) do
+		roll = roll - entry[2]
+		if roll &lt;= 0 then
+			return entry[1]
+		end
+	end
+	return zone.pool[1][1]
+end
+
+local function spawnOne(zone)
+	local speciesId = pickSpecies(zone)
+	local sp = GameData.Species[speciesId]
+	local level = rng:NextInteger(zone.levelMin, zone.levelMax)
+
+	-- Position: zufaellig in der Zone verteilt
+	local ang = rng:NextNumber(0, math.pi * 2)
+	local dist = zone.radius * 0.9 * math.sqrt(rng:NextNumber())
+	local x = zone.center.X + math.cos(ang) * dist
+	local z = zone.center.Z + math.sin(ang) * dist
+
+	local orb = Instance.new("Part")
+	orb.Name = sp.name
+	orb.Shape = Enum.PartType.Ball
+	orb.Size = Vector3.new(2.6, 2.6, 2.6)
+	orb.CFrame = CFrame.new(x, 3, z)
+	orb.Anchored = true
+	orb.CanCollide = false
+	orb.CastShadow = false
+	orb.Material = Enum.Material.Neon
+	orb.Color = GameData.TypeColors[sp.typ]
+	orb:SetAttribute("SpeciesId", speciesId)
+	orb:SetAttribute("Level", level)
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(230, 84)
+	billboard.StudsOffset = Vector3.new(0, 2.8, 0)
+	billboard.MaxDistance = 170
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0.62, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextScaled = true
+	nameLabel.Text = sp.name
+	nameLabel.TextColor3 = GameData.Rarities[sp.rarity].color
+	nameLabel.TextStrokeTransparency = 0.15
+	nameLabel.Parent = billboard
+
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Position = UDim2.new(0, 0, 0.62, 0)
+	subLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Font = Enum.Font.FredokaOne
+	subLabel.TextScaled = true
+	subLabel.Text = "Lv. " .. level .. "  •  " .. sp.typ
+	subLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	subLabel.TextStrokeTransparency = 0.3
+	subLabel.Parent = billboard
+	billboard.Parent = orb
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Kämpfen!"
+	prompt.ObjectText = sp.name .. " (Lv. " .. level .. ")"
+	prompt.HoldDuration = 0.25
+	prompt.MaxActivationDistance = 15
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = orb
+	prompt.Triggered:Connect(function(player)
+		if onPromptTriggered then
+			onPromptTriggered(player, orb)
+		end
+	end)
+
+	CollectionService:AddTag(orb, "BrainWordSpawn")
+	records[orb] = { id = speciesId, level = level, zoneId = zone.id, born = os.clock() }
+	orb.Parent = folder
+end
+
+-- Nimmt ein wildes Brain Word aus der Welt (fuer den Kampfstart).
+-- Gibt den Datensatz zurueck - oder nil, falls es schon weg ist.
+function SpawnService.Take(model)
+	local rec = records[model]
+	if not rec then return nil end
+	records[model] = nil
+	model:Destroy()
+	return rec
+end
+
+local function zoneLoop(zone)
+	while true do
+		-- Alte Spawns aufraeumen
+		local now = os.clock()
+		local count = 0
+		for model, rec in pairs(records) do
+			if rec.zoneId == zone.id then
+				if now - rec.born &gt; LIFETIME then
+					records[model] = nil
+					model:Destroy()
+				else
+					count = count + 1
+				end
+			end
+		end
+		-- Nachschub
+		if count &lt; zone.maxActive then
+			spawnOne(zone)
+		end
+		task.wait(rng:NextNumber(4, 7))
+	end
+end
+
+function SpawnService.Init(promptCallback)
+	onPromptTriggered = promptCallback
+	folder = Instance.new("Folder")
+	folder.Name = "WildeBrainWords"
+	folder.Parent = workspace
+	for _, zone in ipairs(GameData.Zones) do
+		task.spawn(zoneLoop, zone)
+	end
+end
+
+return SpawnService
+</ProtectedString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX7">
+				<Properties>
+					<string name="Name">BattleService</string>
+					<ProtectedString name="Source">-- ============================================================
+-- Rundenbasiertes Kampfsystem (Server-Seite).
+-- Der Server berechnet alles, der Client zeigt es nur an.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
+local SpawnService = require(script.Parent:WaitForChild("SpawnService"))
+
+local BattleService = {}
+
+local rng = Random.new()
+local battles = {} -- [player] = Kampfzustand
+local BattleStartRemote = nil
+local BattleUpdateRemote = nil
+
+-- ---------- Ansichten fuer den Client ----------
+
+local function movesView(moveIds)
+	local list = {}
+	for _, moveId in ipairs(moveIds) do
+		local move = GameData.Moves[moveId]
+		table.insert(list, { name = move.name, typ = move.typ, power = move.power })
+	end
+	return list
+end
+
+local function allyView(mon)
+	local sp = GameData.Species[mon.id]
+	local stats = GameData.StatsFor(mon.id, mon.level)
+	return {
+		name = sp.name,
+		typ = sp.typ,
+		level = mon.level,
+		hp = mon.hp,
+		maxHp = stats.maxHp,
+		xp = mon.xp,
+		xpNext = GameData.XpToNext(mon.level),
+		moves = movesView(GameData.MovesFor(mon.id, mon.level)),
+	}
+end
+
+local function enemyView(enemy)
+	local sp = GameData.Species[enemy.id]
+	return {
+		name = sp.name,
+		typ = sp.typ,
+		rarity = sp.rarity,
+		level = enemy.level,
+		hp = enemy.hp,
+		maxHp = enemy.stats.maxHp,
+	}
+end
+
+local function teamView(session)
+	local list = {}
+	for _, mon in ipairs(session.team) do
+		local sp = GameData.Species[mon.id]
+		table.insert(list, {
+			name = sp.name,
+			typ = sp.typ,
+			level = mon.level,
+			hp = mon.hp,
+			maxHp = GameData.StatsFor(mon.id, mon.level).maxHp,
+		})
+	end
+	return list
+end
+
+-- ---------- Hilfsfunktionen ----------
+
+local function push(events, event)
+	table.insert(events, event)
+end
+
+local function setFrozen(player, frozen)
+	local character = player.Character
+	if not character then return end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	if frozen then
+		humanoid.WalkSpeed = 0
+		humanoid.JumpHeight = 0
+	else
+		humanoid.WalkSpeed = 16
+		humanoid.JumpHeight = 7.2
+	end
+end
+
+local function calcDamage(attLevel, attAtk, defDef, moveId, attackerTyp, defenderTyp)
+	local move = GameData.Moves[moveId]
+	local stab = (move.typ == attackerTyp) and 1.5 or 1
+	local mult = GameData.TypeMultiplier(move.typ, defenderTyp)
+	local base = ((2 * attLevel / 5 + 2) * move.power * attAtk / math.max(defDef, 1)) / 30 + 3
+	local dmg = math.floor(base * stab * mult * (0.85 + rng:NextNumber() * 0.15))
+	if dmg &lt; 1 then dmg = 1 end
+	return dmg, mult
+end
+
+local function pushEffectiveness(events, mult)
+	if mult &gt; 1 then
+		push(events, { t = "text", msg = "Sehr effektiv!" })
+	elseif mult &lt; 1 then
+		push(events, { t = "text", msg = "Nicht sehr effektiv..." })
+	end
+end
+
+-- Angriff des Spieler-Brain-Words. Gibt true zurueck, wenn der Gegner besiegt wurde.
+local function allyAttack(session, state, events, moveId)
+	local mon = session.team[state.monIndex]
+	local sp = GameData.Species[mon.id]
+	local stats = GameData.StatsFor(mon.id, mon.level)
+	local move = GameData.Moves[moveId]
+	local dmg, mult = calcDamage(mon.level, stats.atk, state.enemy.stats.def, moveId, sp.typ, GameData.Species[state.enemy.id].typ)
+	state.enemy.hp = math.max(0, state.enemy.hp - dmg)
+	push(events, { t = "text", msg = sp.name .. " setzt " .. move.name .. " ein!" })
+	push(events, { t = "hp", side = "enemy", hp = state.enemy.hp })
+	pushEffectiveness(events, mult)
+	if state.enemy.hp &lt;= 0 then
+		push(events, { t = "text", msg = "Das wilde " .. GameData.Species[state.enemy.id].name .. " wurde besiegt!" })
+		return true
+	end
+	return false
+end
+
+-- Der Gegner sucht sich eine (moeglichst effektive) Attacke aus
+local function chooseEnemyMove(state, defenderTyp)
+	local weights = {}
+	local total = 0
+	for _, moveId in ipairs(state.enemy.moves) do
+		local move = GameData.Moves[moveId]
+		local mult = GameData.TypeMultiplier(move.typ, defenderTyp)
+		local w = move.power * mult
+		table.insert(weights, { moveId, w })
+		total = total + w
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, entry in ipairs(weights) do
+		roll = roll - entry[2]
+		if roll &lt;= 0 then
+			return entry[1]
+		end
+	end
+	return state.enemy.moves[1]
+end
+
+-- Angriff des Gegners. Gibt true zurueck, wenn das eigene Brain Word besiegt wurde.
+local function enemyAttack(session, state, events)
+	local mon = session.team[state.monIndex]
+	local monSp = GameData.Species[mon.id]
+	local enemySp = GameData.Species[state.enemy.id]
+	local moveId = chooseEnemyMove(state, monSp.typ)
+	local move = GameData.Moves[moveId]
+	local myStats = GameData.StatsFor(mon.id, mon.level)
+	local dmg, mult = calcDamage(state.enemy.level, state.enemy.stats.atk, myStats.def, moveId, enemySp.typ, monSp.typ)
+	mon.hp = math.max(0, mon.hp - dmg)
+	push(events, { t = "text", msg = "Das wilde " .. enemySp.name .. " setzt " .. move.name .. " ein!" })
+	push(events, { t = "hp", side = "ally", hp = mon.hp })
+	pushEffectiveness(events, mult)
+	if mon.hp &lt;= 0 then
+		push(events, { t = "text", msg = monSp.name .. " wurde besiegt!" })
+		return true
+	end
+	return false
+end
+
+-- EP-Belohnung inkl. Level-Ups und Entwicklung
+local function awardXp(session, state, events)
+	local mon = session.team[state.monIndex]
+	local enemySp = GameData.Species[state.enemy.id]
+	local gain = GameData.XpGain(state.enemy.level, enemySp.rarity)
+	mon.xp = mon.xp + gain
+	push(events, { t = "text", msg = GameData.Species[mon.id].name .. " erhält " .. gain .. " EP!" })
+
+	local changed = false
+	while mon.level &lt; GameData.MAX_LEVEL and mon.xp &gt;= GameData.XpToNext(mon.level) do
+		mon.xp = mon.xp - GameData.XpToNext(mon.level)
+		local oldMax = GameData.StatsFor(mon.id, mon.level).maxHp
+		mon.level = mon.level + 1
+		local newMax = GameData.StatsFor(mon.id, mon.level).maxHp
+		mon.hp = math.min(newMax, mon.hp + (newMax - oldMax))
+		changed = true
+		local sp = GameData.Species[mon.id]
+		push(events, { t = "text", msg = sp.name .. " ist jetzt Level " .. mon.level .. "!" })
+		local learned = GameData.MoveLearnedAt(mon.id, mon.level)
+		if learned then
+			push(events, { t = "text", msg = sp.name .. " lernt " .. GameData.Moves[learned].name .. "!" })
+		end
+		if sp.evolveLevel and sp.evolveTo and mon.level &gt;= sp.evolveLevel then
+			local oldName = sp.name
+			mon.id = sp.evolveTo
+			session.dex[mon.id] = true
+			mon.hp = GameData.StatsFor(mon.id, mon.level).maxHp
+			push(events, { t = "text", msg = "WOW! " .. oldName .. " entwickelt sich zu " .. GameData.Species[mon.id].name .. "!" })
+		end
+	end
+	if changed then
+		push(events, { t = "ally", view = allyView(mon) })
+	end
+end
+
+-- Was passiert, wenn das aktive Brain Word besiegt wurde
+local function handleAllyFaint(player, session, state, events)
+	local anyAlive = false
+	for _, mon in ipairs(session.team) do
+		if mon.hp &gt; 0 then
+			anyAlive = true
+		end
+	end
+	if anyAlive then
+		state.forcedSwitch = true
+		push(events, { t = "text", msg = "Wähle dein nächstes Brain Word!" })
+	else
+		state.over = true
+		state.result = "niederlage"
+		push(events, { t = "text", msg = "Alle deine Brain Words sind K.O.! Du wachst am Brunnen wieder auf..." })
+		PlayerData.HealAll(player)
+		local character = player.Character
+		if character then
+			character:PivotTo(CFrame.new(0, 4, 26))
+		end
+	end
+end
+
+local function cleanup(player)
+	local state = battles[player]
+	if not state then return end
+	if state.charConn then
+		state.charConn:Disconnect()
+	end
+	battles[player] = nil
+	setFrozen(player, false)
+end
+
+-- ---------- Oeffentliche API ----------
+
+function BattleService.IsInBattle(player)
+	return battles[player] ~= nil
+end
+
+function BattleService.TryStartWild(player, model)
+	if battles[player] then return end
+	local session = PlayerData.SessionOf(player)
+	if not session then return end
+	if not session.starter or #session.team == 0 then
+		PlayerData.Notify(player, "Wähle zuerst dein Start-Brain-Word!", "bad")
+		return
+	end
+	local aliveIndex = nil
+	for i, mon in ipairs(session.team) do
+		if mon.hp &gt; 0 then
+			aliveIndex = i
+			break
+		end
+	end
+	if not aliveIndex then
+		PlayerData.Notify(player, "Deine Brain Words sind alle K.O.! Heile sie am Brunnen.", "bad")
+		return
+	end
+
+	local rec = SpawnService.Take(model)
+	if not rec then return end -- jemand anderes war schneller
+
+	local stats = GameData.StatsFor(rec.id, rec.level)
+	local state = {
+		monIndex = aliveIndex,
+		enemy = {
+			id = rec.id,
+			level = rec.level,
+			hp = stats.maxHp,
+			stats = stats,
+			moves = GameData.MovesFor(rec.id, rec.level),
+		},
+		forcedSwitch = false,
+		over = false,
+		result = nil,
+		busy = false,
+		charConn = nil,
+	}
+	battles[player] = state
+	setFrozen(player, true)
+
+	-- Falls der Spieler seinen Charakter zuruecksetzt: Kampf abbrechen
+	state.charConn = player.CharacterAdded:Connect(function()
+		if battles[player] == state then
+			cleanup(player)
+			BattleUpdateRemote:FireClient(player, {
+				events = {},
+				over = true,
+				result = "abbruch",
+				forcedSwitch = false,
+			})
+		end
+	end)
+
+	BattleStartRemote:FireClient(player, {
+		enemy = enemyView(state.enemy),
+		ally = allyView(session.team[aliveIndex]),
+		team = teamView(session),
+		monIndex = aliveIndex,
+	})
+end
+
+local function resolveAction(player, state, session, action, events)
+	local kind = action.kind
+
+	-- Nach einem K.O. ist nur Wechseln erlaubt
+	if state.forcedSwitch and kind ~= "switch" then
+		return false
+	end
+
+	if kind == "move" then
+		local mon = session.team[state.monIndex]
+		local myMoves = GameData.MovesFor(mon.id, mon.level)
+		local index = math.floor(tonumber(action.index) or 0)
+		local moveId = myMoves[index]
+		if not moveId then return false end
+
+		local myStats = GameData.StatsFor(mon.id, mon.level)
+		local allyFirst = myStats.spd &gt;= state.enemy.stats.spd
+		if allyFirst then
+			local enemyDown = allyAttack(session, state, events, moveId)
+			if enemyDown then
+				awardXp(session, state, events)
+				state.over = true
+				state.result = "sieg"
+			else
+				local allyDown = enemyAttack(session, state, events)
+				if allyDown then
+					handleAllyFaint(player, session, state, events)
+				end
+			end
+		else
+			local allyDown = enemyAttack(session, state, events)
+			if allyDown then
+				handleAllyFaint(player, session, state, events)
+			else
+				local enemyDown = allyAttack(session, state, events, moveId)
+				if enemyDown then
+					awardXp(session, state, events)
+					state.over = true
+					state.result = "sieg"
+				end
+			end
+		end
+		return true
+
+	elseif kind == "catch" then
+		local enemySp = GameData.Species[state.enemy.id]
+		if #session.team &gt;= GameData.TEAM_SIZE and #session.box &gt;= GameData.BOX_SIZE then
+			push(events, { t = "text", msg = "Kein Platz mehr! Team und Box sind voll." })
+			return true
+		end
+		push(events, { t = "text", msg = "Du wirfst eine Brain-Blase auf " .. enemySp.name .. "..." })
+		local chance = GameData.CatchChance(enemySp.rarity, state.enemy.hp / state.enemy.stats.maxHp)
+		if rng:NextNumber() &lt; chance then
+			local dest = PlayerData.AddCaught(player, state.enemy.id, state.enemy.level)
+			push(events, { t = "text", msg = "GEFANGEN! " .. enemySp.name .. " gehört jetzt dir! (" .. tostring(dest) .. ")" })
+			awardXp(session, state, events)
+			state.over = true
+			state.result = "gefangen"
+		else
+			push(events, { t = "text", msg = enemySp.name .. " hat sich befreit!" })
+			local allyDown = enemyAttack(session, state, events)
+			if allyDown then
+				handleAllyFaint(player, session, state, events)
+			end
+		end
+		return true
+
+	elseif kind == "switch" then
+		local index = math.floor(tonumber(action.index) or 0)
+		if index &lt; 1 or index &gt; #session.team or index == state.monIndex then return false end
+		local target = session.team[index]
+		if target.hp &lt;= 0 then return false end
+		local wasForced = state.forcedSwitch
+		state.forcedSwitch = false
+		state.monIndex = index
+		push(events, { t = "text", msg = "Los, " .. GameData.Species[target.id].name .. "!" })
+		push(events, { t = "ally", view = allyView(target) })
+		if not wasForced then
+			local allyDown = enemyAttack(session, state, events)
+			if allyDown then
+				handleAllyFaint(player, session, state, events)
+			end
+		end
+		return true
+
+	elseif kind == "run" then
+		local mon = session.team[state.monIndex]
+		local myStats = GameData.StatsFor(mon.id, mon.level)
+		local bonus = (myStats.spd - state.enemy.stats.spd) * 0.008
+		if bonus &gt; 0.25 then bonus = 0.25 end
+		if bonus &lt; -0.25 then bonus = -0.25 end
+		if rng:NextNumber() &lt; 0.7 + bonus then
+			push(events, { t = "text", msg = "Du bist entkommen!" })
+			state.over = true
+			state.result = "geflohen"
+		else
+			push(events, { t = "text", msg = "Du kommst nicht weg!" })
+			local allyDown = enemyAttack(session, state, events)
+			if allyDown then
+				handleAllyFaint(player, session, state, events)
+			end
+		end
+		return true
+	end
+
+	return false
+end
+
+local function onBattleAction(player, action)
+	local state = battles[player]
+	if not state or state.busy or state.over then return end
+	if type(action) ~= "table" or type(action.kind) ~= "string" then return end
+	local session = PlayerData.SessionOf(player)
+	if not session then return end
+
+	state.busy = true
+	local events = {}
+	local ok, err = pcall(function()
+		return resolveAction(player, state, session, action, events)
+	end)
+	if not ok then
+		warn("[BrainWords] Kampf-Fehler: " .. tostring(err))
+		state.busy = false
+		return
+	end
+
+	local mon = session.team[state.monIndex]
+	BattleUpdateRemote:FireClient(player, {
+		events = events,
+		ally = mon and allyView(mon) or nil,
+		enemy = enemyView(state.enemy),
+		team = teamView(session),
+		monIndex = state.monIndex,
+		over = state.over,
+		result = state.result,
+		forcedSwitch = state.forcedSwitch,
+	})
+
+	if state.over then
+		cleanup(player)
+		PlayerData.Sync(player)
+	else
+		state.busy = false
+	end
+end
+
+function BattleService.Init()
+	BattleStartRemote = Remotes.Get("BattleStart")
+	BattleUpdateRemote = Remotes.Get("BattleUpdate")
+	Remotes.Get("BattleAction").OnServerEvent:Connect(onBattleAction)
+	Players.PlayerRemoving:Connect(function(player)
+		cleanup(player)
+	end)
+end
+
+return BattleService
+</ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="ServerStorage" referent="RBX19">
+	</Item>
+	<Item class="StarterGui" referent="RBX20">
+	</Item>
+	<Item class="StarterPack" referent="RBX21">
+	</Item>
+	<Item class="StarterPlayer" referent="RBX24">
+		<Item class="StarterPlayerScripts" referent="RBX23">
+			<Item class="Folder" referent="RBX22">
+				<Properties>
+					<string name="Name">Client</string>
+				</Properties>
+				<Item class="LocalScript" referent="RBX8">
+					<Properties>
+						<string name="Name">Main</string>
+						<ProtectedString name="Source">-- ============================================================
+-- BRAIN WORDS - Client-Start
+-- Verbindet die UI mit dem Server und animiert die
+-- wilden Brain Words in der Welt.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+local MenuUi = require(script.Parent:WaitForChild("MenuUi"))
+local BattleUi = require(script.Parent:WaitForChild("BattleUi"))
+
+-- ---------- RemoteEvents ----------
+local ClientReady = Remotes.Get("ClientReady")
+local DataSync = Remotes.Get("DataSync")
+local Notify = Remotes.Get("Notify")
+local StarterOffer = Remotes.Get("StarterOffer")
+local StarterChoose = Remotes.Get("StarterChoose")
+local BattleStart = Remotes.Get("BattleStart")
+local BattleUpdate = Remotes.Get("BattleUpdate")
+local BattleAction = Remotes.Get("BattleAction")
+local TeamAction = Remotes.Get("TeamAction")
+
+-- ---------- UI aufbauen ----------
+MenuUi.Init({
+	onTeamAction = function(op, index)
+		TeamAction:FireServer(op, index)
+	end,
+	onStarterPick = function(id)
+		StarterChoose:FireServer(id)
+	end,
+})
+BattleUi.Init(function(action)
+	BattleAction:FireServer(action)
+end)
+
+-- ---------- Server-Nachrichten ----------
+DataSync.OnClientEvent:Connect(function(data)
+	MenuUi.SetData(data)
+end)
+
+Notify.OnClientEvent:Connect(function(msg, kind)
+	UiKit.Toast(msg, kind)
+end)
+
+StarterOffer.OnClientEvent:Connect(function(options)
+	MenuUi.ShowStarter(options)
+end)
+
+BattleStart.OnClientEvent:Connect(function(payload)
+	MenuUi.CloseAll()
+	BattleUi.Start(payload)
+end)
+
+BattleUpdate.OnClientEvent:Connect(function(payload)
+	BattleUi.Update(payload)
+end)
+
+-- ---------- Wilde Brain Words schweben lassen ----------
+local floating = {} -- [part] = { phase, gui }
+
+local function watch(part)
+	floating[part] = { phase = math.random() * math.pi * 2, gui = nil }
+end
+
+for _, part in ipairs(CollectionService:GetTagged("BrainWordSpawn")) do
+	watch(part)
+end
+CollectionService:GetInstanceAddedSignal("BrainWordSpawn"):Connect(watch)
+CollectionService:GetInstanceRemovedSignal("BrainWordSpawn"):Connect(function(part)
+	floating[part] = nil
+end)
+
+RunService.Heartbeat:Connect(function()
+	local t = os.clock()
+	for part, info in pairs(floating) do
+		if part.Parent then
+			if not info.gui then
+				info.gui = part:FindFirstChildOfClass("BillboardGui")
+			end
+			if info.gui then
+				info.gui.StudsOffset = Vector3.new(0, 2.8 + math.sin(t * 2 + info.phase) * 0.5, 0)
+			end
+		else
+			floating[part] = nil
+		end
+	end
+end)
+
+-- ---------- Fertig: Server Bescheid geben ----------
+ClientReady:FireServer()
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX9">
+					<Properties>
+						<string name="Name">UiKit</string>
+						<ProtectedString name="Source">-- ============================================================
+-- Kleine Helfer zum Bauen der Benutzeroberflaeche.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+
+local UiKit = {}
+
+UiKit.Colors = {
+	Panel = Color3.fromRGB(40, 40, 62),
+	PanelLight = Color3.fromRGB(58, 58, 88),
+	Text = Color3.fromRGB(255, 255, 255),
+	TextDim = Color3.fromRGB(190, 190, 210),
+	Good = Color3.fromRGB(90, 200, 110),
+	Bad = Color3.fromRGB(230, 90, 90),
+	Accent = Color3.fromRGB(255, 190, 60),
+	Blue = Color3.fromRGB(80, 150, 255),
+}
+
+local clickSound = Instance.new("Sound")
+clickSound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+clickSound.Volume = 0.35
+clickSound.Parent = SoundService
+
+function UiKit.Click()
+	SoundService:PlayLocalSound(clickSound)
+end
+
+local function playerGui()
+	return Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- Erzeugt eine Instanz mit Eigenschaften
+function UiKit.Mk(className, props)
+	local inst = Instance.new(className)
+	local parent = nil
+	for k, v in pairs(props) do
+		if k == "Parent" then
+			parent = v
+		else
+			inst[k] = v
+		end
+	end
+	if parent then
+		inst.Parent = parent
+	end
+	return inst
+end
+
+function UiKit.Screen(name, displayOrder)
+	return UiKit.Mk("ScreenGui", {
+		Name = name,
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = displayOrder or 1,
+		Parent = playerGui(),
+	})
+end
+
+function UiKit.Round(inst, px)
+	UiKit.Mk("UICorner", { CornerRadius = UDim.new(0, px or 10), Parent = inst })
+	return inst
+end
+
+function UiKit.Stroke(inst, color, thickness)
+	UiKit.Mk("UIStroke", {
+		Color = color or Color3.fromRGB(15, 15, 25),
+		Thickness = thickness or 2,
+		Parent = inst,
+	})
+	return inst
+end
+
+function UiKit.Label(props)
+	local defaults = {
+		BackgroundTransparency = 1,
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = UiKit.Colors.Text,
+	}
+	for k, v in pairs(props) do
+		defaults[k] = v
+	end
+	return UiKit.Mk("TextLabel", defaults)
+end
+
+function UiKit.Button(props, callback)
+	local defaults = {
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = UiKit.Colors.Text,
+		BackgroundColor3 = UiKit.Colors.PanelLight,
+		AutoButtonColor = true,
+		BorderSizePixel = 0,
+	}
+	for k, v in pairs(props) do
+		defaults[k] = v
+	end
+	local btn = UiKit.Mk("TextButton", defaults)
+	UiKit.Round(btn, 10)
+	UiKit.Stroke(btn)
+	UiKit.Mk("UIPadding", {
+		PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4),
+		PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6),
+		Parent = btn,
+	})
+	if callback then
+		btn.Activated:Connect(function()
+			UiKit.Click()
+			callback()
+		end)
+	end
+	return btn
+end
+
+-- Lebensbalken: gibt eine Tabelle mit Set(hp, maxHp, sofort) zurueck
+function UiKit.HpBar(props)
+	local frame = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(25, 25, 38),
+		BorderSizePixel = 0,
+		Size = props.Size,
+		Position = props.Position,
+		AnchorPoint = props.AnchorPoint or Vector2.new(0, 0),
+		Parent = props.Parent,
+	})
+	UiKit.Round(frame, 6)
+	local fill = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Good,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 1, 0),
+		Parent = frame,
+	})
+	UiKit.Round(fill, 6)
+
+	local api = {}
+	function api.Set(hp, maxHp, instant)
+		local frac = 0
+		if maxHp &gt; 0 then
+			frac = math.max(0, math.min(1, hp / maxHp))
+		end
+		local color = UiKit.Colors.Good
+		if frac &lt;= 0.25 then
+			color = UiKit.Colors.Bad
+		elseif frac &lt;= 0.5 then
+			color = UiKit.Colors.Accent
+		end
+		fill.BackgroundColor3 = color
+		local goal = UDim2.new(frac, 0, 1, 0)
+		if instant then
+			fill.Size = goal
+		else
+			TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = goal }):Play()
+		end
+	end
+	return api
+end
+
+-- Kleine Nachrichten oben in der Mitte
+local toastContainer = nil
+
+local function ensureToasts()
+	if toastContainer and toastContainer.Parent then
+		return toastContainer
+	end
+	local gui = UiKit.Screen("BrainToasts", 50)
+	toastContainer = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 12),
+		Size = UDim2.new(0.5, 0, 0.3, 0),
+		Parent = gui,
+	})
+	UiKit.Mk("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 6),
+		Parent = toastContainer,
+	})
+	return toastContainer
+end
+
+function UiKit.Toast(msg, kind)
+	local container = ensureToasts()
+	local color = UiKit.Colors.Panel
+	if kind == "good" then
+		color = Color3.fromRGB(35, 90, 50)
+	elseif kind == "bad" then
+		color = Color3.fromRGB(105, 40, 45)
+	end
+	local toast = UiKit.Mk("TextLabel", {
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.1,
+		Font = Enum.Font.FredokaOne,
+		TextColor3 = UiKit.Colors.Text,
+		TextSize = 18,
+		Text = "  " .. msg .. "  ",
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.new(0, 0, 0, 34),
+		Parent = container,
+	})
+	UiKit.Round(toast, 10)
+	UiKit.Stroke(toast)
+	task.delay(3.5, function()
+		if toast.Parent then
+			local tween = TweenService:Create(toast, TweenInfo.new(0.4), { TextTransparency = 1, BackgroundTransparency = 1 })
+			tween:Play()
+			tween.Completed:Wait()
+			toast:Destroy()
+		end
+	end)
+end
+
+return UiKit
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX10">
+					<Properties>
+						<string name="Name">MenuUi</string>
+						<ProtectedString name="Source">-- ============================================================
+-- Menues: HUD-Knoepfe, Starterauswahl, Team und Brain-Dex.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+
+local MenuUi = {}
+
+local data = nil
+local callbacks = nil
+
+local menuGui = nil
+local teamPanel = nil
+local teamScroll = nil
+local dexPanel = nil
+local dexScroll = nil
+local dexProgress = nil
+local starterModal = nil
+local starterCards = nil
+
+local function hex(color)
+	return string.format(
+		"#%02X%02X%02X",
+		math.floor(color.R * 255 + 0.5),
+		math.floor(color.G * 255 + 0.5),
+		math.floor(color.B * 255 + 0.5)
+	)
+end
+
+-- ---------- Panel-Grundgeruest ----------
+
+local function makePanel(title, size)
+	local panel = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = size,
+		Visible = false,
+		Parent = menuGui,
+	})
+	UiKit.Round(panel, 14)
+	UiKit.Stroke(panel, Color3.fromRGB(15, 15, 25), 3)
+
+	UiKit.Label({
+		Text = title,
+		Size = UDim2.new(1, -60, 0, 34),
+		Position = UDim2.new(0, 14, 0, 8),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = panel,
+	})
+
+	UiKit.Button({
+		Text = "X",
+		BackgroundColor3 = UiKit.Colors.Bad,
+		Size = UDim2.new(0, 34, 0, 34),
+		Position = UDim2.new(1, -42, 0, 8),
+		Parent = panel,
+	}, function()
+		panel.Visible = false
+	end)
+
+	return panel
+end
+
+local function clearRows(container)
+	for _, child in ipairs(container:GetChildren()) do
+		if child:IsA("Frame") or child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+end
+
+-- ---------- Team-Panel ----------
+
+local function addTeamRow(container, order, mon, isTeam, index)
+	local sp = GameData.Species[mon.id]
+	local stats = GameData.StatsFor(mon.id, mon.level)
+	local row = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.PanelLight,
+		Size = UDim2.new(1, -8, 0, 56),
+		LayoutOrder = order,
+		Parent = container,
+	})
+	UiKit.Round(row, 10)
+
+	UiKit.Label({
+		RichText = true,
+		Text = '&lt;font color="' .. hex(GameData.TypeColors[sp.typ]) .. '"&gt;●&lt;/font&gt; ' .. sp.name .. "   Lv. " .. mon.level,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 10, 0, 4),
+		Size = UDim2.new(0.58, 0, 0, 22),
+		Parent = row,
+	})
+	UiKit.Label({
+		Text = "HP " .. mon.hp .. "/" .. stats.maxHp,
+		TextColor3 = UiKit.Colors.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 10, 0, 30),
+		Size = UDim2.new(0, 90, 0, 18),
+		Parent = row,
+	})
+	local bar = UiKit.HpBar({
+		Position = UDim2.new(0, 106, 0, 33),
+		Size = UDim2.new(0.24, 0, 0, 12),
+		Parent = row,
+	})
+	bar.Set(mon.hp, stats.maxHp, true)
+
+	if isTeam then
+		if index &gt; 1 then
+			UiKit.Button({
+				Text = "Anführer",
+				BackgroundColor3 = UiKit.Colors.Blue,
+				Position = UDim2.new(0.62, 0, 0.5, -15),
+				Size = UDim2.new(0.18, 0, 0, 30),
+				Parent = row,
+			}, function()
+				callbacks.onTeamAction("leader", index)
+			end)
+		end
+		if data and #data.team &gt; 1 then
+			UiKit.Button({
+				Text = "→ Box",
+				Position = UDim2.new(0.815, 0, 0.5, -15),
+				Size = UDim2.new(0.16, 0, 0, 30),
+				Parent = row,
+			}, function()
+				callbacks.onTeamAction("toBox", index)
+			end)
+		end
+	else
+		if data and #data.team &lt; GameData.TEAM_SIZE then
+			UiKit.Button({
+				Text = "→ Team",
+				BackgroundColor3 = UiKit.Colors.Good,
+				Position = UDim2.new(0.78, 0, 0.5, -15),
+				Size = UDim2.new(0.19, 0, 0, 30),
+				Parent = row,
+			}, function()
+				callbacks.onTeamAction("fromBox", index)
+			end)
+		end
+	end
+end
+
+local function renderTeam()
+	if not data then return end
+	clearRows(teamScroll)
+	local order = 1
+	for i, mon in ipairs(data.team) do
+		addTeamRow(teamScroll, order, mon, true, i)
+		order = order + 1
+	end
+	local header = UiKit.Label({
+		Text = "Box (" .. #data.box .. "/" .. GameData.BOX_SIZE .. ")",
+		TextColor3 = UiKit.Colors.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Size = UDim2.new(1, -8, 0, 26),
+		LayoutOrder = order,
+		Parent = teamScroll,
+	})
+	header.Name = "BoxHeader"
+	order = order + 1
+	for i, mon in ipairs(data.box) do
+		addTeamRow(teamScroll, order, mon, false, i)
+		order = order + 1
+	end
+end
+
+-- ---------- Brain-Dex ----------
+
+local function renderDex()
+	if not data then return end
+	clearRows(dexScroll)
+	local caughtCount = 0
+	for i, id in ipairs(GameData.DexOrder) do
+		local sp = GameData.Species[id]
+		local caught = data.dex[id] == true
+		if caught then
+			caughtCount = caughtCount + 1
+		end
+		local card = UiKit.Mk("Frame", {
+			BackgroundColor3 = caught and GameData.TypeColors[sp.typ]:Lerp(Color3.new(0, 0, 0), 0.55) or Color3.fromRGB(48, 48, 62),
+			LayoutOrder = i,
+			Parent = dexScroll,
+		})
+		UiKit.Round(card, 10)
+		UiKit.Label({
+			Text = "#" .. i,
+			TextColor3 = UiKit.Colors.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0, 6, 0, 2),
+			Size = UDim2.new(0.5, 0, 0, 14),
+			Parent = card,
+		})
+		UiKit.Label({
+			Text = caught and sp.name or "???",
+			Position = UDim2.new(0, 4, 0, 18),
+			Size = UDim2.new(1, -8, 0, 34),
+			TextColor3 = caught and UiKit.Colors.Text or Color3.fromRGB(120, 120, 135),
+			Parent = card,
+		})
+		UiKit.Label({
+			Text = caught and (sp.typ .. " • " .. sp.rarity) or "Noch nicht gefangen",
+			TextColor3 = caught and GameData.Rarities[sp.rarity].color or Color3.fromRGB(100, 100, 115),
+			Position = UDim2.new(0, 4, 0, 56),
+			Size = UDim2.new(1, -8, 0, 16),
+			Parent = card,
+		})
+	end
+	dexProgress.Text = "Entdeckt: " .. caughtCount .. " / " .. #GameData.DexOrder
+end
+
+-- ---------- Starterauswahl ----------
+
+local function buildStarterModal()
+	starterModal = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.45,
+		Size = UDim2.new(1, 0, 1, 0),
+		Visible = false,
+		ZIndex = 5,
+		Parent = menuGui,
+	})
+	local panel = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0.72, 0, 0.66, 0),
+		ZIndex = 5,
+		Parent = starterModal,
+	})
+	UiKit.Round(panel, 16)
+	UiKit.Stroke(panel, UiKit.Colors.Accent, 3)
+	UiKit.Label({
+		Text = "Wähle dein erstes Brain Word!",
+		Size = UDim2.new(1, 0, 0.14, 0),
+		ZIndex = 5,
+		Parent = panel,
+	})
+	starterCards = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 0, 0.16, 0),
+		Size = UDim2.new(1, 0, 0.84, 0),
+		ZIndex = 5,
+		Parent = panel,
+	})
+	UiKit.Mk("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0.02, 0),
+		Parent = starterCards,
+	})
+end
+
+function MenuUi.ShowStarter(options)
+	for _, child in ipairs(starterCards:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	for _, id in ipairs(options) do
+		local sp = GameData.Species[id]
+		local card = UiKit.Mk("Frame", {
+			BackgroundColor3 = UiKit.Colors.PanelLight,
+			Size = UDim2.new(0.3, 0, 0.9, 0),
+			ZIndex = 5,
+			Parent = starterCards,
+		})
+		UiKit.Round(card, 14)
+		UiKit.Stroke(card, GameData.TypeColors[sp.typ], 3)
+		UiKit.Label({
+			Text = sp.name,
+			TextColor3 = GameData.TypeColors[sp.typ],
+			Position = UDim2.new(0, 0, 0.04, 0),
+			Size = UDim2.new(1, 0, 0.18, 0),
+			ZIndex = 5,
+			Parent = card,
+		})
+		UiKit.Label({
+			Text = "Typ: " .. sp.typ,
+			Position = UDim2.new(0, 0, 0.24, 0),
+			Size = UDim2.new(1, 0, 0.1, 0),
+			TextColor3 = UiKit.Colors.TextDim,
+			ZIndex = 5,
+			Parent = card,
+		})
+		UiKit.Label({
+			Text = sp.desc,
+			TextWrapped = true,
+			TextScaled = false,
+			TextSize = 16,
+			Position = UDim2.new(0.05, 0, 0.38, 0),
+			Size = UDim2.new(0.9, 0, 0.36, 0),
+			ZIndex = 5,
+			Parent = card,
+		})
+		local pick = UiKit.Button({
+			Text = "Nehmen!",
+			BackgroundColor3 = UiKit.Colors.Good,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 0.97, 0),
+			Size = UDim2.new(0.8, 0, 0.14, 0),
+			ZIndex = 5,
+			Parent = card,
+		}, function()
+			starterModal.Visible = false
+			callbacks.onStarterPick(id)
+		end)
+		pick.ZIndex = 5
+	end
+	starterModal.Visible = true
+end
+
+-- ---------- Oeffentliche API ----------
+
+function MenuUi.SetData(newData)
+	data = newData
+	if teamPanel.Visible then
+		renderTeam()
+	end
+	if dexPanel.Visible then
+		renderDex()
+	end
+end
+
+function MenuUi.CloseAll()
+	teamPanel.Visible = false
+	dexPanel.Visible = false
+end
+
+function MenuUi.Init(cb)
+	callbacks = cb
+	menuGui = UiKit.Screen("BrainMenus", 10)
+
+	-- Team-Panel
+	teamPanel = makePanel("Dein Team", UDim2.new(0.44, 0, 0.74, 0))
+	teamScroll = UiKit.Mk("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 10, 0, 50),
+		Size = UDim2.new(1, -20, 1, -60),
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6,
+		Parent = teamPanel,
+	})
+	UiKit.Mk("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 6),
+		Parent = teamScroll,
+	})
+
+	-- Brain-Dex-Panel
+	dexPanel = makePanel("Brain-Dex", UDim2.new(0.56, 0, 0.78, 0))
+	dexProgress = UiKit.Label({
+		Text = "Entdeckt: 0 / 0",
+		TextColor3 = UiKit.Colors.Accent,
+		Position = UDim2.new(0, 14, 0, 42),
+		Size = UDim2.new(1, -28, 0, 20),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = dexPanel,
+	})
+	dexScroll = UiKit.Mk("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 10, 0, 68),
+		Size = UDim2.new(1, -20, 1, -78),
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6,
+		Parent = dexPanel,
+	})
+	UiKit.Mk("UIGridLayout", {
+		CellSize = UDim2.new(0, 128, 0, 78),
+		CellPadding = UDim2.new(0, 8, 0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = dexScroll,
+	})
+
+	buildStarterModal()
+
+	-- HUD unten links
+	local hud = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 14, 1, -14),
+		Size = UDim2.new(0, 130, 0, 104),
+		Parent = menuGui,
+	})
+	UiKit.Mk("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		Padding = UDim.new(0, 8),
+		Parent = hud,
+	})
+	UiKit.Button({
+		Text = "Team",
+		BackgroundColor3 = UiKit.Colors.Blue,
+		Size = UDim2.new(1, 0, 0, 44),
+		Parent = hud,
+	}, function()
+		dexPanel.Visible = false
+		teamPanel.Visible = not teamPanel.Visible
+		if teamPanel.Visible then
+			renderTeam()
+		end
+	end)
+	UiKit.Button({
+		Text = "Brain-Dex",
+		BackgroundColor3 = Color3.fromRGB(150, 90, 220),
+		Size = UDim2.new(1, 0, 0, 44),
+		Parent = hud,
+	}, function()
+		teamPanel.Visible = false
+		dexPanel.Visible = not dexPanel.Visible
+		if dexPanel.Visible then
+			renderDex()
+		end
+	end)
+
+	-- Kleiner Hinweis unten in der Mitte
+	UiKit.Label({
+		Text = "Gehe zu einem wilden Brain Word und drücke den Kampf-Knopf (Taste E)!",
+		TextColor3 = Color3.fromRGB(235, 235, 245),
+		TextStrokeTransparency = 0.4,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -10),
+		Size = UDim2.new(0.6, 0, 0, 20),
+		Parent = menuGui,
+	})
+end
+
+return MenuUi
+</ProtectedString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX11">
+					<Properties>
+						<string name="Name">BattleUi</string>
+						<ProtectedString name="Source">-- ============================================================
+-- Die Kampf-Oberflaeche: HP-Balken, Attacken-Knoepfe,
+-- Kampf-Text und Ergebnis-Banner.
+-- ============================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameData = require(Shared:WaitForChild("GameData"))
+local UiKit = require(script.Parent:WaitForChild("UiKit"))
+
+local BattleUi = {}
+
+local sendAction = nil
+local gui = nil
+
+local state = nil -- { ally, enemy, team, monIndex }
+local locked = false
+
+-- UI-Referenzen
+local logLabel = nil
+local buttonsArea = nil
+local mainGrid = nil
+local movesFrame = nil
+local switchFrame = nil
+local resultBanner = nil
+local resultText = nil
+
+local enemyName = nil
+local enemyInfo = nil
+local enemyBar = nil
+local allyName = nil
+local allyInfo = nil
+local allyBar = nil
+local allyHpText = nil
+local xpFill = nil
+
+local function constrain(label, maxSize)
+	UiKit.Mk("UITextSizeConstraint", { MaxTextSize = maxSize, Parent = label })
+	return label
+end
+
+local function setLog(msg)
+	logLabel.Text = msg
+end
+
+-- ---------- Anzeigen aktualisieren ----------
+
+local function renderEnemy(instant)
+	if not state or not state.enemy then return end
+	local e = state.enemy
+	enemyName.Text = e.name .. "   Lv. " .. e.level
+	enemyInfo.Text = e.typ .. " • " .. e.rarity
+	enemyInfo.TextColor3 = GameData.Rarities[e.rarity].color
+	enemyBar.Set(e.hp, e.maxHp, instant)
+end
+
+local function renderAlly(instant)
+	if not state or not state.ally then return end
+	local a = state.ally
+	allyName.Text = a.name .. "   Lv. " .. a.level
+	allyInfo.Text = a.typ
+	allyInfo.TextColor3 = GameData.TypeColors[a.typ]
+	allyBar.Set(a.hp, a.maxHp, instant)
+	allyHpText.Text = a.hp .. " / " .. a.maxHp
+	local frac = 0
+	if a.xpNext and a.xpNext &gt; 0 then
+		frac = math.max(0, math.min(1, a.xp / a.xpNext))
+	end
+	xpFill.Size = UDim2.new(frac, 0, 1, 0)
+end
+
+-- ---------- Untermenues ----------
+
+local function showMain()
+	mainGrid.Visible = true
+	movesFrame.Visible = false
+	switchFrame.Visible = false
+end
+
+local function send(action)
+	if locked then return end
+	locked = true
+	buttonsArea.Visible = false
+	sendAction(action)
+end
+
+local function showMoves()
+	for _, child in ipairs(movesFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+	for i, move in ipairs(state.ally.moves) do
+		local color = GameData.TypeColors[move.typ]:Lerp(Color3.new(0, 0, 0), 0.35)
+		local btn = UiKit.Button({
+			Text = move.name .. "\n" .. move.typ .. " • Stärke " .. move.power,
+			BackgroundColor3 = color,
+			LayoutOrder = i,
+			Parent = movesFrame,
+		}, function()
+			send({ kind = "move", index = i })
+		end)
+		constrain(btn, 18)
+	end
+	local back = UiKit.Button({
+		Text = "Zurück",
+		BackgroundColor3 = Color3.fromRGB(90, 90, 110),
+		LayoutOrder = 9,
+		Parent = movesFrame,
+	}, showMain)
+	constrain(back, 18)
+	mainGrid.Visible = false
+	movesFrame.Visible = true
+	switchFrame.Visible = false
+end
+
+local function showSwitch(forced)
+	for _, child in ipairs(switchFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+	for i, mon in ipairs(state.team) do
+		local usable = mon.hp &gt; 0 and i ~= state.monIndex
+		local color = usable and GameData.TypeColors[mon.typ]:Lerp(Color3.new(0, 0, 0), 0.4) or Color3.fromRGB(60, 60, 70)
+		local label = mon.name .. " Lv." .. mon.level .. "\n" .. mon.hp .. "/" .. mon.maxHp
+		if mon.hp &lt;= 0 then
+			label = mon.name .. "\nK.O."
+		elseif i == state.monIndex then
+			label = mon.name .. "\nim Kampf"
+		end
+		local btn = UiKit.Button({
+			Text = label,
+			BackgroundColor3 = color,
+			LayoutOrder = i,
+			Parent = switchFrame,
+		}, function()
+			if usable then
+				send({ kind = "switch", index = i })
+			end
+		end)
+		constrain(btn, 16)
+	end
+	if not forced then
+		local back = UiKit.Button({
+			Text = "Zurück",
+			BackgroundColor3 = Color3.fromRGB(90, 90, 110),
+			LayoutOrder = 9,
+			Parent = switchFrame,
+		}, showMain)
+		constrain(back, 16)
+	end
+	mainGrid.Visible = false
+	movesFrame.Visible = false
+	switchFrame.Visible = true
+end
+
+-- ---------- Ergebnis-Banner ----------
+
+local RESULTS = {
+	sieg = { text = "SIEG!", color = Color3.fromRGB(60, 160, 80) },
+	gefangen = { text = "GEFANGEN!", color = Color3.fromRGB(70, 130, 220) },
+	geflohen = { text = "Entkommen!", color = Color3.fromRGB(120, 120, 140) },
+	niederlage = { text = "K.O. ...", color = Color3.fromRGB(170, 60, 60) },
+}
+
+-- ---------- Ablauf ----------
+
+function BattleUi.Start(payload)
+	state = {
+		ally = payload.ally,
+		enemy = payload.enemy,
+		team = payload.team,
+		monIndex = payload.monIndex,
+	}
+	locked = false
+	renderAlly(true)
+	renderEnemy(true)
+	setLog("Ein wildes " .. payload.enemy.name .. " (Lv. " .. payload.enemy.level .. ") erscheint!")
+	resultBanner.Visible = false
+	buttonsArea.Visible = true
+	showMain()
+	gui.Enabled = true
+end
+
+function BattleUi.Update(payload)
+	task.spawn(function()
+		if not state then
+			if payload.over then
+				gui.Enabled = false
+			end
+			return
+		end
+		buttonsArea.Visible = false
+
+		for _, ev in ipairs(payload.events) do
+			if ev.t == "text" then
+				setLog(ev.msg)
+				task.wait(1.05)
+			elseif ev.t == "hp" then
+				if ev.side == "enemy" and state.enemy then
+					state.enemy.hp = ev.hp
+					enemyBar.Set(ev.hp, state.enemy.maxHp, false)
+				elseif state.ally then
+					state.ally.hp = ev.hp
+					allyBar.Set(ev.hp, state.ally.maxHp, false)
+					allyHpText.Text = ev.hp .. " / " .. state.ally.maxHp
+				end
+				task.wait(0.5)
+			elseif ev.t == "ally" then
+				state.ally = ev.view
+				renderAlly(true)
+				task.wait(0.35)
+			end
+		end
+
+		-- Endstand uebernehmen
+		if payload.ally then state.ally = payload.ally end
+		if payload.enemy then state.enemy = payload.enemy end
+		if payload.team then state.team = payload.team end
+		if payload.monIndex then state.monIndex = payload.monIndex end
+		renderAlly(true)
+		renderEnemy(true)
+
+		if payload.over then
+			local info = RESULTS[payload.result]
+			if info then
+				resultText.Text = info.text
+				resultBanner.BackgroundColor3 = info.color
+				resultBanner.Visible = true
+				task.wait(1.6)
+			end
+			gui.Enabled = false
+			state = nil
+			locked = false
+		else
+			locked = false
+			buttonsArea.Visible = true
+			if payload.forcedSwitch then
+				setLog("Wähle dein nächstes Brain Word!")
+				showSwitch(true)
+			else
+				showMain()
+			end
+		end
+	end)
+end
+
+-- ---------- Aufbau ----------
+
+function BattleUi.Init(sender)
+	sendAction = sender
+	gui = UiKit.Screen("BrainBattle", 20)
+	gui.Enabled = false
+
+	-- Abdunkelung
+	UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.55,
+		Size = UDim2.new(1, 0, 1, 0),
+		Parent = gui,
+	})
+
+	-- Gegner-Karte (oben rechts)
+	local enemyCard = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.98, 0, 0.05, 0),
+		Size = UDim2.new(0.34, 0, 0.15, 0),
+		Parent = gui,
+	})
+	UiKit.Round(enemyCard, 12)
+	UiKit.Stroke(enemyCard)
+	enemyName = constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.06, 0),
+		Size = UDim2.new(0.9, 0, 0.36, 0),
+		Parent = enemyCard,
+	}), 24)
+	enemyInfo = constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.42, 0),
+		Size = UDim2.new(0.9, 0, 0.2, 0),
+		Parent = enemyCard,
+	}), 16)
+	enemyBar = UiKit.HpBar({
+		Position = UDim2.new(0.05, 0, 0.68, 0),
+		Size = UDim2.new(0.9, 0, 0.18, 0),
+		Parent = enemyCard,
+	})
+
+	-- Eigene Karte (unten links)
+	local allyCard = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0.02, 0, 0.72, 0),
+		Size = UDim2.new(0.34, 0, 0.18, 0),
+		Parent = gui,
+	})
+	UiKit.Round(allyCard, 12)
+	UiKit.Stroke(allyCard)
+	allyName = constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.05, 0),
+		Size = UDim2.new(0.9, 0, 0.3, 0),
+		Parent = allyCard,
+	}), 24)
+	allyInfo = constrain(UiKit.Label({
+		Text = "?",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0.05, 0, 0.36, 0),
+		Size = UDim2.new(0.5, 0, 0.16, 0),
+		Parent = allyCard,
+	}), 15)
+	allyHpText = constrain(UiKit.Label({
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Position = UDim2.new(0.55, 0, 0.36, 0),
+		Size = UDim2.new(0.4, 0, 0.16, 0),
+		TextColor3 = UiKit.Colors.TextDim,
+		Parent = allyCard,
+	}), 15)
+	allyBar = UiKit.HpBar({
+		Position = UDim2.new(0.05, 0, 0.56, 0),
+		Size = UDim2.new(0.9, 0, 0.16, 0),
+		Parent = allyCard,
+	})
+	-- EP-Balken
+	local xpBack = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(25, 25, 38),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0.05, 0, 0.8, 0),
+		Size = UDim2.new(0.9, 0, 0.08, 0),
+		Parent = allyCard,
+	})
+	UiKit.Round(xpBack, 4)
+	xpFill = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(120, 160, 255),
+		BorderSizePixel = 0,
+		Size = UDim2.new(0, 0, 1, 0),
+		Parent = xpBack,
+	})
+	UiKit.Round(xpFill, 4)
+
+	-- Untere Leiste: Text + Knoepfe
+	local bottom = UiKit.Mk("Frame", {
+		BackgroundColor3 = UiKit.Colors.Panel,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0.99, 0),
+		Size = UDim2.new(0.96, 0, 0.25, 0),
+		Parent = gui,
+	})
+	UiKit.Round(bottom, 14)
+	UiKit.Stroke(bottom)
+
+	logLabel = constrain(UiKit.Label({
+		Text = "",
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Position = UDim2.new(0.02, 0, 0.08, 0),
+		Size = UDim2.new(0.54, 0, 0.84, 0),
+		Parent = bottom,
+	}), 26)
+
+	buttonsArea = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0.58, 0, 0.05, 0),
+		Size = UDim2.new(0.4, 0, 0.9, 0),
+		Parent = bottom,
+	})
+
+	mainGrid = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = buttonsArea })
+	UiKit.Mk("UIGridLayout", {
+		CellSize = UDim2.new(0.485, 0, 0.46, 0),
+		CellPadding = UDim2.new(0.03, 0, 0.08, 0),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = mainGrid,
+	})
+	constrain(UiKit.Button({ Text = "Angriff", BackgroundColor3 = Color3.fromRGB(200, 70, 70), LayoutOrder = 1, Parent = mainGrid }, function()
+		showMoves()
+	end), 24)
+	constrain(UiKit.Button({ Text = "Fangen", BackgroundColor3 = Color3.fromRGB(70, 130, 220), LayoutOrder = 2, Parent = mainGrid }, function()
+		send({ kind = "catch" })
+	end), 24)
+	constrain(UiKit.Button({ Text = "Wechseln", BackgroundColor3 = Color3.fromRGB(210, 160, 50), LayoutOrder = 3, Parent = mainGrid }, function()
+		showSwitch(false)
+	end), 24)
+	constrain(UiKit.Button({ Text = "Weglaufen", BackgroundColor3 = Color3.fromRGB(110, 110, 130), LayoutOrder = 4, Parent = mainGrid }, function()
+		send({ kind = "run" })
+	end), 24)
+
+	movesFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
+	UiKit.Mk("UIGridLayout", {
+		CellSize = UDim2.new(0.32, 0, 0.46, 0),
+		CellPadding = UDim2.new(0.015, 0, 0.06, 0),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = movesFrame,
+	})
+
+	switchFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
+	UiKit.Mk("UIGridLayout", {
+		CellSize = UDim2.new(0.32, 0, 0.44, 0),
+		CellPadding = UDim2.new(0.015, 0, 0.08, 0),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = switchFrame,
+	})
+
+	-- Ergebnis-Banner
+	resultBanner = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(60, 160, 80),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.4, 0),
+		Size = UDim2.new(0.44, 0, 0.16, 0),
+		Visible = false,
+		ZIndex = 10,
+		Parent = gui,
+	})
+	UiKit.Round(resultBanner, 16)
+	UiKit.Stroke(resultBanner, Color3.fromRGB(255, 255, 255), 3)
+	resultText = UiKit.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 10,
+		Parent = resultBanner,
+	})
+end
+
+return BattleUi
+</ProtectedString>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="SoundService" referent="RBX25">
+	</Item>
+</roblox>
