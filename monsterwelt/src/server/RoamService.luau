@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameData = require(Shared:WaitForChild("GameData"))
 local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 
 local RoamService = {}
 
@@ -96,11 +97,12 @@ local function roamLoop(model, root, patch)
 	end
 end
 
-local function spawnRoamer(patchIndex)
+-- speciesId/level/isLegendary sind optional (fuer legendaere Spawns)
+local function spawnRoamer(patchIndex, speciesId, level, isLegendary)
 	local patch = GameData.GrassPatches[patchIndex]
 	local route = GameData.Routes[patch[5]]
-	local speciesId = pickFromPool(route.pool)
-	local level = rng:NextInteger(route.levelMin, route.levelMax)
+	speciesId = speciesId or pickFromPool(route.pool)
+	level = level or rng:NextInteger(route.levelMin, route.levelMax)
 	local sp = GameData.Species[speciesId]
 
 	local model = MonsterFactory.Create(speciesId, 1)
@@ -109,21 +111,34 @@ local function spawnRoamer(patchIndex)
 
 	-- Namensschild
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(200, 56)
-	billboard.StudsOffset = Vector3.new(0, 3.2, 0)
-	billboard.MaxDistance = 100
+	billboard.Size = UDim2.fromOffset(220, isLegendary and 76 or 56)
+	billboard.StudsOffset = Vector3.new(0, isLegendary and 4.6 or 3.2, 0)
+	billboard.MaxDistance = isLegendary and 220 or 100
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
+	label.Size = UDim2.new(1, 0, isLegendary and 0.6 or 1, 0)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.Text = sp.name .. "  Lv. " .. level
-	label.TextColor3 = GameData.TypeColors[sp.typ]
+	label.Text = isLegendary and ("⭐ " .. sp.name .. " ⭐") or (sp.name .. "  Lv. " .. level)
+	label.TextColor3 = isLegendary and Color3.fromRGB(255, 210, 70) or GameData.TypeColors[sp.typ]
 	label.TextStrokeTransparency = 0.2
 	label.Parent = billboard
+	if isLegendary then
+		local sub = Instance.new("TextLabel")
+		sub.Position = UDim2.new(0, 0, 0.6, 0)
+		sub.Size = UDim2.new(1, 0, 0.4, 0)
+		sub.BackgroundTransparency = 1
+		sub.Font = Enum.Font.FredokaOne
+		sub.TextScaled = true
+		sub.Text = "Lv. " .. level .. " • LEGENDÄR"
+		sub.TextColor3 = Color3.fromRGB(255, 255, 255)
+		sub.TextStrokeTransparency = 0.3
+		sub.Parent = billboard
+	end
 	billboard.Parent = model.PrimaryPart
 
-	records[model] = { id = speciesId, level = level, patchIndex = patchIndex }
+	-- Legendaere zaehlen nicht zum normalen Nachschub (patchIndex 0)
+	records[model] = { id = speciesId, level = level, patchIndex = isLegendary and 0 or patchIndex }
 
 	-- Beruehrung startet den Kampf
 	local touched = false
@@ -146,6 +161,45 @@ local function spawnRoamer(patchIndex)
 
 	model.Parent = folder
 	task.spawn(roamLoop, model, model.PrimaryPart, patch)
+	return model
+end
+
+-- ---------- Legendaere Monster (selten!) ----------
+
+local activeLegendary = nil
+
+local function announceAll(msg)
+	for _, player in ipairs(Players:GetPlayers()) do
+		PlayerData.Notify(player, msg, "good")
+	end
+end
+
+local function legendaryLoop()
+	task.wait(120) -- erste Ruhephase nach Serverstart
+	while true do
+		if not activeLegendary or not activeLegendary.Parent or not records[activeLegendary] then
+			local id = GameData.Legendaries[rng:NextInteger(1, #GameData.Legendaries)]
+			local patchIndex = rng:NextInteger(1, #GameData.GrassPatches)
+			local level = rng:NextInteger(22, 28)
+			local model = spawnRoamer(patchIndex, id, level, true)
+			activeLegendary = model
+			local patch = GameData.GrassPatches[patchIndex]
+			local routeName = GameData.Routes[patch[5]].name
+			announceAll("⭐ Ein legendäres " .. GameData.Species[id].name .. " ist auf " .. routeName .. " aufgetaucht! Schnell!")
+			-- Nach 2 Minuten verschwindet es wieder
+			task.delay(120, function()
+				if records[model] then
+					records[model] = nil
+					model:Destroy()
+					announceAll("Das legendäre " .. GameData.Species[id].name .. " ist wieder verschwunden...")
+				end
+				if activeLegendary == model then
+					activeLegendary = nil
+				end
+			end)
+		end
+		task.wait(rng:NextNumber(180, 300))
+	end
 end
 
 local function roamerManager()
@@ -201,6 +255,7 @@ function RoamService.Init(wildBattleCallback)
 	folder.Parent = workspace
 	task.spawn(roamerManager)
 	task.spawn(grassLoop)
+	task.spawn(legendaryLoop)
 	Players.PlayerRemoving:Connect(function(player)
 		lastPos[player] = nil
 	end)

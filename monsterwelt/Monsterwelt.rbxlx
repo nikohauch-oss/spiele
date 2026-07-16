@@ -4,6 +4,13 @@
 	<Item class="Players" referent="RBX18">
 	</Item>
 	<Item class="Lighting" referent="RBX19">
+		<Properties>
+			<token name="Technology">4</token>
+			<float name="EnvironmentDiffuseScale">1</float>
+			<float name="EnvironmentSpecularScale">1</float>
+			<float name="ShadowSoftness">0.2</float>
+			<bool name="GlobalShadows">true</bool>
+		</Properties>
 	</Item>
 	<Item class="ReplicatedStorage" referent="RBX21">
 		<Item class="Folder" referent="RBX20">
@@ -15,8 +22,8 @@
 					<string name="Name">GameData</string>
 					<ProtectedString name="Source">-- ============================================================
 -- MONSTERWELT - Zentrale Spieldaten
--- Typen, Attacken, alle 18 Monster (mit 3D-Bauplan!),
--- Items, Routen, Trainer und Balancing.
+-- 35 Monster im Voxel-Kloetzchen-Stil: normale Monster haben
+-- Entwicklungen, LEGENDÄRE haben keine (und sind extrem selten).
 -- Eigene Monster hinzufuegen? Einfach hier eintragen!
 -- ============================================================
 
@@ -36,7 +43,6 @@ GameData.TypeColors = {
 	["Normal"] = Color3.fromRGB(180, 170, 160),
 }
 
--- Effektivitaet: Wasser &gt; Feuer &gt; Pflanze &gt; Wasser, Elektro &gt; Wasser
 local EFFECT = {
 	["Feuer"] = { ["Pflanze"] = 2, ["Wasser"] = 0.5, ["Feuer"] = 0.5 },
 	["Wasser"] = { ["Feuer"] = 2, ["Pflanze"] = 0.5, ["Wasser"] = 0.5 },
@@ -54,29 +60,23 @@ function GameData.TypeMultiplier(attackType, defenderType)
 end
 
 -- ========== ATTACKEN ==========
--- effect = { status = "brand"/"schock", chance = 0..1 }
 GameData.Moves = {
-	-- Normal
 	tackle = { name = "Tackle", typ = "Normal", power = 40 },
 	kratzer = { name = "Kratzer", typ = "Normal", power = 40 },
 	koerperwurf = { name = "Körperwurf", typ = "Normal", power = 65 },
 	hyperschlag = { name = "Hyperschlag", typ = "Normal", power = 90 },
-	-- Feuer
 	funkenregen = { name = "Funkenregen", typ = "Feuer", power = 40 },
 	glutbiss = { name = "Glutbiss", typ = "Feuer", power = 55, effect = { status = "brand", chance = 0.2 } },
 	flammenwerfer = { name = "Flammenwerfer", typ = "Feuer", power = 80, effect = { status = "brand", chance = 0.15 } },
 	feuersturm = { name = "Feuersturm", typ = "Feuer", power = 100, effect = { status = "brand", chance = 0.2 } },
-	-- Wasser
 	wasserspritzer = { name = "Wasserspritzer", typ = "Wasser", power = 40 },
 	blubbstrahl = { name = "Blubbstrahl", typ = "Wasser", power = 55 },
 	aquawelle = { name = "Aquawelle", typ = "Wasser", power = 80 },
 	hydrokanone = { name = "Hydrokanone", typ = "Wasser", power = 100 },
-	-- Pflanze
 	blattschuss = { name = "Blattschuss", typ = "Pflanze", power = 40 },
 	rankenschlag = { name = "Rankenschlag", typ = "Pflanze", power = 55 },
 	blattklinge = { name = "Blattklinge", typ = "Pflanze", power = 80 },
 	solarblitz = { name = "Solarblitz", typ = "Pflanze", power = 100 },
-	-- Elektro
 	blitzfunke = { name = "Blitzfunke", typ = "Elektro", power = 40, effect = { status = "schock", chance = 0.1 } },
 	stromstoss = { name = "Stromstoß", typ = "Elektro", power = 55, effect = { status = "schock", chance = 0.15 } },
 	blitzhammer = { name = "Blitzhammer", typ = "Elektro", power = 80, effect = { status = "schock", chance = 0.2 } },
@@ -86,13 +86,9 @@ GameData.Moves = {
 GameData.StatusNames = { brand = "Brand", schock = "Schock" }
 
 -- ========== MONSTER ==========
--- build = Bauplan fuer die 3D-Figur (MonsterFactory):
---   body  = Rumpf (shape Ball/Block/Cylinder, size {b,h,t}, color {r,g,b})
---   head  = Kopf-Kugel (size, offset {x,y,z}), -z ist VORNE
---   legs  = Anzahl Beine (0/2/4), legHeight
---   parts = weitere Teile (Ohren, Schwanz, Flossen, Fluegel, ...)
+-- build = Voxel-Bauplan (siehe MonsterFactory)
 GameData.Species = {
-	-- ===== STARTER: FEUER =====
+	-- ===== FEUER-STARTER: Flarix -&gt; Flammgor -&gt; Vulkarion =====
 	flarix = {
 		name = "Flarix", typ = "Feuer", starter = true,
 		desc = "Ein hitziges Energiebündel mit Flammenschweif.",
@@ -100,15 +96,9 @@ GameData.Species = {
 		learnset = { { 1, "kratzer" }, { 1, "funkenregen" }, { 7, "glutbiss" }, { 13, "flammenwerfer" } },
 		evolveLevel = 16, evolveTo = "flammgor",
 		build = {
-			body = { shape = "Ball", size = { 2.4, 2.0, 2.8 }, color = { 235, 90, 45 } },
-			head = { size = 1.6, offset = { 0, 1.0, -1.3 }, color = { 240, 105, 55 } },
-			legs = 4, legHeight = 0.7,
-			parts = {
-				{ shape = "Wedge", size = { 0.5, 0.7, 0.5 }, offset = { -0.5, 1.8, -1.3 }, color = { 200, 60, 30 }, name = "OhrL" },
-				{ shape = "Wedge", size = { 0.5, 0.7, 0.5 }, offset = { 0.5, 1.8, -1.3 }, color = { 200, 60, 30 }, name = "OhrR" },
-				{ shape = "Ball", size = { 0.9, 0.9, 0.9 }, offset = { 0, 0.9, 1.7 }, color = { 255, 140, 30 }, material = "Neon", name = "Flamme1" },
-				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { 0, 1.4, 2.1 }, color = { 255, 220, 80 }, material = "Neon", name = "Flamme2" },
-			},
+			archetype = "quad", size = 0.85,
+			primary = { 235, 90, 45 }, secondary = { 190, 55, 30 }, accent = { 255, 160, 40 }, eyes = { 255, 230, 130 },
+			ears = "spitz", tail = "flamme", snout = true,
 		},
 	},
 	flammgor = {
@@ -116,21 +106,26 @@ GameData.Species = {
 		desc = "Sein Rückenkamm lodert bei jedem Angriff auf.",
 		base = { hp = 82, atk = 86, def = 68, spd = 78 },
 		learnset = { { 1, "funkenregen" }, { 1, "glutbiss" }, { 13, "flammenwerfer" }, { 22, "feuersturm" } },
+		evolveLevel = 32, evolveTo = "vulkarion",
 		build = {
-			body = { shape = "Block", size = { 3.2, 2.6, 4.2 }, color = { 200, 60, 30 } },
-			head = { size = 2.2, offset = { 0, 1.7, -2.1 }, color = { 215, 75, 40 } },
-			legs = 4, legHeight = 1.0,
-			parts = {
-				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { 0, 3.0, -2.1 }, color = { 255, 220, 80 }, material = "Neon", name = "Horn" },
-				{ shape = "Wedge", size = { 0.7, 1.2, 1.2 }, offset = { 0, 1.9, -0.6 }, color = { 255, 140, 30 }, material = "Neon", name = "Kamm1" },
-				{ shape = "Wedge", size = { 0.7, 1.0, 1.1 }, offset = { 0, 1.8, 0.7 }, color = { 255, 140, 30 }, material = "Neon", name = "Kamm2" },
-				{ shape = "Ball", size = { 1.2, 1.2, 1.2 }, offset = { 0, 1.0, 2.6 }, color = { 255, 140, 30 }, material = "Neon", name = "Flamme1" },
-				{ shape = "Ball", size = { 0.7, 0.7, 0.7 }, offset = { 0, 1.6, 3.1 }, color = { 255, 220, 80 }, material = "Neon", name = "Flamme2" },
-			},
+			archetype = "quad", size = 1.25,
+			primary = { 205, 65, 30 }, secondary = { 150, 45, 25 }, accent = { 255, 150, 35 }, eyes = { 255, 220, 100 },
+			ears = "spitz", horns = 1, tail = "flamme", back = "flammen", snout = true,
+		},
+	},
+	vulkarion = {
+		name = "Vulkarion", typ = "Feuer", noWild = true,
+		desc = "Ein wandelnder Vulkan mit Flügeln aus Feuer.",
+		base = { hp = 100, atk = 106, def = 84, spd = 94 },
+		learnset = { { 1, "glutbiss" }, { 1, "flammenwerfer" }, { 22, "feuersturm" }, { 34, "hyperschlag" } },
+		build = {
+			archetype = "quad", size = 1.6,
+			primary = { 90, 45, 40 }, secondary = { 60, 35, 35 }, accent = { 255, 130, 30 }, eyes = { 255, 210, 80 },
+			horns = 2, tail = "flamme", back = "flammen", wings = "flamme", snout = true, mane = true,
 		},
 	},
 
-	-- ===== STARTER: WASSER =====
+	-- ===== WASSER-STARTER: Aquani -&gt; Wellodon -&gt; Ozeandon =====
 	aquani = {
 		name = "Aquani", typ = "Wasser", starter = true,
 		desc = "Ein verspielter Wasserfloh, der nie stillsitzt.",
@@ -138,14 +133,9 @@ GameData.Species = {
 		learnset = { { 1, "tackle" }, { 1, "wasserspritzer" }, { 7, "blubbstrahl" }, { 13, "aquawelle" } },
 		evolveLevel = 16, evolveTo = "wellodon",
 		build = {
-			body = { shape = "Ball", size = { 2.3, 2.1, 2.5 }, color = { 70, 140, 230 } },
-			head = { size = 1.7, offset = { 0, 1.1, -1.2 }, color = { 110, 180, 240 } },
-			legs = 2, legHeight = 0.6,
-			parts = {
-				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { -0.9, 2.0, -1.2 }, color = { 110, 180, 240 }, name = "OhrL" },
-				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { 0.9, 2.0, -1.2 }, color = { 110, 180, 240 }, name = "OhrR" },
-				{ shape = "Wedge", size = { 1.6, 0.4, 1.4 }, offset = { 0, 0.1, 1.7 }, rot = { 0, 180, 0 }, color = { 50, 110, 200 }, name = "Flosse" },
-			},
+			archetype = "quad", size = 0.85,
+			primary = { 70, 140, 230 }, secondary = { 45, 105, 195 }, accent = { 130, 210, 255 }, eyes = { 200, 245, 255 },
+			ears = "rund", tail = "flosse",
 		},
 	},
 	wellodon = {
@@ -153,20 +143,26 @@ GameData.Species = {
 		desc = "Ein sanfter Riese, der Wellen mit der Flosse lenkt.",
 		base = { hp = 88, atk = 76, def = 82, spd = 64 },
 		learnset = { { 1, "wasserspritzer" }, { 1, "blubbstrahl" }, { 13, "aquawelle" }, { 22, "hydrokanone" } },
+		evolveLevel = 32, evolveTo = "ozeandon",
 		build = {
-			body = { shape = "Block", size = { 3.4, 2.5, 4.4 }, color = { 40, 100, 200 } },
-			head = { size = 2.2, offset = { 0, 1.5, -2.3 }, color = { 70, 140, 230 } },
-			legs = 4, legHeight = 0.9,
-			parts = {
-				{ shape = "Wedge", size = { 0.6, 1.4, 1.6 }, offset = { 0, 2.0, 0.2 }, color = { 90, 170, 250 }, name = "Rueckenflosse" },
-				{ shape = "Wedge", size = { 0.4, 1.0, 1.2 }, offset = { -1.9, 0.6, -0.4 }, rot = { 0, 0, -30 }, color = { 90, 170, 250 }, name = "FlosseL" },
-				{ shape = "Wedge", size = { 0.4, 1.0, 1.2 }, offset = { 1.9, 0.6, -0.4 }, rot = { 0, 0, 30 }, color = { 90, 170, 250 }, name = "FlosseR" },
-				{ shape = "Wedge", size = { 2.0, 0.5, 1.8 }, offset = { 0, 0.3, 2.9 }, rot = { 0, 180, 0 }, color = { 90, 170, 250 }, name = "Schwanzflosse" },
-			},
+			archetype = "quad", size = 1.3,
+			primary = { 45, 105, 200 }, secondary = { 90, 170, 250 }, accent = { 140, 220, 255 }, eyes = { 210, 245, 255 },
+			tail = "flosse", back = "spikes", snout = true,
+		},
+	},
+	ozeandon = {
+		name = "Ozeandon", typ = "Wasser", noWild = true,
+		desc = "Die Urgewalt des Meeres in Monsterform.",
+		base = { hp = 108, atk = 92, def = 100, spd = 78 },
+		learnset = { { 1, "blubbstrahl" }, { 1, "aquawelle" }, { 22, "hydrokanone" }, { 34, "hyperschlag" } },
+		build = {
+			archetype = "serpent", size = 1.35,
+			primary = { 35, 90, 185 }, secondary = { 80, 160, 245 }, accent = { 150, 225, 255 }, eyes = { 220, 250, 255 },
+			horns = 2, tail = "flosse", back = "kristalle", snout = true,
 		},
 	},
 
-	-- ===== STARTER: PFLANZE =====
+	-- ===== PFLANZEN-STARTER: Sproessli -&gt; Florassor -&gt; Florakron =====
 	sproessli = {
 		name = "Sprössli", typ = "Pflanze", starter = true,
 		desc = "Auf seinem Kopf wächst ein frisches Blatt.",
@@ -174,16 +170,9 @@ GameData.Species = {
 		learnset = { { 1, "tackle" }, { 1, "blattschuss" }, { 7, "rankenschlag" }, { 13, "blattklinge" } },
 		evolveLevel = 16, evolveTo = "florassor",
 		build = {
-			body = { shape = "Ball", size = { 2.1, 2.0, 2.2 }, color = { 110, 190, 90 } },
-			head = { size = 1.7, offset = { 0, 1.2, -1.0 }, color = { 130, 205, 105 } },
-			legs = 2, legHeight = 0.6,
-			parts = {
-				{ shape = "Block", size = { 0.5, 1.1, 0.5 }, offset = { -0.6, 2.3, -1.0 }, rot = { 0, 0, 12 }, color = { 80, 150, 65 }, name = "OhrL" },
-				{ shape = "Block", size = { 0.5, 1.1, 0.5 }, offset = { 0.6, 2.3, -1.0 }, rot = { 0, 0, -12 }, color = { 80, 150, 65 }, name = "OhrR" },
-				{ shape = "Block", size = { 0.15, 0.6, 0.15 }, offset = { 0, 2.3, -1.0 }, color = { 70, 130, 55 }, name = "Stiel" },
-				{ shape = "Ball", size = { 1.1, 0.25, 1.6 }, offset = { 0, 2.7, -1.0 }, color = { 90, 200, 70 }, name = "Blatt" },
-				{ shape = "Ball", size = { 0.5, 0.5, 0.5 }, offset = { 0, 0.4, 1.3 }, color = { 235, 245, 230 }, name = "Puschel" },
-			},
+			archetype = "biped", size = 0.8,
+			primary = { 110, 190, 90 }, secondary = { 75, 145, 65 }, accent = { 160, 230, 90 }, eyes = { 230, 255, 190 },
+			ears = "lang", tail = "keule", back = "blaetter",
 		},
 	},
 	florassor = {
@@ -191,21 +180,26 @@ GameData.Species = {
 		desc = "Trägt eine ganze Blumenwiese auf dem Rücken.",
 		base = { hp = 86, atk = 78, def = 80, spd = 62 },
 		learnset = { { 1, "blattschuss" }, { 1, "rankenschlag" }, { 13, "blattklinge" }, { 22, "solarblitz" } },
+		evolveLevel = 32, evolveTo = "florakron",
 		build = {
-			body = { shape = "Block", size = { 3.3, 2.5, 4.2 }, color = { 70, 160, 80 } },
-			head = { size = 2.1, offset = { 0, 1.5, -2.2 }, color = { 95, 180, 95 } },
-			legs = 4, legHeight = 0.9,
-			parts = {
-				{ shape = "Ball", size = { 2.2, 0.5, 2.2 }, offset = { 0, 1.9, 0.4 }, color = { 90, 200, 70 }, name = "Blattkranz" },
-				{ shape = "Ball", size = { 0.9, 0.9, 0.9 }, offset = { 0, 2.4, 0.4 }, color = { 255, 200, 60 }, name = "Bluete" },
-				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { -0.7, 2.2, 0.4 }, color = { 245, 130, 180 }, name = "Blume1" },
-				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { 0.7, 2.2, 0.4 }, color = { 245, 130, 180 }, name = "Blume2" },
-				{ shape = "Block", size = { 0.6, 0.6, 1.6 }, offset = { 0, 0.6, 2.7 }, color = { 70, 160, 80 }, name = "Schwanz" },
-			},
+			archetype = "quad", size = 1.25,
+			primary = { 75, 160, 85 }, secondary = { 55, 125, 60 }, accent = { 245, 130, 180 }, eyes = { 220, 255, 200 },
+			horns = 1, tail = "keule", back = "blaetter", snout = true,
+		},
+	},
+	florakron = {
+		name = "Florakron", typ = "Pflanze", noWild = true,
+		desc = "Der uralte Waldkönig. Sein Rücken ist ein Garten.",
+		base = { hp = 104, atk = 94, def = 98, spd = 76 },
+		learnset = { { 1, "rankenschlag" }, { 1, "blattklinge" }, { 22, "solarblitz" }, { 34, "hyperschlag" } },
+		build = {
+			archetype = "quad", size = 1.6,
+			primary = { 60, 130, 70 }, secondary = { 45, 100, 55 }, accent = { 245, 130, 180 }, eyes = { 230, 255, 200 },
+			horns = 2, tail = "keule", back = "blaetter", mane = true, snout = true,
 		},
 	},
 
-	-- ===== WILDE MONSTER =====
+	-- ===== NORMAL: Mopsel -&gt; Mopsulor =====
 	mopsel = {
 		name = "Mopsel", typ = "Normal",
 		desc = "Knabbert einfach alles an. Wirklich alles.",
@@ -213,14 +207,9 @@ GameData.Species = {
 		learnset = { { 1, "tackle" }, { 5, "kratzer" }, { 10, "koerperwurf" } },
 		evolveLevel = 14, evolveTo = "mopsulor",
 		build = {
-			body = { shape = "Ball", size = { 1.9, 1.7, 2.1 }, color = { 170, 140, 110 } },
-			head = { size = 1.4, offset = { 0, 0.9, -1.0 }, color = { 180, 150, 120 } },
-			legs = 2, legHeight = 0.5,
-			parts = {
-				{ shape = "Ball", size = { 0.7, 0.7, 0.25 }, offset = { -0.6, 1.7, -1.0 }, color = { 150, 120, 95 }, name = "OhrL" },
-				{ shape = "Ball", size = { 0.7, 0.7, 0.25 }, offset = { 0.6, 1.7, -1.0 }, color = { 150, 120, 95 }, name = "OhrR" },
-				{ shape = "Block", size = { 0.18, 0.18, 1.6 }, offset = { 0, 0.5, 1.6 }, rot = { -20, 0, 0 }, color = { 140, 110, 90 }, name = "Schwanz" },
-			},
+			archetype = "blob", size = 0.75,
+			primary = { 170, 140, 110 }, secondary = { 135, 105, 80 }, eyes = { 60, 45, 35 },
+			ears = "rund", tail = "keule",
 		},
 	},
 	mopsulor = {
@@ -229,33 +218,38 @@ GameData.Species = {
 		base = { hp = 70, atk = 72, def = 58, spd = 72 },
 		learnset = { { 1, "tackle" }, { 1, "koerperwurf" }, { 18, "hyperschlag" } },
 		build = {
-			body = { shape = "Ball", size = { 2.9, 2.5, 3.1 }, color = { 150, 115, 85 } },
-			head = { size = 2.0, offset = { 0, 1.4, -1.5 }, color = { 165, 130, 100 } },
-			legs = 4, legHeight = 0.8,
-			parts = {
-				{ shape = "Ball", size = { 0.9, 0.9, 0.3 }, offset = { -0.85, 2.5, -1.5 }, color = { 130, 100, 75 }, name = "OhrL" },
-				{ shape = "Ball", size = { 0.9, 0.9, 0.3 }, offset = { 0.85, 2.5, -1.5 }, color = { 130, 100, 75 }, name = "OhrR" },
-				{ shape = "Block", size = { 0.25, 0.25, 2.2 }, offset = { 0, 0.9, 2.3 }, rot = { -25, 0, 0 }, color = { 120, 95, 70 }, name = "Schwanz" },
-				{ shape = "Block", size = { 0.5, 0.5, 0.2 }, offset = { 0, 0.65, -2.42 }, color = { 250, 250, 250 }, name = "Zahn" },
-			},
+			archetype = "quad", size = 1.1,
+			primary = { 150, 115, 85 }, secondary = { 115, 85, 60 }, eyes = { 70, 50, 40 },
+			ears = "rund", tail = "keule", snout = true,
 		},
 	},
+
+	-- ===== NORMAL: Flauschi -&gt; Wolkorin =====
 	flauschi = {
 		name = "Flauschi", typ = "Normal",
 		desc = "Weich wie eine Wolke, schläft am liebsten im Gras.",
 		base = { hp = 55, atk = 45, def = 50, spd = 48 },
 		learnset = { { 1, "tackle" }, { 6, "kratzer" }, { 12, "koerperwurf" } },
+		evolveLevel = 16, evolveTo = "wolkorin",
 		build = {
-			body = { shape = "Ball", size = { 2.3, 2.1, 2.3 }, color = { 242, 242, 242 } },
-			head = { size = 1.3, offset = { 0, 1.0, -1.3 }, color = { 220, 205, 195 } },
-			legs = 2, legHeight = 0.5,
-			parts = {
-				{ shape = "Block", size = { 1.5, 0.25, 0.9 }, offset = { -1.6, 0.9, 0 }, rot = { 0, 0, 18 }, color = { 250, 250, 250 }, name = "FluegelL" },
-				{ shape = "Block", size = { 1.5, 0.25, 0.9 }, offset = { 1.6, 0.9, 0 }, rot = { 0, 0, -18 }, color = { 250, 250, 250 }, name = "FluegelR" },
-				{ shape = "Ball", size = { 0.6, 0.6, 0.6 }, offset = { 0, 0.4, 1.3 }, color = { 250, 250, 250 }, name = "Puschel" },
-			},
+			archetype = "blob", size = 0.85,
+			primary = { 242, 242, 242 }, secondary = { 210, 205, 200 }, accent = { 160, 200, 255 }, eyes = { 80, 90, 110 },
+			ears = "rund", wings = "brick",
 		},
 	},
+	wolkorin = {
+		name = "Wolkorin", typ = "Normal", noWild = true,
+		desc = "Reitet auf dem Wind wie auf einer Wolke.",
+		base = { hp = 78, atk = 68, def = 72, spd = 74 },
+		learnset = { { 1, "tackle" }, { 1, "koerperwurf" }, { 20, "hyperschlag" } },
+		build = {
+			archetype = "bird", size = 1.2,
+			primary = { 245, 245, 250 }, secondary = { 200, 215, 235 }, accent = { 150, 195, 255 }, eyes = { 90, 130, 200 },
+			horns = 1,
+		},
+	},
+
+	-- ===== ELEKTRO: Zappli -&gt; Voltarex =====
 	zappli = {
 		name = "Zappli", typ = "Elektro",
 		desc = "Sein Fell knistert. Streicheln auf eigene Gefahr!",
@@ -263,15 +257,9 @@ GameData.Species = {
 		learnset = { { 1, "kratzer" }, { 1, "blitzfunke" }, { 8, "stromstoss" }, { 14, "blitzhammer" } },
 		evolveLevel = 18, evolveTo = "voltarex",
 		build = {
-			body = { shape = "Ball", size = { 2.0, 1.8, 2.2 }, color = { 250, 210, 60 } },
-			head = { size = 1.5, offset = { 0, 1.0, -1.1 }, color = { 252, 220, 80 } },
-			legs = 4, legHeight = 0.6,
-			parts = {
-				{ shape = "Wedge", size = { 0.45, 0.8, 0.45 }, offset = { -0.55, 1.9, -1.1 }, color = { 60, 60, 60 }, name = "OhrL" },
-				{ shape = "Wedge", size = { 0.45, 0.8, 0.45 }, offset = { 0.55, 1.9, -1.1 }, color = { 60, 60, 60 }, name = "OhrR" },
-				{ shape = "Block", size = { 0.3, 0.3, 1.0 }, offset = { 0, 0.9, 1.5 }, rot = { -35, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz1" },
-				{ shape = "Block", size = { 0.3, 0.3, 0.8 }, offset = { 0, 1.5, 2.0 }, rot = { 35, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz2" },
-			},
+			archetype = "quad", size = 0.8,
+			primary = { 250, 210, 60 }, secondary = { 60, 60, 60 }, accent = { 255, 235, 100 }, eyes = { 130, 240, 255 },
+			ears = "spitz", tail = "blitz",
 		},
 	},
 	voltarex = {
@@ -280,133 +268,262 @@ GameData.Species = {
 		base = { hp = 74, atk = 82, def = 60, spd = 95 },
 		learnset = { { 1, "blitzfunke" }, { 1, "stromstoss" }, { 14, "blitzhammer" }, { 22, "megavolt" } },
 		build = {
-			body = { shape = "Block", size = { 2.9, 2.3, 3.9 }, color = { 240, 190, 40 } },
-			head = { size = 2.0, offset = { 0, 1.5, -2.0 }, color = { 248, 205, 60 } },
-			legs = 4, legHeight = 1.0,
-			parts = {
-				{ shape = "Ball", size = { 0.5, 0.5, 0.5 }, offset = { 0, 2.7, -2.0 }, color = { 120, 240, 255 }, material = "Neon", name = "Horn" },
-				{ shape = "Ball", size = { 0.45, 0.45, 0.45 }, offset = { -1.5, 1.6, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "FunkeL" },
-				{ shape = "Ball", size = { 0.45, 0.45, 0.45 }, offset = { 1.5, 1.6, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "FunkeR" },
-				{ shape = "Block", size = { 0.35, 0.35, 1.4 }, offset = { 0, 1.2, 2.4 }, rot = { -30, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz1" },
-				{ shape = "Block", size = { 0.35, 0.35, 1.0 }, offset = { 0, 2.0, 3.0 }, rot = { 30, 0, 0 }, color = { 255, 230, 90 }, material = "Neon", name = "Blitz2" },
-			},
+			archetype = "quad", size = 1.3,
+			primary = { 240, 190, 40 }, secondary = { 50, 50, 55 }, accent = { 130, 240, 255 }, eyes = { 150, 245, 255 },
+			ears = "spitz", horns = 1, tail = "blitz", back = "spikes", mane = true,
 		},
 	},
+
+	-- ===== ELEKTRO: Blinki -&gt; Funkelfalter =====
 	blinki = {
 		name = "Blinki", typ = "Elektro",
 		desc = "Nachts leuchtet sein Hinterteil wie eine Laterne.",
 		base = { hp = 50, atk = 52, def = 42, spd = 66 },
 		learnset = { { 1, "blitzfunke" }, { 8, "stromstoss" }, { 15, "blitzhammer" } },
+		evolveLevel = 17, evolveTo = "funkelfalter",
 		build = {
-			body = { shape = "Ball", size = { 1.7, 1.5, 1.9 }, color = { 90, 90, 120 } },
-			head = { size = 1.3, offset = { 0, 0.8, -1.0 }, color = { 105, 105, 135 }, eyeScale = 1.4 },
-			legs = 2, legHeight = 0.45,
-			parts = {
-				{ shape = "Ball", size = { 1.2, 1.2, 1.2 }, offset = { 0, 0.3, 1.3 }, color = { 200, 255, 120 }, material = "Neon", name = "Leuchte" },
-				{ shape = "Block", size = { 1.2, 0.15, 0.7 }, offset = { -1.2, 1.1, 0 }, rot = { 0, 0, 25 }, color = { 200, 220, 255 }, transparency = 0.4, name = "FluegelL" },
-				{ shape = "Block", size = { 1.2, 0.15, 0.7 }, offset = { 1.2, 1.1, 0 }, rot = { 0, 0, -25 }, color = { 200, 220, 255 }, transparency = 0.4, name = "FluegelR" },
-			},
+			archetype = "blob", size = 0.7,
+			primary = { 90, 90, 120 }, secondary = { 70, 70, 100 }, accent = { 200, 255, 120 }, eyes = { 220, 255, 160 },
+			horns = 1, wings = "kristall", tail = "blitz",
 		},
 	},
+	funkelfalter = {
+		name = "Funkelfalter", typ = "Elektro", noWild = true,
+		desc = "Seine Flügel sprühen bei jedem Schlag Funken.",
+		base = { hp = 72, atk = 78, def = 62, spd = 92 },
+		learnset = { { 1, "blitzfunke" }, { 1, "stromstoss" }, { 17, "blitzhammer" }, { 24, "megavolt" } },
+		build = {
+			archetype = "bird", size = 1.1,
+			primary = { 110, 90, 160 }, secondary = { 80, 65, 120 }, accent = { 220, 255, 130 }, eyes = { 230, 255, 170 },
+			wings = "kristall", horns = 2, back = "kristalle",
+		},
+	},
+
+	-- ===== WASSER: Quallino -&gt; Quallodon =====
 	quallino = {
 		name = "Quallino", typ = "Wasser",
 		desc = "Schwebt gemütlich umher und wabbelt freundlich.",
 		base = { hp = 58, atk = 50, def = 60, spd = 45 },
 		learnset = { { 1, "wasserspritzer" }, { 8, "blubbstrahl" }, { 15, "aquawelle" } },
+		evolveLevel = 18, evolveTo = "quallodon",
 		build = {
-			body = { shape = "Ball", size = { 2.5, 1.7, 2.5 }, color = { 150, 120, 230 }, transparency = 0.2 },
-			legs = 0, groundClearance = 1.4,
-			parts = {
-				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { -0.7, -1.2, -0.5 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel1" },
-				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { 0.7, -1.2, -0.5 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel2" },
-				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { -0.7, -1.2, 0.6 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel3" },
-				{ shape = "Cylinder", size = { 1.3, 0.3, 0.3 }, offset = { 0.7, -1.2, 0.6 }, rot = { 0, 0, 90 }, color = { 170, 140, 240 }, transparency = 0.2, name = "Tentakel4" },
-			},
+			archetype = "blob", size = 0.85,
+			primary = { 150, 120, 230 }, secondary = { 120, 95, 200 }, accent = { 200, 170, 255 }, eyes = { 235, 220, 255 },
+			tentakel = true, translucent = 0.2,
 		},
 	},
+	quallodon = {
+		name = "Quallodon", typ = "Wasser", noWild = true,
+		desc = "Die Königsqualle. Ihr Leuchten hypnotisiert.",
+		base = { hp = 86, atk = 72, def = 88, spd = 60 },
+		learnset = { { 1, "wasserspritzer" }, { 1, "blubbstrahl" }, { 18, "aquawelle" }, { 26, "hydrokanone" } },
+		build = {
+			archetype = "blob", size = 1.3,
+			primary = { 130, 100, 220 }, secondary = { 100, 80, 190 }, accent = { 150, 240, 255 }, eyes = { 220, 250, 255 },
+			tentakel = true, translucent = 0.2, horns = 1, back = "kristalle",
+		},
+	},
+
+	-- ===== WASSER: Flossi -&gt; Flossaros =====
 	flossi = {
 		name = "Flossi", typ = "Wasser",
 		desc = "Hüpft erstaunlich weit für einen Fisch.",
 		base = { hp = 46, atk = 52, def = 42, spd = 60 },
 		learnset = { { 1, "tackle" }, { 1, "wasserspritzer" }, { 9, "blubbstrahl" }, { 16, "aquawelle" } },
+		evolveLevel = 17, evolveTo = "flossaros",
 		build = {
-			body = { shape = "Ball", size = { 1.7, 1.6, 2.5 }, color = { 240, 140, 60 } },
-			legs = 0,
-			parts = {
-				{ shape = "Wedge", size = { 0.4, 1.1, 1.0 }, offset = { 0, 1.2, 0.3 }, color = { 250, 170, 90 }, name = "Rueckenflosse" },
-				{ shape = "Wedge", size = { 0.35, 1.3, 1.1 }, offset = { 0, 0.2, 1.7 }, rot = { 0, 180, 0 }, color = { 250, 170, 90 }, name = "Schwanzflosse" },
-				{ shape = "Wedge", size = { 0.25, 0.6, 0.7 }, offset = { -1.0, -0.2, -0.3 }, rot = { 0, 0, -40 }, color = { 250, 170, 90 }, name = "FlosseL" },
-				{ shape = "Wedge", size = { 0.25, 0.6, 0.7 }, offset = { 1.0, -0.2, -0.3 }, rot = { 0, 0, 40 }, color = { 250, 170, 90 }, name = "FlosseR" },
-			},
+			archetype = "blob", size = 0.72,
+			primary = { 240, 140, 60 }, secondary = { 250, 175, 95 }, accent = { 255, 210, 130 }, eyes = { 255, 250, 230 },
+			tail = "flosse", back = "spikes",
 		},
 	},
+	flossaros = {
+		name = "Flossaros", typ = "Wasser", noWild = true,
+		desc = "Der fliegende Fisch-Drache der Flüsse.",
+		base = { hp = 70, atk = 78, def = 64, spd = 84 },
+		learnset = { { 1, "wasserspritzer" }, { 1, "blubbstrahl" }, { 17, "aquawelle" }, { 25, "hydrokanone" } },
+		build = {
+			archetype = "serpent", size = 1.0,
+			primary = { 235, 125, 50 }, secondary = { 250, 180, 100 }, accent = { 130, 210, 255 }, eyes = { 220, 245, 255 },
+			tail = "flosse", back = "spikes", horns = 1,
+		},
+	},
+
+	-- ===== PFLANZE: Pilzli -&gt; Pilzomant =====
 	pilzli = {
 		name = "Pilzli", typ = "Pflanze",
 		desc = "Versteckt sich gern zwischen echten Pilzen.",
 		base = { hp = 56, atk = 54, def = 56, spd = 38 },
 		learnset = { { 1, "blattschuss" }, { 8, "rankenschlag" }, { 15, "blattklinge" } },
+		evolveLevel = 17, evolveTo = "pilzomant",
 		build = {
-			body = { shape = "Cylinder", size = { 1.4, 1.5, 1.5 }, rot = { 0, 0, 90 }, color = { 235, 220, 190 } },
-			legs = 2, legHeight = 0.4,
-			parts = {
-				{ shape = "Ball", size = { 2.6, 1.2, 2.6 }, offset = { 0, 1.1, 0 }, color = { 200, 60, 60 }, name = "Kappe" },
-				{ shape = "Ball", size = { 0.5, 0.3, 0.5 }, offset = { -0.7, 1.6, -0.5 }, color = { 250, 245, 235 }, name = "Punkt1" },
-				{ shape = "Ball", size = { 0.5, 0.3, 0.5 }, offset = { 0.6, 1.6, 0.4 }, color = { 250, 245, 235 }, name = "Punkt2" },
-				{ shape = "Ball", size = { 0.4, 0.25, 0.4 }, offset = { 0.1, 1.75, -0.2 }, color = { 250, 245, 235 }, name = "Punkt3" },
-			},
+			archetype = "biped", size = 0.72,
+			primary = { 235, 220, 190 }, secondary = { 200, 180, 150 }, eyes = { 90, 70, 55 },
+			hut = { 200, 60, 60 },
 		},
 	},
+	pilzomant = {
+		name = "Pilzomant", typ = "Pflanze", noWild = true,
+		desc = "Ein weiser Pilz-Magier mit Sporenzauber.",
+		base = { hp = 80, atk = 78, def = 80, spd = 54 },
+		learnset = { { 1, "blattschuss" }, { 1, "rankenschlag" }, { 17, "blattklinge" }, { 25, "solarblitz" } },
+		build = {
+			archetype = "biped", size = 1.15,
+			primary = { 225, 205, 175 }, secondary = { 185, 160, 130 }, accent = { 200, 255, 140 }, eyes = { 190, 255, 150 },
+			hut = { 170, 50, 90 }, back = "blaetter",
+		},
+	},
+
+	-- ===== PFLANZE: Dorni -&gt; Dornassor =====
 	dorni = {
 		name = "Dorni", typ = "Pflanze",
 		desc = "Ein wandelnder Kaktus. Bitte nicht umarmen.",
 		base = { hp = 55, atk = 60, def = 62, spd = 35 },
 		learnset = { { 1, "kratzer" }, { 1, "blattschuss" }, { 9, "rankenschlag" }, { 16, "blattklinge" } },
+		evolveLevel = 18, evolveTo = "dornassor",
 		build = {
-			body = { shape = "Cylinder", size = { 2.0, 1.7, 1.7 }, rot = { 0, 0, 90 }, color = { 90, 170, 70 } },
-			legs = 2, legHeight = 0.45,
-			parts = {
-				{ shape = "Cylinder", size = { 1.0, 0.55, 0.55 }, offset = { -1.1, 0.5, 0 }, rot = { 0, 0, 60 }, color = { 90, 170, 70 }, name = "ArmL" },
-				{ shape = "Cylinder", size = { 1.0, 0.55, 0.55 }, offset = { 1.1, 0.5, 0 }, rot = { 0, 0, -60 }, color = { 90, 170, 70 }, name = "ArmR" },
-				{ shape = "Ball", size = { 0.7, 0.5, 0.7 }, offset = { 0, 1.3, 0 }, color = { 245, 130, 180 }, name = "Bluete" },
-				{ shape = "Wedge", size = { 0.2, 0.4, 0.2 }, offset = { -0.6, 0.9, -0.6 }, color = { 240, 245, 230 }, name = "Dorn1" },
-				{ shape = "Wedge", size = { 0.2, 0.4, 0.2 }, offset = { 0.6, 0.9, 0.5 }, color = { 240, 245, 230 }, name = "Dorn2" },
-			},
+			archetype = "biped", size = 0.78,
+			primary = { 90, 170, 70 }, secondary = { 65, 135, 55 }, accent = { 245, 130, 180 }, eyes = { 230, 255, 200 },
+			back = "spikes", horns = 1,
 		},
 	},
+	dornassor = {
+		name = "Dornassor", typ = "Pflanze", noWild = true,
+		desc = "Ein Wüstenkoloss voller Stacheln und Blüten.",
+		base = { hp = 79, atk = 86, def = 86, spd = 48 },
+		learnset = { { 1, "blattschuss" }, { 1, "rankenschlag" }, { 18, "blattklinge" }, { 26, "solarblitz" } },
+		build = {
+			archetype = "quad", size = 1.25,
+			primary = { 75, 150, 60 }, secondary = { 55, 115, 45 }, accent = { 245, 130, 180 }, eyes = { 235, 255, 205 },
+			back = "spikes", horns = 2, tail = "keule", snout = true,
+		},
+	},
+
+	-- ===== FEUER: Glutmops -&gt; Magmops =====
 	glutmops = {
 		name = "Glutmops", typ = "Feuer",
 		desc = "Schnauft kleine Rauchwölkchen, wenn er rennt.",
 		base = { hp = 60, atk = 64, def = 48, spd = 55 },
 		learnset = { { 1, "tackle" }, { 1, "funkenregen" }, { 9, "glutbiss" }, { 16, "flammenwerfer" } },
+		evolveLevel = 18, evolveTo = "magmops",
 		build = {
-			body = { shape = "Ball", size = { 2.1, 1.8, 2.3 }, color = { 130, 75, 50 } },
-			head = { size = 1.6, offset = { 0, 0.9, -1.2 }, color = { 145, 85, 60 } },
-			legs = 4, legHeight = 0.6,
-			parts = {
-				{ shape = "Ball", size = { 0.6, 0.6, 0.3 }, offset = { -0.65, 1.7, -1.2 }, color = { 110, 60, 40 }, name = "OhrL" },
-				{ shape = "Ball", size = { 0.6, 0.6, 0.3 }, offset = { 0.65, 1.7, -1.2 }, color = { 110, 60, 40 }, name = "OhrR" },
-				{ shape = "Ball", size = { 0.8, 0.7, 0.7 }, offset = { 0, 0.5, -2.0 }, color = { 90, 50, 35 }, name = "Schnauze" },
-				{ shape = "Ball", size = { 0.55, 0.55, 0.55 }, offset = { 0, 0.8, 1.5 }, color = { 255, 140, 30 }, material = "Neon", name = "Glutschwanz" },
-			},
+			archetype = "quad", size = 0.82,
+			primary = { 130, 75, 50 }, secondary = { 100, 55, 40 }, accent = { 255, 150, 40 }, eyes = { 255, 200, 120 },
+			ears = "rund", tail = "flamme", snout = true,
 		},
 	},
+	magmops = {
+		name = "Magmops", typ = "Feuer", noWild = true,
+		desc = "In seinen Fugen glüht flüssiges Magma.",
+		base = { hp = 84, atk = 88, def = 70, spd = 72 },
+		learnset = { { 1, "funkenregen" }, { 1, "glutbiss" }, { 16, "flammenwerfer" }, { 24, "feuersturm" } },
+		build = {
+			archetype = "quad", size = 1.25,
+			primary = { 80, 50, 45 }, secondary = { 55, 40, 40 }, accent = { 255, 120, 30 }, eyes = { 255, 190, 90 },
+			ears = "rund", horns = 1, tail = "flamme", back = "flammen", snout = true,
+		},
+	},
+
+	-- ===== NORMAL: Brockel -&gt; Brockolith =====
 	brockel = {
 		name = "Brockel", typ = "Normal",
 		desc = "Sieht aus wie ein Stein. Ist auch fast einer.",
 		base = { hp = 62, atk = 55, def = 75, spd = 30 },
 		learnset = { { 1, "tackle" }, { 7, "kratzer" }, { 12, "koerperwurf" }, { 18, "hyperschlag" } },
+		evolveLevel = 20, evolveTo = "brockolith",
 		build = {
-			body = { shape = "Block", size = { 2.3, 1.9, 2.3 }, color = { 135, 135, 135 }, material = "Slate" },
-			legs = 4, legHeight = 0.5,
-			parts = {
-				{ shape = "Ball", size = { 1.4, 0.4, 1.4 }, offset = { 0, 1.05, 0.2 }, color = { 100, 160, 80 }, name = "Moos" },
-				{ shape = "Block", size = { 0.7, 0.5, 0.6 }, offset = { -0.9, 1.05, -0.6 }, rot = { 15, 20, 0 }, color = { 120, 120, 120 }, material = "Slate", name = "Brocken" },
-			},
+			archetype = "blob", size = 0.85,
+			primary = { 135, 135, 135 }, secondary = { 110, 110, 110 }, accent = { 120, 200, 120 }, eyes = { 200, 255, 200 },
+			material = "Slate", back = "blaetter",
+		},
+	},
+	brockolith = {
+		name = "Brockolith", typ = "Normal", noWild = true,
+		desc = "Ein uralter Fels, erwacht mit Kristallkraft.",
+		base = { hp = 88, atk = 78, def = 104, spd = 42 },
+		learnset = { { 1, "tackle" }, { 1, "kratzer" }, { 12, "koerperwurf" }, { 20, "hyperschlag" } },
+		build = {
+			archetype = "quad", size = 1.35,
+			primary = { 120, 120, 125 }, secondary = { 95, 95, 100 }, accent = { 255, 200, 90 }, eyes = { 255, 220, 130 },
+			material = "Slate", back = "kristalle", horns = 1, tail = "kristall",
+		},
+	},
+
+	-- ============================================================
+	-- ===== LEGENDÄRE (keine Entwicklung, extrem selten!) =====
+	-- ============================================================
+	flarephoenix = {
+		name = "Flarephoenix", typ = "Feuer", legendary = true, noWild = true,
+		desc = "Wiedergeboren aus Asche und Feuer. Seine Flügel verbrennen die Finsternis.",
+		base = { hp = 100, atk = 108, def = 84, spd = 102 },
+		learnset = { { 1, "glutbiss" }, { 1, "flammenwerfer" }, { 10, "feuersturm" }, { 18, "hyperschlag" } },
+		build = {
+			archetype = "bird", size = 1.5,
+			primary = { 220, 80, 30 }, secondary = { 255, 150, 40 }, accent = { 255, 200, 60 }, eyes = { 255, 240, 150 },
+			wings = "flamme", back = "flammen", tail = "flamme", horns = 1,
+		},
+	},
+	oceanos = {
+		name = "Oceanos", typ = "Wasser", legendary = true, noWild = true,
+		desc = "Der Tiefsee-Gigant, der alle Ozeane kontrolliert. Sein Ruf erzeugt Tsunamis.",
+		base = { hp = 122, atk = 96, def = 102, spd = 76 },
+		learnset = { { 1, "blubbstrahl" }, { 1, "aquawelle" }, { 10, "hydrokanone" }, { 18, "hyperschlag" } },
+		build = {
+			archetype = "serpent", size = 1.6,
+			primary = { 30, 85, 190 }, secondary = { 70, 150, 240 }, accent = { 140, 230, 255 }, eyes = { 220, 250, 255 },
+			back = "kristalle", tail = "flosse", snout = true, horns = 2,
+		},
+	},
+	terralith = {
+		name = "Terralith", typ = "Pflanze", legendary = true, noWild = true,
+		desc = "Das lebende Land selbst. Er formt Berge und Täler nach seinem Willen.",
+		base = { hp = 118, atk = 92, def = 112, spd = 62 },
+		learnset = { { 1, "rankenschlag" }, { 1, "blattklinge" }, { 10, "solarblitz" }, { 18, "hyperschlag" } },
+		build = {
+			archetype = "quad", size = 1.6,
+			primary = { 115, 95, 65 }, secondary = { 85, 140, 70 }, accent = { 160, 230, 100 }, eyes = { 190, 255, 140 },
+			material = "Slate", back = "blaetter", horns = 2, mane = true, tail = "keule", snout = true,
+		},
+	},
+	thunderox = {
+		name = "Thunderox", typ = "Elektro", legendary = true, noWild = true,
+		desc = "Der Donnerschlächter. Seine Blitze treffen schneller, als das Auge sieht.",
+		base = { hp = 96, atk = 112, def = 86, spd = 118 },
+		learnset = { { 1, "stromstoss" }, { 1, "blitzhammer" }, { 10, "megavolt" }, { 18, "hyperschlag" } },
+		build = {
+			archetype = "quad", size = 1.5,
+			primary = { 245, 195, 45 }, secondary = { 45, 45, 55 }, accent = { 140, 245, 255 }, eyes = { 170, 250, 255 },
+			mane = true, horns = 2, tail = "blitz", back = "spikes",
+		},
+	},
+	aurorael = {
+		name = "Aurorael", typ = "Normal", legendary = true, noWild = true,
+		desc = "Ein strahlendes Wesen aus Licht und Eis. Bringt Hoffnung in die Welt.",
+		base = { hp = 106, atk = 96, def = 96, spd = 106 },
+		learnset = { { 1, "koerperwurf" }, { 1, "aquawelle" }, { 10, "hyperschlag" }, { 18, "megavolt" } },
+		build = {
+			archetype = "bird", size = 1.45,
+			primary = { 245, 248, 255 }, secondary = { 190, 220, 255 }, accent = { 150, 230, 255 }, eyes = { 120, 220, 255 },
+			wings = "kristall", back = "kristalle", tail = "keule", horns = 1,
+		},
+	},
+	supremion = {
+		name = "Supremion", typ = "Normal", legendary = true, noWild = true,
+		desc = "Das erste Wesen der Schöpfung. Nur die Balance hält es in Schach.",
+		base = { hp = 126, atk = 116, def = 106, spd = 106 },
+		learnset = { { 1, "hyperschlag" }, { 1, "feuersturm" }, { 10, "hydrokanone" }, { 18, "megavolt" } },
+		build = {
+			archetype = "quad", size = 1.75,
+			primary = { 235, 215, 160 }, secondary = { 250, 245, 235 }, accent = { 255, 215, 90 }, eyes = { 255, 235, 150 },
+			wings = "brick", horns = 2, mane = true, back = "kristalle", tail = "kristall", snout = true,
 		},
 	},
 }
 
 GameData.Starters = { "flarix", "aquani", "sproessli" }
+
+-- Diese Legendaeren tauchen ab und zu in der Wildnis auf
+GameData.Legendaries = { "flarephoenix", "oceanos", "terralith", "thunderox", "aurorael", "supremion" }
 
 -- ========== ITEMS ==========
 GameData.Items = {
@@ -431,7 +548,6 @@ GameData.Routes = {
 	},
 }
 
--- Hohes Gras: { x1, z1, x2, z2, route }
 GameData.GrassPatches = {
 	{ 110, -25, 175, 25, "route1" },
 	{ 205, -32, 268, 14, "route1" },
@@ -479,18 +595,24 @@ function GameData.XpToNext(level)
 	return 15 * level + 20
 end
 
-function GameData.XpGain(enemyLevel, isTrainer)
+function GameData.XpGain(enemyLevel, isTrainer, isLegendary)
 	local gain = enemyLevel * 12
 	if isTrainer then
 		gain = math.floor(gain * 1.3)
 	end
+	if isLegendary then
+		gain = math.floor(gain * 1.6)
+	end
 	return gain
 end
 
--- Fangchance: besser bei wenig KP, etwas schwerer bei hohem Level
-function GameData.CatchChance(level, hpFrac)
+-- Fangchance: besser bei wenig KP, Legendaere sind viel schwerer
+function GameData.CatchChance(level, hpFrac, isLegendary)
 	local c = (0.8 - 0.62 * hpFrac) * (1.05 - level * 0.008)
-	if c &lt; 0.05 then c = 0.05 end
+	if isLegendary then
+		c = c * 0.35
+	end
+	if c &lt; 0.02 then c = 0.02 end
 	if c &gt; 0.95 then c = 0.95 end
 	return c
 end
@@ -527,225 +649,485 @@ return GameData
 				<Properties>
 					<string name="Name">MonsterFactory</string>
 					<ProtectedString name="Source">-- ============================================================
--- Baut aus dem "build"-Bauplan in GameData eine richtige
--- 3D-Monster-Figur aus Parts (Rumpf, Kopf, Augen, Beine, ...).
--- Vorne ist -Z, damit CFrame.lookAt die Figur richtig dreht.
--- Wird von Server UND Client benutzt (Client: Mini-Bilder).
+-- VOXEL-MONSTERFABRIK
+-- Baut Monster im Kloetzchen-Stil (wie aus Bausteinen):
+-- viele kleine Wuerfel, leuchtende Augen, Flammen/Kristalle/
+-- Blitze als Neon-Teile. Jede Art sieht immer gleich aus
+-- (fester Zufalls-Seed pro Art).
+--
+-- Bauplan (GameData.Species[x].build):
+--   archetype = "quad" / "biped" / "blob" / "serpent" / "bird"
+--   size      = Gesamtgroesse (1 = normal)
+--   primary/secondary/accent/eyes = Farben {r,g,b}
+--   ears = "spitz"/"rund"/"lang", horns = 0/1/2, mane = true,
+--   snout = true, hut = {r,g,b} (Pilzkappe),
+--   tail = "keule"/"flamme"/"blitz"/"flosse"/"kristall",
+--   wings = "brick"/"flamme"/"kristall",
+--   back = "spikes"/"kristalle"/"flammen"/"blaetter",
+--   tentakel = true, translucent = 0..1, material = "Slate",
+--   groundClearance = Studs ueber dem Boden
 -- ============================================================
 
 local GameData = require(script.Parent:WaitForChild("GameData"))
 
 local MonsterFactory = {}
 
+local GRID = 0.35 -- Kloetzchen-Rastermass
+
 local function c3(rgb)
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
-local function makePart(spec, scale)
-	local part
-	if spec.shape == "Wedge" then
-		part = Instance.new("WedgePart")
-	else
-		part = Instance.new("Part")
-		if spec.shape == "Ball" then
-			part.Shape = Enum.PartType.Ball
-		elseif spec.shape == "Cylinder" then
-			part.Shape = Enum.PartType.Cylinder
-		end
+local function seedFor(speciesId)
+	local seed = 0
+	for i = 1, #speciesId do
+		seed = seed + string.byte(speciesId, i) * i * 31
 	end
-	part.Size = Vector3.new(spec.size[1] * scale, spec.size[2] * scale, spec.size[3] * scale)
-	part.Color = c3(spec.color)
-	part.Material = spec.material and Enum.Material[spec.material] or Enum.Material.SmoothPlastic
-	part.Transparency = spec.transparency or 0
+	return seed
+end
+
+-- Groesse auf das Kloetzchen-Raster runden
+local function qsize(size)
+	local function q(v)
+		return math.max(GRID, math.floor(v / GRID + 0.5) * GRID)
+	end
+	return Vector3.new(q(size.X), q(size.Y), q(size.Z))
+end
+
+-- Farbe leicht variieren (verschiedene "Steine")
+local function vary(color, rng, amount)
+	local f = rng:NextNumber(-amount, amount)
+	if f &gt;= 0 then
+		return color:Lerp(Color3.new(1, 1, 1), f)
+	end
+	return color:Lerp(Color3.new(0, 0, 0), -f)
+end
+
+-- ---------- Grundbausteine ----------
+
+local function brick(ctx, cf, size, color, material, transparency)
+	local part = Instance.new("Part")
+	part.Size = qsize(size)
+	part.Color = color
+	part.Material = material or Enum.Material.SmoothPlastic
+	part.Transparency = transparency or 0
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.CanCollide = false
 	part.CanQuery = false
 	part.CastShadow = true
-	part.Name = spec.name or "Teil"
+	part.Name = "Stein"
+	part.CFrame = cf
+	part.Parent = ctx.model
+	part.Anchored = false
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = ctx.root
+	weld.Part1 = part
+	weld.Parent = ctx.root
 	return part
 end
 
-local function offsetCFrame(spec, scale)
-	local off = spec.offset or { 0, 0, 0 }
-	local cf = CFrame.new(off[1] * scale, off[2] * scale, off[3] * scale)
-	if spec.rot then
-		cf = cf * CFrame.Angles(math.rad(spec.rot[1]), math.rad(spec.rot[2]), math.rad(spec.rot[3]))
+-- Klotz: Kernblock + "Noppen"-Wuerfel fuer den Baustein-Look
+local function chunk(ctx, offset, size, color, opts)
+	opts = opts or {}
+	local rng = ctx.rng
+	local material = opts.material or ctx.material
+	local transparency = opts.transparency or ctx.translucent
+	local core = brick(ctx, CFrame.new(offset), size, color, material, transparency)
+	local s = qsize(size)
+	local area = s.X * s.Y + s.Y * s.Z + s.X * s.Z
+	local bumps = opts.bumps or math.min(12, math.max(4, math.floor(area * 0.5)))
+	for _ = 1, bumps do
+		local bs = GRID * rng:NextInteger(1, 2)
+		local axis = rng:NextInteger(1, 3)
+		local sign = rng:NextInteger(0, 1) * 2 - 1
+		local half = Vector3.new(s.X / 2, s.Y / 2, s.Z / 2)
+		local function grid(v)
+			return math.floor(v / GRID + 0.5) * GRID
+		end
+		local px, py, pz
+		if axis == 1 then
+			px = sign * (half.X + bs * 0.2)
+			py = grid(rng:NextNumber(-half.Y + bs / 2, half.Y - bs / 2))
+			pz = grid(rng:NextNumber(-half.Z + bs / 2, half.Z - bs / 2))
+		elseif axis == 2 then
+			px = grid(rng:NextNumber(-half.X + bs / 2, half.X - bs / 2))
+			py = sign * (half.Y + bs * 0.2)
+			pz = grid(rng:NextNumber(-half.Z + bs / 2, half.Z - bs / 2))
+		else
+			px = grid(rng:NextNumber(-half.X + bs / 2, half.X - bs / 2))
+			py = grid(rng:NextNumber(-half.Y + bs / 2, half.Y - bs / 2))
+			pz = sign * (half.Z + bs * 0.2)
+		end
+		brick(ctx, CFrame.new(offset + Vector3.new(px, py, pz)), Vector3.new(bs, bs, bs), vary(color, rng, 0.09), material, transparency)
 	end
-	return cf
+	return core
 end
 
-local function weldTo(root, part)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = root
-	weld.Part1 = part
-	weld.Parent = root
-	part.Anchored = false
+-- Kette aus kleiner werdenden Wuerfeln (Schwaenze, Flammen)
+local function cubeChain(ctx, startOffset, dir, sizes, color, material, zigzag)
+	local pos = startOffset
+	for i, cs in ipairs(sizes) do
+		local wobble = Vector3.new(0, 0, 0)
+		if zigzag then
+			wobble = Vector3.new(0, (i % 2 == 0) and cs * 0.6 or -cs * 0.2, 0)
+		end
+		brick(ctx, CFrame.new(pos + wobble), Vector3.new(cs, cs, cs), color, material)
+		pos = pos + dir * (cs * 0.95)
+	end
 end
 
--- Augen (2 weisse Kugeln mit Pupillen) vorne an ein Teil setzen.
--- zForward = wie weit nach vorne (in Studs, unskaliert)
-local function addEyes(model, root, attachCF, size, zForward, eyeScale, scale)
-	local eyeD = size * 0.3 * (eyeScale or 1) * scale
+-- ---------- Gesicht ----------
+
+local function addFace(ctx, p, headOffset, headSize)
+	local eyeSize = math.max(GRID, headSize * 0.22)
+	local eyeColor = p.eyes and c3(p.eyes) or Color3.fromRGB(255, 255, 255)
 	for _, side in ipairs({ -1, 1 }) do
-		local white = Instance.new("Part")
-		white.Shape = Enum.PartType.Ball
-		white.Size = Vector3.new(eyeD, eyeD, eyeD)
-		white.Color = Color3.fromRGB(250, 250, 250)
-		white.Material = Enum.Material.SmoothPlastic
-		white.CanCollide = false
-		white.CanQuery = false
-		white.Name = "Auge"
-		white.CFrame = root.CFrame * attachCF
-			* CFrame.new(side * size * 0.26 * scale, size * 0.12 * scale, -zForward * scale)
-		white.Parent = model
-		weldTo(root, white)
-
-		local pupil = Instance.new("Part")
-		pupil.Shape = Enum.PartType.Ball
-		pupil.Size = Vector3.new(eyeD * 0.5, eyeD * 0.5, eyeD * 0.5)
-		pupil.Color = Color3.fromRGB(25, 25, 30)
-		pupil.Material = Enum.Material.SmoothPlastic
-		pupil.CanCollide = false
-		pupil.CanQuery = false
-		pupil.Name = "Pupille"
-		pupil.CFrame = white.CFrame * CFrame.new(0, 0, -eyeD * 0.34)
-		pupil.Parent = model
-		weldTo(root, pupil)
+		brick(ctx,
+			CFrame.new(headOffset + Vector3.new(side * headSize * 0.26, headSize * 0.12, -(headSize / 2 + eyeSize * 0.15))),
+			Vector3.new(eyeSize, eyeSize, eyeSize), eyeColor, Enum.Material.Neon)
+	end
+	if p.snout then
+		brick(ctx,
+			CFrame.new(headOffset + Vector3.new(0, -headSize * 0.18, -(headSize / 2 + headSize * 0.2))),
+			Vector3.new(headSize * 0.5, headSize * 0.32, headSize * 0.42),
+			vary(c3(p.primary), ctx.rng, -0.12), ctx.material)
 	end
 end
 
--- Baut die Figur. scaleMul: 1 = normal, kleiner fuer Tisch-Figuren.
--- Rueckgabe: Model (PrimaryPart = Rumpf), Attribut "RootHeight" =
--- Abstand Rumpfmitte -&gt; Boden, fuers Hinstellen.
+-- ---------- Extras (Ohren, Hoerner, Schwaenze, ...) ----------
+
+local function addEars(ctx, p, headOffset, headSize)
+	if not p.ears then return end
+	local color = c3(p.secondary or p.primary)
+	for _, side in ipairs({ -1, 1 }) do
+		local x = side * headSize * 0.32
+		if p.ears == "spitz" then
+			brick(ctx, CFrame.new(headOffset + Vector3.new(x, headSize * 0.58, 0)), Vector3.new(GRID * 2, GRID * 2, GRID * 2), color, ctx.material)
+			brick(ctx, CFrame.new(headOffset + Vector3.new(x, headSize * 0.58 + GRID * 1.8, 0)), Vector3.new(GRID, GRID, GRID), color, ctx.material)
+		elseif p.ears == "rund" then
+			brick(ctx, CFrame.new(headOffset + Vector3.new(x, headSize * 0.6, 0)), Vector3.new(GRID * 2, GRID * 2, GRID), color, ctx.material)
+		elseif p.ears == "lang" then
+			for i = 0, 2 do
+				local shrink = (i == 2) and GRID or GRID * 2
+				brick(ctx, CFrame.new(headOffset + Vector3.new(x, headSize * 0.55 + i * GRID * 1.9, 0)), Vector3.new(shrink, GRID * 2, shrink), color, ctx.material)
+			end
+		end
+	end
+end
+
+local function addHorns(ctx, p, headOffset, headSize)
+	local n = p.horns or 0
+	if n &lt;= 0 then return end
+	local accent = c3(p.accent or p.primary)
+	local positions = (n == 1) and { 0 } or { -headSize * 0.28, headSize * 0.28 }
+	for _, x in ipairs(positions) do
+		brick(ctx, CFrame.new(headOffset + Vector3.new(x, headSize * 0.62, -headSize * 0.1)), Vector3.new(GRID * 1.6, GRID * 2, GRID * 1.6), accent, Enum.Material.Neon)
+		brick(ctx, CFrame.new(headOffset + Vector3.new(x, headSize * 0.62 + GRID * 1.9, -headSize * 0.1)), Vector3.new(GRID, GRID * 1.4, GRID), accent, Enum.Material.Neon)
+	end
+end
+
+local function addHut(ctx, p, headOffset, headSize)
+	if not p.hut then return end
+	local hutColor = c3(p.hut)
+	chunk(ctx, headOffset + Vector3.new(0, headSize * 0.62, 0), Vector3.new(headSize * 1.9, headSize * 0.45, headSize * 1.9), hutColor, { bumps = 6 })
+	local rng = ctx.rng
+	for _ = 1, 3 do
+		brick(ctx,
+			CFrame.new(headOffset + Vector3.new(rng:NextNumber(-headSize * 0.6, headSize * 0.6), headSize * 0.88, rng:NextNumber(-headSize * 0.6, headSize * 0.6))),
+			Vector3.new(GRID * 1.5, GRID, GRID * 1.5), Color3.fromRGB(250, 245, 235))
+	end
+end
+
+local function addMane(ctx, p, neckOffset, radius)
+	if not p.mane then return end
+	local color = c3(p.secondary or p.primary)
+	for i = 0, 7 do
+		local ang = i / 8 * math.pi * 2
+		brick(ctx,
+			CFrame.new(neckOffset + Vector3.new(math.cos(ang) * radius, math.sin(ang) * radius * 0.8, 0)),
+			Vector3.new(GRID * 2, GRID * 2, GRID * 1.4), vary(color, ctx.rng, 0.08), ctx.material)
+	end
+end
+
+local function addBack(ctx, p, bodyTopY, bodyLen)
+	if not p.back then return end
+	local accent = c3(p.accent or p.primary)
+	local secondary = c3(p.secondary or p.primary)
+	for i = -1, 1 do
+		local z = i * bodyLen * 0.26
+		if p.back == "spikes" then
+			brick(ctx, CFrame.new(Vector3.new(0, bodyTopY + GRID, z)), Vector3.new(GRID * 2, GRID * 2, GRID * 2), secondary, ctx.material)
+			brick(ctx, CFrame.new(Vector3.new(0, bodyTopY + GRID * 2.8, z)), Vector3.new(GRID, GRID * 1.6, GRID), secondary, ctx.material)
+		elseif p.back == "kristalle" then
+			brick(ctx, CFrame.new(Vector3.new(0, bodyTopY + GRID * 1.6, z)) * CFrame.Angles(0, math.rad(45), math.rad(45)),
+				Vector3.new(GRID * 2, GRID * 3, GRID * 2), accent, Enum.Material.Neon, 0.15)
+		elseif p.back == "flammen" then
+			brick(ctx, CFrame.new(Vector3.new(0, bodyTopY + GRID * 1.4, z)), Vector3.new(GRID * 2, GRID * 2.4, GRID * 2), accent, Enum.Material.Neon)
+			brick(ctx, CFrame.new(Vector3.new(0, bodyTopY + GRID * 3.4, z)), Vector3.new(GRID, GRID * 1.4, GRID), vary(accent, ctx.rng, 0.15), Enum.Material.Neon)
+		elseif p.back == "blaetter" then
+			brick(ctx, CFrame.new(Vector3.new(0, bodyTopY + GRID, z)), Vector3.new(GRID * 4, GRID, GRID * 3), secondary, Enum.Material.Grass)
+		end
+	end
+end
+
+local function addWings(ctx, p, bodyTopY, bodyW)
+	if not p.wings then return end
+	local color, material, transparency
+	if p.wings == "flamme" then
+		color = c3(p.accent or p.primary)
+		material = Enum.Material.Neon
+	elseif p.wings == "kristall" then
+		color = c3(p.accent or p.primary)
+		material = Enum.Material.Neon
+		transparency = 0.35
+	else
+		color = c3(p.secondary or p.primary)
+		material = ctx.material
+	end
+	for _, side in ipairs({ -1, 1 }) do
+		local x = side * (bodyW / 2 + GRID)
+		brick(ctx, CFrame.new(Vector3.new(x + side * 0.5, bodyTopY - GRID, 0)) * CFrame.Angles(0, 0, side * math.rad(-20)),
+			Vector3.new(GRID * 5, GRID, GRID * 3.4), color, material, transparency)
+		brick(ctx, CFrame.new(Vector3.new(x + side * 1.5, bodyTopY + GRID * 1.2, 0.2)) * CFrame.Angles(0, 0, side * math.rad(-32)),
+			Vector3.new(GRID * 3.4, GRID, GRID * 2.4), vary(color, ctx.rng, 0.1), material, transparency)
+	end
+end
+
+local function addTail(ctx, p, backZ, tailY)
+	if not p.tail then return end
+	local accent = c3(p.accent or p.primary)
+	local secondary = c3(p.secondary or p.primary)
+	local start = Vector3.new(0, tailY, backZ + GRID)
+	if p.tail == "flamme" then
+		cubeChain(ctx, start, Vector3.new(0, 0.35, 1).Unit, { GRID * 2.4, GRID * 1.8, GRID * 1.2 }, accent, Enum.Material.Neon)
+	elseif p.tail == "blitz" then
+		cubeChain(ctx, start, Vector3.new(0, 0.2, 1).Unit, { GRID * 2, GRID * 1.6, GRID * 1.4 }, accent, Enum.Material.Neon, true)
+	elseif p.tail == "keule" then
+		cubeChain(ctx, start, Vector3.new(0, 0.15, 1).Unit, { GRID * 2, GRID * 1.6, GRID * 2.2 }, secondary, ctx.material)
+	elseif p.tail == "flosse" then
+		brick(ctx, CFrame.new(start + Vector3.new(0, 0, GRID * 1.4)), Vector3.new(GRID, GRID * 3.4, GRID * 2.6), secondary, ctx.material)
+	elseif p.tail == "kristall" then
+		brick(ctx, CFrame.new(start + Vector3.new(0, 0.1, GRID * 1.2)) * CFrame.Angles(math.rad(35), 0, math.rad(45)),
+			Vector3.new(GRID * 2, GRID * 3, GRID * 2), accent, Enum.Material.Neon, 0.15)
+	end
+end
+
+local function addTentakel(ctx, p, bodyBottomY, bodyW)
+	if not p.tentakel then return end
+	local color = vary(c3(p.primary), ctx.rng, -0.05)
+	for _, pos in ipairs({ { -bodyW * 0.3, -bodyW * 0.25 }, { bodyW * 0.3, -bodyW * 0.25 }, { -bodyW * 0.3, bodyW * 0.25 }, { bodyW * 0.3, bodyW * 0.25 } }) do
+		for i = 0, 2 do
+			brick(ctx, CFrame.new(Vector3.new(pos[1], bodyBottomY - GRID - i * GRID * 1.7, pos[2])),
+				Vector3.new(GRID * (2 - i * 0.4), GRID * 1.8, GRID * (2 - i * 0.4)), color, ctx.material, ctx.translucent)
+		end
+	end
+end
+
+-- Legendaere: schwebende Leucht-Wuerfel + Licht
+local function addAura(ctx, p, bodyTopY, radius)
+	local accent = c3(p.accent or p.primary)
+	for i = 0, 5 do
+		local ang = i / 6 * math.pi * 2
+		brick(ctx,
+			CFrame.new(Vector3.new(math.cos(ang) * radius, bodyTopY + 0.4 + math.sin(ang * 2) * 0.5, math.sin(ang) * radius)) * CFrame.Angles(0, ang, math.rad(45)),
+			Vector3.new(GRID * 1.4, GRID * 1.4, GRID * 1.4), accent, Enum.Material.Neon, 0.3)
+	end
+	local light = Instance.new("PointLight")
+	light.Color = accent
+	light.Range = 14
+	light.Brightness = 1.4
+	light.Parent = ctx.root
+end
+
+-- ---------- Koerperbau-Typen ----------
+
+local function buildQuad(ctx, p, s)
+	local bodyLen, bodyH, bodyW = 2.7 * s, 1.6 * s, 1.7 * s
+	local legH = 0.85 * s
+	chunk(ctx, Vector3.new(0, 0, 0), Vector3.new(bodyW, bodyH, bodyLen), c3(p.primary))
+	local legColor = vary(c3(p.secondary or p.primary), ctx.rng, -0.1)
+	for _, pos in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+		chunk(ctx, Vector3.new(pos[1] * bodyW * 0.33, -(bodyH / 2 + legH / 2 - 0.1 * s), pos[2] * bodyLen * 0.32),
+			Vector3.new(0.55 * s, legH, 0.55 * s), legColor, { bumps = 2 })
+	end
+	local headSize = 1.35 * s
+	local headOffset = Vector3.new(0, bodyH * 0.42 + headSize * 0.2, -(bodyLen / 2 + headSize * 0.28))
+	chunk(ctx, headOffset, Vector3.new(headSize, headSize, headSize), vary(c3(p.primary), ctx.rng, 0.05), { bumps = 6 })
+	addFace(ctx, p, headOffset, headSize)
+	addEars(ctx, p, headOffset, headSize)
+	addHorns(ctx, p, headOffset, headSize)
+	addHut(ctx, p, headOffset, headSize)
+	addMane(ctx, p, Vector3.new(0, bodyH * 0.3, -(bodyLen / 2 - 0.15 * s)), bodyW * 0.6)
+	addBack(ctx, p, bodyH / 2, bodyLen)
+	addWings(ctx, p, bodyH / 2, bodyW)
+	addTail(ctx, p, bodyLen / 2, bodyH * 0.15)
+	return Vector3.new(bodyW, bodyH, bodyLen), bodyH / 2 + legH - 0.1 * s
+end
+
+local function buildBiped(ctx, p, s)
+	local bodyW, bodyH, bodyD = 1.6 * s, 2.0 * s, 1.3 * s
+	local legH = 0.6 * s
+	chunk(ctx, Vector3.new(0, 0, 0), Vector3.new(bodyW, bodyH, bodyD), c3(p.primary))
+	local legColor = vary(c3(p.secondary or p.primary), ctx.rng, -0.1)
+	for _, side in ipairs({ -1, 1 }) do
+		chunk(ctx, Vector3.new(side * bodyW * 0.28, -(bodyH / 2 + legH / 2 - 0.08 * s), 0), Vector3.new(0.5 * s, legH, 0.5 * s), legColor, { bumps = 1 })
+		brick(ctx, CFrame.new(Vector3.new(side * (bodyW / 2 + GRID * 0.8), bodyH * 0.12, 0)), Vector3.new(GRID * 1.6, GRID * 2.6, GRID * 1.6), legColor, ctx.material)
+	end
+	local headSize = 1.25 * s
+	local headOffset = Vector3.new(0, bodyH / 2 + headSize * 0.42, -bodyD * 0.1)
+	chunk(ctx, headOffset, Vector3.new(headSize, headSize, headSize), vary(c3(p.primary), ctx.rng, 0.05), { bumps = 5 })
+	addFace(ctx, p, headOffset, headSize)
+	addEars(ctx, p, headOffset, headSize)
+	addHorns(ctx, p, headOffset, headSize)
+	addHut(ctx, p, headOffset, headSize)
+	addBack(ctx, p, bodyH / 2 + headSize * 0.1, bodyD * 1.4)
+	addWings(ctx, p, bodyH * 0.25, bodyW)
+	addTail(ctx, p, bodyD / 2, -bodyH * 0.2)
+	return Vector3.new(bodyW, bodyH, bodyD), bodyH / 2 + legH - 0.08 * s
+end
+
+local function buildBlob(ctx, p, s)
+	local bodyW, bodyH, bodyD = 2.1 * s, 1.7 * s, 2.1 * s
+	chunk(ctx, Vector3.new(0, 0, 0), Vector3.new(bodyW, bodyH, bodyD), c3(p.primary), { bumps = 12 })
+	if not p.tentakel then
+		local footColor = vary(c3(p.secondary or p.primary), ctx.rng, -0.1)
+		for _, side in ipairs({ -1, 1 }) do
+			brick(ctx, CFrame.new(Vector3.new(side * bodyW * 0.3, -(bodyH / 2), -bodyD * 0.2)), Vector3.new(GRID * 2, GRID, GRID * 2.4), footColor, ctx.material)
+		end
+	end
+	local faceOffset = Vector3.new(0, bodyH * 0.12, 0)
+	addFace(ctx, p, faceOffset, bodyW * 0.9)
+	addEars(ctx, p, Vector3.new(0, bodyH * 0.2, 0), bodyW * 0.75)
+	addHorns(ctx, p, Vector3.new(0, bodyH * 0.2, 0), bodyW * 0.75)
+	addHut(ctx, p, Vector3.new(0, bodyH * 0.18, 0), bodyW * 0.72)
+	addBack(ctx, p, bodyH / 2, bodyD)
+	addWings(ctx, p, bodyH * 0.3, bodyW)
+	addTail(ctx, p, bodyD / 2, 0)
+	addTentakel(ctx, p, -bodyH / 2, bodyW)
+	local clearance = p.tentakel and (GRID * 6) or 0
+	return Vector3.new(bodyW, bodyH, bodyD), bodyH / 2 + GRID + clearance
+end
+
+local function buildSerpent(ctx, p, s)
+	local segs = {
+		{ Vector3.new(1.7 * s, 1.5 * s, 1.8 * s), Vector3.new(0, 0, 0) },
+		{ Vector3.new(1.5 * s, 1.3 * s, 1.6 * s), Vector3.new(0, -0.05 * s, 1.6 * s) },
+		{ Vector3.new(1.2 * s, 1.05 * s, 1.4 * s), Vector3.new(0, -0.15 * s, 3.0 * s) },
+		{ Vector3.new(0.9 * s, 0.8 * s, 1.2 * s), Vector3.new(0, -0.25 * s, 4.2 * s) },
+	}
+	for _, seg in ipairs(segs) do
+		chunk(ctx, seg[2], seg[1], c3(p.primary), { bumps = 6 })
+	end
+	local headSize = 1.5 * s
+	local headOffset = Vector3.new(0, 0.75 * s, -(1.8 * s / 2 + headSize * 0.3))
+	chunk(ctx, headOffset, Vector3.new(headSize, headSize, headSize), vary(c3(p.primary), ctx.rng, 0.06), { bumps = 6 })
+	addFace(ctx, p, headOffset, headSize)
+	addEars(ctx, p, headOffset, headSize)
+	addHorns(ctx, p, headOffset, headSize)
+	addMane(ctx, p, Vector3.new(0, 0.5 * s, -0.9 * s), 1.0 * s)
+	addBack(ctx, p, 0.75 * s, 3.4 * s)
+	addWings(ctx, p, 0.6 * s, 1.7 * s)
+	addTail(ctx, p, 4.8 * s, -0.25 * s)
+	return Vector3.new(1.7 * s, 1.5 * s, 5.4 * s), 0.75 * s
+end
+
+local function buildBird(ctx, p, s)
+	local bodyW, bodyH, bodyD = 1.6 * s, 1.5 * s, 2.0 * s
+	local legH = 0.55 * s
+	chunk(ctx, Vector3.new(0, 0, 0), Vector3.new(bodyW, bodyH, bodyD), c3(p.primary), { bumps = 8 })
+	local legColor = Color3.fromRGB(90, 75, 55)
+	for _, side in ipairs({ -1, 1 }) do
+		brick(ctx, CFrame.new(Vector3.new(side * bodyW * 0.25, -(bodyH / 2 + legH / 2), 0)), Vector3.new(GRID, legH, GRID), legColor)
+		brick(ctx, CFrame.new(Vector3.new(side * bodyW * 0.25, -(bodyH / 2 + legH), -GRID)), Vector3.new(GRID * 1.6, GRID * 0.8, GRID * 2), legColor)
+	end
+	local headSize = 1.1 * s
+	local headOffset = Vector3.new(0, bodyH / 2 + headSize * 0.3, -(bodyD / 2 - headSize * 0.1))
+	chunk(ctx, headOffset, Vector3.new(headSize, headSize, headSize), vary(c3(p.primary), ctx.rng, 0.06), { bumps = 4 })
+	addFace(ctx, p, headOffset, headSize)
+	-- Schnabel
+	brick(ctx, CFrame.new(headOffset + Vector3.new(0, -headSize * 0.05, -(headSize / 2 + GRID))),
+		Vector3.new(GRID * 1.4, GRID, GRID * 2), c3(p.accent or { 255, 190, 60 }), ctx.material)
+	addHorns(ctx, p, headOffset, headSize)
+	-- Fluegel gibt es bei Voegeln immer
+	if not p.wings then
+		p = setmetatable({ wings = "brick" }, { __index = p })
+	end
+	addWings(ctx, p, bodyH * 0.3, bodyW)
+	addBack(ctx, p, bodyH / 2, bodyD)
+	-- Schwanzfedern
+	local featherColor = c3(p.secondary or p.primary)
+	for i = -1, 1 do
+		brick(ctx, CFrame.new(Vector3.new(i * GRID * 1.3, bodyH * 0.1, bodyD / 2 + GRID * 1.4)) * CFrame.Angles(math.rad(-18), 0, 0),
+			Vector3.new(GRID, GRID * 0.8, GRID * 3), vary(featherColor, ctx.rng, 0.1), ctx.material)
+	end
+	addTail(ctx, p, bodyD / 2, bodyH * 0.1)
+	return Vector3.new(bodyW, bodyH, bodyD), bodyH / 2 + legH + GRID * 0.8
+end
+
+local ARCHETYPES = {
+	quad = buildQuad,
+	biped = buildBiped,
+	blob = buildBlob,
+	serpent = buildSerpent,
+	bird = buildBird,
+}
+
+-- ---------- Oeffentliche API ----------
+
 function MonsterFactory.Create(speciesId, scaleMul)
-	local scale = scaleMul or 1
 	local sp = GameData.Species[speciesId]
-	local build = sp.build
+	local p = sp.build
+	local s = (p.size or 1) * (scaleMul or 1)
 
 	local model = Instance.new("Model")
 	model.Name = sp.name
 
-	-- Rumpf (Wurzel, verankert). Bei gedrehten Koerpern (z.B.
-	-- stehende Zylinder) ist die Wurzel ein unsichtbarer Block,
-	-- damit alle Offsets gerade bleiben - der sichtbare Koerper
-	-- wird als gedrehtes Teil angeschweisst.
-	local body
-	local bodySize = build.body.size
-	if build.body.rot then
-		local bounding = { bodySize[1], bodySize[2], bodySize[3] }
-		if build.body.rot[3] ~= 0 then
-			bounding = { bodySize[2], bodySize[1], bodySize[3] }
-		end
-		body = makePart({ shape = "Block", size = bounding, color = build.body.color, transparency = 1, name = "Rumpf" }, scale)
-		bodySize = bounding
-		local visible = makePart({
-			shape = build.body.shape, size = build.body.size,
-			color = build.body.color, material = build.body.material,
-			transparency = build.body.transparency, name = "Koerper",
-		}, scale)
-		visible.CFrame = body.CFrame * offsetCFrame({ offset = { 0, 0, 0 }, rot = build.body.rot }, scale)
-		visible.Parent = model
-		body.Anchored = true
-		body.CanQuery = true
-		body.Parent = model
-		model.PrimaryPart = body
-		weldTo(body, visible)
-	else
-		body = makePart({
-			shape = build.body.shape,
-			size = build.body.size,
-			color = build.body.color,
-			material = build.body.material,
-			transparency = build.body.transparency,
-			name = "Rumpf",
-		}, scale)
-		body.Anchored = true
-		body.CanQuery = true
-		body.Parent = model
-		model.PrimaryPart = body
+	-- Unsichtbare Wurzel (wird nach dem Bau passend dimensioniert)
+	local root = Instance.new("Part")
+	root.Name = "Rumpf"
+	root.Transparency = 1
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanQuery = true
+	root.Size = Vector3.new(1, 1, 1)
+	root.CFrame = CFrame.new(0, 0, 0)
+	root.Parent = model
+	model.PrimaryPart = root
+
+	local ctx = {
+		model = model,
+		root = root,
+		rng = Random.new(seedFor(speciesId)),
+		material = p.material and Enum.Material[p.material] or Enum.Material.SmoothPlastic,
+		translucent = p.translucent,
+	}
+
+	local builder = ARCHETYPES[p.archetype] or buildQuad
+	local bodySize, rootHeight = builder(ctx, p, s)
+
+	root.Size = qsize(bodySize)
+
+	if sp.legendary then
+		addAura(ctx, p, bodySize.Y / 2, math.max(bodySize.X, bodySize.Z) * 0.75)
 	end
 
-	local bodyH = bodySize[2] * scale
-	local legs = build.legs or 0
-	local legH = (build.legHeight or 0.6) * scale
-
-	-- Beine
-	if legs &gt; 0 then
-		local bx = bodySize[1] * scale * 0.32
-		local bz = bodySize[3] * scale * 0.3
-		local positions = {}
-		if legs &gt;= 4 then
-			positions = { { -bx, -bz }, { bx, -bz }, { -bx, bz }, { bx, bz } }
-		else
-			positions = { { -bx * 0.8, 0 }, { bx * 0.8, 0 } }
-		end
-		local legColor = c3(build.body.color):Lerp(Color3.new(0, 0, 0), 0.25)
-		for i, p in ipairs(positions) do
-			local leg = Instance.new("Part")
-			leg.Shape = Enum.PartType.Cylinder
-			leg.Size = Vector3.new(legH, 0.55 * scale, 0.55 * scale)
-			leg.Color = legColor
-			leg.Material = Enum.Material.SmoothPlastic
-			leg.CanCollide = false
-			leg.CanQuery = false
-			leg.Name = "Bein" .. i
-			leg.CFrame = body.CFrame * CFrame.new(p[1], -bodyH / 2 - legH / 2 + 0.15 * scale, p[2])
-				* CFrame.Angles(0, 0, math.rad(90))
-			leg.Parent = model
-			weldTo(body, leg)
-		end
-	end
-
-	-- Kopf + Augen
-	if build.head then
-		local hs = build.head.size * scale
-		local head = Instance.new("Part")
-		head.Shape = Enum.PartType.Ball
-		head.Size = Vector3.new(hs, hs, hs)
-		head.Color = c3(build.head.color or build.body.color)
-		head.Material = Enum.Material.SmoothPlastic
-		head.CanCollide = false
-		head.CanQuery = false
-		head.Name = "Kopf"
-		local hcf = offsetCFrame({ offset = build.head.offset }, scale)
-		head.CFrame = body.CFrame * hcf
-		head.Parent = model
-		weldTo(body, head)
-		addEyes(model, body, hcf, build.head.size, build.head.size * 0.38, build.head.eyeScale, scale)
-	else
-		-- Augen direkt vorne auf dem Rumpf
-		addEyes(model, body, CFrame.new(0, bodyH * 0.15, 0), bodySize[1] * 0.8, bodySize[3] * 0.48, build.eyeScale, scale)
-	end
-
-	-- Weitere Teile (Ohren, Schwaenze, Flossen, Fluegel, ...)
-	if build.parts then
-		for _, spec in ipairs(build.parts) do
-			local part = makePart(spec, scale)
-			part.CFrame = body.CFrame * offsetCFrame(spec, scale)
-			part.Parent = model
-			weldTo(body, part)
-		end
-	end
-
-	local rootHeight = bodyH / 2
-	if legs &gt; 0 then
-		rootHeight = rootHeight + legH - 0.15 * scale
-	end
-	if build.groundClearance then
-		rootHeight = rootHeight + build.groundClearance * scale
+	if p.groundClearance then
+		rootHeight = rootHeight + p.groundClearance * s
 	end
 	model:SetAttribute("RootHeight", rootHeight)
 	model:SetAttribute("SpeciesId", speciesId)
 	return model
 end
 
--- Stellt das Monster so hin, dass es auf dem Boden steht und
--- Richtung "lookAt" schaut.
+-- Stellt das Monster auf den Boden, Blick Richtung "lookAt"
 function MonsterFactory.PlaceOnGround(model, position, lookAt)
 	local h = model:GetAttribute("RootHeight") or 1.5
 	local pos = Vector3.new(position.X, position.Y + h, position.Z)
 	local target = Vector3.new(lookAt.X, pos.Y, lookAt.Z)
+	if (target - pos).Magnitude &lt; 0.05 then
+		target = pos + Vector3.new(0, 0, -1)
+	end
 	model:PivotTo(CFrame.lookAt(pos, target))
 end
 
@@ -1419,14 +1801,19 @@ end
 
 -- ---------- Gebaeude ----------
 
--- Baut ein Haus. Front = lokale -Z-Richtung (yaw drehen).
--- opts: pos, w, d, h, yaw, wallColor, roofColor, name,
---       enterable (Tuer offen?), furnish (Moebel?)
+-- Baut ein MODERNES Haus: Flachdach mit Ueberstand, grosse
+-- Glasfronten, Sockel, Vordach und Akzentwand.
+-- Front = lokale -Z-Richtung (yaw drehen).
+-- opts: pos, w, d, h, yaw, wallColor, roofColor (= Akzentfarbe),
+--       name, enterable, furnish
 local function makeBuilding(opts)
 	local w, d, h = opts.w, opts.d, opts.h
 	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
 	local wall = opts.wallColor
-	local wt = 1 -- Wanddicke
+	local accent = opts.roofColor
+	local dark = c3(48, 50, 56) -- Anthrazit fuer Dach &amp; Rahmen
+	local glass = c3(160, 205, 240)
+	local wt = 0.8 -- Wanddicke
 	local doorW, doorH = 6, 7
 
 	local function bp(props, cf, parent)
@@ -1435,41 +1822,57 @@ local function makeBuilding(opts)
 		return p
 	end
 
-	-- Boden
-	bp({ Size = Vector3.new(w, 0.4, d), Color = c3(200, 180, 150), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.2, 0))
-	-- Rueckwand
-	bp({ Size = Vector3.new(w, h, wt), Color = wall }, CFrame.new(0, h / 2, d / 2 - wt / 2))
-	-- Seitenwaende
-	bp({ Size = Vector3.new(wt, h, d), Color = wall }, CFrame.new(-w / 2 + wt / 2, h / 2, 0))
-	bp({ Size = Vector3.new(wt, h, d), Color = wall }, CFrame.new(w / 2 - wt / 2, h / 2, 0))
-	-- Frontwand mit Tueroeffnung
+	-- Sockel + Innenboden
+	bp({ Size = Vector3.new(w + 1.6, 0.5, d + 1.6), Color = c3(125, 125, 130), Material = Enum.Material.Concrete }, CFrame.new(0, 0.25, 0))
+	bp({ Size = Vector3.new(w - 1, 0.3, d - 1), Color = c3(215, 200, 175), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.6, 0))
+	-- Rueckwand als Akzent-Holzpaneel
+	bp({ Size = Vector3.new(w, h, wt), Color = accent, Material = Enum.Material.WoodPlanks }, CFrame.new(0, h / 2, d / 2 - wt / 2))
+	-- Seitenwaende: unten/oben Wandband, dazwischen grosses Glasband
+	local glassH = h - 3.4
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * (w / 2 - wt / 2)
+		bp({ Size = Vector3.new(wt, 1.8, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, 0.9, 0))
+		bp({ Size = Vector3.new(wt, 1.6, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, h - 0.8, 0))
+		bp({ Size = Vector3.new(wt, glassH, d - 2.8), Color = glass, Material = Enum.Material.Glass, Transparency = 0.45 },
+			CFrame.new(x, 1.8 + glassH / 2, 0))
+		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, -d / 2 + 0.7))
+		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, d / 2 - 0.7))
+		bp({ Size = Vector3.new(wt + 0.1, glassH, 0.35), Color = dark }, CFrame.new(x, 1.8 + glassH / 2, 0))
+	end
+	-- Frontwand mit Tueroeffnung + grossem Panoramafenster
 	local sideW = (w - doorW) / 2
 	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
 	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
 	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
-	-- Tuerrahmen
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(0, doorH, -d / 2 + wt / 2))
-	-- Geschlossene Tuer, falls nicht betretbar
+	local winW = math.max(2, sideW - 2.4)
+	bp({ Size = Vector3.new(winW, h - 4.4, 0.5), Color = glass, Material = Enum.Material.Glass, Transparency = 0.4 },
+		CFrame.new((doorW + sideW) / 2, 2 + (h - 4.4) / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, h - 2.4, -d / 2 + wt / 2))
+	-- Tuerrahmen (dunkel, modern)
+	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.25), Color = dark }, CFrame.new(0, doorH, -d / 2 + wt / 2))
+	-- Geschlossene Glastuer, falls nicht betretbar
 	if not opts.enterable then
-		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(120, 80, 50), Material = Enum.Material.Wood }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(70, 85, 100), Material = Enum.Material.Glass, Transparency = 0.25 },
+			CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+		bp({ Size = Vector3.new(0.25, doorH - 0.2, 0.5), Color = dark }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
 	end
-	-- Fenster an den Seiten
+	-- Vordach ueber der Tuer
+	bp({ Size = Vector3.new(doorW + 2.6, 0.35, 3.4), Color = accent, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, doorH + 0.55, -d / 2 - 1.3))
+	-- Flachdach mit Ueberstand + Akzentblende
+	bp({ Size = Vector3.new(w + 2.6, 0.55, d + 2.6), Color = dark, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, h + 0.28, 0))
+	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, -(d / 2 + 1.05)))
+	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, d / 2 + 1.05))
+	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(-(w / 2 + 1.05), h - 0.05, 0))
+	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(w / 2 + 1.05, h - 0.05, 0))
+	-- Pflanzkuebel neben dem Eingang
 	for _, sx in ipairs({ -1, 1 }) do
-		bp({ Size = Vector3.new(0.3, 2.4, 3 ), Color = c3(170, 220, 255), Material = Enum.Material.Glass, Transparency = 0.3 },
-			CFrame.new(sx * (w / 2 - wt / 2), h * 0.55, -d * 0.18))
-		bp({ Size = Vector3.new(0.3, 2.4, 3 ), Color = c3(170, 220, 255), Material = Enum.Material.Glass, Transparency = 0.3 },
-			CFrame.new(sx * (w / 2 - wt / 2), h * 0.55, d * 0.2))
+		bp({ Size = Vector3.new(1.6, 1.2, 1.6), Color = c3(110, 110, 115), Material = Enum.Material.Concrete }, CFrame.new(sx * (doorW / 2 + 2.2), 0.6, -d / 2 - 1.6))
+		bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.6, 1.8), Color = c3(85, 165, 85), Material = Enum.Material.Grass, CanCollide = false },
+			CFrame.new(sx * (doorW / 2 + 2.2), 1.8, -d / 2 - 1.6))
 	end
-	-- Satteldach aus zwei Keilen (senkrechte Seite zum First)
-	local roofH = h * 0.45
-	wedge({ Size = Vector3.new(w + 2, roofH, d / 2 + 1), Color = opts.roofColor, Material = Enum.Material.Slate,
-		CFrame = base * CFrame.new(0, h + roofH / 2, -(d / 2 + 1) / 2 + 0.5) })
-	wedge({ Size = Vector3.new(w + 2, roofH, d / 2 + 1), Color = opts.roofColor, Material = Enum.Material.Slate,
-		CFrame = base * CFrame.new(0, h + roofH / 2, (d / 2 + 1) / 2 - 0.5) * CFrame.Angles(0, math.rad(180), 0) })
-	-- Deckenplatte, damit es innen dunkel/geschlossen wirkt
-	bp({ Size = Vector3.new(w, 0.4, d), Color = wall }, CFrame.new(0, h + 0.2, 0))
 
 	-- Schild ueber der Tuer
 	if opts.name then
@@ -1513,13 +1916,15 @@ end
 
 -- ---------- Stadt-Deko ----------
 
+-- Moderne Laterne: schlanker dunkler Mast mit flachem Leuchtpanel
 local function makeLamp(x, z)
-	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(7.5, 0.5, 0.5), Color = c3(60, 60, 70), Material = Enum.Material.Metal, CFrame = uprightCyl(x, 3.75, z) })
-	local bulb = part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), Color = c3(255, 235, 170), Material = Enum.Material.Neon, CFrame = CFrame.new(x, 7.8, z) })
+	part({ Size = Vector3.new(0.45, 8, 0.45), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 4, z) })
+	part({ Size = Vector3.new(2.2, 0.3, 1.0), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 8.15, z) })
+	local bulb = part({ Size = Vector3.new(1.9, 0.18, 0.8), Color = c3(255, 235, 170), Material = Enum.Material.Neon, CFrame = CFrame.new(x, 7.9, z) })
 	local light = Instance.new("PointLight")
 	light.Color = c3(255, 225, 150)
-	light.Range = 22
-	light.Brightness = 1.4
+	light.Range = 24
+	light.Brightness = 1.6
 	light.Enabled = false
 	light.Parent = bulb
 	table.insert(lamps, { bulb = bulb, light = light })
@@ -1936,10 +2341,40 @@ function WorldBuilder.Build()
 
 	folder.Parent = workspace
 
-	-- Licht &amp; Stimmung
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = c3(115, 115, 125)
-	Lighting.OutdoorAmbient = c3(160, 170, 185)
+	-- Moderne Grafik: sattes Licht, Atmosphaere und Post-Effekte
+	Lighting.Brightness = 3
+	Lighting.Ambient = c3(95, 100, 110)
+	Lighting.OutdoorAmbient = c3(140, 150, 165)
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 1
+	Lighting.ShadowSoftness = 0.2
+
+	local atmo = Instance.new("Atmosphere")
+	atmo.Density = 0.3
+	atmo.Offset = 0.25
+	atmo.Color = c3(199, 199, 214)
+	atmo.Decay = c3(106, 112, 125)
+	atmo.Glare = 0.2
+	atmo.Haze = 1.5
+	atmo.Parent = Lighting
+
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = 0.4
+	bloom.Size = 24
+	bloom.Threshold = 1.1
+	bloom.Parent = Lighting
+
+	local sunRays = Instance.new("SunRaysEffect")
+	sunRays.Intensity = 0.12
+	sunRays.Spread = 0.6
+	sunRays.Parent = Lighting
+
+	local colorCorrection = Instance.new("ColorCorrectionEffect")
+	colorCorrection.Saturation = 0.12
+	colorCorrection.Contrast = 0.06
+	colorCorrection.TintColor = c3(255, 250, 244)
+	colorCorrection.Parent = Lighting
+
 	startDayNight()
 
 	-- Hintergrundmusik (optional, ID oben eintragen)
@@ -2383,7 +2818,8 @@ end
 
 local function awardXp(session, state, events)
 	local mon = session.team[state.monIndex]
-	local gain = GameData.XpGain(state.enemy.level, state.mode == "trainer")
+	local enemyLegendary = GameData.Species[state.enemy.id].legendary == true
+	local gain = GameData.XpGain(state.enemy.level, state.mode == "trainer", enemyLegendary)
 	mon.xp = mon.xp + gain
 	push(events, { t = "text", msg = GameData.Species[mon.id].name .. " erhält " .. gain .. " EP!" })
 	local changed = false
@@ -2550,7 +2986,11 @@ function BattleService.TryStartWild(player, speciesId, level, roamerModel)
 		if not rec then return false end
 	end
 	local sp = GameData.Species[speciesId]
-	PlayerData.Notify(player, "Ein wildes " .. sp.name .. " (Lv. " .. level .. ") greift an!", "info")
+	if sp.legendary then
+		PlayerData.Notify(player, "⭐ Das legendäre " .. sp.name .. " (Lv. " .. level .. ") greift an!", "good")
+	else
+		PlayerData.Notify(player, "Ein wildes " .. sp.name .. " (Lv. " .. level .. ") greift an!", "info")
+	end
 	return startBattle(player, session, aliveIndex, "wild", makeEnemy(speciesId, level), nil)
 end
 
@@ -2665,7 +3105,7 @@ local function resolveAction(player, state, session, action, events)
 			end
 			local enemySp = GameData.Species[state.enemy.id]
 			push(events, { t = "text", msg = "Du wirfst eine Fangkugel auf " .. enemySp.name .. "..." })
-			local chance = GameData.CatchChance(state.enemy.level, state.enemy.hp / state.enemy.stats.maxHp)
+			local chance = GameData.CatchChance(state.enemy.level, state.enemy.hp / state.enemy.stats.maxHp, enemySp.legendary == true)
 			local success = rng:NextNumber() &lt; chance
 			push(events, { t = "ball", wobbles = success and 3 or rng:NextInteger(1, 2), success = success })
 			if success then
@@ -2813,6 +3253,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameData = require(Shared:WaitForChild("GameData"))
 local MonsterFactory = require(Shared:WaitForChild("MonsterFactory"))
+local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 
 local RoamService = {}
 
@@ -2898,11 +3339,12 @@ local function roamLoop(model, root, patch)
 	end
 end
 
-local function spawnRoamer(patchIndex)
+-- speciesId/level/isLegendary sind optional (fuer legendaere Spawns)
+local function spawnRoamer(patchIndex, speciesId, level, isLegendary)
 	local patch = GameData.GrassPatches[patchIndex]
 	local route = GameData.Routes[patch[5]]
-	local speciesId = pickFromPool(route.pool)
-	local level = rng:NextInteger(route.levelMin, route.levelMax)
+	speciesId = speciesId or pickFromPool(route.pool)
+	level = level or rng:NextInteger(route.levelMin, route.levelMax)
 	local sp = GameData.Species[speciesId]
 
 	local model = MonsterFactory.Create(speciesId, 1)
@@ -2911,21 +3353,34 @@ local function spawnRoamer(patchIndex)
 
 	-- Namensschild
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(200, 56)
-	billboard.StudsOffset = Vector3.new(0, 3.2, 0)
-	billboard.MaxDistance = 100
+	billboard.Size = UDim2.fromOffset(220, isLegendary and 76 or 56)
+	billboard.StudsOffset = Vector3.new(0, isLegendary and 4.6 or 3.2, 0)
+	billboard.MaxDistance = isLegendary and 220 or 100
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
+	label.Size = UDim2.new(1, 0, isLegendary and 0.6 or 1, 0)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.Text = sp.name .. "  Lv. " .. level
-	label.TextColor3 = GameData.TypeColors[sp.typ]
+	label.Text = isLegendary and ("⭐ " .. sp.name .. " ⭐") or (sp.name .. "  Lv. " .. level)
+	label.TextColor3 = isLegendary and Color3.fromRGB(255, 210, 70) or GameData.TypeColors[sp.typ]
 	label.TextStrokeTransparency = 0.2
 	label.Parent = billboard
+	if isLegendary then
+		local sub = Instance.new("TextLabel")
+		sub.Position = UDim2.new(0, 0, 0.6, 0)
+		sub.Size = UDim2.new(1, 0, 0.4, 0)
+		sub.BackgroundTransparency = 1
+		sub.Font = Enum.Font.FredokaOne
+		sub.TextScaled = true
+		sub.Text = "Lv. " .. level .. " • LEGENDÄR"
+		sub.TextColor3 = Color3.fromRGB(255, 255, 255)
+		sub.TextStrokeTransparency = 0.3
+		sub.Parent = billboard
+	end
 	billboard.Parent = model.PrimaryPart
 
-	records[model] = { id = speciesId, level = level, patchIndex = patchIndex }
+	-- Legendaere zaehlen nicht zum normalen Nachschub (patchIndex 0)
+	records[model] = { id = speciesId, level = level, patchIndex = isLegendary and 0 or patchIndex }
 
 	-- Beruehrung startet den Kampf
 	local touched = false
@@ -2948,6 +3403,45 @@ local function spawnRoamer(patchIndex)
 
 	model.Parent = folder
 	task.spawn(roamLoop, model, model.PrimaryPart, patch)
+	return model
+end
+
+-- ---------- Legendaere Monster (selten!) ----------
+
+local activeLegendary = nil
+
+local function announceAll(msg)
+	for _, player in ipairs(Players:GetPlayers()) do
+		PlayerData.Notify(player, msg, "good")
+	end
+end
+
+local function legendaryLoop()
+	task.wait(120) -- erste Ruhephase nach Serverstart
+	while true do
+		if not activeLegendary or not activeLegendary.Parent or not records[activeLegendary] then
+			local id = GameData.Legendaries[rng:NextInteger(1, #GameData.Legendaries)]
+			local patchIndex = rng:NextInteger(1, #GameData.GrassPatches)
+			local level = rng:NextInteger(22, 28)
+			local model = spawnRoamer(patchIndex, id, level, true)
+			activeLegendary = model
+			local patch = GameData.GrassPatches[patchIndex]
+			local routeName = GameData.Routes[patch[5]].name
+			announceAll("⭐ Ein legendäres " .. GameData.Species[id].name .. " ist auf " .. routeName .. " aufgetaucht! Schnell!")
+			-- Nach 2 Minuten verschwindet es wieder
+			task.delay(120, function()
+				if records[model] then
+					records[model] = nil
+					model:Destroy()
+					announceAll("Das legendäre " .. GameData.Species[id].name .. " ist wieder verschwunden...")
+				end
+				if activeLegendary == model then
+					activeLegendary = nil
+				end
+			end)
+		end
+		task.wait(rng:NextNumber(180, 300))
+	end
 end
 
 local function roamerManager()
@@ -3003,6 +3497,7 @@ function RoamService.Init(wildBattleCallback)
 	folder.Parent = workspace
 	task.spawn(roamerManager)
 	task.spawn(grassLoop)
+	task.spawn(legendaryLoop)
 	Players.PlayerRemoving:Connect(function(player)
 		lastPos[player] = nil
 	end)

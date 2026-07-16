@@ -126,14 +126,19 @@ end
 
 -- ---------- Gebaeude ----------
 
--- Baut ein Haus. Front = lokale -Z-Richtung (yaw drehen).
--- opts: pos, w, d, h, yaw, wallColor, roofColor, name,
---       enterable (Tuer offen?), furnish (Moebel?)
+-- Baut ein MODERNES Haus: Flachdach mit Ueberstand, grosse
+-- Glasfronten, Sockel, Vordach und Akzentwand.
+-- Front = lokale -Z-Richtung (yaw drehen).
+-- opts: pos, w, d, h, yaw, wallColor, roofColor (= Akzentfarbe),
+--       name, enterable, furnish
 local function makeBuilding(opts)
 	local w, d, h = opts.w, opts.d, opts.h
 	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
 	local wall = opts.wallColor
-	local wt = 1 -- Wanddicke
+	local accent = opts.roofColor
+	local dark = c3(48, 50, 56) -- Anthrazit fuer Dach & Rahmen
+	local glass = c3(160, 205, 240)
+	local wt = 0.8 -- Wanddicke
 	local doorW, doorH = 6, 7
 
 	local function bp(props, cf, parent)
@@ -142,41 +147,57 @@ local function makeBuilding(opts)
 		return p
 	end
 
-	-- Boden
-	bp({ Size = Vector3.new(w, 0.4, d), Color = c3(200, 180, 150), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.2, 0))
-	-- Rueckwand
-	bp({ Size = Vector3.new(w, h, wt), Color = wall }, CFrame.new(0, h / 2, d / 2 - wt / 2))
-	-- Seitenwaende
-	bp({ Size = Vector3.new(wt, h, d), Color = wall }, CFrame.new(-w / 2 + wt / 2, h / 2, 0))
-	bp({ Size = Vector3.new(wt, h, d), Color = wall }, CFrame.new(w / 2 - wt / 2, h / 2, 0))
-	-- Frontwand mit Tueroeffnung
+	-- Sockel + Innenboden
+	bp({ Size = Vector3.new(w + 1.6, 0.5, d + 1.6), Color = c3(125, 125, 130), Material = Enum.Material.Concrete }, CFrame.new(0, 0.25, 0))
+	bp({ Size = Vector3.new(w - 1, 0.3, d - 1), Color = c3(215, 200, 175), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.6, 0))
+	-- Rueckwand als Akzent-Holzpaneel
+	bp({ Size = Vector3.new(w, h, wt), Color = accent, Material = Enum.Material.WoodPlanks }, CFrame.new(0, h / 2, d / 2 - wt / 2))
+	-- Seitenwaende: unten/oben Wandband, dazwischen grosses Glasband
+	local glassH = h - 3.4
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * (w / 2 - wt / 2)
+		bp({ Size = Vector3.new(wt, 1.8, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, 0.9, 0))
+		bp({ Size = Vector3.new(wt, 1.6, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, h - 0.8, 0))
+		bp({ Size = Vector3.new(wt, glassH, d - 2.8), Color = glass, Material = Enum.Material.Glass, Transparency = 0.45 },
+			CFrame.new(x, 1.8 + glassH / 2, 0))
+		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, -d / 2 + 0.7))
+		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, d / 2 - 0.7))
+		bp({ Size = Vector3.new(wt + 0.1, glassH, 0.35), Color = dark }, CFrame.new(x, 1.8 + glassH / 2, 0))
+	end
+	-- Frontwand mit Tueroeffnung + grossem Panoramafenster
 	local sideW = (w - doorW) / 2
 	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
 	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
 	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
-	-- Tuerrahmen
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.2), Color = c3(110, 75, 45) }, CFrame.new(0, doorH, -d / 2 + wt / 2))
-	-- Geschlossene Tuer, falls nicht betretbar
+	local winW = math.max(2, sideW - 2.4)
+	bp({ Size = Vector3.new(winW, h - 4.4, 0.5), Color = glass, Material = Enum.Material.Glass, Transparency = 0.4 },
+		CFrame.new((doorW + sideW) / 2, 2 + (h - 4.4) / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, h - 2.4, -d / 2 + wt / 2))
+	-- Tuerrahmen (dunkel, modern)
+	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.25), Color = dark }, CFrame.new(0, doorH, -d / 2 + wt / 2))
+	-- Geschlossene Glastuer, falls nicht betretbar
 	if not opts.enterable then
-		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(120, 80, 50), Material = Enum.Material.Wood }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(70, 85, 100), Material = Enum.Material.Glass, Transparency = 0.25 },
+			CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+		bp({ Size = Vector3.new(0.25, doorH - 0.2, 0.5), Color = dark }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
 	end
-	-- Fenster an den Seiten
+	-- Vordach ueber der Tuer
+	bp({ Size = Vector3.new(doorW + 2.6, 0.35, 3.4), Color = accent, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, doorH + 0.55, -d / 2 - 1.3))
+	-- Flachdach mit Ueberstand + Akzentblende
+	bp({ Size = Vector3.new(w + 2.6, 0.55, d + 2.6), Color = dark, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, h + 0.28, 0))
+	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, -(d / 2 + 1.05)))
+	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, d / 2 + 1.05))
+	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(-(w / 2 + 1.05), h - 0.05, 0))
+	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(w / 2 + 1.05, h - 0.05, 0))
+	-- Pflanzkuebel neben dem Eingang
 	for _, sx in ipairs({ -1, 1 }) do
-		bp({ Size = Vector3.new(0.3, 2.4, 3 ), Color = c3(170, 220, 255), Material = Enum.Material.Glass, Transparency = 0.3 },
-			CFrame.new(sx * (w / 2 - wt / 2), h * 0.55, -d * 0.18))
-		bp({ Size = Vector3.new(0.3, 2.4, 3 ), Color = c3(170, 220, 255), Material = Enum.Material.Glass, Transparency = 0.3 },
-			CFrame.new(sx * (w / 2 - wt / 2), h * 0.55, d * 0.2))
+		bp({ Size = Vector3.new(1.6, 1.2, 1.6), Color = c3(110, 110, 115), Material = Enum.Material.Concrete }, CFrame.new(sx * (doorW / 2 + 2.2), 0.6, -d / 2 - 1.6))
+		bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.6, 1.8), Color = c3(85, 165, 85), Material = Enum.Material.Grass, CanCollide = false },
+			CFrame.new(sx * (doorW / 2 + 2.2), 1.8, -d / 2 - 1.6))
 	end
-	-- Satteldach aus zwei Keilen (senkrechte Seite zum First)
-	local roofH = h * 0.45
-	wedge({ Size = Vector3.new(w + 2, roofH, d / 2 + 1), Color = opts.roofColor, Material = Enum.Material.Slate,
-		CFrame = base * CFrame.new(0, h + roofH / 2, -(d / 2 + 1) / 2 + 0.5) })
-	wedge({ Size = Vector3.new(w + 2, roofH, d / 2 + 1), Color = opts.roofColor, Material = Enum.Material.Slate,
-		CFrame = base * CFrame.new(0, h + roofH / 2, (d / 2 + 1) / 2 - 0.5) * CFrame.Angles(0, math.rad(180), 0) })
-	-- Deckenplatte, damit es innen dunkel/geschlossen wirkt
-	bp({ Size = Vector3.new(w, 0.4, d), Color = wall }, CFrame.new(0, h + 0.2, 0))
 
 	-- Schild ueber der Tuer
 	if opts.name then
@@ -220,13 +241,15 @@ end
 
 -- ---------- Stadt-Deko ----------
 
+-- Moderne Laterne: schlanker dunkler Mast mit flachem Leuchtpanel
 local function makeLamp(x, z)
-	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(7.5, 0.5, 0.5), Color = c3(60, 60, 70), Material = Enum.Material.Metal, CFrame = uprightCyl(x, 3.75, z) })
-	local bulb = part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), Color = c3(255, 235, 170), Material = Enum.Material.Neon, CFrame = CFrame.new(x, 7.8, z) })
+	part({ Size = Vector3.new(0.45, 8, 0.45), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 4, z) })
+	part({ Size = Vector3.new(2.2, 0.3, 1.0), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 8.15, z) })
+	local bulb = part({ Size = Vector3.new(1.9, 0.18, 0.8), Color = c3(255, 235, 170), Material = Enum.Material.Neon, CFrame = CFrame.new(x, 7.9, z) })
 	local light = Instance.new("PointLight")
 	light.Color = c3(255, 225, 150)
-	light.Range = 22
-	light.Brightness = 1.4
+	light.Range = 24
+	light.Brightness = 1.6
 	light.Enabled = false
 	light.Parent = bulb
 	table.insert(lamps, { bulb = bulb, light = light })
@@ -643,10 +666,40 @@ function WorldBuilder.Build()
 
 	folder.Parent = workspace
 
-	-- Licht & Stimmung
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = c3(115, 115, 125)
-	Lighting.OutdoorAmbient = c3(160, 170, 185)
+	-- Moderne Grafik: sattes Licht, Atmosphaere und Post-Effekte
+	Lighting.Brightness = 3
+	Lighting.Ambient = c3(95, 100, 110)
+	Lighting.OutdoorAmbient = c3(140, 150, 165)
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 1
+	Lighting.ShadowSoftness = 0.2
+
+	local atmo = Instance.new("Atmosphere")
+	atmo.Density = 0.3
+	atmo.Offset = 0.25
+	atmo.Color = c3(199, 199, 214)
+	atmo.Decay = c3(106, 112, 125)
+	atmo.Glare = 0.2
+	atmo.Haze = 1.5
+	atmo.Parent = Lighting
+
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = 0.4
+	bloom.Size = 24
+	bloom.Threshold = 1.1
+	bloom.Parent = Lighting
+
+	local sunRays = Instance.new("SunRaysEffect")
+	sunRays.Intensity = 0.12
+	sunRays.Spread = 0.6
+	sunRays.Parent = Lighting
+
+	local colorCorrection = Instance.new("ColorCorrectionEffect")
+	colorCorrection.Saturation = 0.12
+	colorCorrection.Contrast = 0.06
+	colorCorrection.TintColor = c3(255, 250, 244)
+	colorCorrection.Parent = Lighting
+
 	startDayNight()
 
 	-- Hintergrundmusik (optional, ID oben eintragen)

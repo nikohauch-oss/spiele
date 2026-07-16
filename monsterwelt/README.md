@@ -1,10 +1,14 @@
 # Monsterwelt 🐾⚡
 
-Ein komplettes Roblox-Spiel (Luau), das sich spielt wie Pokémon — mit **18
-eigenen, selbst erfundenen Monstern** (keine echten Pokémon-Namen oder
--Figuren, also keine Urheberrechts-Probleme). Die ganze Welt, alle
-Monster-Figuren und die komplette Oberfläche werden **per Skript erzeugt** —
-du brauchst keine Modelle, keine Assets.
+Ein komplettes Roblox-Spiel (Luau), das sich spielt wie Pokémon — mit **35
+eigenen Monstern im Voxel-Klötzchen-Stil** (wie aus Bausteinen gebaut, mit
+leuchtenden Augen und Neon-Flammen/Kristallen/Blitzen — keine echten
+Pokémon-Namen oder -Figuren, also keine Urheberrechts-Probleme).
+Alle normalen Monster haben **Entwicklungen**, die **6 Legendären** nicht —
+die sind dafür extrem selten und stark. Moderne Grafik („Future"-Lighting,
+Atmosphäre, Bloom) und moderne Häuser mit Flachdach und Glasfronten.
+Die ganze Welt, alle Monster-Figuren und die komplette Oberfläche werden
+**per Skript erzeugt** — du brauchst keine Modelle, keine Assets.
 
 ## 🚀 Schnellstart (einfachster Weg)
 
@@ -79,20 +83,35 @@ Rojo-Nutzer können stattdessen einfach `rojo serve` mit der
   (Handy/Tablet-tauglich).
 - Tag-Nacht-Wechsel inklusive — nachts gehen die Straßenlaternen an!
 
-## 🐲 Die 18 Monster
+## 🐲 Die 35 Monster
 
-| Monster | Typ | Entwicklung |
+Alle normalen Monster entwickeln sich (Starter sogar zweimal!):
+
+| Entwicklungslinie | Typ | Stufen |
 |---|---|---|
-| Flarix → Flammgor | Feuer | ab Lv. 16 |
-| Aquani → Wellodon | Wasser | ab Lv. 16 |
-| Sprössli → Florassor | Pflanze | ab Lv. 16 |
-| Mopsel → Mopsulor | Normal | ab Lv. 14 |
-| Zappli → Voltarex | Elektro | ab Lv. 18 |
-| Flauschi, Brockel | Normal | – |
-| Quallino, Flossi | Wasser | – |
-| Pilzli, Dorni | Pflanze | – |
-| Glutmops | Feuer | – |
-| Blinki | Elektro | – |
+| Flarix → Flammgor → Vulkarion | Feuer | Lv. 16 / 32 |
+| Aquani → Wellodon → Ozeandon | Wasser | Lv. 16 / 32 |
+| Sprössli → Florassor → Florakron | Pflanze | Lv. 16 / 32 |
+| Mopsel → Mopsulor | Normal | Lv. 14 |
+| Flauschi → Wolkorin | Normal | Lv. 16 |
+| Brockel → Brockolith | Normal | Lv. 20 |
+| Zappli → Voltarex | Elektro | Lv. 18 |
+| Blinki → Funkelfalter | Elektro | Lv. 17 |
+| Quallino → Quallodon | Wasser | Lv. 18 |
+| Flossi → Flossaros | Wasser | Lv. 17 |
+| Pilzli → Pilzomant | Pflanze | Lv. 17 |
+| Dorni → Dornassor | Pflanze | Lv. 18 |
+| Glutmops → Magmops | Feuer | Lv. 18 |
+
+### ⭐ Die 6 Legendären (keine Entwicklung!)
+
+**Flarephoenix** (Feuer), **Oceanos** (Wasser), **Terralith** (Pflanze),
+**Thunderox** (Elektro), **Aurorael** und **Supremion** (Normal).
+
+Alle paar Minuten taucht eines davon irgendwo im hohen Gras auf — alle
+Spieler bekommen eine Durchsage! Es leuchtet golden, hat eine Aura, ist
+Level 22–28, sehr schwer zu fangen (fast K.O. schwächen!) und verschwindet
+nach 2 Minuten wieder. Wer eines fängt, hat ein echtes Kraftpaket.
 
 ## 🛠️ Eigene Monster & Musik
 

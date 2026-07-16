@@ -302,7 +302,8 @@ end
 
 local function awardXp(session, state, events)
 	local mon = session.team[state.monIndex]
-	local gain = GameData.XpGain(state.enemy.level, state.mode == "trainer")
+	local enemyLegendary = GameData.Species[state.enemy.id].legendary == true
+	local gain = GameData.XpGain(state.enemy.level, state.mode == "trainer", enemyLegendary)
 	mon.xp = mon.xp + gain
 	push(events, { t = "text", msg = GameData.Species[mon.id].name .. " erhält " .. gain .. " EP!" })
 	local changed = false
@@ -469,7 +470,11 @@ function BattleService.TryStartWild(player, speciesId, level, roamerModel)
 		if not rec then return false end
 	end
 	local sp = GameData.Species[speciesId]
-	PlayerData.Notify(player, "Ein wildes " .. sp.name .. " (Lv. " .. level .. ") greift an!", "info")
+	if sp.legendary then
+		PlayerData.Notify(player, "⭐ Das legendäre " .. sp.name .. " (Lv. " .. level .. ") greift an!", "good")
+	else
+		PlayerData.Notify(player, "Ein wildes " .. sp.name .. " (Lv. " .. level .. ") greift an!", "info")
+	end
 	return startBattle(player, session, aliveIndex, "wild", makeEnemy(speciesId, level), nil)
 end
 
@@ -584,7 +589,7 @@ local function resolveAction(player, state, session, action, events)
 			end
 			local enemySp = GameData.Species[state.enemy.id]
 			push(events, { t = "text", msg = "Du wirfst eine Fangkugel auf " .. enemySp.name .. "..." })
-			local chance = GameData.CatchChance(state.enemy.level, state.enemy.hp / state.enemy.stats.maxHp)
+			local chance = GameData.CatchChance(state.enemy.level, state.enemy.hp / state.enemy.stats.maxHp, enemySp.legendary == true)
 			local success = rng:NextNumber() < chance
 			push(events, { t = "ball", wobbles = success and 3 or rng:NextInteger(1, 2), success = success })
 			if success then

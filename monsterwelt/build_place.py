@@ -80,6 +80,21 @@ def service_item(cls: str, children: str = "", indent: int = 1) -> str:
     )
 
 
+def lighting_item() -> str:
+    # Moderne Grafik: "Future"-Lighting (Enum-Wert 4) + weiche Schatten
+    return (
+        f'\t<Item class="Lighting" referent="{next_ref()}">\n'
+        "\t\t<Properties>\n"
+        '\t\t\t<token name="Technology">4</token>\n'
+        '\t\t\t<float name="EnvironmentDiffuseScale">1</float>\n'
+        '\t\t\t<float name="EnvironmentSpecularScale">1</float>\n'
+        '\t\t\t<float name="ShadowSoftness">0.2</float>\n'
+        '\t\t\t<bool name="GlobalShadows">true</bool>\n'
+        "\t\t</Properties>\n"
+        "\t</Item>\n"
+    )
+
+
 def build() -> None:
     shared_scripts = "".join(script_item(c, n, p, 3) for c, n, p in SHARED)
     server_scripts = "".join(script_item(c, n, p, 3) for c, n, p in SERVER)
@@ -92,7 +107,7 @@ def build() -> None:
         'version="4">\n'
         + service_item("Workspace")
         + service_item("Players")
-        + service_item("Lighting")
+        + lighting_item()
         + service_item("ReplicatedStorage", folder_item("Shared", shared_scripts, 2))
         + service_item("ServerScriptService", folder_item("Server", server_scripts, 2))
         + service_item("ServerStorage")
