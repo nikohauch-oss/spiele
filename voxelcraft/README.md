@@ -29,6 +29,16 @@ prozedural erzeugt. Einfach den Ordner in Godot 4.3 importieren
   füttern (**Nachwuchs!**); Schafe liefern Wolle
 - **Minimap** (Taste M), **Kompass** (zeigt zum Spawn) und **Uhr**
 - **Dritte-Person-Ansicht** (F4) mit Spielerfigur
+- **Caving**: leuchtende **Lava-Seen** in der Tiefe (Verbrennungsgefahr!),
+  große Kavernen, **Spinnen** klettern Wände hoch, und beim Plündern von
+  Dungeon-Truhen erwacht manchmal der **Zombie-König** (Boss mit Dienern
+  und Diamanten-Drop)
+- **Zähmbare Wölfe** (mit Fleisch füttern) — folgen dir, kämpfen mit und
+  werden gespeichert; **Angeln** (Angel aus Stöcken + Spinnenfaden),
+  **Pilze** (→ Pilzsuppe) und **Kürbisse** (→ leuchtende Kürbislaterne)
+- **Dörfer** mit Hütte und **Händler-NPC** (Rechtsklick: Weizen/Kohle/Leder
+  gegen Eisen, Diamanten & mehr tauschen)
+- **Screenshots** (F2), **Statistiken** im Pausenmenü und Erfolgs-Meldungen
 - **Voxel-Beleuchtung** im Minecraft-Stil: Himmelslicht (Höhlen sind dunkel,
   Überhänge werden weich ausgeleuchtet) + Blocklicht durch **Fackeln**;
   das Licht wird per BFS ausgebreitet, in Vertex-Farben gebacken und im

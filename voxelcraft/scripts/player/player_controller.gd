@@ -31,6 +31,7 @@ var _fall_peak := 0.0   # hoechster Punkt seit Verlassen des Bodens (Fallschaden
 var _step_accum := 0.0  # zurueckgelegte Strecke bis zum naechsten Schrittgeraeusch
 var _body: Node3D       # Klotz-Figur, nur in der Aussenansicht sichtbar
 var _wish := Vector3.ZERO
+var _lava_tick := 0.0   # Verbrennungsschaden-Intervall
 
 
 func _ready() -> void:
@@ -181,6 +182,18 @@ func _walk(delta: float, wish: Vector3, sprinting: bool) -> void:
 		else:
 			velocity.y = move_toward(velocity.y, -1.2, 30.0 * delta)
 		_fall_peak = global_position.y
+	elif is_in_lava():
+		# Lava: zaehes Waten + Verbrennungsschaden
+		speed *= 0.35
+		velocity.y = move_toward(velocity.y, -1.2, 12.0 * delta)
+		if not Game.ui_open and Input.is_action_pressed("jump"):
+			velocity.y = 3.0
+		_fall_peak = global_position.y
+		_lava_tick -= delta
+		if _lava_tick <= 0.0:
+			_lava_tick = 0.5
+			if not creative:
+				stats.damage(4.0, true)
 	elif in_water:
 		# Schwimmen: gebremstes Sinken, Leertaste schwimmt nach oben
 		velocity.y = move_toward(velocity.y, -2.0, 18.0 * delta)
@@ -209,6 +222,12 @@ func _walk(delta: float, wish: Vector3, sprinting: bool) -> void:
 func is_in_water() -> bool:
 	var p := global_position + Vector3(0, 0.9, 0)
 	return Game.chunk_manager.get_block(Vector3i(p.floor())) == BlockDB.WATER
+
+
+## Steht der Koerper in Lava?
+func is_in_lava() -> bool:
+	var p := global_position + Vector3(0, 0.5, 0)
+	return Game.chunk_manager.get_block(Vector3i(p.floor())) == BlockDB.LAVA
 
 
 ## Ist die Kamera unter Wasser? (fuer den HUD-Blaufilter)

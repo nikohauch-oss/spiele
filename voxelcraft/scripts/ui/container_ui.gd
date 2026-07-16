@@ -9,7 +9,12 @@ extends Control
 ## Rechtsklick legt 1 Item ab oder nimmt die halbe Menge. Der "Cursor-Stack"
 ## haengt an der Maus. Beim Schliessen wandern Reste zurueck ins Inventar.
 
-enum Mode { PLAYER, TABLE, FURNACE, CHEST }
+enum Mode { PLAYER, TABLE, FURNACE, CHEST, TRADE }
+
+# Haendler-Angebote: [gib-Item, Anzahl, erhalte-Item, Anzahl]
+const TRADES := [["wheat", 10, "iron_ingot", 1], ["coal", 8, "iron_ingot", 1],
+	["iron_ingot", 3, "diamond", 1], ["leather", 5, "arrow", 12],
+	["fish_raw", 5, "string", 3]]
 # Slot-Herkunft fuer die Klick-Logik
 enum Area { INV, CRAFT, RESULT, F_IN, F_FUEL, F_OUT, CHEST, ARMOR }
 
@@ -143,8 +148,18 @@ func _build_top_area() -> void:
 	_chest_slots.clear()
 	_armor_slots.clear()
 	var titles := {Mode.PLAYER: "Crafting", Mode.TABLE: "Werkbank",
-		Mode.FURNACE: "Ofen", Mode.CHEST: "Truhe"}
+		Mode.FURNACE: "Ofen", Mode.CHEST: "Truhe", Mode.TRADE: "Haendler"}
 	_top_area.add_child(_label(titles[mode]))
+	if mode == Mode.TRADE:
+		# Tausch-Angebote als Buttons (aktiv, wenn genug im Inventar ist)
+		for t: Array in TRADES:
+			var b := Button.new()
+			b.text = "%d x %s  ->  %d x %s" % [t[1], ItemDB.display_name(t[0]),
+				t[3], ItemDB.display_name(t[2])]
+			b.disabled = inv.count_of(t[0]) < t[1]
+			b.pressed.connect(_do_trade.bind(t))
+			_top_area.add_child(b)
+		return
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -228,6 +243,18 @@ func _on_slot_clicked(area: int, index: int, button: int) -> void:
 			if cursor == null or ItemDB.armor_slot(cursor.id) == index:
 				inv.armor[index] = _click_stack(inv.armor[index], button)
 				inv.notify_changed()
+	_refresh_all()
+
+
+func _do_trade(t: Array) -> void:
+	if inv.count_of(t[0]) < t[1]:
+		return
+	inv.remove_id(t[0], t[1])
+	var rest: int = inv.add_item(t[2], t[3])
+	if rest > 0 and Game.player:
+		ItemEntity.spawn_id(t[2], rest, Game.player.global_position + Vector3(0, 0.5, 0))
+	Sfx.play("click")
+	_build_top_area()  # Buttons-Status auffrischen
 	_refresh_all()
 
 
@@ -416,6 +443,9 @@ func _current_recipe() -> Dictionary:
 func _refresh_all() -> void:
 	for s in _inv_slots:
 		s.set_stack(inv.slots[s.index])
+	if mode == Mode.TRADE:
+		_update_cursor()
+		return
 	if mode == Mode.FURNACE:
 		_refresh_furnace()
 	elif mode == Mode.CHEST:

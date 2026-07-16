@@ -20,6 +20,10 @@ func _ready() -> void:
 	Game.furnaces.clear()
 	Game.chests.clear()
 	Game.crops.clear()
+	Game._villages_spawned.clear()
+	Game.stats = {"blocks_mined": 0, "blocks_placed": 0, "mobs_killed": 0,
+		"deaths": 0, "playtime": 0.0}
+	Game.achievements = {}
 	Game.ui_open = false
 	Game.paused = false
 
@@ -99,6 +103,14 @@ func _apply_save(save: Dictionary) -> void:
 	for pos: Vector3i in save.get("chests", {}):
 		Game.chests[pos] = ChestState.deserialize(save.chests[pos])
 	Game.crops = save.get("crops", {})
+	Game.stats = save.get("stats", Game.stats)
+	Game.achievements = save.get("achievements", {})
+	# Gezaehmte Woelfe wiederherstellen
+	for wpos in save.get("wolves", []):
+		var w := Wolf.new()
+		add_child(w)
+		w.global_position = wpos
+		w.make_tamed()
 	var pdata: Dictionary = save.get("player", {})
 	if pdata.is_empty():
 		for entry in START_ITEMS:
@@ -144,6 +156,7 @@ func _process(delta: float) -> void:
 
 
 func _on_player_died() -> void:
+	Game.stats.deaths += 1
 	player.frozen = true
 	Game.hud.show_death(true)
 	if Game.ui_open:

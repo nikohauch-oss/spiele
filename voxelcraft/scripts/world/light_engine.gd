@@ -83,6 +83,45 @@ static func compute_skylight(data: PackedByteArray, max_y: int) -> PackedByteArr
 			if light[ni] >> 4 < target:
 				light[ni] = (light[ni] & 15) | (target << 4)
 				queue.push_back(ni << 4 | target)
+
+	# 4) Blocklicht von Leucht-Bloecken (Lava, Fackeln/Laternen aus Strukturen)
+	var bqueue: Array = []
+	for x in Chunk.SIZE:
+		for z in Chunk.SIZE:
+			var col := (x * Chunk.SIZE + z) * Chunk.HEIGHT
+			for y in top + 1:
+				var e := BlockDB.emits(data[col + y])
+				if e > 0:
+					light[col + y] = (light[col + y] & 0xF0) | e
+					bqueue.push_back((col + y) << 4 | e)
+	head = 0
+	while head < bqueue.size():
+		var packed: int = bqueue[head]
+		head += 1
+		var idx := packed >> 4
+		var level := packed & 15
+		var y := idx % Chunk.HEIGHT
+		@warning_ignore("integer_division")
+		var rest := idx / Chunk.HEIGHT
+		var z := rest % Chunk.SIZE
+		@warning_ignore("integer_division")
+		var x := rest / Chunk.SIZE
+		for d: Vector3i in DIRS:
+			var target := level - 1
+			if target <= 0:
+				continue
+			var nx := x + d.x
+			var ny := y + d.y
+			var nz := z + d.z
+			if nx < 0 or nx >= Chunk.SIZE or nz < 0 or nz >= Chunk.SIZE \
+					or ny < 0 or ny >= Chunk.HEIGHT:
+				continue
+			var ni := Chunk.index(nx, ny, nz)
+			if not BlockDB.is_see_through(data[ni]):
+				continue
+			if light[ni] & 15 < target:
+				light[ni] = (light[ni] & 0xF0) | target
+				bqueue.push_back(ni << 4 | target)
 	return light
 
 
@@ -92,9 +131,9 @@ static func compute_skylight(data: PackedByteArray, max_y: int) -> PackedByteArr
 ## und liefert alle Zellen, deren Licht sich geaendert hat (fuer das Remeshing).
 static func on_block_changed(cm, wpos: Vector3i, old_id: int, new_id: int) -> Dictionary:
 	var touched := {}
-	if old_id == BlockDB.TORCH:
+	if BlockDB.emits(old_id) > 0:
 		_remove_light(cm, wpos, false, touched)
-	if not BlockDB.is_see_through(new_id):
+	if not BlockDB.is_see_through(new_id) and BlockDB.emits(new_id) == 0:
 		# Zelle wurde opak: Licht hier loeschen (inkl. Himmelslicht-Saeule darunter)
 		_remove_light(cm, wpos, true, touched)
 		_remove_light(cm, wpos, false, touched)
@@ -102,8 +141,10 @@ static func on_block_changed(cm, wpos: Vector3i, old_id: int, new_id: int) -> Di
 		# Zelle wurde durchlaessig: Licht der Nachbarn einstroemen lassen
 		_inflow(cm, wpos, true, touched)
 		_inflow(cm, wpos, false, touched)
-	if new_id == BlockDB.TORCH:
-		_add_light(cm, wpos, false, TORCH_LEVEL, touched)
+	if BlockDB.emits(new_id) > 0:
+		if not BlockDB.is_see_through(new_id):
+			_remove_light(cm, wpos, true, touched)  # opaker Leuchtblock (Kuerbislaterne)
+		_add_light(cm, wpos, false, BlockDB.emits(new_id), touched)
 	return touched
 
 

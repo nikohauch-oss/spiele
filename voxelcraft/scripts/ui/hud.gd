@@ -12,6 +12,7 @@ var _hearts: Array[ColorRect] = []
 var _food: Array[ColorRect] = []
 var _armor_pips: Array[ColorRect] = []
 var _pause_panel: Control
+var _pause_stats: Label
 var _info: Label            # Kompass-/Uhr-Zeile ueber der Hotbar
 var _map_panel: Control
 var _map_texrect: TextureRect
@@ -73,7 +74,13 @@ func bind(player: PlayerController) -> void:
 
 func _process(_delta: float) -> void:
 	if _player:
-		_water_tint.visible = _player.is_head_in_water()
+		# Blaufilter unter Wasser, Orangefilter in Lava
+		if _player.is_in_lava():
+			_water_tint.color = Color(0.9, 0.3, 0.05, 0.4)
+			_water_tint.visible = true
+		else:
+			_water_tint.color = Color(0.1, 0.25, 0.7, 0.3)
+			_water_tint.visible = _player.is_head_in_water()
 		_update_info_line()
 		if _map_panel.visible:
 			_update_minimap()
@@ -287,11 +294,20 @@ func _build_pause_panel() -> Control:
 		b.custom_minimum_size = Vector2(240, 40)
 		b.pressed.connect(e[1])
 		box.add_child(b)
+	_pause_stats = Label.new()
+	_pause_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pause_stats.add_theme_font_size_override("font_size", 14)
+	_pause_stats.modulate.a = 0.85
+	box.add_child(_pause_stats)
 	return root
 
 
 func set_paused(on: bool) -> void:
 	_pause_panel.visible = on
+	if on:
+		var s: Dictionary = Game.stats
+		_pause_stats.text = "Statistik\nAbgebaut: %d   Platziert: %d\nMonster besiegt: %d   Tode: %d\nSpielzeit: %d min" % [
+			s.blocks_mined, s.blocks_placed, s.mobs_killed, s.deaths, int(s.playtime / 60.0)]
 
 
 func _build_death_panel() -> Control:

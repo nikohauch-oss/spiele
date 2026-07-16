@@ -91,6 +91,8 @@ func _process(delta: float) -> void:
 func _try_pickup(player) -> void:
 	var rest = player.inventory.add_stack(stack)
 	if rest == null:
+		if stack.id == "diamond":
+			Game.achieve("diamond", "Erfolg: Diamanten gefunden!")
 		Sfx.play("pop")
 		queue_free()
 	else:

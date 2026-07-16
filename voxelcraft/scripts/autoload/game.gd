@@ -6,7 +6,7 @@ extends Node
 ##  - Speichern/Laden der Welt (user://voxelcraft_save.dat, Godot-Binaerformat)
 ##  - oeffnet/schliesst Container-UIs (Inventar, Werkbank, Ofen)
 
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
 const SETTINGS_PATH := "user://settings.cfg"
 const CROP_STAGE_TIME := 60.0  # Sekunden pro Weizen-Wachstumsstufe
 
@@ -24,6 +24,10 @@ var furnaces := {}         # Vector3i -> FurnaceState
 var chests := {}           # Vector3i -> ChestState
 var crops := {}            # Vector3i -> Wachstumsfortschritt in Sekunden
 var loaded_save := {}      # von Main beim Start konsumiert
+var stats := {"blocks_mined": 0, "blocks_placed": 0, "mobs_killed": 0,
+	"deaths": 0, "playtime": 0.0}
+var achievements := {}     # id -> true (einmalige Erfolgs-Toasts)
+var _villages_spawned := {}  # Vector3i -> true (Haendler nur 1x pro Sitzung)
 
 # Welt-Slots (Hauptmenue) + Einstellungen
 var save_slot := 1
@@ -74,6 +78,28 @@ func _process(delta: float) -> void:
 	for f in furnaces.values():
 		f.tick(delta)
 	_tick_crops(delta)
+	if player != null:
+		stats.playtime += delta
+
+
+## Einmaliger Erfolgs-Toast.
+func achieve(id: String, text: String) -> void:
+	if achievements.has(id):
+		return
+	achievements[id] = true
+	if hud:
+		hud.toast(text)
+
+
+## Haendler spawnen, sobald das Dorf-Chunk fertig ist (1x pro Sitzung).
+func register_village(pos: Vector3i) -> void:
+	if _villages_spawned.has(pos) or world == null:
+		return
+	_villages_spawned[pos] = true
+	var t := Trader.new()
+	t.home = Vector3(pos) + Vector3(0.5, 0, 0.5)
+	world.add_child(t)
+	t.global_position = t.home + Vector3(0, 1.0, 0)
 
 
 ## Weizen waechst in Echtzeit ueber zwei Stufen zur reifen Pflanze.
@@ -112,6 +138,7 @@ func _setup_input() -> void:
 	_add_key("drop_item", KEY_Q)
 	_add_key("perspective", KEY_F4)
 	_add_key("minimap", KEY_M)
+	_add_key("screenshot", KEY_F2)
 	_add_key("debug", KEY_F3)
 	_add_key("save_world", KEY_F5)
 	_add_key("load_world", KEY_F9)
@@ -169,6 +196,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		hud.toggle_debug()
 	elif event.is_action_pressed("minimap") and hud and not ui_open:
 		hud.toggle_map()
+	elif event.is_action_pressed("screenshot"):
+		_take_screenshot()
+
+
+func _take_screenshot() -> void:
+	DirAccess.make_dir_recursive_absolute("user://screenshots")
+	var path := "user://screenshots/voxelcraft_%d.png" % int(Time.get_unix_time_from_system())
+	get_viewport().get_texture().get_image().save_png(path)
+	if hud:
+		hud.toast("Screenshot gespeichert (%s)" % path)
 
 
 # ------------------------------------------------------------- Pause-Menue ---
@@ -194,6 +231,7 @@ func return_to_menu() -> void:
 	furnaces.clear()
 	chests.clear()
 	crops.clear()
+	_villages_spawned.clear()
 	Sfx.set_rain(false)
 	get_tree().change_scene_to_file("res://scenes/Menu.tscn")
 
@@ -255,6 +293,13 @@ func create_chest_with_loot(pos: Vector3i) -> void:
 			var count: int = e[1] + randi() % (e[2] - e[1] + 1)
 			c.slots[randi() % ChestState.SIZE] = Inventory.make_stack(e[0], count)
 	chests[pos] = c
+	# Grabraeuber-Risiko: manchmal erwacht der Zombie-Koenig!
+	if randf() < 0.2 and world != null:
+		var king := ZombieKing.new()
+		world.add_child(king)
+		king.global_position = Vector3(pos) + Vector3(2.5, 1.2, 2.5)
+		if hud:
+			hud.toast("GRABRAEUBER! Der Zombie-Koenig erwacht ...")
 
 
 ## Truhe abgebaut: Zustand entfernen, Inhalt zurueckgeben.
@@ -308,6 +353,9 @@ func save_world() -> void:
 		"furnaces": furnace_data,
 		"chests": chest_data,
 		"crops": crops.duplicate(),
+		"stats": stats.duplicate(),
+		"achievements": achievements.duplicate(),
+		"wolves": _tamed_wolf_positions(),
 	}
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -316,6 +364,16 @@ func save_world() -> void:
 			hud.toast("Welt gespeichert")
 	elif hud:
 		hud.toast("Speichern fehlgeschlagen!")
+
+
+func _tamed_wolf_positions() -> Array:
+	var out: Array = []
+	if world == null:
+		return out
+	for w in world.get_tree().get_nodes_in_group("wolves"):
+		if w.tamed and not w.is_queued_for_deletion():
+			out.append(w.global_position)
+	return out
 
 
 ## Beim Beenden automatisch speichern.

@@ -17,7 +17,7 @@ enum {
 	STAIR_STONE_N, STAIR_STONE_E, STAIR_STONE_S, STAIR_STONE_W,
 	DOOR_C_N, DOOR_C_E, DOOR_C_S, DOOR_C_W,
 	DOOR_O_N, DOOR_O_E, DOOR_O_S, DOOR_O_W,
-	FENCE,
+	FENCE, LAVA, MUSHROOM_BROWN, MUSHROOM_RED, PUMPKIN, JACK_LANTERN,
 	BLOCK_COUNT,
 }
 
@@ -111,6 +111,19 @@ var defs := {
 		"min_tier": 1, "see_through": true},
 	FENCE: {"id": "fence", "name": "Zaun", "tiles": ["planks", "planks", "planks"],
 		"hardness": 3.0, "tool": "axe", "see_through": true},
+	LAVA: {"id": "lava", "name": "Lava", "tiles": ["lava", "lava", "lava"],
+		"hardness": -1.0, "solid": false, "see_through": true, "emits": 15, "no_item": true},
+	MUSHROOM_BROWN: {"id": "mushroom_brown", "name": "Brauner Pilz",
+		"tiles": ["mushroom_brown", "mushroom_brown", "mushroom_brown"],
+		"hardness": 0.05, "solid": false, "see_through": true},
+	MUSHROOM_RED: {"id": "mushroom_red", "name": "Roter Pilz",
+		"tiles": ["mushroom_red", "mushroom_red", "mushroom_red"],
+		"hardness": 0.05, "solid": false, "see_through": true},
+	PUMPKIN: {"id": "pumpkin", "name": "Kuerbis",
+		"tiles": ["pumpkin_top", "pumpkin_side", "pumpkin_top"], "hardness": 1.0, "tool": "axe"},
+	JACK_LANTERN: {"id": "jack_lantern", "name": "Kuerbislaterne",
+		"tiles": ["pumpkin_top", "jack_face", "pumpkin_top"], "hardness": 1.0,
+		"tool": "axe", "emits": 15},
 }
 
 var atlas_texture: ImageTexture
@@ -126,6 +139,7 @@ var _by_string_id := {}     # "grass" -> GRASS
 # Schnelle Lookups fuer den Mesher-Thread (nur lesend -> threadsicher)
 var _see_through := PackedByteArray()
 var _solid := PackedByteArray()
+var _emits := PackedByteArray()  # Blocklicht-Staerke pro Blocktyp (0-15)
 var _uv_base := []          # [block][slot 0..2] -> Vector2 (linke obere UV-Ecke)
 
 
@@ -170,6 +184,11 @@ func is_see_through(block_id: int) -> bool:
 	return _see_through[block_id] == 1
 
 
+## Blocklicht-Emission (Fackel 14, Lava/Kuerbislaterne 15, sonst 0).
+func emits(block_id: int) -> int:
+	return _emits[block_id]
+
+
 ## Linke obere UV-Ecke der Kachel fuer eine Blockflaeche (slot: 0=oben, 1=seite, 2=unten)
 func uv_base(block_id: int, slot: int) -> Vector2:
 	return _uv_base[block_id][slot]
@@ -185,6 +204,7 @@ func tile_region(block_id: int, slot: int) -> Rect2:
 func _finalize_defs() -> void:
 	_see_through.resize(BLOCK_COUNT)
 	_solid.resize(BLOCK_COUNT)
+	_emits.resize(BLOCK_COUNT)
 	_uv_base.resize(BLOCK_COUNT)
 	_avg_colors.resize(BLOCK_COUNT)
 	for b in BLOCK_COUNT:
@@ -204,6 +224,7 @@ func _finalize_defs() -> void:
 			d.hardness = 1.0
 		_solid[b] = 1 if d.solid else 0
 		_see_through[b] = 1 if d.see_through else 0
+		_emits[b] = d.get("emits", 0)
 		var uvs := []
 		if d.has("tiles"):
 			for slot in 3:
@@ -231,7 +252,8 @@ func _build_atlas() -> void:
 		"torch", "chest_top", "chest_side", "diamond_ore", "bed_top", "bed_side",
 		"flower_red", "flower_yellow", "tall_grass", "cactus_side", "cactus_top", "glass",
 		"c4", "ladder", "farmland", "wheat0", "wheat1", "wheat2",
-		"snow", "snow_side", "wool"]
+		"snow", "snow_side", "wool",
+		"lava", "mushroom_brown", "mushroom_red", "pumpkin_side", "pumpkin_top", "jack_face"]
 	var img := Image.create_empty(ATLAS_TILES * TILE, ATLAS_TILES * TILE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 0, 1))  # Magenta = "fehlende Kachel"
 	for i in kinds.size():
@@ -457,6 +479,33 @@ func _paint_tile(img: Image, ox: int, oy: int, kind: String) -> void:
 					c = _vary(Color(0.9, 0.9, 0.88), rng, 0.03)
 					if (px * 3 + py * 7) % 11 == 0:
 						c = c.darkened(0.12)  # Woll-Locken
+				"lava":
+					c = _vary(Color(0.95, 0.45, 0.1), rng, 0.08)
+					if (px * 5 + py * 3) % 9 == 0:
+						c = Color(1.0, 0.85, 0.3)  # gluehende Schlieren
+				"mushroom_brown", "mushroom_red":
+					c = Color(0, 0, 0, 0)
+					if px == 7 and py >= 9 or px == 8 and py >= 9:
+						c = Color(0.85, 0.82, 0.75)  # Stiel
+					elif Vector2(px - 7.5, py - 7).length() <= 3.5 and py <= 9:
+						c = _vary(Color(0.5, 0.35, 0.22), rng, 0.05) if kind == "mushroom_brown" \
+							else _vary(Color(0.8, 0.15, 0.1), rng, 0.05)
+						if kind == "mushroom_red" and (px + py * 3) % 7 == 0:
+							c = Color(0.95, 0.95, 0.9)  # weisse Punkte
+				"pumpkin_side", "pumpkin_top":
+					c = _vary(Color(0.85, 0.5, 0.12), rng, 0.05)
+					if px % 4 == 0:
+						c = c.darkened(0.25)  # Rillen
+					if kind == "pumpkin_top" and Vector2(px - 8, py - 8).length() < 1.5:
+						c = Color(0.45, 0.3, 0.12)  # Stielansatz
+				"jack_face":
+					c = _vary(Color(0.85, 0.5, 0.12), rng, 0.05)
+					if px % 4 == 0:
+						c = c.darkened(0.25)
+					# leuchtende Augen + Zackenmund
+					if (py >= 4 and py <= 6 and (px == 4 or px == 5 or px == 10 or px == 11)) \
+							or (py >= 10 and py <= 11 and px >= 4 and px <= 11 and px % 2 == 0):
+						c = Color(1.0, 0.9, 0.4)
 			img.set_pixel(ox + px, oy + py, c)
 	# Erz-Sprenkel als 2x2-Kluempchen nachtraeglich aufmalen
 	if kind.ends_with("_ore"):

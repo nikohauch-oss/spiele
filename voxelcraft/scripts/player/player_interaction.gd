@@ -19,6 +19,12 @@ var _dig_progress := 0.0
 var _attack_cd := 0.0
 var _place_cd := 0.0
 
+# Angel-Zustand
+var _fishing := false
+var _bobber: MeshInstance3D
+var _bite_timer := 0.0
+var _bite_window := 0.0
+
 
 func setup(p: PlayerController) -> void:
 	player = p
@@ -34,7 +40,8 @@ func setup(p: PlayerController) -> void:
 
 ## Voxel-Raycast (Amanatides & Woo): laeuft Zelle fuer Zelle durch die Welt.
 ## Rueckgabe: {"pos": Vector3i, "normal": Vector3i, "dist": float} oder {}.
-func _voxel_raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
+func _voxel_raycast(from: Vector3, dir: Vector3, max_dist: float,
+		stop_at_water := false) -> Dictionary:
 	var pos := Vector3i(from.floor())
 	var step := Vector3i(signf(dir.x), signf(dir.y), signf(dir.z))
 	var t_max := Vector3.INF
@@ -48,8 +55,10 @@ func _voxel_raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var t := 0.0
 	while t <= max_dist:
 		var id: int = Game.chunk_manager.get_block(pos)
-		if id != BlockDB.AIR and id != BlockDB.WATER:
+		if id != BlockDB.AIR and id != BlockDB.WATER and id != BlockDB.LAVA:
 			return {"pos": pos, "normal": normal, "dist": t}
+		if stop_at_water and id == BlockDB.WATER:
+			return {"pos": pos, "normal": normal, "dist": t, "water": true}
 		# zur naechsten Zellgrenze springen (kleinstes t_max gewinnt)
 		var axis := 0
 		if t_max.y < t_max.x:
@@ -93,6 +102,7 @@ func _build_highlight() -> void:
 func _physics_process(delta: float) -> void:
 	_attack_cd = maxf(_attack_cd - delta, 0.0)
 	_place_cd = maxf(_place_cd - delta, 0.0)
+	_tick_fishing(delta)
 	if player.frozen or Game.ui_open or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		_stop_digging()
 		highlight.visible = false
@@ -111,14 +121,25 @@ func _physics_process(delta: float) -> void:
 		highlight.visible = false
 		_dig_progress = 0.0
 		Game.hud.set_dig_progress(-1.0)
-		# Tiere mit Weizen fuettern -> Nachwuchs
-		if Input.is_action_pressed("use") and _place_cd <= 0.0 and mob is Animal \
-				and player.inventory.selected_id() == "wheat":
-			_place_cd = PLACE_REPEAT
-			if (mob as Animal).try_feed():
-				player.inventory.consume_selected()
-				Sfx.play("eat")
-			return
+		# Rechtsklick auf Kreaturen: fuettern, zaehmen, handeln
+		if Input.is_action_pressed("use") and _place_cd <= 0.0:
+			var held_use := player.inventory.selected_id()
+			if mob is Trader:
+				_place_cd = PLACE_REPEAT
+				Game.open_container(ContainerUI.Mode.TRADE)
+				return
+			if mob is Animal and held_use == "wheat":
+				_place_cd = PLACE_REPEAT
+				if (mob as Animal).try_feed():
+					player.inventory.consume_selected()
+					Sfx.play("eat")
+				return
+			if mob is Wolf and held_use in Wolf.MEAT:
+				_place_cd = PLACE_REPEAT
+				if (mob as Wolf).try_tame():
+					player.inventory.consume_selected()
+					Sfx.play("eat")
+				return
 		if Input.is_action_pressed("attack") and _attack_cd <= 0.0:
 			_attack_cd = ATTACK_COOLDOWN
 			var dir := -player.camera.global_transform.basis.z
@@ -220,6 +241,7 @@ func _break_block(pos: Vector3i, block_id: int, held: String) -> void:
 		for stack in Game.remove_chest(pos):
 			ItemEntity.spawn_stack(stack, center)
 	Game.chunk_manager.set_block(pos, BlockDB.AIR)
+	Game.stats.blocks_mined += 1
 	_pop_supported_above(pos)
 	_spawn_break_particles(pos, block_id)
 	Sfx.play_at("break", center)
@@ -329,6 +351,11 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 		_place_cd = 1.0  # Nachspann-Zeit
 		_shoot_bow()
 		return
+	# Angeln (braucht Wasser in Blickrichtung)
+	if held == "fishing_rod":
+		_place_cd = 0.5
+		_handle_fishing()
+		return
 	# Essen (braucht ebenfalls kein Blockziel)
 	if ItemDB.food_value(held) > 0:
 		if player.stats.hunger < PlayerStats.MAX_HUNGER:
@@ -372,6 +399,10 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 		BlockDB.FLOWER_RED, BlockDB.FLOWER_YELLOW, BlockDB.TALL_GRASS:
 			if cell == BlockDB.WATER or (below != BlockDB.GRASS and below != BlockDB.DIRT):
 				return
+		BlockDB.MUSHROOM_BROWN, BlockDB.MUSHROOM_RED:
+			# Pilze wachsen auch auf Stein (Hoehlen), brauchen kein Licht
+			if cell == BlockDB.WATER or not BlockDB.is_solid(below):
+				return
 		BlockDB.CACTUS:
 			if cell == BlockDB.WATER or (below != BlockDB.SAND and below != BlockDB.CACTUS):
 				return
@@ -399,7 +430,78 @@ func _use(block_pos: Vector3i, place_pos: Vector3i, has_target: bool) -> void:
 	elif block == BlockDB.CHEST:
 		Game.create_chest(place_pos)
 	player.inventory.consume_selected()
+	Game.stats.blocks_placed += 1
 	Sfx.play_at("place", Vector3(place_pos) + Vector3(0.5, 0.5, 0.5))
+
+
+# ------------------------------------------------------------------ Angeln ---
+
+func _handle_fishing() -> void:
+	if _fishing:
+		# Einholen: Biss erwischt?
+		if _bite_window > 0.0:
+			var r := randf()
+			var loot := "fish_raw"
+			if r > 0.95:
+				loot = "iron_ingot"
+			elif r > 0.85:
+				loot = "string"
+			elif r > 0.7:
+				loot = "stick"
+			player.inventory.add_item(loot)
+			Game.hud.toast("Gefangen: %s!" % ItemDB.display_name(loot))
+			Sfx.play("pop")
+			if player.inventory.damage_selected():
+				Game.hud.toast("Angel zerbrochen!")
+		_stop_fishing()
+		return
+	# Auswerfen: Wasser in Blickrichtung suchen
+	var dir := -player.camera.global_transform.basis.z
+	var hit := _voxel_raycast(player.camera.global_position, dir, 8.0, true)
+	if hit.is_empty() or not hit.has("water"):
+		Game.hud.toast("Kein Wasser in Reichweite.")
+		return
+	_fishing = true
+	_bite_timer = randf_range(3.0, 8.0)
+	_bite_window = 0.0
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.18, 0.18, 0.18)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.9, 0.25, 0.2)
+	mesh.material = mat
+	_bobber = MeshInstance3D.new()
+	_bobber.mesh = mesh
+	Game.world.add_child(_bobber)
+	_bobber.global_position = Vector3(hit.pos as Vector3i) + Vector3(0.5, 0.95, 0.5)
+
+
+func _stop_fishing() -> void:
+	_fishing = false
+	if _bobber != null:
+		_bobber.queue_free()
+		_bobber = null
+
+
+func _tick_fishing(delta: float) -> void:
+	if not _fishing:
+		return
+	# Angel weggelegt? -> einholen ohne Fang
+	if player.inventory.selected_id() != "fishing_rod":
+		_stop_fishing()
+		return
+	if _bite_window > 0.0:
+		_bite_window -= delta
+		if _bite_window <= 0.0:
+			_bobber.position.y += 0.25  # Fisch wieder weg
+			_bite_timer = randf_range(3.0, 8.0)
+	else:
+		_bobber.position.y += sin(Time.get_ticks_msec() / 300.0) * 0.0015
+		_bite_timer -= delta
+		if _bite_timer <= 0.0:
+			_bite_window = 1.5  # Biss! Kurz Zeit zum Einholen
+			_bobber.position.y -= 0.25
+			Sfx.play_at("pop", _bobber.global_position)
 
 
 ## Blickrichtung als Index 0=N(-z) 1=O(+x) 2=S(+z) 3=W(-x).

@@ -54,6 +54,7 @@ func take_damage(amount: float, from_dir: Vector3) -> void:
 		create_tween().tween_property(mat, "albedo_color", base, 0.25)
 	_on_damaged(from_dir)
 	if health <= 0.0:
+		Game.stats.mobs_killed += 1
 		_on_death()
 		queue_free()
 

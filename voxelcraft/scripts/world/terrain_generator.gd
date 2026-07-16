@@ -15,6 +15,7 @@ var detail_noise := FastNoiseLite.new()  # feine Unebenheiten
 var biome_noise := FastNoiseLite.new()   # "Temperatur" -> Biomwahl
 var cave_noise := FastNoiseLite.new()    # 3D-Rauschen fuer Hoehlen
 var ore_noise := FastNoiseLite.new()     # 3D-Rauschen fuer Erz-Adern
+var cavern_noise := FastNoiseLite.new()  # grosse Kavernen in der Tiefe
 
 
 func _init(s: int) -> void:
@@ -35,6 +36,9 @@ func _init(s: int) -> void:
 	ore_noise.seed = s + 404
 	ore_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	ore_noise.frequency = 0.11
+	cavern_noise.seed = s + 505
+	cavern_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	cavern_noise.frequency = 0.018
 
 
 func biome_at(wx: int, wz: int) -> int:
@@ -103,10 +107,12 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 						id = BlockDB.IRON_ORE
 					elif y >= 8 and ore > 0.6:
 						id = BlockDB.COAL_ORE
-				# Hoehlen ausgraben (nicht durch Grundgestein)
+				# Hoehlen + grosse Kavernen ausgraben (nicht durch Grundgestein);
+				# tief unten sammelt sich Lava in den Hohlraeumen
 				if id != BlockDB.BEDROCK and y > bedrock_top and y < h - 1:
-					if cave_noise.get_noise_3d(wx, y, wz) > 0.58:
-						id = BlockDB.AIR
+					if cave_noise.get_noise_3d(wx, y, wz) > 0.58 \
+							or (y < 40 and cavern_noise.get_noise_3d(wx, y, wz) > 0.66):
+						id = BlockDB.LAVA if y < 13 else BlockDB.AIR
 				data[col + y] = id
 
 			# Wasser bis zur Meereshoehe auffuellen
@@ -117,8 +123,57 @@ func generate_chunk(cpos: Vector2i) -> Dictionary:
 	max_y = maxi(max_y, _plant_trees(cpos, data))
 	max_y = maxi(max_y, _plant_vegetation(cpos, data))
 	_carve_dungeon(cpos, data)
-	return {"data": data, "max_y": max_y,
+	var village := _build_village_hut(cpos, data)
+	if village.y > 0:
+		max_y = maxi(max_y, village.y + 6)
+	return {"data": data, "max_y": max_y, "village": village,
 		"light": LightEngine.compute_skylight(data, max_y)}
+
+
+## Selten auf flachen Wiesen: kleine Holzhuette mit Fenster, Fackel und
+## (manchmal) Loot-Truhe. Rueckgabe: Position vor der Tuer fuer den Haendler,
+## Vector3i.ZERO wenn kein Dorf entstand.
+func _build_village_hut(cpos: Vector2i, data: PackedByteArray) -> Vector3i:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _hash2(cpos.x * 73 + 11, cpos.y * 97 + 3)
+	if rng.randf() > 0.015:
+		return Vector3i.ZERO
+	var ox := 3 + rng.randi() % 6
+	var oz := 3 + rng.randi() % 6
+	var wx := cpos.x * Chunk.SIZE + ox
+	var wz := cpos.y * Chunk.SIZE + oz
+	if biome_at(wx, wz) != Biome.PLAINS:
+		return Vector3i.ZERO
+	# Gelaende muss halbwegs eben sein
+	var h := height_at(wx, wz)
+	if h <= SEA_LEVEL + 1:
+		return Vector3i.ZERO
+	for dx in 5:
+		for dz in 5:
+			if absi(height_at(wx + dx, wz + dz) - h) > 1:
+				return Vector3i.ZERO
+	# Huette 5x5, 3 hoch: Boden, Waende mit Fenster + Tueroeffnung, Flachdach
+	for dx in 5:
+		for dz in 5:
+			data[Chunk.index(ox + dx, h, oz + dz)] = BlockDB.PLANKS       # Boden
+			data[Chunk.index(ox + dx, h + 4, oz + dz)] = BlockDB.SLAB_PLANK  # Dach
+			for dy in range(1, 4):
+				var i := Chunk.index(ox + dx, h + dy, oz + dz)
+				var wall := dx == 0 or dx == 4 or dz == 0 or dz == 4
+				if not wall:
+					data[i] = BlockDB.AIR
+				elif (dx == 0 or dx == 4) and (dz == 0 or dz == 4):
+					data[i] = BlockDB.LOG                                 # Eckpfosten
+				elif dz == 0 and dx == 2 and dy < 3:
+					data[i] = BlockDB.AIR                                 # Tueroeffnung
+				elif dy == 2 and (dx == 2 or dz == 2):
+					data[i] = BlockDB.GLASS                               # Fenster
+				else:
+					data[i] = BlockDB.PLANKS
+	data[Chunk.index(ox + 3, h + 2, oz + 3)] = BlockDB.TORCH  # Licht innen
+	if rng.randf() < 0.5:
+		data[Chunk.index(ox + 1, h + 1, oz + 3)] = BlockDB.CHEST  # Loot beim Oeffnen
+	return Vector3i(cpos.x * Chunk.SIZE + ox + 2, h + 1, cpos.y * Chunk.SIZE + oz - 1)
 
 
 ## Deko-Vegetation: hohes Gras + Blumen auf Wiesen, Kakteen in der Wueste.
@@ -141,6 +196,10 @@ func _plant_vegetation(cpos: Vector2i, data: PackedByteArray) -> int:
 					data[above] = BlockDB.TALL_GRASS
 				elif r < 0.095:
 					data[above] = BlockDB.FLOWER_RED if rng.randf() < 0.5 else BlockDB.FLOWER_YELLOW
+				elif r < 0.099:
+					data[above] = BlockDB.MUSHROOM_BROWN if rng.randf() < 0.6 else BlockDB.MUSHROOM_RED
+				elif r < 0.101 and biome_at(wx, wz) == Biome.PLAINS:
+					data[above] = BlockDB.PUMPKIN
 				else:
 					continue
 				max_y = maxi(max_y, h + 1)

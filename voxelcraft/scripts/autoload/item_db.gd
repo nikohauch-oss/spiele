@@ -64,6 +64,11 @@ func _ready() -> void:
 	_reg({"id": "door", "name": "Tuer"})  # platziert 2 Zellen (kein Block-Item)
 	_reg({"id": "compass", "name": "Kompass", "max_stack": 1})
 	_reg({"id": "clock", "name": "Uhr", "max_stack": 1})
+	_reg({"id": "string", "name": "Faden"})  # Spinnen-Drop
+	_reg({"id": "fishing_rod", "name": "Angel", "durability": 60, "max_stack": 1})
+	_reg({"id": "fish_raw", "name": "Roher Fisch", "food": 2})
+	_reg({"id": "fish_cooked", "name": "Gebratener Fisch", "food": 6})
+	_reg({"id": "mushroom_stew", "name": "Pilzsuppe", "food": 6, "max_stack": 8})
 
 	# --- Ruestung: [Prefix, Anzeigename, Haltbarkeit, Punkte je Teil] ---
 	for a in [["leather", "Leder", 60, [1, 3, 2, 1]], ["iron", "Eisen", 160, [2, 6, 5, 2]],
@@ -393,6 +398,27 @@ func _paint_icon(id: String, d: Dictionary) -> Image:
 				_px(img, 8, 6 + i, Color(0.2, 0.2, 0.25))  # Zeiger
 			_px(img, 9, 9, Color(0.2, 0.2, 0.25))
 			_px(img, 10, 9, Color(0.2, 0.2, 0.25))
+		"string":
+			for i in 11:
+				_px(img, 3 + i, 8 + int(sin(i * 0.9) * 2.5), Color(0.9, 0.9, 0.85))
+		"fishing_rod":
+			for i in 9:
+				_px(img, 3 + i, 13 - i, wood)  # Rute
+			for y in range(4, 10):
+				_px(img, 12, y, Color(0.9, 0.9, 0.85))  # Schnur
+			_px(img, 12, 10, Color(0.9, 0.2, 0.15))  # Schwimmer
+		"fish_raw", "fish_cooked":
+			var fc := Color(0.6, 0.7, 0.8) if id == "fish_raw" else Color(0.75, 0.55, 0.3)
+			_blob(img, fc, 4)
+			_px(img, 3, 9, fc.darkened(0.2))  # Schwanzflosse
+			_px(img, 2, 8, fc.darkened(0.2))
+			_px(img, 2, 10, fc.darkened(0.2))
+		"mushroom_stew":
+			for x in range(4, 12):
+				for y in range(8, 12):
+					_px(img, x, y, Color(0.6, 0.45, 0.3))  # Schuessel
+			for x in range(5, 11):
+				_px(img, x, 8, Color(0.75, 0.45, 0.35))  # Suppe
 		"bow":
 			var string_c := Color(0.85, 0.85, 0.78)
 			for pt in [[5, 2], [4, 3], [3, 4], [3, 6], [3, 8], [3, 10], [4, 11], [5, 12]]:

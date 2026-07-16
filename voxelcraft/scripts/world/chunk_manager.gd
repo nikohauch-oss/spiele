@@ -280,7 +280,8 @@ func _worker_loop() -> void:
 		if job.type == "data":
 			var g := generator.generate_chunk(job.cpos)
 			res = {"type": "data", "cpos": job.cpos, "data": g.data,
-				"light": g.light, "max_y": g.max_y}
+				"light": g.light, "max_y": g.max_y,
+				"village": g.get("village", Vector3i.ZERO)}
 		else:
 			res = {"type": "mesh", "cpos": job.cpos,
 				"result": ChunkMesher.build(job.data, job.light,
@@ -313,6 +314,10 @@ func _apply_data(res: Dictionary) -> void:
 		return  # z. B. aus Spielstand geladen -> gespeicherte Daten behalten
 	chunks[res.cpos] = {"data": res.data, "light": res.light, "max_y": res.max_y,
 		"edited": false, "dirty": false, "node": null}
+	# Haendler am frisch generierten Dorf anmelden
+	var village: Vector3i = res.get("village", Vector3i.ZERO)
+	if village != Vector3i.ZERO:
+		Game.register_village(village)
 
 
 func _apply_mesh(res: Dictionary) -> void:

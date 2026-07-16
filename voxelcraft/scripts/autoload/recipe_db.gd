@@ -13,11 +13,14 @@ var smelting := {
 	"porkchop_raw": {"result": "porkchop_cooked", "time": 6.0},
 	"beef_raw": {"result": "steak", "time": 6.0},
 	"chicken_raw": {"result": "chicken_cooked", "time": 6.0},
+	"fish_raw": {"result": "fish_cooked", "time": 6.0},
 	"sand": {"result": "glass", "time": 6.0},
 }
 
 var shapeless := [
 	{"items": ["log"], "result": "planks", "count": 4},
+	{"items": ["pumpkin", "torch"], "result": "jack_lantern", "count": 1},
+	{"items": ["mushroom_brown", "mushroom_red"], "result": "mushroom_stew", "count": 1},
 ]
 
 var shaped := [
@@ -29,6 +32,10 @@ var shaped := [
 	# Blaetter ersetzen Wolle/Faden (mit der Axt von Baeumen ernten)
 	{"pattern": ["LLL", "PPP"], "key": {"L": "leaves", "P": "planks"}, "result": "bed", "count": 1},
 	{"pattern": [" SL", "S L", " SL"], "key": {"S": "stick", "L": "leaves"}, "result": "bow", "count": 1},
+	# Mit echtem Faden (Spinnen) - der klassische Weg
+	{"pattern": [" SF", "S F", " SF"], "key": {"S": "stick", "F": "string"}, "result": "bow", "count": 1},
+	{"pattern": ["  S", " SF", "S F"], "key": {"S": "stick", "F": "string"},
+		"result": "fishing_rod", "count": 1},
 	{"pattern": ["F", "S", "L"], "key": {"F": "stone", "S": "stick", "L": "leaves"},
 		"result": "arrow", "count": 4},
 	# Mit echter Feder (Huhn) gibt es mehr Pfeile

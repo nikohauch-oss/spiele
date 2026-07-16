@@ -96,7 +96,11 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 					v_count = _add_fence(st, x, y, z, light[col_base + y],
 						data, neighbors, v_count)
 					continue
-				var is_water := id == BlockDB.WATER
+				if id == BlockDB.MUSHROOM_BROWN or id == BlockDB.MUSHROOM_RED:
+					d_count = _add_cross(st_deco, x, y, z, id, light[col_base + y], d_count)
+					continue
+				# Lava verhaelt sich beim Rendern wie Wasser (leuchtet ueber emits)
+				var is_water := id == BlockDB.WATER or id == BlockDB.LAVA
 				var is_glass := id == BlockDB.GLASS
 				for f: Dictionary in FACES:
 					var n: Vector3i = f.n
@@ -105,8 +109,8 @@ static func build(data: PackedByteArray, light: PackedByteArray,
 					var nz := z + n.z
 					var nb := _block_at(nx, ny, nz, data, neighbors)
 					if is_water:
-						# Wasserflaechen gegen Luft/Deko, nie gegen Wasser/Feste
-						if BlockDB.is_solid(nb) or nb == BlockDB.WATER:
+						# Fluidflaechen gegen Luft/Deko, nie gegen Fluide/Feste
+						if BlockDB.is_solid(nb) or nb == BlockDB.WATER or nb == BlockDB.LAVA:
 							continue
 					elif is_glass:
 						# Glas gegen Durchsichtiges, aber nicht Glas-an-Glas
