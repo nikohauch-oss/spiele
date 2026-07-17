@@ -1,8 +1,9 @@
 -- ============================================================
--- Baut die komplette Welt per Code:
--- Stadt (Haeuser, Wege, Laternen, Brunnen), Monster-Center,
--- Labor mit Startern, Shop, Farm-Gelaende, Routen mit hohem
--- Gras, See mit Bruecke, Tag/Nacht-Wechsel, Musik.
+-- Baut die komplette Welt per Code - im VOXEL-STIL:
+-- Wuerfel-Baeume, Ziegelwege, Backstein-Haeuser mit
+-- Stufen-Daechern, leuchtenden Fenstern und Neon-Schildern,
+-- Lattenzaeune, Routen mit hohem Gras, See mit Bruecke,
+-- Tag/Nacht-Wechsel und moderne Licht-Effekte.
 -- ============================================================
 
 local Lighting = game:GetService("Lighting")
@@ -19,8 +20,8 @@ local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local WorldBuilder = {}
 
 local MAP_HALF = 450
-local DAY_LENGTH = 480 -- Sekunden fuer einen ganzen Tag
-local MUSIC_ID = 0 -- Eigene Musik? Audio-ID hier eintragen (0 = aus)
+local DAY_LENGTH = 480
+local MUSIC_ID = 0 -- Eigene Musik? Audio-ID eintragen (0 = aus)
 
 local rng = Random.new(1234567)
 local folder = nil
@@ -64,7 +65,14 @@ local function c3(r, g, b)
 	return Color3.fromRGB(r, g, b)
 end
 
--- ---------- NPC-Figur (auch fuer Trainer/Farmer) ----------
+local function shade(color, amount)
+	if amount >= 0 then
+		return color:Lerp(Color3.new(1, 1, 1), amount)
+	end
+	return color:Lerp(Color3.new(0, 0, 0), -amount)
+end
+
+-- ---------- NPC-Figur ----------
 
 function WorldBuilder.MakeNpc(opts)
 	local model = Instance.new("Model")
@@ -95,17 +103,17 @@ function WorldBuilder.MakeNpc(opts)
 	np({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.22, 0.22, 0.22), Color = c3(25, 25, 30), Name = "AugeR" }, CFrame.new(0.32, 2.05, -0.75))
 
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(220, 44)
+	billboard.Size = UDim2.fromOffset(220, 40)
 	billboard.StudsOffset = Vector3.new(0, 2.4, 0)
 	billboard.MaxDistance = 90
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
+	label.Font = Enum.Font.Arcade
 	label.TextScaled = true
 	label.Text = opts.name
 	label.TextColor3 = c3(255, 255, 255)
-	label.TextStrokeTransparency = 0.2
+	label.TextStrokeTransparency = 0.15
 	label.Parent = billboard
 	billboard.Parent = head
 
@@ -124,124 +132,107 @@ function WorldBuilder.MakeNpc(opts)
 	return model
 end
 
--- ---------- Gebaeude ----------
+-- ---------- Ziegelwege ----------
 
--- Baut ein MODERNES Haus: Flachdach mit Ueberstand, grosse
--- Glasfronten, Sockel, Vordach und Akzentwand.
--- Front = lokale -Z-Richtung (yaw drehen).
--- opts: pos, w, d, h, yaw, wallColor, roofColor (= Akzentfarbe),
---       name, enterable, furnish
-local function makeBuilding(opts)
-	local w, d, h = opts.w, opts.d, opts.h
-	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
-	local wall = opts.wallColor
-	local accent = opts.roofColor
-	local dark = c3(48, 50, 56) -- Anthrazit fuer Dach & Rahmen
-	local glass = c3(160, 205, 240)
-	local wt = 0.8 -- Wanddicke
-	local doorW, doorH = 6, 7
+local TAN = c3(206, 152, 96)
 
-	local function bp(props, cf, parent)
-		local p = part(props, parent)
-		p.CFrame = base * cf
-		return p
-	end
-
-	-- Sockel + Innenboden
-	bp({ Size = Vector3.new(w + 1.6, 0.5, d + 1.6), Color = c3(125, 125, 130), Material = Enum.Material.Concrete }, CFrame.new(0, 0.25, 0))
-	bp({ Size = Vector3.new(w - 1, 0.3, d - 1), Color = c3(215, 200, 175), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.6, 0))
-	-- Rueckwand als Akzent-Holzpaneel
-	bp({ Size = Vector3.new(w, h, wt), Color = accent, Material = Enum.Material.WoodPlanks }, CFrame.new(0, h / 2, d / 2 - wt / 2))
-	-- Seitenwaende: unten/oben Wandband, dazwischen grosses Glasband
-	local glassH = h - 3.4
-	for _, sx in ipairs({ -1, 1 }) do
-		local x = sx * (w / 2 - wt / 2)
-		bp({ Size = Vector3.new(wt, 1.8, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, 0.9, 0))
-		bp({ Size = Vector3.new(wt, 1.6, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, h - 0.8, 0))
-		bp({ Size = Vector3.new(wt, glassH, d - 2.8), Color = glass, Material = Enum.Material.Glass, Transparency = 0.45 },
-			CFrame.new(x, 1.8 + glassH / 2, 0))
-		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, -d / 2 + 0.7))
-		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, d / 2 - 0.7))
-		bp({ Size = Vector3.new(wt + 0.1, glassH, 0.35), Color = dark }, CFrame.new(x, 1.8 + glassH / 2, 0))
-	end
-	-- Frontwand mit Tueroeffnung + grossem Panoramafenster
-	local sideW = (w - doorW) / 2
-	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
-	local winW = math.max(2, sideW - 2.4)
-	bp({ Size = Vector3.new(winW, h - 4.4, 0.5), Color = glass, Material = Enum.Material.Glass, Transparency = 0.4 },
-		CFrame.new((doorW + sideW) / 2, 2 + (h - 4.4) / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, h - 2.4, -d / 2 + wt / 2))
-	-- Tuerrahmen (dunkel, modern)
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.25), Color = dark }, CFrame.new(0, doorH, -d / 2 + wt / 2))
-	-- Geschlossene Glastuer, falls nicht betretbar
-	if not opts.enterable then
-		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(70, 85, 100), Material = Enum.Material.Glass, Transparency = 0.25 },
-			CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
-		bp({ Size = Vector3.new(0.25, doorH - 0.2, 0.5), Color = dark }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
-	end
-	-- Vordach ueber der Tuer
-	bp({ Size = Vector3.new(doorW + 2.6, 0.35, 3.4), Color = accent, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, doorH + 0.55, -d / 2 - 1.3))
-	-- Flachdach mit Ueberstand + Akzentblende
-	bp({ Size = Vector3.new(w + 2.6, 0.55, d + 2.6), Color = dark, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, h + 0.28, 0))
-	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, -(d / 2 + 1.05)))
-	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, d / 2 + 1.05))
-	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(-(w / 2 + 1.05), h - 0.05, 0))
-	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(w / 2 + 1.05, h - 0.05, 0))
-	-- Pflanzkuebel neben dem Eingang
-	for _, sx in ipairs({ -1, 1 }) do
-		bp({ Size = Vector3.new(1.6, 1.2, 1.6), Color = c3(110, 110, 115), Material = Enum.Material.Concrete }, CFrame.new(sx * (doorW / 2 + 2.2), 0.6, -d / 2 - 1.6))
-		bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.6, 1.8), Color = c3(85, 165, 85), Material = Enum.Material.Grass, CanCollide = false },
-			CFrame.new(sx * (doorW / 2 + 2.2), 1.8, -d / 2 - 1.6))
-	end
-
-	-- Schild ueber der Tuer
-	if opts.name then
-		local sign = bp({ Size = Vector3.new(9, 1.8, 0.4), Color = c3(245, 240, 225) }, CFrame.new(0, doorH + 1.6, -d / 2 - 0.3))
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 40
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, 0, 1, 0)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.TextScaled = true
-		label.Text = opts.name
-		label.TextColor3 = c3(60, 45, 30)
-		label.Parent = gui
-		gui.Parent = sign
-	end
-
-	-- Einfache Moebel
-	if opts.furnish then
-		-- Bett
-		bp({ Size = Vector3.new(4, 1, 6.5), Color = c3(150, 100, 60), Material = Enum.Material.Wood }, CFrame.new(-w / 2 + 3, 0.9, d / 2 - 4.5))
-		bp({ Size = Vector3.new(3.6, 0.6, 6.1), Color = c3(230, 230, 240) }, CFrame.new(-w / 2 + 3, 1.6, d / 2 - 4.5))
-		bp({ Size = Vector3.new(3, 0.5, 1.6), Color = c3(255, 150, 160) }, CFrame.new(-w / 2 + 3, 2.05, d / 2 - 2.4))
-		-- Tisch + Stuehle
-		bp({ Size = Vector3.new(4, 0.4, 4), Color = c3(170, 120, 70), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 4.5, 2.4, d / 2 - 5))
-		bp({ Size = Vector3.new(0.5, 2.2, 0.5), Color = c3(140, 95, 55) }, CFrame.new(w / 2 - 4.5, 1.1, d / 2 - 5))
-		for _, off in ipairs({ { -3, 0 }, { 3, 0 } }) do
-			bp({ Size = Vector3.new(1.8, 0.4, 1.8), Color = c3(190, 140, 90) }, CFrame.new(w / 2 - 4.5 + off[1], 1.4, d / 2 - 5 + off[2]))
-			bp({ Size = Vector3.new(0.4, 1.4, 0.4), Color = c3(160, 115, 70) }, CFrame.new(w / 2 - 4.5 + off[1], 0.7, d / 2 - 5 + off[2]))
-		end
-		-- Teppich
-		bp({ Size = Vector3.new(6, 0.12, 5), Color = c3(200, 90, 90), Material = Enum.Material.Fabric }, CFrame.new(0, 0.46, -d * 0.1))
-		-- Regal
-		bp({ Size = Vector3.new(3.5, 4.5, 1), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 2.6, 2.65, -d / 2 + 3))
-	end
-
-	return base
+local function pathTile(x, z, size)
+	part({
+		Size = Vector3.new(size, 0.3, size),
+		Color = shade(TAN, rng:NextNumber(-0.09, 0.06)),
+		Material = Enum.Material.Brick,
+		CanCollide = false, CanQuery = false, CanTouch = false,
+		CFrame = CFrame.new(x, 0.1, z),
+	})
 end
 
--- ---------- Stadt-Deko ----------
+-- Gerader Ziegelweg (Achse X oder Z), mit verstreuten Rand-Ziegeln
+local function brickPath(x1, z1, x2, z2, width)
+	local step = 4
+	local tile = 3.7
+	local alongX = math.abs(x2 - x1) >= math.abs(z2 - z1)
+	local a1 = alongX and math.min(x1, x2) or math.min(z1, z2)
+	local a2 = alongX and math.max(x1, x2) or math.max(z1, z2)
+	local rows = math.max(1, math.floor(width / step))
+	local mid = alongX and z1 or x1
+	for a = a1, a2, step do
+		for r = 0, rows - 1 do
+			local off = mid + (r - (rows - 1) / 2) * step
+			if alongX then
+				pathTile(a, off, tile)
+			else
+				pathTile(off, a, tile)
+			end
+		end
+		-- Verstreute Ziegel am Rand (wie im Vorbild)
+		if rng:NextNumber() < 0.3 then
+			local side = (rng:NextInteger(0, 1) * 2 - 1) * (rows / 2 + 0.7) * step
+			if alongX then
+				pathTile(a, mid + side, tile * 0.65)
+			else
+				pathTile(mid + side, a, tile * 0.65)
+			end
+		end
+	end
+end
 
--- Moderne Laterne: schlanker dunkler Mast mit flachem Leuchtpanel
+-- ---------- Voxel-Deko ----------
+
+local function makeTree(x, z)
+	part({ Size = Vector3.new(1.8, 3.2, 1.8), Color = c3(122, 82, 52), CFrame = CFrame.new(x, 1.6, z) })
+	part({ Size = Vector3.new(1.5, 2.6, 1.5), Color = c3(102, 68, 44), CanCollide = false, CanQuery = false, CFrame = CFrame.new(x, 4.4, z) })
+	local baseGreen = c3(58 + rng:NextInteger(0, 26), 148 + rng:NextInteger(0, 42), 58 + rng:NextInteger(0, 22))
+	local blocks = {
+		{ 0, 7.2, 0, 5.6 },
+		{ 2.4, 6.4, 1.0, 3.8 },
+		{ -2.3, 6.7, -1.2, 3.4 },
+		{ 1.0, 8.8, -0.6, 3.6 },
+		{ -1.2, 6.2, 2.1, 3.1 },
+		{ 0.4, 9.6, 1.2, 2.6 },
+	}
+	for _, o in ipairs(blocks) do
+		local s = o[4] * rng:NextNumber(0.85, 1.1)
+		part({
+			Size = Vector3.new(s, s * 0.85, s),
+			Color = shade(baseGreen, rng:NextNumber(-0.1, 0.09)),
+			CanCollide = false, CanQuery = false, CanTouch = false,
+			CFrame = CFrame.new(x + o[1] * rng:NextNumber(0.75, 1.2), o[2], z + o[3] * rng:NextNumber(0.75, 1.2)),
+		})
+	end
+end
+
+local function makeBush(x, z)
+	local green = c3(66, 150, 70)
+	part({ Size = Vector3.new(3, 2.2, 3), Color = shade(green, rng:NextNumber(-0.06, 0.06)), CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(x, 1, z) })
+	part({ Size = Vector3.new(2, 1.6, 2), Color = shade(green, 0.08), CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(x + 1.2, 0.8, z + 0.8) })
+end
+
+local function makeRock(x, z, size)
+	part({
+		Size = Vector3.new(size, size * 0.7, size * 0.9),
+		Color = c3(138, 138, 144), Material = Enum.Material.Slate,
+		CFrame = CFrame.new(x, size * 0.3, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0),
+	})
+	part({
+		Size = Vector3.new(size * 0.5, size * 0.4, size * 0.5),
+		Color = c3(120, 120, 126), Material = Enum.Material.Slate,
+		CFrame = CFrame.new(x + size * 0.4, size * 0.55, z - size * 0.2) * CFrame.Angles(0, rng:NextNumber(0, 3), 0),
+	})
+end
+
+local function picketFence(x, z, length, alongX)
+	local white = c3(242, 242, 242)
+	local count = math.floor(length / 2.2)
+	for i = 0, count do
+		local off = -length / 2 + i * 2.2
+		local px = alongX and (x + off) or x
+		local pz = alongX and z or (z + off)
+		part({ Size = Vector3.new(0.35, 1.9, 0.35), Color = white, CFrame = CFrame.new(px, 0.95, pz) })
+	end
+	local railSize = alongX and Vector3.new(length, 0.3, 0.22) or Vector3.new(0.22, 0.3, length)
+	part({ Size = railSize, Color = white, CFrame = CFrame.new(x, 1.3, z) })
+end
+
 local function makeLamp(x, z)
 	part({ Size = Vector3.new(0.45, 8, 0.45), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 4, z) })
 	part({ Size = Vector3.new(2.2, 0.3, 1.0), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 8.15, z) })
@@ -268,38 +259,11 @@ local function makeFlowerbed(x, z)
 	local colors = { c3(245, 120, 140), c3(255, 205, 80), c3(160, 130, 240), c3(255, 255, 255) }
 	for i = 1, 8 do
 		part({
-			Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7),
-			Color = colors[(i % #colors) + 1], CanCollide = false,
+			Size = Vector3.new(0.6, 0.6, 0.6),
+			Color = colors[(i % #colors) + 1], CanCollide = false, CanQuery = false, CanTouch = false,
 			CFrame = CFrame.new(x + rng:NextNumber(-2.8, 2.8), 0.9, z + rng:NextNumber(-1.4, 1.4)),
 		})
 	end
-end
-
-local function makeTree(x, z)
-	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(7, 1.8, 1.8), Color = c3(105, 70, 45), Material = Enum.Material.Wood, CFrame = uprightCyl(x, 3.5, z) })
-	local size = rng:NextNumber(7, 11)
-	part({
-		Shape = Enum.PartType.Ball, Size = Vector3.new(size, size * 0.9, size),
-		Color = c3(60 + rng:NextInteger(0, 40), 140 + rng:NextInteger(0, 40), 60 + rng:NextInteger(0, 30)),
-		Material = Enum.Material.Grass, CanCollide = false,
-		CFrame = CFrame.new(x, 7 + size * 0.2, z),
-	})
-end
-
-local function makeBush(x, z)
-	part({
-		Shape = Enum.PartType.Ball, Size = Vector3.new(3.4, 2.6, 3.4),
-		Color = c3(70, 150, 75), Material = Enum.Material.Grass, CanCollide = false,
-		CFrame = CFrame.new(x, 1.2, z),
-	})
-end
-
-local function makeRock(x, z, size)
-	part({
-		Shape = Enum.PartType.Ball, Size = Vector3.new(size, size * 0.8, size),
-		Color = c3(140, 140, 145), Material = Enum.Material.Slate,
-		CFrame = CFrame.new(x, size * 0.25, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 3), 0),
-	})
 end
 
 local function makeFountain()
@@ -313,37 +277,136 @@ local function makeFountain()
 	light.Parent = top
 end
 
+-- ---------- Voxel-Backstein-Gebaeude ----------
+-- Front = lokale -Z-Richtung. opts: pos, w, d, h, yaw,
+-- wallColor (Backstein), roofColor, name, signColor,
+-- enterable, furnish
+
+local function makeBuilding(opts)
+	local w, d, h = opts.w, opts.d, opts.h
+	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
+	local wall = opts.wallColor or c3(198, 148, 104)
+	local roofColor = opts.roofColor
+	local dark = c3(45, 47, 53)
+	local glow = c3(150, 222, 255)
+	local wt = 0.8
+	local doorW, doorH = 6, 7
+
+	local function bp(props, cf)
+		local p = part(props)
+		p.CFrame = base * cf
+		return p
+	end
+
+	-- Sockel + Innenboden
+	bp({ Size = Vector3.new(w + 1.4, 0.5, d + 1.4), Color = c3(150, 150, 155), Material = Enum.Material.Concrete }, CFrame.new(0, 0.25, 0))
+	bp({ Size = Vector3.new(w - 1, 0.3, d - 1), Color = c3(212, 196, 168), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.6, 0))
+
+	-- Waende aus Backstein
+	bp({ Size = Vector3.new(w, h, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new(0, h / 2, d / 2 - wt / 2))
+	bp({ Size = Vector3.new(wt, h, d), Color = wall, Material = Enum.Material.Brick }, CFrame.new(-w / 2 + wt / 2, h / 2, 0))
+	bp({ Size = Vector3.new(wt, h, d), Color = wall, Material = Enum.Material.Brick }, CFrame.new(w / 2 - wt / 2, h / 2, 0))
+	local sideW = (w - doorW) / 2
+	bp({ Size = Vector3.new(sideW, h, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(sideW, h, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
+
+	-- Leuchtende Fenster (wie im Vorbild)
+	local function glowWindow(cf, wWin, hWin)
+		bp({ Size = Vector3.new(0.5, hWin + 0.6, wWin + 0.6), Color = dark }, cf)
+		bp({ Size = Vector3.new(0.7, hWin, wWin), Color = glow, Material = Enum.Material.Neon }, cf)
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		glowWindow(CFrame.new(sx * (w / 2 - wt / 2), h * 0.52, -d * 0.22), 3.2, 2.8)
+		glowWindow(CFrame.new(sx * (w / 2 - wt / 2), h * 0.52, d * 0.22), 3.2, 2.8)
+	end
+	-- Frontfenster (gedreht, damit es in der Frontwand liegt)
+	bp({ Size = Vector3.new(math.max(2.4, sideW - 2) + 0.6, 3.4, 0.5), Color = dark }, CFrame.new((doorW + sideW) / 2, h * 0.52, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(math.max(2.4, sideW - 2), 2.8, 0.7), Color = glow, Material = Enum.Material.Neon }, CFrame.new((doorW + sideW) / 2, h * 0.52, -d / 2 + wt / 2))
+
+	-- Tuerrahmen
+	bp({ Size = Vector3.new(0.6, doorH, wt + 0.3), Color = c3(90, 62, 40), Material = Enum.Material.Wood }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(0.6, doorH, wt + 0.3), Color = c3(90, 62, 40), Material = Enum.Material.Wood }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW + 1.2, 0.6, wt + 0.3), Color = c3(90, 62, 40), Material = Enum.Material.Wood }, CFrame.new(0, doorH, -d / 2 + wt / 2))
+	if not opts.enterable then
+		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(110, 72, 46), Material = Enum.Material.Wood }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+	end
+
+	-- Stufen-Dach im Voxel-Look
+	local depths = { d + 2.6, math.max(3, d * 0.6), math.max(2.4, d * 0.28) }
+	for i, depth in ipairs(depths) do
+		bp({
+			Size = Vector3.new(w + 2.6, 1.1, depth),
+			Color = shade(roofColor, -(i - 1) * 0.07),
+			Material = Enum.Material.SmoothPlastic,
+		}, CFrame.new(0, h + 0.55 + (i - 1) * 1.05, 0))
+	end
+
+	-- Neon-Schild ueber der Tuer
+	if opts.name then
+		local signColor = opts.signColor and c3(opts.signColor[1], opts.signColor[2], opts.signColor[3]) or c3(255, 255, 255)
+		local board = bp({ Size = Vector3.new(math.min(w, 12), 2.4, 0.5), Color = c3(24, 25, 30) }, CFrame.new(0, doorH + 2.1, -d / 2 - 0.3))
+		bp({ Size = Vector3.new(math.min(w, 12) + 0.4, 0.25, 0.55), Color = signColor, Material = Enum.Material.Neon }, CFrame.new(0, doorH + 0.85, -d / 2 - 0.3))
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 45
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.Arcade
+		label.TextScaled = true
+		label.Text = opts.name
+		label.TextColor3 = signColor
+		label.Parent = gui
+		gui.Parent = board
+	end
+
+	-- Moebel
+	if opts.furnish then
+		bp({ Size = Vector3.new(4, 1, 6.5), Color = c3(150, 100, 60), Material = Enum.Material.Wood }, CFrame.new(-w / 2 + 3, 1.2, d / 2 - 4.5))
+		bp({ Size = Vector3.new(3.6, 0.6, 6.1), Color = c3(230, 230, 240) }, CFrame.new(-w / 2 + 3, 1.9, d / 2 - 4.5))
+		bp({ Size = Vector3.new(3, 0.5, 1.6), Color = c3(255, 150, 160) }, CFrame.new(-w / 2 + 3, 2.35, d / 2 - 2.4))
+		bp({ Size = Vector3.new(4, 0.4, 4), Color = c3(170, 120, 70), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 4.5, 2.7, d / 2 - 5))
+		bp({ Size = Vector3.new(0.5, 2.2, 0.5), Color = c3(140, 95, 55) }, CFrame.new(w / 2 - 4.5, 1.4, d / 2 - 5))
+		for _, off in ipairs({ { -3, 0 }, { 3, 0 } }) do
+			bp({ Size = Vector3.new(1.8, 0.4, 1.8), Color = c3(190, 140, 90) }, CFrame.new(w / 2 - 4.5 + off[1], 1.7, d / 2 - 5 + off[2]))
+			bp({ Size = Vector3.new(0.4, 1.4, 0.4), Color = c3(160, 115, 70) }, CFrame.new(w / 2 - 4.5 + off[1], 1, d / 2 - 5 + off[2]))
+		end
+		bp({ Size = Vector3.new(6, 0.12, 5), Color = c3(200, 90, 90), Material = Enum.Material.Fabric }, CFrame.new(0, 0.82, -d * 0.1))
+		bp({ Size = Vector3.new(3.5, 4.5, 1), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 2.6, 2.95, -d / 2 + 3))
+	end
+
+	return base
+end
+
 -- ---------- Spezialgebaeude ----------
 
 local function buildMonsterCenter()
 	local base = makeBuilding({
 		pos = Vector3.new(-48, 0, -12), yaw = -90, w = 26, d = 20, h = 10,
-		wallColor = c3(245, 240, 235), roofColor = c3(210, 60, 60),
-		name = "Monster-Center", enterable = true,
+		wallColor = c3(228, 130, 145), roofColor = c3(185, 45, 60),
+		name = "MONSTER-CENTER", signColor = { 255, 90, 110 }, enterable = true,
 	})
 	local function bp(props, cf)
 		local p = part(props)
 		p.CFrame = base * cf
 		return p
 	end
-	-- Theke
 	bp({ Size = Vector3.new(10, 3, 2), Color = c3(225, 120, 130) }, CFrame.new(0, 1.5, 5))
 	local counterTop = bp({ Size = Vector3.new(10.6, 0.4, 2.6), Color = c3(250, 250, 250) }, CFrame.new(0, 3.2, 5))
-	-- Heil-Ring ueber der Theke (leuchtet beim Heilen)
 	healRing = bp({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 6, 6), Color = c3(140, 230, 170), Material = Enum.Material.Neon, Transparency = 0.85, CanCollide = false }, CFrame.new(0, 6.5, 4) * CFrame.Angles(0, 0, math.rad(90)))
 	healLight = Instance.new("PointLight")
 	healLight.Color = c3(140, 230, 170)
 	healLight.Range = 18
 	healLight.Brightness = 0
 	healLight.Parent = healRing
-	-- Schwester hinter der Theke
 	local counterWorld = base * CFrame.new(0, 0, 7.5)
 	local frontWorld = base * CFrame.new(0, 0, -5)
 	WorldBuilder.MakeNpc({
 		name = "Schwester Amara", shirt = { 245, 160, 180 }, hair = { 250, 190, 120 },
 		pos = counterWorld.Position, faceTo = frontWorld.Position,
 	})
-	-- Heil-Prompt an der Theke
 	local healPrompt = Instance.new("ProximityPrompt")
 	healPrompt.ActionText = "Heilen"
 	healPrompt.ObjectText = "Team heilen (kostenlos)"
@@ -360,7 +423,6 @@ local function buildMonsterCenter()
 		PlayerData.Notify(player, "Dein Team wurde vollständig geheilt!", "heal")
 		WorldBuilder.PlayHealEffect()
 	end)
-	-- PC mit Box-System
 	local pc = bp({ Size = Vector3.new(3, 4.5, 2), Color = c3(120, 125, 140), Material = Enum.Material.Metal }, CFrame.new(-9, 2.25, 6.5))
 	bp({ Size = Vector3.new(2.4, 1.8, 0.3), Color = c3(120, 230, 255), Material = Enum.Material.Neon }, CFrame.new(-9, 3.4, 5.4))
 	local pcPrompt = Instance.new("ProximityPrompt")
@@ -374,23 +436,21 @@ local function buildMonsterCenter()
 	pcPrompt.Triggered:Connect(function(player)
 		OpenUi:FireClient(player, "box")
 	end)
-	-- Pflanzen
-	bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2.4, 2), Color = c3(80, 170, 90), CanCollide = false }, CFrame.new(9, 2.6, 7))
+	bp({ Size = Vector3.new(2, 2.4, 2), Color = c3(80, 170, 90), CanCollide = false }, CFrame.new(9, 2.6, 7))
 	bp({ Size = Vector3.new(1.4, 1.4, 1.4), Color = c3(200, 120, 80) }, CFrame.new(9, 0.9, 7))
 end
 
 local function buildLab()
 	local base = makeBuilding({
 		pos = Vector3.new(46, 0, -16), yaw = 90, w = 26, d = 20, h = 10,
-		wallColor = c3(250, 235, 180), roofColor = c3(230, 180, 60),
-		name = "Labor", enterable = true,
+		wallColor = c3(205, 170, 120), roofColor = c3(230, 180, 60),
+		name = "LABOR", signColor = { 255, 210, 80 }, enterable = true,
 	})
 	local function bp(props, cf)
 		local p = part(props)
 		p.CFrame = base * cf
 		return p
 	end
-	-- Professor hinten im Labor
 	local profWorld = base * CFrame.new(0, 0, 7)
 	local frontWorld = base * CFrame.new(0, 0, -6)
 	WorldBuilder.MakeNpc({
@@ -408,20 +468,17 @@ local function buildLab()
 			end,
 		},
 	})
-	-- 3 Tische mit Starter-Figuren
 	local StarterAsk = Remotes.Get("StarterAsk")
 	local xOffsets = { -7, 0, 7 }
 	for i, speciesId in ipairs(GameData.Starters) do
 		local tableCf = CFrame.new(xOffsets[i], 0, 1)
 		bp({ Size = Vector3.new(4.5, 2.6, 4.5), Color = c3(200, 205, 215) }, tableCf * CFrame.new(0, 1.3, 0))
 		local top = bp({ Size = Vector3.new(5, 0.4, 5), Color = c3(240, 240, 245) }, tableCf * CFrame.new(0, 2.8, 0))
-		-- Figur auf dem Tisch
 		local figure = MonsterFactory.Create(speciesId, 0.55)
 		local worldTop = (base * tableCf * CFrame.new(0, 3, 0)).Position
 		local lookWorld = (base * CFrame.new(xOffsets[i], 0, -10)).Position
 		MonsterFactory.PlaceOnGround(figure, worldTop, lookWorld)
 		figure.Parent = folder
-		-- Prompt
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Wählen"
 		prompt.ObjectText = GameData.Species[speciesId].name
@@ -444,8 +501,8 @@ end
 local function buildShop()
 	local base = makeBuilding({
 		pos = Vector3.new(-44, 0, 36), yaw = -90, w = 22, d = 18, h = 9,
-		wallColor = c3(235, 240, 250), roofColor = c3(70, 110, 220),
-		name = "Markt", enterable = true,
+		wallColor = c3(150, 185, 235), roofColor = c3(50, 95, 205),
+		name = "MARKT", signColor = { 110, 190, 255 }, enterable = true,
 	})
 	local function bp(props, cf)
 		local p = part(props)
@@ -454,7 +511,6 @@ local function buildShop()
 	end
 	local counter = bp({ Size = Vector3.new(9, 3, 2), Color = c3(120, 150, 220) }, CFrame.new(0, 1.5, 4.5))
 	bp({ Size = Vector3.new(9.6, 0.4, 2.6), Color = c3(250, 250, 250) }, CFrame.new(0, 3.2, 4.5))
-	-- Regale mit bunten Waren
 	for _, sx in ipairs({ -8, 8 }) do
 		bp({ Size = Vector3.new(3, 5, 1.2), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(sx, 2.9, 6.5))
 		for i = 1, 3 do
@@ -480,28 +536,28 @@ local function buildShop()
 	end)
 end
 
--- ---------- Gras, See, Grenzen ----------
+-- ---------- Gras, See ----------
 
 local function buildGrassPatches()
 	for _, patch in ipairs(GameData.GrassPatches) do
 		local x1, z1, x2, z2 = patch[1], patch[2], patch[3], patch[4]
 		local w, d = x2 - x1, z2 - z1
 		local cx, cz = (x1 + x2) / 2, (z1 + z2) / 2
-		-- dunklere Grasflaeche
 		part({
-			Size = Vector3.new(w, 0.24, d), Color = c3(65, 130, 60),
+			Size = Vector3.new(w, 0.24, d), Color = c3(62, 128, 58),
 			Material = Enum.Material.Grass, CanCollide = false, CanQuery = false, CanTouch = false,
 			CFrame = CFrame.new(cx, 0.06, cz),
 		})
-		-- Grasbueschel
-		local count = math.floor(w * d / 60)
+		local count = math.floor(w * d / 42)
 		for _ = 1, count do
 			local gx = rng:NextNumber(x1 + 1, x2 - 1)
 			local gz = rng:NextNumber(z1 + 1, z2 - 1)
-			local tuftBase = CFrame.new(gx, 1.1, gz) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0)
+			local height = rng:NextNumber(2.2, 3)
+			local green = shade(c3(52, 118, 48), rng:NextNumber(-0.08, 0.1))
+			local tuftBase = CFrame.new(gx, height / 2, gz) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0)
 			for i = 0, 1 do
 				part({
-					Size = Vector3.new(1.6, 2.2, 0.18), Color = c3(55, 120, 50),
+					Size = Vector3.new(1.7, height, 0.2), Color = green,
 					Material = Enum.Material.Grass, CanCollide = false, CanQuery = false, CanTouch = false,
 					CFrame = tuftBase * CFrame.Angles(0, math.rad(i * 90), 0),
 				})
@@ -511,25 +567,21 @@ local function buildGrassPatches()
 end
 
 local function buildLake()
-	-- Wasser
 	part({
 		Size = Vector3.new(86, 1.6, 64), Color = c3(70, 150, 230),
 		Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false, CanQuery = false, CanTouch = false,
 		CFrame = CFrame.new(32, -0.5, -330),
 	})
-	-- Sandrand
 	part({ Size = Vector3.new(92, 0.2, 70), Color = c3(225, 205, 150), Material = Enum.Material.Sand, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(32, 0.04, -330) })
-	-- Gelaender rund um den See (mit Luecken fuer die Bruecke bei x=32)
 	local function rail(x, z, w, d)
 		part({ Size = Vector3.new(w, 2.4, d), Color = c3(150, 105, 65), Material = Enum.Material.Wood, Transparency = 0.1, CFrame = CFrame.new(x, 1.2, z) })
 	end
-	rail(6, -298, 40, 0.6) -- Nordseite links der Bruecke
-	rail(59, -298, 32, 0.6) -- Nordseite rechts
-	rail(6, -362, 40, 0.6) -- Suedseite links
-	rail(59, -362, 32, 0.6) -- Suedseite rechts
-	rail(-11, -330, 0.6, 65) -- Westseite
-	rail(75, -330, 0.6, 65) -- Ostseite
-	-- Bruecke
+	rail(6, -298, 40, 0.6)
+	rail(59, -298, 32, 0.6)
+	rail(6, -362, 40, 0.6)
+	rail(59, -362, 32, 0.6)
+	rail(-11, -330, 0.6, 65)
+	rail(75, -330, 0.6, 65)
 	part({ Size = Vector3.new(8, 0.6, 74), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 1.0, -330) })
 	wedge({ Size = Vector3.new(8, 1.3, 4), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 0.65, -295) * CFrame.Angles(0, math.rad(180), 0) })
 	wedge({ Size = Vector3.new(8, 1.3, 4), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 0.65, -365) })
@@ -537,18 +589,15 @@ local function buildLake()
 	part({ Size = Vector3.new(0.5, 2.2, 74), Color = c3(150, 105, 65), Material = Enum.Material.Wood, CFrame = CFrame.new(35.8, 2.1, -330) })
 end
 
--- ---------- Heil-Effekt ----------
+-- ---------- Effekte, Tag/Nacht ----------
 
 function WorldBuilder.PlayHealEffect()
 	if not healRing then return end
 	healRing.Transparency = 0.1
 	healLight.Brightness = 3
-	local tween = TweenService:Create(healRing, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.85 })
-	tween:Play()
+	TweenService:Create(healRing, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.85 }):Play()
 	TweenService:Create(healLight, TweenInfo.new(1.6), { Brightness = 0 }):Play()
 end
-
--- ---------- Tag/Nacht ----------
 
 local function startDayNight()
 	local t0 = os.clock()
@@ -574,7 +623,7 @@ function WorldBuilder.Build()
 	folder.Name = "MonsterweltMap"
 
 	-- Boden + Grenzen
-	part({ Size = Vector3.new(MAP_HALF * 2, 2, MAP_HALF * 2), Color = c3(106, 170, 80), Material = Enum.Material.Grass, CFrame = CFrame.new(0, -1, 0) })
+	part({ Size = Vector3.new(MAP_HALF * 2, 2, MAP_HALF * 2), Color = c3(96, 168, 74), Material = Enum.Material.Grass, CFrame = CFrame.new(0, -1, 0) })
 	for _, def in ipairs({
 		{ Vector3.new(MAP_HALF * 2, 80, 4), CFrame.new(0, 40, -MAP_HALF) },
 		{ Vector3.new(MAP_HALF * 2, 80, 4), CFrame.new(0, 40, MAP_HALF) },
@@ -590,14 +639,17 @@ function WorldBuilder.Build()
 	spawnLoc.CFrame = CFrame.new(10, 0.5, 20)
 	spawnLoc.Anchored = true
 	spawnLoc.Duration = 0
-	spawnLoc.Color = c3(235, 235, 240)
+	spawnLoc.Color = c3(226, 224, 214)
+	spawnLoc.Material = Enum.Material.Brick
 	spawnLoc.TopSurface = Enum.SurfaceType.Smooth
 	spawnLoc.Parent = folder
 
-	-- Stadtplatz + Wege
-	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 46, 46), Color = c3(190, 185, 175), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = uprightCyl(0, 0.02, 0) })
-	part({ Size = Vector3.new(190, 0.24, 8), Color = c3(200, 195, 185), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(0, 0.05, 0) })
-	part({ Size = Vector3.new(8, 0.24, 170), Color = c3(200, 195, 185), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(0, 0.05, -10) })
+	-- Stadtplatz + Ziegelwege
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 46, 46), Color = shade(TAN, 0.04), Material = Enum.Material.Brick, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = uprightCyl(0, 0.04, 0) })
+	brickPath(-95, 0, 95, 0, 8)
+	brickPath(0, -95, 0, 75, 8)
+	brickPath(95, 0, 360, 0, 8) -- Route 1 nach Osten
+	brickPath(0, -95, 0, -290, 8) -- Route 2 nach Norden
 
 	makeFountain()
 
@@ -605,18 +657,23 @@ function WorldBuilder.Build()
 	buildMonsterCenter()
 	buildLab()
 	buildShop()
-	makeBuilding({ pos = Vector3.new(28, 0, 62), yaw = 0, w = 16, d = 14, h = 8, wallColor = c3(240, 200, 160), roofColor = c3(180, 90, 70), enterable = true, furnish = true })
-	makeBuilding({ pos = Vector3.new(68, 0, 24), yaw = 90, w = 15, d = 13, h = 8, wallColor = c3(200, 225, 240), roofColor = c3(90, 120, 160), enterable = false })
-	makeBuilding({ pos = Vector3.new(-20, 0, -74), yaw = 180, w = 16, d = 14, h = 8, wallColor = c3(225, 240, 210), roofColor = c3(110, 150, 90), enterable = true, furnish = true })
-	makeBuilding({ pos = Vector3.new(26, 0, -72), yaw = 180, w = 14, d = 12, h = 7, wallColor = c3(245, 225, 235), roofColor = c3(190, 110, 150), enterable = false })
-	makeBuilding({ pos = Vector3.new(-80, 0, 62), yaw = -90, w = 16, d = 14, h = 8, wallColor = c3(235, 220, 190), roofColor = c3(140, 100, 160), enterable = true, furnish = true })
-	makeBuilding({ pos = Vector3.new(-76, 0, -60), yaw = -90, w = 14, d = 12, h = 7, wallColor = c3(215, 235, 235), roofColor = c3(80, 140, 150), enterable = false })
+	makeBuilding({ pos = Vector3.new(28, 0, 62), yaw = 0, w = 16, d = 14, h = 8, wallColor = c3(200, 150, 106), roofColor = c3(190, 60, 55), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(68, 0, 24), yaw = 90, w = 15, d = 13, h = 8, wallColor = c3(190, 142, 100), roofColor = c3(70, 140, 80), enterable = false })
+	makeBuilding({ pos = Vector3.new(-20, 0, -74), yaw = 180, w = 16, d = 14, h = 8, wallColor = c3(205, 155, 110), roofColor = c3(80, 125, 200), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(26, 0, -72), yaw = 180, w = 14, d = 12, h = 7, wallColor = c3(196, 146, 102), roofColor = c3(150, 90, 180), enterable = false })
+	makeBuilding({ pos = Vector3.new(-80, 0, 62), yaw = -90, w = 16, d = 14, h = 8, wallColor = c3(198, 148, 104), roofColor = c3(220, 150, 50), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(-76, 0, -60), yaw = -90, w = 14, d = 12, h = 7, wallColor = c3(192, 144, 100), roofColor = c3(60, 150, 150), enterable = false })
+
+	-- Lattenzaeune vor den Haeusern (wie im Vorbild)
+	picketFence(28, 52, 18, true)
+	picketFence(-20, -64, 18, true)
+	picketFence(-70, 62, 16, false)
 
 	-- Laternen
 	for _, p in ipairs({
 		{ -80, 6 }, { -50, -6 }, { 50, 6 }, { 80, -6 },
 		{ 6, -80 }, { -6, -50 }, { 6, 50 }, { -6, 75 },
-		{ 18, 14 }, { -18, -14 },
+		{ 18, 14 }, { -18, -14 }, { 130, 6 }, { 200, -6 }, { 6, -130 },
 	}) do
 		makeLamp(p[1], p[2])
 	end
@@ -630,17 +687,17 @@ function WorldBuilder.Build()
 	makeFlowerbed(40, 8)
 
 	-- Baeume & Buesche in der Stadt
-	for _, p in ipairs({ { 42, 40 }, { -30, 55 }, { 55, -40 }, { -55, 20 }, { -40, -40 }, { 12, 78 }, { 80, 40 } }) do
+	for _, p in ipairs({ { 42, 40 }, { -30, 55 }, { 55, -40 }, { -58, 20 }, { -40, -40 }, { 12, 78 }, { 80, 42 } }) do
 		makeTree(p[1], p[2])
 	end
 	for _, p in ipairs({ { 24, 30 }, { -26, 24 }, { 34, -30 }, { -34, -24 }, { 60, 50 } }) do
 		makeBush(p[1], p[2])
 	end
 
-	-- Wilde Baeume ausserhalb der Stadt (Routen einrahmen)
-	for _ = 1, 120 do
-		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
-		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+	-- Dichte Waldraender um die Routen (Voxel-Wald wie im Vorbild)
+	for _ = 1, 170 do
+		local x = rng:NextNumber(-MAP_HALF + 18, MAP_HALF - 18)
+		local z = rng:NextNumber(-MAP_HALF + 18, MAP_HALF - 18)
 		local inTown = math.abs(x) < 100 and math.abs(z) < 100
 		local onRoute1 = x > 95 and x < 380 and math.abs(z) < 48
 		local onRoute2 = z < -95 and z > -390 and math.abs(x - 15) < 70
@@ -648,7 +705,7 @@ function WorldBuilder.Build()
 			makeTree(x, z)
 		end
 	end
-	for _ = 1, 40 do
+	for _ = 1, 45 do
 		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
 		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
 		if not (math.abs(x) < 60 and math.abs(z) < 60) then
@@ -666,7 +723,7 @@ function WorldBuilder.Build()
 
 	folder.Parent = workspace
 
-	-- Moderne Grafik: sattes Licht, Atmosphaere und Post-Effekte
+	-- Moderne Grafik: Licht, Atmosphaere, Post-Effekte
 	Lighting.Brightness = 3
 	Lighting.Ambient = c3(95, 100, 110)
 	Lighting.OutdoorAmbient = c3(140, 150, 165)
@@ -702,9 +759,8 @@ function WorldBuilder.Build()
 
 	startDayNight()
 
-	-- Hintergrundmusik (optional, ID oben eintragen)
 	if MUSIC_ID ~= 0 then
-		local ok = pcall(function()
+		pcall(function()
 			local music = Instance.new("Sound")
 			music.SoundId = "rbxassetid://" .. MUSIC_ID
 			music.Looped = true
@@ -713,9 +769,6 @@ function WorldBuilder.Build()
 			music.Parent = SoundService
 			music:Play()
 		end)
-		if not ok then
-			warn("[Monsterwelt] Musik konnte nicht geladen werden.")
-		end
 	end
 end
 

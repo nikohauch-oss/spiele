@@ -1400,7 +1400,7 @@ function PlayerData.Sync(player)
 	updateLeaderstats(player)
 	DataSyncRemote:FireClient(player, {
 		team = session.team, box = session.box, items = session.items,
-		coins = session.coins, starter = session.starter,
+		coins = session.coins, starter = session.starter, catches = session.catches,
 	})
 	PlayerData.OnTeamChanged(player)
 end
@@ -1674,10 +1674,11 @@ return PlayerData
 				<Properties>
 					<string name="Name">WorldBuilder</string>
 					<ProtectedString name="Source">-- ============================================================
--- Baut die komplette Welt per Code:
--- Stadt (Haeuser, Wege, Laternen, Brunnen), Monster-Center,
--- Labor mit Startern, Shop, Farm-Gelaende, Routen mit hohem
--- Gras, See mit Bruecke, Tag/Nacht-Wechsel, Musik.
+-- Baut die komplette Welt per Code - im VOXEL-STIL:
+-- Wuerfel-Baeume, Ziegelwege, Backstein-Haeuser mit
+-- Stufen-Daechern, leuchtenden Fenstern und Neon-Schildern,
+-- Lattenzaeune, Routen mit hohem Gras, See mit Bruecke,
+-- Tag/Nacht-Wechsel und moderne Licht-Effekte.
 -- ============================================================
 
 local Lighting = game:GetService("Lighting")
@@ -1694,8 +1695,8 @@ local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local WorldBuilder = {}
 
 local MAP_HALF = 450
-local DAY_LENGTH = 480 -- Sekunden fuer einen ganzen Tag
-local MUSIC_ID = 0 -- Eigene Musik? Audio-ID hier eintragen (0 = aus)
+local DAY_LENGTH = 480
+local MUSIC_ID = 0 -- Eigene Musik? Audio-ID eintragen (0 = aus)
 
 local rng = Random.new(1234567)
 local folder = nil
@@ -1739,7 +1740,14 @@ local function c3(r, g, b)
 	return Color3.fromRGB(r, g, b)
 end
 
--- ---------- NPC-Figur (auch fuer Trainer/Farmer) ----------
+local function shade(color, amount)
+	if amount &gt;= 0 then
+		return color:Lerp(Color3.new(1, 1, 1), amount)
+	end
+	return color:Lerp(Color3.new(0, 0, 0), -amount)
+end
+
+-- ---------- NPC-Figur ----------
 
 function WorldBuilder.MakeNpc(opts)
 	local model = Instance.new("Model")
@@ -1770,17 +1778,17 @@ function WorldBuilder.MakeNpc(opts)
 	np({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.22, 0.22, 0.22), Color = c3(25, 25, 30), Name = "AugeR" }, CFrame.new(0.32, 2.05, -0.75))
 
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(220, 44)
+	billboard.Size = UDim2.fromOffset(220, 40)
 	billboard.StudsOffset = Vector3.new(0, 2.4, 0)
 	billboard.MaxDistance = 90
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
+	label.Font = Enum.Font.Arcade
 	label.TextScaled = true
 	label.Text = opts.name
 	label.TextColor3 = c3(255, 255, 255)
-	label.TextStrokeTransparency = 0.2
+	label.TextStrokeTransparency = 0.15
 	label.Parent = billboard
 	billboard.Parent = head
 
@@ -1799,124 +1807,107 @@ function WorldBuilder.MakeNpc(opts)
 	return model
 end
 
--- ---------- Gebaeude ----------
+-- ---------- Ziegelwege ----------
 
--- Baut ein MODERNES Haus: Flachdach mit Ueberstand, grosse
--- Glasfronten, Sockel, Vordach und Akzentwand.
--- Front = lokale -Z-Richtung (yaw drehen).
--- opts: pos, w, d, h, yaw, wallColor, roofColor (= Akzentfarbe),
---       name, enterable, furnish
-local function makeBuilding(opts)
-	local w, d, h = opts.w, opts.d, opts.h
-	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
-	local wall = opts.wallColor
-	local accent = opts.roofColor
-	local dark = c3(48, 50, 56) -- Anthrazit fuer Dach &amp; Rahmen
-	local glass = c3(160, 205, 240)
-	local wt = 0.8 -- Wanddicke
-	local doorW, doorH = 6, 7
+local TAN = c3(206, 152, 96)
 
-	local function bp(props, cf, parent)
-		local p = part(props, parent)
-		p.CFrame = base * cf
-		return p
-	end
-
-	-- Sockel + Innenboden
-	bp({ Size = Vector3.new(w + 1.6, 0.5, d + 1.6), Color = c3(125, 125, 130), Material = Enum.Material.Concrete }, CFrame.new(0, 0.25, 0))
-	bp({ Size = Vector3.new(w - 1, 0.3, d - 1), Color = c3(215, 200, 175), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.6, 0))
-	-- Rueckwand als Akzent-Holzpaneel
-	bp({ Size = Vector3.new(w, h, wt), Color = accent, Material = Enum.Material.WoodPlanks }, CFrame.new(0, h / 2, d / 2 - wt / 2))
-	-- Seitenwaende: unten/oben Wandband, dazwischen grosses Glasband
-	local glassH = h - 3.4
-	for _, sx in ipairs({ -1, 1 }) do
-		local x = sx * (w / 2 - wt / 2)
-		bp({ Size = Vector3.new(wt, 1.8, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, 0.9, 0))
-		bp({ Size = Vector3.new(wt, 1.6, d), Color = wall, Material = Enum.Material.SmoothPlastic }, CFrame.new(x, h - 0.8, 0))
-		bp({ Size = Vector3.new(wt, glassH, d - 2.8), Color = glass, Material = Enum.Material.Glass, Transparency = 0.45 },
-			CFrame.new(x, 1.8 + glassH / 2, 0))
-		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, -d / 2 + 0.7))
-		bp({ Size = Vector3.new(wt, h, 1.4), Color = wall }, CFrame.new(x, h / 2, d / 2 - 0.7))
-		bp({ Size = Vector3.new(wt + 0.1, glassH, 0.35), Color = dark }, CFrame.new(x, 1.8 + glassH / 2, 0))
-	end
-	-- Frontwand mit Tueroeffnung + grossem Panoramafenster
-	local sideW = (w - doorW) / 2
-	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(sideW, h, wt), Color = wall }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
-	local winW = math.max(2, sideW - 2.4)
-	bp({ Size = Vector3.new(winW, h - 4.4, 0.5), Color = glass, Material = Enum.Material.Glass, Transparency = 0.4 },
-		CFrame.new((doorW + sideW) / 2, 2 + (h - 4.4) / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(winW + 0.5, 0.35, 0.6), Color = dark }, CFrame.new((doorW + sideW) / 2, h - 2.4, -d / 2 + wt / 2))
-	-- Tuerrahmen (dunkel, modern)
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(0.5, doorH, wt + 0.25), Color = dark }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
-	bp({ Size = Vector3.new(doorW + 1, 0.5, wt + 0.25), Color = dark }, CFrame.new(0, doorH, -d / 2 + wt / 2))
-	-- Geschlossene Glastuer, falls nicht betretbar
-	if not opts.enterable then
-		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(70, 85, 100), Material = Enum.Material.Glass, Transparency = 0.25 },
-			CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
-		bp({ Size = Vector3.new(0.25, doorH - 0.2, 0.5), Color = dark }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
-	end
-	-- Vordach ueber der Tuer
-	bp({ Size = Vector3.new(doorW + 2.6, 0.35, 3.4), Color = accent, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, doorH + 0.55, -d / 2 - 1.3))
-	-- Flachdach mit Ueberstand + Akzentblende
-	bp({ Size = Vector3.new(w + 2.6, 0.55, d + 2.6), Color = dark, Material = Enum.Material.SmoothPlastic }, CFrame.new(0, h + 0.28, 0))
-	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, -(d / 2 + 1.05)))
-	bp({ Size = Vector3.new(w + 2.7, 0.45, 0.5), Color = accent }, CFrame.new(0, h - 0.05, d / 2 + 1.05))
-	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(-(w / 2 + 1.05), h - 0.05, 0))
-	bp({ Size = Vector3.new(0.5, 0.45, d + 2.7), Color = accent }, CFrame.new(w / 2 + 1.05, h - 0.05, 0))
-	-- Pflanzkuebel neben dem Eingang
-	for _, sx in ipairs({ -1, 1 }) do
-		bp({ Size = Vector3.new(1.6, 1.2, 1.6), Color = c3(110, 110, 115), Material = Enum.Material.Concrete }, CFrame.new(sx * (doorW / 2 + 2.2), 0.6, -d / 2 - 1.6))
-		bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.6, 1.8), Color = c3(85, 165, 85), Material = Enum.Material.Grass, CanCollide = false },
-			CFrame.new(sx * (doorW / 2 + 2.2), 1.8, -d / 2 - 1.6))
-	end
-
-	-- Schild ueber der Tuer
-	if opts.name then
-		local sign = bp({ Size = Vector3.new(9, 1.8, 0.4), Color = c3(245, 240, 225) }, CFrame.new(0, doorH + 1.6, -d / 2 - 0.3))
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 40
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, 0, 1, 0)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.TextScaled = true
-		label.Text = opts.name
-		label.TextColor3 = c3(60, 45, 30)
-		label.Parent = gui
-		gui.Parent = sign
-	end
-
-	-- Einfache Moebel
-	if opts.furnish then
-		-- Bett
-		bp({ Size = Vector3.new(4, 1, 6.5), Color = c3(150, 100, 60), Material = Enum.Material.Wood }, CFrame.new(-w / 2 + 3, 0.9, d / 2 - 4.5))
-		bp({ Size = Vector3.new(3.6, 0.6, 6.1), Color = c3(230, 230, 240) }, CFrame.new(-w / 2 + 3, 1.6, d / 2 - 4.5))
-		bp({ Size = Vector3.new(3, 0.5, 1.6), Color = c3(255, 150, 160) }, CFrame.new(-w / 2 + 3, 2.05, d / 2 - 2.4))
-		-- Tisch + Stuehle
-		bp({ Size = Vector3.new(4, 0.4, 4), Color = c3(170, 120, 70), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 4.5, 2.4, d / 2 - 5))
-		bp({ Size = Vector3.new(0.5, 2.2, 0.5), Color = c3(140, 95, 55) }, CFrame.new(w / 2 - 4.5, 1.1, d / 2 - 5))
-		for _, off in ipairs({ { -3, 0 }, { 3, 0 } }) do
-			bp({ Size = Vector3.new(1.8, 0.4, 1.8), Color = c3(190, 140, 90) }, CFrame.new(w / 2 - 4.5 + off[1], 1.4, d / 2 - 5 + off[2]))
-			bp({ Size = Vector3.new(0.4, 1.4, 0.4), Color = c3(160, 115, 70) }, CFrame.new(w / 2 - 4.5 + off[1], 0.7, d / 2 - 5 + off[2]))
-		end
-		-- Teppich
-		bp({ Size = Vector3.new(6, 0.12, 5), Color = c3(200, 90, 90), Material = Enum.Material.Fabric }, CFrame.new(0, 0.46, -d * 0.1))
-		-- Regal
-		bp({ Size = Vector3.new(3.5, 4.5, 1), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 2.6, 2.65, -d / 2 + 3))
-	end
-
-	return base
+local function pathTile(x, z, size)
+	part({
+		Size = Vector3.new(size, 0.3, size),
+		Color = shade(TAN, rng:NextNumber(-0.09, 0.06)),
+		Material = Enum.Material.Brick,
+		CanCollide = false, CanQuery = false, CanTouch = false,
+		CFrame = CFrame.new(x, 0.1, z),
+	})
 end
 
--- ---------- Stadt-Deko ----------
+-- Gerader Ziegelweg (Achse X oder Z), mit verstreuten Rand-Ziegeln
+local function brickPath(x1, z1, x2, z2, width)
+	local step = 4
+	local tile = 3.7
+	local alongX = math.abs(x2 - x1) &gt;= math.abs(z2 - z1)
+	local a1 = alongX and math.min(x1, x2) or math.min(z1, z2)
+	local a2 = alongX and math.max(x1, x2) or math.max(z1, z2)
+	local rows = math.max(1, math.floor(width / step))
+	local mid = alongX and z1 or x1
+	for a = a1, a2, step do
+		for r = 0, rows - 1 do
+			local off = mid + (r - (rows - 1) / 2) * step
+			if alongX then
+				pathTile(a, off, tile)
+			else
+				pathTile(off, a, tile)
+			end
+		end
+		-- Verstreute Ziegel am Rand (wie im Vorbild)
+		if rng:NextNumber() &lt; 0.3 then
+			local side = (rng:NextInteger(0, 1) * 2 - 1) * (rows / 2 + 0.7) * step
+			if alongX then
+				pathTile(a, mid + side, tile * 0.65)
+			else
+				pathTile(mid + side, a, tile * 0.65)
+			end
+		end
+	end
+end
 
--- Moderne Laterne: schlanker dunkler Mast mit flachem Leuchtpanel
+-- ---------- Voxel-Deko ----------
+
+local function makeTree(x, z)
+	part({ Size = Vector3.new(1.8, 3.2, 1.8), Color = c3(122, 82, 52), CFrame = CFrame.new(x, 1.6, z) })
+	part({ Size = Vector3.new(1.5, 2.6, 1.5), Color = c3(102, 68, 44), CanCollide = false, CanQuery = false, CFrame = CFrame.new(x, 4.4, z) })
+	local baseGreen = c3(58 + rng:NextInteger(0, 26), 148 + rng:NextInteger(0, 42), 58 + rng:NextInteger(0, 22))
+	local blocks = {
+		{ 0, 7.2, 0, 5.6 },
+		{ 2.4, 6.4, 1.0, 3.8 },
+		{ -2.3, 6.7, -1.2, 3.4 },
+		{ 1.0, 8.8, -0.6, 3.6 },
+		{ -1.2, 6.2, 2.1, 3.1 },
+		{ 0.4, 9.6, 1.2, 2.6 },
+	}
+	for _, o in ipairs(blocks) do
+		local s = o[4] * rng:NextNumber(0.85, 1.1)
+		part({
+			Size = Vector3.new(s, s * 0.85, s),
+			Color = shade(baseGreen, rng:NextNumber(-0.1, 0.09)),
+			CanCollide = false, CanQuery = false, CanTouch = false,
+			CFrame = CFrame.new(x + o[1] * rng:NextNumber(0.75, 1.2), o[2], z + o[3] * rng:NextNumber(0.75, 1.2)),
+		})
+	end
+end
+
+local function makeBush(x, z)
+	local green = c3(66, 150, 70)
+	part({ Size = Vector3.new(3, 2.2, 3), Color = shade(green, rng:NextNumber(-0.06, 0.06)), CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(x, 1, z) })
+	part({ Size = Vector3.new(2, 1.6, 2), Color = shade(green, 0.08), CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(x + 1.2, 0.8, z + 0.8) })
+end
+
+local function makeRock(x, z, size)
+	part({
+		Size = Vector3.new(size, size * 0.7, size * 0.9),
+		Color = c3(138, 138, 144), Material = Enum.Material.Slate,
+		CFrame = CFrame.new(x, size * 0.3, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0),
+	})
+	part({
+		Size = Vector3.new(size * 0.5, size * 0.4, size * 0.5),
+		Color = c3(120, 120, 126), Material = Enum.Material.Slate,
+		CFrame = CFrame.new(x + size * 0.4, size * 0.55, z - size * 0.2) * CFrame.Angles(0, rng:NextNumber(0, 3), 0),
+	})
+end
+
+local function picketFence(x, z, length, alongX)
+	local white = c3(242, 242, 242)
+	local count = math.floor(length / 2.2)
+	for i = 0, count do
+		local off = -length / 2 + i * 2.2
+		local px = alongX and (x + off) or x
+		local pz = alongX and z or (z + off)
+		part({ Size = Vector3.new(0.35, 1.9, 0.35), Color = white, CFrame = CFrame.new(px, 0.95, pz) })
+	end
+	local railSize = alongX and Vector3.new(length, 0.3, 0.22) or Vector3.new(0.22, 0.3, length)
+	part({ Size = railSize, Color = white, CFrame = CFrame.new(x, 1.3, z) })
+end
+
 local function makeLamp(x, z)
 	part({ Size = Vector3.new(0.45, 8, 0.45), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 4, z) })
 	part({ Size = Vector3.new(2.2, 0.3, 1.0), Color = c3(48, 50, 56), Material = Enum.Material.Metal, CFrame = CFrame.new(x, 8.15, z) })
@@ -1943,38 +1934,11 @@ local function makeFlowerbed(x, z)
 	local colors = { c3(245, 120, 140), c3(255, 205, 80), c3(160, 130, 240), c3(255, 255, 255) }
 	for i = 1, 8 do
 		part({
-			Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7),
-			Color = colors[(i % #colors) + 1], CanCollide = false,
+			Size = Vector3.new(0.6, 0.6, 0.6),
+			Color = colors[(i % #colors) + 1], CanCollide = false, CanQuery = false, CanTouch = false,
 			CFrame = CFrame.new(x + rng:NextNumber(-2.8, 2.8), 0.9, z + rng:NextNumber(-1.4, 1.4)),
 		})
 	end
-end
-
-local function makeTree(x, z)
-	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(7, 1.8, 1.8), Color = c3(105, 70, 45), Material = Enum.Material.Wood, CFrame = uprightCyl(x, 3.5, z) })
-	local size = rng:NextNumber(7, 11)
-	part({
-		Shape = Enum.PartType.Ball, Size = Vector3.new(size, size * 0.9, size),
-		Color = c3(60 + rng:NextInteger(0, 40), 140 + rng:NextInteger(0, 40), 60 + rng:NextInteger(0, 30)),
-		Material = Enum.Material.Grass, CanCollide = false,
-		CFrame = CFrame.new(x, 7 + size * 0.2, z),
-	})
-end
-
-local function makeBush(x, z)
-	part({
-		Shape = Enum.PartType.Ball, Size = Vector3.new(3.4, 2.6, 3.4),
-		Color = c3(70, 150, 75), Material = Enum.Material.Grass, CanCollide = false,
-		CFrame = CFrame.new(x, 1.2, z),
-	})
-end
-
-local function makeRock(x, z, size)
-	part({
-		Shape = Enum.PartType.Ball, Size = Vector3.new(size, size * 0.8, size),
-		Color = c3(140, 140, 145), Material = Enum.Material.Slate,
-		CFrame = CFrame.new(x, size * 0.25, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 3), 0),
-	})
 end
 
 local function makeFountain()
@@ -1988,37 +1952,136 @@ local function makeFountain()
 	light.Parent = top
 end
 
+-- ---------- Voxel-Backstein-Gebaeude ----------
+-- Front = lokale -Z-Richtung. opts: pos, w, d, h, yaw,
+-- wallColor (Backstein), roofColor, name, signColor,
+-- enterable, furnish
+
+local function makeBuilding(opts)
+	local w, d, h = opts.w, opts.d, opts.h
+	local base = CFrame.new(opts.pos.X, 0, opts.pos.Z) * CFrame.Angles(0, math.rad(opts.yaw or 0), 0)
+	local wall = opts.wallColor or c3(198, 148, 104)
+	local roofColor = opts.roofColor
+	local dark = c3(45, 47, 53)
+	local glow = c3(150, 222, 255)
+	local wt = 0.8
+	local doorW, doorH = 6, 7
+
+	local function bp(props, cf)
+		local p = part(props)
+		p.CFrame = base * cf
+		return p
+	end
+
+	-- Sockel + Innenboden
+	bp({ Size = Vector3.new(w + 1.4, 0.5, d + 1.4), Color = c3(150, 150, 155), Material = Enum.Material.Concrete }, CFrame.new(0, 0.25, 0))
+	bp({ Size = Vector3.new(w - 1, 0.3, d - 1), Color = c3(212, 196, 168), Material = Enum.Material.WoodPlanks }, CFrame.new(0, 0.6, 0))
+
+	-- Waende aus Backstein
+	bp({ Size = Vector3.new(w, h, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new(0, h / 2, d / 2 - wt / 2))
+	bp({ Size = Vector3.new(wt, h, d), Color = wall, Material = Enum.Material.Brick }, CFrame.new(-w / 2 + wt / 2, h / 2, 0))
+	bp({ Size = Vector3.new(wt, h, d), Color = wall, Material = Enum.Material.Brick }, CFrame.new(w / 2 - wt / 2, h / 2, 0))
+	local sideW = (w - doorW) / 2
+	bp({ Size = Vector3.new(sideW, h, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new(-(doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(sideW, h, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new((doorW + sideW) / 2, h / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW, h - doorH, wt), Color = wall, Material = Enum.Material.Brick }, CFrame.new(0, doorH + (h - doorH) / 2, -d / 2 + wt / 2))
+
+	-- Leuchtende Fenster (wie im Vorbild)
+	local function glowWindow(cf, wWin, hWin)
+		bp({ Size = Vector3.new(0.5, hWin + 0.6, wWin + 0.6), Color = dark }, cf)
+		bp({ Size = Vector3.new(0.7, hWin, wWin), Color = glow, Material = Enum.Material.Neon }, cf)
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		glowWindow(CFrame.new(sx * (w / 2 - wt / 2), h * 0.52, -d * 0.22), 3.2, 2.8)
+		glowWindow(CFrame.new(sx * (w / 2 - wt / 2), h * 0.52, d * 0.22), 3.2, 2.8)
+	end
+	-- Frontfenster (gedreht, damit es in der Frontwand liegt)
+	bp({ Size = Vector3.new(math.max(2.4, sideW - 2) + 0.6, 3.4, 0.5), Color = dark }, CFrame.new((doorW + sideW) / 2, h * 0.52, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(math.max(2.4, sideW - 2), 2.8, 0.7), Color = glow, Material = Enum.Material.Neon }, CFrame.new((doorW + sideW) / 2, h * 0.52, -d / 2 + wt / 2))
+
+	-- Tuerrahmen
+	bp({ Size = Vector3.new(0.6, doorH, wt + 0.3), Color = c3(90, 62, 40), Material = Enum.Material.Wood }, CFrame.new(-doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(0.6, doorH, wt + 0.3), Color = c3(90, 62, 40), Material = Enum.Material.Wood }, CFrame.new(doorW / 2, doorH / 2, -d / 2 + wt / 2))
+	bp({ Size = Vector3.new(doorW + 1.2, 0.6, wt + 0.3), Color = c3(90, 62, 40), Material = Enum.Material.Wood }, CFrame.new(0, doorH, -d / 2 + wt / 2))
+	if not opts.enterable then
+		bp({ Size = Vector3.new(doorW - 0.4, doorH - 0.2, 0.4), Color = c3(110, 72, 46), Material = Enum.Material.Wood }, CFrame.new(0, doorH / 2, -d / 2 + wt / 2))
+	end
+
+	-- Stufen-Dach im Voxel-Look
+	local depths = { d + 2.6, math.max(3, d * 0.6), math.max(2.4, d * 0.28) }
+	for i, depth in ipairs(depths) do
+		bp({
+			Size = Vector3.new(w + 2.6, 1.1, depth),
+			Color = shade(roofColor, -(i - 1) * 0.07),
+			Material = Enum.Material.SmoothPlastic,
+		}, CFrame.new(0, h + 0.55 + (i - 1) * 1.05, 0))
+	end
+
+	-- Neon-Schild ueber der Tuer
+	if opts.name then
+		local signColor = opts.signColor and c3(opts.signColor[1], opts.signColor[2], opts.signColor[3]) or c3(255, 255, 255)
+		local board = bp({ Size = Vector3.new(math.min(w, 12), 2.4, 0.5), Color = c3(24, 25, 30) }, CFrame.new(0, doorH + 2.1, -d / 2 - 0.3))
+		bp({ Size = Vector3.new(math.min(w, 12) + 0.4, 0.25, 0.55), Color = signColor, Material = Enum.Material.Neon }, CFrame.new(0, doorH + 0.85, -d / 2 - 0.3))
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 45
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.Arcade
+		label.TextScaled = true
+		label.Text = opts.name
+		label.TextColor3 = signColor
+		label.Parent = gui
+		gui.Parent = board
+	end
+
+	-- Moebel
+	if opts.furnish then
+		bp({ Size = Vector3.new(4, 1, 6.5), Color = c3(150, 100, 60), Material = Enum.Material.Wood }, CFrame.new(-w / 2 + 3, 1.2, d / 2 - 4.5))
+		bp({ Size = Vector3.new(3.6, 0.6, 6.1), Color = c3(230, 230, 240) }, CFrame.new(-w / 2 + 3, 1.9, d / 2 - 4.5))
+		bp({ Size = Vector3.new(3, 0.5, 1.6), Color = c3(255, 150, 160) }, CFrame.new(-w / 2 + 3, 2.35, d / 2 - 2.4))
+		bp({ Size = Vector3.new(4, 0.4, 4), Color = c3(170, 120, 70), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 4.5, 2.7, d / 2 - 5))
+		bp({ Size = Vector3.new(0.5, 2.2, 0.5), Color = c3(140, 95, 55) }, CFrame.new(w / 2 - 4.5, 1.4, d / 2 - 5))
+		for _, off in ipairs({ { -3, 0 }, { 3, 0 } }) do
+			bp({ Size = Vector3.new(1.8, 0.4, 1.8), Color = c3(190, 140, 90) }, CFrame.new(w / 2 - 4.5 + off[1], 1.7, d / 2 - 5 + off[2]))
+			bp({ Size = Vector3.new(0.4, 1.4, 0.4), Color = c3(160, 115, 70) }, CFrame.new(w / 2 - 4.5 + off[1], 1, d / 2 - 5 + off[2]))
+		end
+		bp({ Size = Vector3.new(6, 0.12, 5), Color = c3(200, 90, 90), Material = Enum.Material.Fabric }, CFrame.new(0, 0.82, -d * 0.1))
+		bp({ Size = Vector3.new(3.5, 4.5, 1), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(w / 2 - 2.6, 2.95, -d / 2 + 3))
+	end
+
+	return base
+end
+
 -- ---------- Spezialgebaeude ----------
 
 local function buildMonsterCenter()
 	local base = makeBuilding({
 		pos = Vector3.new(-48, 0, -12), yaw = -90, w = 26, d = 20, h = 10,
-		wallColor = c3(245, 240, 235), roofColor = c3(210, 60, 60),
-		name = "Monster-Center", enterable = true,
+		wallColor = c3(228, 130, 145), roofColor = c3(185, 45, 60),
+		name = "MONSTER-CENTER", signColor = { 255, 90, 110 }, enterable = true,
 	})
 	local function bp(props, cf)
 		local p = part(props)
 		p.CFrame = base * cf
 		return p
 	end
-	-- Theke
 	bp({ Size = Vector3.new(10, 3, 2), Color = c3(225, 120, 130) }, CFrame.new(0, 1.5, 5))
 	local counterTop = bp({ Size = Vector3.new(10.6, 0.4, 2.6), Color = c3(250, 250, 250) }, CFrame.new(0, 3.2, 5))
-	-- Heil-Ring ueber der Theke (leuchtet beim Heilen)
 	healRing = bp({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 6, 6), Color = c3(140, 230, 170), Material = Enum.Material.Neon, Transparency = 0.85, CanCollide = false }, CFrame.new(0, 6.5, 4) * CFrame.Angles(0, 0, math.rad(90)))
 	healLight = Instance.new("PointLight")
 	healLight.Color = c3(140, 230, 170)
 	healLight.Range = 18
 	healLight.Brightness = 0
 	healLight.Parent = healRing
-	-- Schwester hinter der Theke
 	local counterWorld = base * CFrame.new(0, 0, 7.5)
 	local frontWorld = base * CFrame.new(0, 0, -5)
 	WorldBuilder.MakeNpc({
 		name = "Schwester Amara", shirt = { 245, 160, 180 }, hair = { 250, 190, 120 },
 		pos = counterWorld.Position, faceTo = frontWorld.Position,
 	})
-	-- Heil-Prompt an der Theke
 	local healPrompt = Instance.new("ProximityPrompt")
 	healPrompt.ActionText = "Heilen"
 	healPrompt.ObjectText = "Team heilen (kostenlos)"
@@ -2035,7 +2098,6 @@ local function buildMonsterCenter()
 		PlayerData.Notify(player, "Dein Team wurde vollständig geheilt!", "heal")
 		WorldBuilder.PlayHealEffect()
 	end)
-	-- PC mit Box-System
 	local pc = bp({ Size = Vector3.new(3, 4.5, 2), Color = c3(120, 125, 140), Material = Enum.Material.Metal }, CFrame.new(-9, 2.25, 6.5))
 	bp({ Size = Vector3.new(2.4, 1.8, 0.3), Color = c3(120, 230, 255), Material = Enum.Material.Neon }, CFrame.new(-9, 3.4, 5.4))
 	local pcPrompt = Instance.new("ProximityPrompt")
@@ -2049,23 +2111,21 @@ local function buildMonsterCenter()
 	pcPrompt.Triggered:Connect(function(player)
 		OpenUi:FireClient(player, "box")
 	end)
-	-- Pflanzen
-	bp({ Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2.4, 2), Color = c3(80, 170, 90), CanCollide = false }, CFrame.new(9, 2.6, 7))
+	bp({ Size = Vector3.new(2, 2.4, 2), Color = c3(80, 170, 90), CanCollide = false }, CFrame.new(9, 2.6, 7))
 	bp({ Size = Vector3.new(1.4, 1.4, 1.4), Color = c3(200, 120, 80) }, CFrame.new(9, 0.9, 7))
 end
 
 local function buildLab()
 	local base = makeBuilding({
 		pos = Vector3.new(46, 0, -16), yaw = 90, w = 26, d = 20, h = 10,
-		wallColor = c3(250, 235, 180), roofColor = c3(230, 180, 60),
-		name = "Labor", enterable = true,
+		wallColor = c3(205, 170, 120), roofColor = c3(230, 180, 60),
+		name = "LABOR", signColor = { 255, 210, 80 }, enterable = true,
 	})
 	local function bp(props, cf)
 		local p = part(props)
 		p.CFrame = base * cf
 		return p
 	end
-	-- Professor hinten im Labor
 	local profWorld = base * CFrame.new(0, 0, 7)
 	local frontWorld = base * CFrame.new(0, 0, -6)
 	WorldBuilder.MakeNpc({
@@ -2083,20 +2143,17 @@ local function buildLab()
 			end,
 		},
 	})
-	-- 3 Tische mit Starter-Figuren
 	local StarterAsk = Remotes.Get("StarterAsk")
 	local xOffsets = { -7, 0, 7 }
 	for i, speciesId in ipairs(GameData.Starters) do
 		local tableCf = CFrame.new(xOffsets[i], 0, 1)
 		bp({ Size = Vector3.new(4.5, 2.6, 4.5), Color = c3(200, 205, 215) }, tableCf * CFrame.new(0, 1.3, 0))
 		local top = bp({ Size = Vector3.new(5, 0.4, 5), Color = c3(240, 240, 245) }, tableCf * CFrame.new(0, 2.8, 0))
-		-- Figur auf dem Tisch
 		local figure = MonsterFactory.Create(speciesId, 0.55)
 		local worldTop = (base * tableCf * CFrame.new(0, 3, 0)).Position
 		local lookWorld = (base * CFrame.new(xOffsets[i], 0, -10)).Position
 		MonsterFactory.PlaceOnGround(figure, worldTop, lookWorld)
 		figure.Parent = folder
-		-- Prompt
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Wählen"
 		prompt.ObjectText = GameData.Species[speciesId].name
@@ -2119,8 +2176,8 @@ end
 local function buildShop()
 	local base = makeBuilding({
 		pos = Vector3.new(-44, 0, 36), yaw = -90, w = 22, d = 18, h = 9,
-		wallColor = c3(235, 240, 250), roofColor = c3(70, 110, 220),
-		name = "Markt", enterable = true,
+		wallColor = c3(150, 185, 235), roofColor = c3(50, 95, 205),
+		name = "MARKT", signColor = { 110, 190, 255 }, enterable = true,
 	})
 	local function bp(props, cf)
 		local p = part(props)
@@ -2129,7 +2186,6 @@ local function buildShop()
 	end
 	local counter = bp({ Size = Vector3.new(9, 3, 2), Color = c3(120, 150, 220) }, CFrame.new(0, 1.5, 4.5))
 	bp({ Size = Vector3.new(9.6, 0.4, 2.6), Color = c3(250, 250, 250) }, CFrame.new(0, 3.2, 4.5))
-	-- Regale mit bunten Waren
 	for _, sx in ipairs({ -8, 8 }) do
 		bp({ Size = Vector3.new(3, 5, 1.2), Color = c3(150, 105, 65), Material = Enum.Material.Wood }, CFrame.new(sx, 2.9, 6.5))
 		for i = 1, 3 do
@@ -2155,28 +2211,28 @@ local function buildShop()
 	end)
 end
 
--- ---------- Gras, See, Grenzen ----------
+-- ---------- Gras, See ----------
 
 local function buildGrassPatches()
 	for _, patch in ipairs(GameData.GrassPatches) do
 		local x1, z1, x2, z2 = patch[1], patch[2], patch[3], patch[4]
 		local w, d = x2 - x1, z2 - z1
 		local cx, cz = (x1 + x2) / 2, (z1 + z2) / 2
-		-- dunklere Grasflaeche
 		part({
-			Size = Vector3.new(w, 0.24, d), Color = c3(65, 130, 60),
+			Size = Vector3.new(w, 0.24, d), Color = c3(62, 128, 58),
 			Material = Enum.Material.Grass, CanCollide = false, CanQuery = false, CanTouch = false,
 			CFrame = CFrame.new(cx, 0.06, cz),
 		})
-		-- Grasbueschel
-		local count = math.floor(w * d / 60)
+		local count = math.floor(w * d / 42)
 		for _ = 1, count do
 			local gx = rng:NextNumber(x1 + 1, x2 - 1)
 			local gz = rng:NextNumber(z1 + 1, z2 - 1)
-			local tuftBase = CFrame.new(gx, 1.1, gz) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0)
+			local height = rng:NextNumber(2.2, 3)
+			local green = shade(c3(52, 118, 48), rng:NextNumber(-0.08, 0.1))
+			local tuftBase = CFrame.new(gx, height / 2, gz) * CFrame.Angles(0, rng:NextNumber(0, 3.14), 0)
 			for i = 0, 1 do
 				part({
-					Size = Vector3.new(1.6, 2.2, 0.18), Color = c3(55, 120, 50),
+					Size = Vector3.new(1.7, height, 0.2), Color = green,
 					Material = Enum.Material.Grass, CanCollide = false, CanQuery = false, CanTouch = false,
 					CFrame = tuftBase * CFrame.Angles(0, math.rad(i * 90), 0),
 				})
@@ -2186,25 +2242,21 @@ local function buildGrassPatches()
 end
 
 local function buildLake()
-	-- Wasser
 	part({
 		Size = Vector3.new(86, 1.6, 64), Color = c3(70, 150, 230),
 		Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false, CanQuery = false, CanTouch = false,
 		CFrame = CFrame.new(32, -0.5, -330),
 	})
-	-- Sandrand
 	part({ Size = Vector3.new(92, 0.2, 70), Color = c3(225, 205, 150), Material = Enum.Material.Sand, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(32, 0.04, -330) })
-	-- Gelaender rund um den See (mit Luecken fuer die Bruecke bei x=32)
 	local function rail(x, z, w, d)
 		part({ Size = Vector3.new(w, 2.4, d), Color = c3(150, 105, 65), Material = Enum.Material.Wood, Transparency = 0.1, CFrame = CFrame.new(x, 1.2, z) })
 	end
-	rail(6, -298, 40, 0.6) -- Nordseite links der Bruecke
-	rail(59, -298, 32, 0.6) -- Nordseite rechts
-	rail(6, -362, 40, 0.6) -- Suedseite links
-	rail(59, -362, 32, 0.6) -- Suedseite rechts
-	rail(-11, -330, 0.6, 65) -- Westseite
-	rail(75, -330, 0.6, 65) -- Ostseite
-	-- Bruecke
+	rail(6, -298, 40, 0.6)
+	rail(59, -298, 32, 0.6)
+	rail(6, -362, 40, 0.6)
+	rail(59, -362, 32, 0.6)
+	rail(-11, -330, 0.6, 65)
+	rail(75, -330, 0.6, 65)
 	part({ Size = Vector3.new(8, 0.6, 74), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 1.0, -330) })
 	wedge({ Size = Vector3.new(8, 1.3, 4), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 0.65, -295) * CFrame.Angles(0, math.rad(180), 0) })
 	wedge({ Size = Vector3.new(8, 1.3, 4), Color = c3(180, 130, 80), Material = Enum.Material.WoodPlanks, CFrame = CFrame.new(32, 0.65, -365) })
@@ -2212,18 +2264,15 @@ local function buildLake()
 	part({ Size = Vector3.new(0.5, 2.2, 74), Color = c3(150, 105, 65), Material = Enum.Material.Wood, CFrame = CFrame.new(35.8, 2.1, -330) })
 end
 
--- ---------- Heil-Effekt ----------
+-- ---------- Effekte, Tag/Nacht ----------
 
 function WorldBuilder.PlayHealEffect()
 	if not healRing then return end
 	healRing.Transparency = 0.1
 	healLight.Brightness = 3
-	local tween = TweenService:Create(healRing, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.85 })
-	tween:Play()
+	TweenService:Create(healRing, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.85 }):Play()
 	TweenService:Create(healLight, TweenInfo.new(1.6), { Brightness = 0 }):Play()
 end
-
--- ---------- Tag/Nacht ----------
 
 local function startDayNight()
 	local t0 = os.clock()
@@ -2249,7 +2298,7 @@ function WorldBuilder.Build()
 	folder.Name = "MonsterweltMap"
 
 	-- Boden + Grenzen
-	part({ Size = Vector3.new(MAP_HALF * 2, 2, MAP_HALF * 2), Color = c3(106, 170, 80), Material = Enum.Material.Grass, CFrame = CFrame.new(0, -1, 0) })
+	part({ Size = Vector3.new(MAP_HALF * 2, 2, MAP_HALF * 2), Color = c3(96, 168, 74), Material = Enum.Material.Grass, CFrame = CFrame.new(0, -1, 0) })
 	for _, def in ipairs({
 		{ Vector3.new(MAP_HALF * 2, 80, 4), CFrame.new(0, 40, -MAP_HALF) },
 		{ Vector3.new(MAP_HALF * 2, 80, 4), CFrame.new(0, 40, MAP_HALF) },
@@ -2265,14 +2314,17 @@ function WorldBuilder.Build()
 	spawnLoc.CFrame = CFrame.new(10, 0.5, 20)
 	spawnLoc.Anchored = true
 	spawnLoc.Duration = 0
-	spawnLoc.Color = c3(235, 235, 240)
+	spawnLoc.Color = c3(226, 224, 214)
+	spawnLoc.Material = Enum.Material.Brick
 	spawnLoc.TopSurface = Enum.SurfaceType.Smooth
 	spawnLoc.Parent = folder
 
-	-- Stadtplatz + Wege
-	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 46, 46), Color = c3(190, 185, 175), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = uprightCyl(0, 0.02, 0) })
-	part({ Size = Vector3.new(190, 0.24, 8), Color = c3(200, 195, 185), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(0, 0.05, 0) })
-	part({ Size = Vector3.new(8, 0.24, 170), Color = c3(200, 195, 185), Material = Enum.Material.Concrete, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = CFrame.new(0, 0.05, -10) })
+	-- Stadtplatz + Ziegelwege
+	part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 46, 46), Color = shade(TAN, 0.04), Material = Enum.Material.Brick, CanCollide = false, CanQuery = false, CanTouch = false, CFrame = uprightCyl(0, 0.04, 0) })
+	brickPath(-95, 0, 95, 0, 8)
+	brickPath(0, -95, 0, 75, 8)
+	brickPath(95, 0, 360, 0, 8) -- Route 1 nach Osten
+	brickPath(0, -95, 0, -290, 8) -- Route 2 nach Norden
 
 	makeFountain()
 
@@ -2280,18 +2332,23 @@ function WorldBuilder.Build()
 	buildMonsterCenter()
 	buildLab()
 	buildShop()
-	makeBuilding({ pos = Vector3.new(28, 0, 62), yaw = 0, w = 16, d = 14, h = 8, wallColor = c3(240, 200, 160), roofColor = c3(180, 90, 70), enterable = true, furnish = true })
-	makeBuilding({ pos = Vector3.new(68, 0, 24), yaw = 90, w = 15, d = 13, h = 8, wallColor = c3(200, 225, 240), roofColor = c3(90, 120, 160), enterable = false })
-	makeBuilding({ pos = Vector3.new(-20, 0, -74), yaw = 180, w = 16, d = 14, h = 8, wallColor = c3(225, 240, 210), roofColor = c3(110, 150, 90), enterable = true, furnish = true })
-	makeBuilding({ pos = Vector3.new(26, 0, -72), yaw = 180, w = 14, d = 12, h = 7, wallColor = c3(245, 225, 235), roofColor = c3(190, 110, 150), enterable = false })
-	makeBuilding({ pos = Vector3.new(-80, 0, 62), yaw = -90, w = 16, d = 14, h = 8, wallColor = c3(235, 220, 190), roofColor = c3(140, 100, 160), enterable = true, furnish = true })
-	makeBuilding({ pos = Vector3.new(-76, 0, -60), yaw = -90, w = 14, d = 12, h = 7, wallColor = c3(215, 235, 235), roofColor = c3(80, 140, 150), enterable = false })
+	makeBuilding({ pos = Vector3.new(28, 0, 62), yaw = 0, w = 16, d = 14, h = 8, wallColor = c3(200, 150, 106), roofColor = c3(190, 60, 55), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(68, 0, 24), yaw = 90, w = 15, d = 13, h = 8, wallColor = c3(190, 142, 100), roofColor = c3(70, 140, 80), enterable = false })
+	makeBuilding({ pos = Vector3.new(-20, 0, -74), yaw = 180, w = 16, d = 14, h = 8, wallColor = c3(205, 155, 110), roofColor = c3(80, 125, 200), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(26, 0, -72), yaw = 180, w = 14, d = 12, h = 7, wallColor = c3(196, 146, 102), roofColor = c3(150, 90, 180), enterable = false })
+	makeBuilding({ pos = Vector3.new(-80, 0, 62), yaw = -90, w = 16, d = 14, h = 8, wallColor = c3(198, 148, 104), roofColor = c3(220, 150, 50), enterable = true, furnish = true })
+	makeBuilding({ pos = Vector3.new(-76, 0, -60), yaw = -90, w = 14, d = 12, h = 7, wallColor = c3(192, 144, 100), roofColor = c3(60, 150, 150), enterable = false })
+
+	-- Lattenzaeune vor den Haeusern (wie im Vorbild)
+	picketFence(28, 52, 18, true)
+	picketFence(-20, -64, 18, true)
+	picketFence(-70, 62, 16, false)
 
 	-- Laternen
 	for _, p in ipairs({
 		{ -80, 6 }, { -50, -6 }, { 50, 6 }, { 80, -6 },
 		{ 6, -80 }, { -6, -50 }, { 6, 50 }, { -6, 75 },
-		{ 18, 14 }, { -18, -14 },
+		{ 18, 14 }, { -18, -14 }, { 130, 6 }, { 200, -6 }, { 6, -130 },
 	}) do
 		makeLamp(p[1], p[2])
 	end
@@ -2305,17 +2362,17 @@ function WorldBuilder.Build()
 	makeFlowerbed(40, 8)
 
 	-- Baeume &amp; Buesche in der Stadt
-	for _, p in ipairs({ { 42, 40 }, { -30, 55 }, { 55, -40 }, { -55, 20 }, { -40, -40 }, { 12, 78 }, { 80, 40 } }) do
+	for _, p in ipairs({ { 42, 40 }, { -30, 55 }, { 55, -40 }, { -58, 20 }, { -40, -40 }, { 12, 78 }, { 80, 42 } }) do
 		makeTree(p[1], p[2])
 	end
 	for _, p in ipairs({ { 24, 30 }, { -26, 24 }, { 34, -30 }, { -34, -24 }, { 60, 50 } }) do
 		makeBush(p[1], p[2])
 	end
 
-	-- Wilde Baeume ausserhalb der Stadt (Routen einrahmen)
-	for _ = 1, 120 do
-		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
-		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
+	-- Dichte Waldraender um die Routen (Voxel-Wald wie im Vorbild)
+	for _ = 1, 170 do
+		local x = rng:NextNumber(-MAP_HALF + 18, MAP_HALF - 18)
+		local z = rng:NextNumber(-MAP_HALF + 18, MAP_HALF - 18)
 		local inTown = math.abs(x) &lt; 100 and math.abs(z) &lt; 100
 		local onRoute1 = x &gt; 95 and x &lt; 380 and math.abs(z) &lt; 48
 		local onRoute2 = z &lt; -95 and z &gt; -390 and math.abs(x - 15) &lt; 70
@@ -2323,7 +2380,7 @@ function WorldBuilder.Build()
 			makeTree(x, z)
 		end
 	end
-	for _ = 1, 40 do
+	for _ = 1, 45 do
 		local x = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
 		local z = rng:NextNumber(-MAP_HALF + 20, MAP_HALF - 20)
 		if not (math.abs(x) &lt; 60 and math.abs(z) &lt; 60) then
@@ -2341,7 +2398,7 @@ function WorldBuilder.Build()
 
 	folder.Parent = workspace
 
-	-- Moderne Grafik: sattes Licht, Atmosphaere und Post-Effekte
+	-- Moderne Grafik: Licht, Atmosphaere, Post-Effekte
 	Lighting.Brightness = 3
 	Lighting.Ambient = c3(95, 100, 110)
 	Lighting.OutdoorAmbient = c3(140, 150, 165)
@@ -2377,9 +2434,8 @@ function WorldBuilder.Build()
 
 	startDayNight()
 
-	-- Hintergrundmusik (optional, ID oben eintragen)
 	if MUSIC_ID ~= 0 then
-		local ok = pcall(function()
+		pcall(function()
 			local music = Instance.new("Sound")
 			music.SoundId = "rbxassetid://" .. MUSIC_ID
 			music.Looped = true
@@ -2388,9 +2444,6 @@ function WorldBuilder.Build()
 			music.Parent = SoundService
 			music:Play()
 		end)
-		if not ok then
-			warn("[Monsterwelt] Musik konnte nicht geladen werden.")
-		end
 	end
 end
 
@@ -2534,66 +2587,85 @@ local RoamService = require(script.Parent:WaitForChild("RoamService"))
 
 local BattleService = {}
 
-local STAGE_COUNT = 8
-
 local rng = Random.new()
 local battles = {} -- [player] = Kampfzustand
-local stages = {} -- { base, folder, busy }
+local arenaRoot = nil -- Ordner fuer alle Kampfplaetze
 local BattleStartRemote = nil
 local BattleUpdateRemote = nil
 
--- ---------- Kampf-Buehnen ----------
+-- ---------- Kampfplatz direkt in der Welt ----------
+-- Zwei leuchtende Ziegel-Plattformen erscheinen vor dem Spieler
+-- (wie im Vorbild), die Monster stellen sich darauf.
 
-local function buildStages()
-	local stageFolder = Instance.new("Folder")
-	stageFolder.Name = "Kampfarenen"
-	for i = 1, STAGE_COUNT do
-		local base = Vector3.new(-600 + i * 150, 240, 900)
-		local folder = Instance.new("Folder")
-		folder.Name = "Arena" .. i
-
-		local function p(props)
-			local prt = Instance.new("Part")
-			prt.Anchored = true
-			prt.TopSurface = Enum.SurfaceType.Smooth
-			prt.BottomSurface = Enum.SurfaceType.Smooth
-			for k, v in pairs(props) do
-				prt[k] = v
-			end
-			prt.Parent = folder
-			return prt
-		end
-
-		-- Boden der Buehne
-		p({ Size = Vector3.new(46, 1, 28), Color = Color3.fromRGB(120, 170, 100), Material = Enum.Material.Grass, CFrame = CFrame.new(base) })
-		p({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 10, 10), Color = Color3.fromRGB(220, 215, 200), Material = Enum.Material.Concrete, CanCollide = false,
-			CFrame = CFrame.new(base + Vector3.new(-10, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
-		p({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 10, 10), Color = Color3.fromRGB(220, 215, 200), Material = Enum.Material.Concrete, CanCollide = false,
-			CFrame = CFrame.new(base + Vector3.new(10, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
-
-		-- Kamerapunkt fuer den Client
-		local cam = p({ Size = Vector3.new(1, 1, 1), Transparency = 1, CanCollide = false, Name = "KameraPunkt" })
-		cam.CFrame = CFrame.lookAt(base + Vector3.new(-16, 9, 16), base + Vector3.new(3, 3, 0))
-
-		folder.Parent = stageFolder
-		table.insert(stages, { base = base, folder = folder, busy = false })
+local function makeArena(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local origin = root and root.Position or Vector3.new(0, 3, 20)
+	local look = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude &lt; 0.05 then
+		flat = Vector3.new(0, 0, -1)
 	end
-	stageFolder.Parent = workspace
+	flat = flat.Unit
+	local center = Vector3.new(
+		math.clamp(origin.X + flat.X * 16, -420, 420), 0,
+		math.clamp(origin.Z + flat.Z * 16, -420, 420))
+	local right = Vector3.new(-flat.Z, 0, flat.X)
+
+	local folder = Instance.new("Folder")
+	folder.Name = "Arena" .. player.UserId
+
+	local function platform(pos)
+		local pad = Instance.new("Part")
+		pad.Size = Vector3.new(9, 0.8, 9)
+		pad.Color = Color3.fromRGB(205, 150, 95)
+		pad.Material = Enum.Material.Brick
+		pad.Anchored = true
+		pad.TopSurface = Enum.SurfaceType.Smooth
+		pad.CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0))
+		pad.Parent = folder
+		local rim = Instance.new("Part")
+		rim.Size = Vector3.new(9.8, 0.3, 9.8)
+		rim.Color = Color3.fromRGB(255, 195, 100)
+		rim.Material = Enum.Material.Neon
+		rim.Transparency = 0.4
+		rim.Anchored = true
+		rim.CanCollide = false
+		rim.CFrame = CFrame.new(pos + Vector3.new(0, 0.12, 0))
+		rim.Parent = folder
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 205, 130)
+		light.Range = 17
+		light.Brightness = 1.8
+		light.Parent = pad
+	end
+
+	local allyPos = center - right * 8
+	local enemyPos = center + right * 8
+	platform(allyPos)
+	platform(enemyPos)
+
+	-- Kamerapunkt: leicht erhoeht von der Spielerseite
+	local cam = Instance.new("Part")
+	cam.Name = "KameraPunkt"
+	cam.Transparency = 1
+	cam.CanCollide = false
+	cam.Anchored = true
+	cam.Size = Vector3.new(1, 1, 1)
+	cam.CFrame = CFrame.lookAt(center - flat * 14 + Vector3.new(0, 8, 0), center + Vector3.new(0, 2.5, 0))
+	cam.Parent = folder
+
+	folder.Parent = arenaRoot
+	return {
+		folder = folder,
+		allyPos = allyPos + Vector3.new(0, 0.8, 0),
+		enemyPos = enemyPos + Vector3.new(0, 0.8, 0),
+	}
 end
 
-local function takeStage()
-	for _, stage in ipairs(stages) do
-		if not stage.busy then
-			stage.busy = true
-			return stage
-		end
-	end
-	return nil
-end
-
--- Monster-Figur auf die Buehne stellen. side = "ally"/"enemy"
+-- Monster-Figur auf den Kampfplatz stellen. side = "ally"/"enemy"
 local function spawnStageModel(state, side, speciesId)
-	local stage = state.stage
+	local arena = state.arena
 	local counterKey = side .. "Counter"
 	state[counterKey] = (state[counterKey] or 0) + 1
 	local name = (side == "ally" and "AllyMon" or "EnemyMon") .. state[counterKey]
@@ -2606,11 +2678,10 @@ local function spawnStageModel(state, side, speciesId)
 
 	local model = MonsterFactory.Create(speciesId, 1.1)
 	model.Name = name
-	local x = (side == "ally") and -10 or 10
-	local pos = stage.base + Vector3.new(x, 0.6, 0)
-	local look = stage.base + Vector3.new(-x, 0.6, 0)
+	local pos = (side == "ally") and arena.allyPos or arena.enemyPos
+	local look = (side == "ally") and arena.enemyPos or arena.allyPos
 	MonsterFactory.PlaceOnGround(model, pos, look)
-	model.Parent = stage.folder
+	model.Parent = arena.folder
 	state[oldKey] = model
 	return name
 end
@@ -2883,9 +2954,9 @@ local function cleanup(player, state)
 	if state.charConn then
 		state.charConn:Disconnect()
 	end
-	if state.allyModel then state.allyModel:Destroy() end
-	if state.enemyModel then state.enemyModel:Destroy() end
-	if state.stage then state.stage.busy = false end
+	if state.arena and state.arena.folder then
+		state.arena.folder:Destroy()
+	end
 	battles[player] = nil
 	setFrozen(player, false)
 end
@@ -2935,14 +3006,8 @@ local function makeEnemy(speciesId, level)
 end
 
 local function startBattle(player, session, aliveIndex, mode, enemy, trainerDef)
-	local stage = takeStage()
-	if not stage then
-		PlayerData.Notify(player, "Alle Kampfarenen sind gerade belegt. Versuch es gleich nochmal!", "bad")
-		return false
-	end
-
 	local state = {
-		mode = mode, stage = stage, monIndex = aliveIndex,
+		mode = mode, arena = makeArena(player), monIndex = aliveIndex,
 		enemy = enemy, trainer = trainerDef, trainerTeamIndex = 1,
 		forcedSwitch = false, over = false, result = nil, busy = false,
 		leveled = {}, charConn = nil,
@@ -2963,7 +3028,7 @@ local function startBattle(player, session, aliveIndex, mode, enemy, trainerDef)
 	BattleStartRemote:FireClient(player, {
 		mode = mode,
 		trainerName = trainerDef and trainerDef.name or nil,
-		stageName = stage.folder.Name,
+		stageName = state.arena.folder.Name,
 		allyModel = allyName,
 		enemyModel = enemyName,
 		enemy = enemyView(enemy),
@@ -3221,7 +3286,9 @@ local function onBattleAction(player, action)
 end
 
 function BattleService.Init()
-	buildStages()
+	arenaRoot = Instance.new("Folder")
+	arenaRoot.Name = "Kampfarenen"
+	arenaRoot.Parent = workspace
 	BattleStartRemote = Remotes.Get("BattleStart")
 	BattleUpdateRemote = Remotes.Get("BattleUpdate")
 	Remotes.Get("BattleAction").OnServerEvent:Connect(onBattleAction)
@@ -3351,32 +3418,47 @@ local function spawnRoamer(patchIndex, speciesId, level, isLegendary)
 	local pos = randomInPatch(patch)
 	MonsterFactory.PlaceOnGround(model, pos, pos + Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)))
 
-	-- Namensschild
+	-- Namensschild im Pixel-Stil: LEVEL, Name, roter Mini-HP-Balken
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(220, isLegendary and 76 or 56)
-	billboard.StudsOffset = Vector3.new(0, isLegendary and 4.6 or 3.2, 0)
-	billboard.MaxDistance = isLegendary and 220 or 100
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, isLegendary and 0.6 or 1, 0)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.Text = isLegendary and ("⭐ " .. sp.name .. " ⭐") or (sp.name .. "  Lv. " .. level)
-	label.TextColor3 = isLegendary and Color3.fromRGB(255, 210, 70) or GameData.TypeColors[sp.typ]
-	label.TextStrokeTransparency = 0.2
-	label.Parent = billboard
-	if isLegendary then
-		local sub = Instance.new("TextLabel")
-		sub.Position = UDim2.new(0, 0, 0.6, 0)
-		sub.Size = UDim2.new(1, 0, 0.4, 0)
-		sub.BackgroundTransparency = 1
-		sub.Font = Enum.Font.FredokaOne
-		sub.TextScaled = true
-		sub.Text = "Lv. " .. level .. " • LEGENDÄR"
-		sub.TextColor3 = Color3.fromRGB(255, 255, 255)
-		sub.TextStrokeTransparency = 0.3
-		sub.Parent = billboard
-	end
+	billboard.Size = UDim2.fromOffset(240, 84)
+	billboard.StudsOffset = Vector3.new(0, isLegendary and 4.8 or 3.4, 0)
+	billboard.MaxDistance = isLegendary and 240 or 110
+
+	local lvlLabel = Instance.new("TextLabel")
+	lvlLabel.Size = UDim2.new(1, 0, 0.3, 0)
+	lvlLabel.BackgroundTransparency = 1
+	lvlLabel.Font = Enum.Font.Arcade
+	lvlLabel.TextScaled = true
+	lvlLabel.Text = isLegendary and ("LEVEL " .. level .. " • LEGENDÄR") or ("LEVEL " .. level)
+	lvlLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lvlLabel.TextStrokeTransparency = 0.1
+	lvlLabel.Parent = billboard
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Position = UDim2.new(0, 0, 0.3, 0)
+	nameLabel.Size = UDim2.new(1, 0, 0.42, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.Arcade
+	nameLabel.TextScaled = true
+	nameLabel.Text = isLegendary and ("⭐ " .. sp.name .. " ⭐") or sp.name
+	nameLabel.TextColor3 = isLegendary and Color3.fromRGB(255, 210, 70) or GameData.TypeColors[sp.typ]
+	nameLabel.TextStrokeTransparency = 0.1
+	nameLabel.Parent = billboard
+
+	local barBack = Instance.new("Frame")
+	barBack.AnchorPoint = Vector2.new(0.5, 0)
+	barBack.Position = UDim2.new(0.5, 0, 0.78, 0)
+	barBack.Size = UDim2.new(0.5, 0, 0.14, 0)
+	barBack.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+	barBack.BorderSizePixel = 0
+	barBack.Parent = billboard
+	local barFill = Instance.new("Frame")
+	barFill.Size = UDim2.new(1, -2, 1, -2)
+	barFill.Position = UDim2.new(0, 1, 0, 1)
+	barFill.BackgroundColor3 = Color3.fromRGB(235, 90, 90)
+	barFill.BorderSizePixel = 0
+	barFill.Parent = barBack
+
 	billboard.Parent = model.PrimaryPart
 
 	-- Legendaere zaehlen nicht zum normalen Nachschub (patchIndex 0)
@@ -4113,10 +4195,13 @@ function UiKit.Stroke(inst, color, thickness)
 	return inst
 end
 
+-- Pixel-Schrift wie im Vorbild-Spiel
+UiKit.Font = Enum.Font.Arcade
+
 function UiKit.Label(props)
 	local defaults = {
 		BackgroundTransparency = 1,
-		Font = Enum.Font.FredokaOne,
+		Font = UiKit.Font,
 		TextScaled = true,
 		TextColor3 = UiKit.Colors.Text,
 	}
@@ -4128,7 +4213,7 @@ end
 
 function UiKit.Button(props, callback)
 	local defaults = {
-		Font = Enum.Font.FredokaOne,
+		Font = UiKit.Font,
 		TextScaled = true,
 		TextColor3 = UiKit.Colors.Text,
 		BackgroundColor3 = UiKit.Colors.PanelLight,
@@ -4180,6 +4265,23 @@ function UiKit.HpBar(props)
 	})
 	UiKit.Round(fill, 6)
 
+	-- Optional: "97 HP" mitten im Balken (wie im Vorbild)
+	local text = nil
+	if props.ShowText then
+		text = UiKit.Mk("TextLabel", {
+			BackgroundTransparency = 1,
+			Font = UiKit.Font,
+			TextScaled = true,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextStrokeTransparency = 0.15,
+			Size = UDim2.new(1, 0, 0.9, 0),
+			Position = UDim2.new(0, 0, 0.05, 0),
+			ZIndex = 3,
+			Parent = frame,
+		})
+		UiKit.Mk("UITextSizeConstraint", { MaxTextSize = 16, Parent = text })
+	end
+
 	local api = { frame = frame }
 	function api.Set(hp, maxHp, instant)
 		local frac = 0
@@ -4198,6 +4300,9 @@ function UiKit.HpBar(props)
 			fill.Size = goal
 		else
 			TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = goal }):Play()
+		end
+		if text then
+			text.Text = hp .. " HP"
 		end
 	end
 	return api
@@ -4273,9 +4378,9 @@ function UiKit.Toast(msg, kind)
 	local toast = UiKit.Mk("TextLabel", {
 		BackgroundColor3 = color,
 		BackgroundTransparency = 0.08,
-		Font = Enum.Font.FredokaOne,
+		Font = UiKit.Font,
 		TextColor3 = UiKit.Colors.Text,
-		TextSize = 18,
+		TextSize = 15,
 		Text = "  " .. msg .. "  ",
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.new(0, 0, 0, 34),
@@ -4301,10 +4406,12 @@ return UiKit
 					<Properties>
 						<string name="Name">HudUi</string>
 						<ProtectedString name="Source">-- ============================================================
--- HUD: Team-Anzeige oben links (mit 3D-Mini-Bildern),
--- Muenzen oben rechts, Menue-Knoepfe, Hinweis unten.
+-- HUD: Team oben links (3D-Mini-Bilder), Muenzen oben rechts,
+-- Quest-Banner (Pixel-Stil), Zonen-Anzeige mit Fang-Chancen
+-- unten links und Menue-Knoepfe.
 -- ============================================================
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -4316,13 +4423,96 @@ local HudUi = {}
 local gui = nil
 local teamContainer = nil
 local coinsLabel = nil
+local questBanner = nil
+local questLabel = nil
+local zonePanel = nil
+local zoneTitle = nil
+local zoneRows = nil
 local callbacks = nil
+local lastData = nil
+
+-- ---------- Quest-Banner ----------
+
+local function updateQuest()
+	if not lastData then return end
+	local text = nil
+	if not lastData.starter then
+		text = "Besuche das Labor (gelbes Schild), um dein erstes Monster zu bekommen!"
+	elseif (lastData.catches or 0) == 0 then
+		text = "Lauf ins hohe Gras auf Route 1 (Osten) und fang dein erstes Monster!"
+	end
+	if text then
+		questLabel.Text = text
+		questBanner.Visible = true
+	else
+		questBanner.Visible = false
+	end
+end
+
+-- ---------- Zonen-Anzeige mit Fang-Chancen ----------
+
+local function patchAt(pos)
+	for _, patch in ipairs(GameData.GrassPatches) do
+		if pos.X &gt;= patch[1] and pos.X &lt;= patch[3] and pos.Z &gt;= patch[2] and pos.Z &lt;= patch[4] then
+			return patch
+		end
+	end
+	return nil
+end
+
+local function updateZone()
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local patch = root and patchAt(root.Position) or nil
+	if not patch then
+		zonePanel.Visible = false
+		return
+	end
+	local route = GameData.Routes[patch[5]]
+	zoneTitle.Text = route.name .. "  (Lv. " .. route.levelMin .. "-" .. route.levelMax .. ")"
+
+	for _, child in ipairs(zoneRows:GetChildren()) do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+	local total = 0
+	for _, entry in ipairs(route.pool) do
+		total = total + entry[2]
+	end
+	local sorted = {}
+	for _, entry in ipairs(route.pool) do
+		table.insert(sorted, entry)
+	end
+	table.sort(sorted, function(a, b)
+		return a[2] &gt; b[2]
+	end)
+	for i = 1, math.min(4, #sorted) do
+		local sp = GameData.Species[sorted[i][1]]
+		local pct = sorted[i][2] / total * 100
+		local pctText = pct &gt;= 10 and string.format("%d%%", math.floor(pct + 0.5)) or string.format("%.1f%%", pct)
+		local row = UiKit.Label({
+			Text = sp.name .. "  " .. pctText,
+			TextColor3 = GameData.TypeColors[sp.typ],
+			TextStrokeTransparency = 0.2,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Size = UDim2.new(1, 0, 0, 16),
+			LayoutOrder = i,
+			Parent = zoneRows,
+		})
+		UiKit.Constrain(row, 13)
+	end
+	zonePanel.Visible = true
+end
+
+-- ---------- Daten ----------
 
 function HudUi.SetData(data)
 	if not data then return end
+	lastData = data
 	coinsLabel.Text = "🪙 " .. data.coins
+	updateQuest()
 
-	-- Team-Karten neu aufbauen
 	for _, child in ipairs(teamContainer:GetChildren()) do
 		if child:IsA("Frame") then
 			child:Destroy()
@@ -4349,28 +4539,28 @@ function HudUi.SetData(data)
 		viewport.SetSpecies(mon.id)
 
 		UiKit.Constrain(UiKit.Label({
-			Text = sp.name .. "  Lv. " .. mon.level,
+			Text = sp.name .. " LVL " .. mon.level,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.new(0, 56, 0, 4),
-			Size = UDim2.new(1, -60, 0, 20),
+			Position = UDim2.new(0, 56, 0, 5),
+			Size = UDim2.new(1, -60, 0, 18),
 			Parent = card,
-		}), 16)
+		}), 13)
 
 		local bar = UiKit.HpBar({
-			Position = UDim2.new(0, 56, 0, 27),
-			Size = UDim2.new(1, -100, 0, 11),
+			Position = UDim2.new(0, 56, 0, 26),
+			Size = UDim2.new(1, -100, 0, 12),
 			Parent = card,
 		})
 		bar.Set(mon.hp, stats.maxHp, true)
 
 		UiKit.Constrain(UiKit.Label({
-			Text = mon.hp .. "/" .. stats.maxHp .. (mon.status and ("  •  " .. GameData.StatusNames[mon.status]) or ""),
+			Text = mon.hp .. "/" .. stats.maxHp .. (mon.status and ("  " .. GameData.StatusNames[mon.status]) or ""),
 			TextColor3 = mon.status and UiKit.Colors.Bad or UiKit.Colors.TextDim,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.new(0, 56, 0, 39),
-			Size = UDim2.new(1, -60, 0, 13),
+			Position = UDim2.new(0, 56, 0, 40),
+			Size = UDim2.new(1, -60, 0, 12),
 			Parent = card,
-		}), 12)
+		}), 11)
 
 		UiKit.Constrain(UiKit.Label({
 			Text = i == 1 and "★" or "",
@@ -4381,6 +4571,8 @@ function HudUi.SetData(data)
 		}), 16)
 	end
 end
+
+-- ---------- Aufbau ----------
 
 function HudUi.Init(cb)
 	callbacks = cb
@@ -4399,23 +4591,94 @@ function HudUi.Init(cb)
 		Parent = teamContainer,
 	})
 
-	-- Muenzen oben rechts
-	coinsLabel = UiKit.Constrain(UiKit.Label({
-		Text = "🪙 0",
+	-- Muenzen-Pille oben rechts
+	local coinPill = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(205, 160, 60),
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -14, 0, 12),
-		Size = UDim2.new(0, 160, 0, 32),
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextStrokeTransparency = 0.4,
+		Size = UDim2.new(0, 150, 0, 34),
 		Parent = gui,
-	}), 26)
+	})
+	UiKit.Round(coinPill, 17)
+	UiKit.Stroke(coinPill, Color3.fromRGB(90, 60, 20), 3)
+	coinsLabel = UiKit.Constrain(UiKit.Label({
+		Text = "🪙 0",
+		Size = UDim2.new(1, -16, 1, -8),
+		Position = UDim2.new(0, 8, 0, 4),
+		Parent = coinPill,
+	}), 18)
+
+	-- Quest-Banner oben (Pixel-Stil, wie im Vorbild)
+	questBanner = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.25,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 14),
+		Size = UDim2.new(0.46, 0, 0, 58),
+		Visible = false,
+		Parent = gui,
+	})
+	UiKit.Round(questBanner, 10)
+	UiKit.Constrain(UiKit.Label({
+		Text = "❗",
+		TextColor3 = Color3.fromRGB(220, 50, 50),
+		Position = UDim2.new(0, 6, 0, 6),
+		Size = UDim2.new(0, 40, 1, -12),
+		Parent = questBanner,
+	}), 30)
+	questLabel = UiKit.Constrain(UiKit.Label({
+		Text = "",
+		TextColor3 = Color3.fromRGB(40, 40, 48),
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 52, 0, 6),
+		Size = UDim2.new(1, -60, 1, -12),
+		Parent = questBanner,
+	}), 14)
+
+	-- Zonen-Anzeige unten links (ueber den Knoepfen)
+	zonePanel = UiKit.Mk("Frame", {
+		BackgroundColor3 = Color3.fromRGB(20, 22, 28),
+		BackgroundTransparency = 0.35,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 14, 1, -130),
+		Size = UDim2.new(0, 210, 0, 100),
+		Visible = false,
+		Parent = gui,
+	})
+	UiKit.Round(zonePanel, 10)
+	zoneTitle = UiKit.Constrain(UiKit.Label({
+		Text = "",
+		TextStrokeTransparency = 0.2,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.new(0, 8, 0, 4),
+		Size = UDim2.new(1, -16, 0, 18),
+		Parent = zonePanel,
+	}), 14)
+	zoneRows = UiKit.Mk("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 8, 0, 26),
+		Size = UDim2.new(1, -16, 1, -30),
+		Parent = zonePanel,
+	})
+	UiKit.Mk("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 2),
+		Parent = zoneRows,
+	})
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			pcall(updateZone)
+		end
+	end)
 
 	-- Menue-Knoepfe unten links
 	local buttons = UiKit.Mk("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 14, 1, -14),
-		Size = UDim2.new(0, 140, 0, 104),
+		Size = UDim2.new(0, 150, 0, 104),
 		Parent = gui,
 	})
 	UiKit.Mk("UIListLayout", {
@@ -4425,33 +4688,23 @@ function HudUi.Init(cb)
 		Parent = buttons,
 	})
 	UiKit.Constrain(UiKit.Button({
-		Text = "🎒 Beutel (B)",
-		BackgroundColor3 = Color3.fromRGB(190, 130, 60),
+		Text = "🎒 TASCHE (B)",
+		BackgroundColor3 = Color3.fromRGB(210, 140, 55),
 		Size = UDim2.new(1, 0, 0, 44),
 		LayoutOrder = 1,
 		Parent = buttons,
 	}, function()
 		callbacks.onToggleBag()
-	end), 18)
+	end), 14)
 	UiKit.Constrain(UiKit.Button({
-		Text = "⭐ Team (T)",
-		BackgroundColor3 = UiKit.Colors.Blue,
+		Text = "⭐ TEAM (T)",
+		BackgroundColor3 = Color3.fromRGB(55, 170, 110),
 		Size = UDim2.new(1, 0, 0, 44),
 		LayoutOrder = 2,
 		Parent = buttons,
 	}, function()
 		callbacks.onToggleTeam()
-	end), 18)
-
-	-- Hinweis unten Mitte
-	UiKit.Constrain(UiKit.Label({
-		Text = "Lauf durchs hohe Gras, um wilde Monster zu finden!",
-		TextStrokeTransparency = 0.4,
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -10),
-		Size = UDim2.new(0.6, 0, 0, 20),
-		Parent = gui,
-	}), 16)
+	end), 14)
 end
 
 return HudUi
@@ -4937,7 +5190,7 @@ function MenuUi.Init(cb)
 	callbacks = cb
 	gui = UiKit.Screen("MonsterMenus", 10)
 
-	bagPanel = makePanel("Beutel", UDim2.new(0, 420, 0, 440))
+	bagPanel = makePanel("Tasche", UDim2.new(0, 420, 0, 440))
 	bagScroll = makeScroll(bagPanel, 48)
 
 	teamPanel, teamTitle = makePanel("Dein Team", UDim2.new(0, 480, 0, 520))
@@ -4988,8 +5241,8 @@ local bobConn = nil
 -- UI-Referenzen
 local logLabel, buttonsArea, mainGrid, movesFrame, bagFrame, switchFrame
 local resultBanner, resultText
-local enemyName, enemyInfo, enemyBar
-local allyName, allyInfo, allyHpText, allyBar, xpFill
+local enemyName, enemyLvl, enemyInfo, enemyBar
+local allyName, allyLvl, allyInfo, allyBar, xpFill
 
 local function setLog(msg)
 	logLabel.Text = msg
@@ -5007,7 +5260,8 @@ end
 local function renderEnemy(instant)
 	if not state or not state.enemy then return end
 	local e = state.enemy
-	enemyName.Text = e.name .. "   Lv. " .. e.level
+	enemyName.Text = e.name
+	enemyLvl.Text = "LVL " .. e.level
 	enemyInfo.Text = e.typ .. statusText(e.status)
 	enemyInfo.TextColor3 = e.status and UiKit.Colors.Bad or GameData.TypeColors[e.typ]
 	enemyBar.Set(e.hp, e.maxHp, instant)
@@ -5016,11 +5270,11 @@ end
 local function renderAlly(instant)
 	if not state or not state.ally then return end
 	local a = state.ally
-	allyName.Text = a.name .. "   Lv. " .. a.level
+	allyName.Text = a.name
+	allyLvl.Text = "LVL " .. a.level
 	allyInfo.Text = a.typ .. statusText(a.status)
 	allyInfo.TextColor3 = a.status and UiKit.Colors.Bad or GameData.TypeColors[a.typ]
 	allyBar.Set(a.hp, a.maxHp, instant)
-	allyHpText.Text = a.hp .. " / " .. a.maxHp
 	local frac = 0
 	if a.xpNext and a.xpNext &gt; 0 then
 		frac = math.max(0, math.min(1, a.xp / a.xpNext))
@@ -5377,7 +5631,6 @@ function BattleUi.Update(payload)
 				elseif state.ally then
 					state.ally.hp = ev.hp
 					allyBar.Set(ev.hp, state.ally.maxHp, false)
-					allyHpText.Text = ev.hp .. " / " .. state.ally.maxHp
 				end
 				task.wait(0.5)
 			elseif ev.t == "hit" then
@@ -5454,78 +5707,61 @@ function BattleUi.Init(sender)
 	gui = UiKit.Screen("MonsterBattle", 20)
 	gui.Enabled = false
 
-	-- Gegner-Karte oben rechts
-	local enemyCard = UiKit.Mk("Frame", {
-		BackgroundColor3 = UiKit.Colors.Panel,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(0.98, 0, 0.05, 0),
-		Size = UDim2.new(0.32, 0, 0.14, 0),
-		Parent = gui,
-	})
-	UiKit.Round(enemyCard, 12)
-	UiKit.Stroke(enemyCard)
-	enemyName = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.07, 0),
-		Size = UDim2.new(0.9, 0, 0.36, 0),
-		Parent = enemyCard,
-	}), 24)
-	enemyInfo = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.44, 0),
-		Size = UDim2.new(0.9, 0, 0.18, 0),
-		Parent = enemyCard,
-	}), 15)
-	enemyBar = UiKit.HpBar({
-		Position = UDim2.new(0.05, 0, 0.68, 0),
-		Size = UDim2.new(0.9, 0, 0.18, 0),
-		Parent = enemyCard,
-	})
+	-- Graue Namens-Plaketten mit "LVL X" und "97 HP" im Balken
+	-- (wie im Vorbild-Spiel)
+	local plateGray = Color3.fromRGB(152, 154, 162)
+	local plateDark = Color3.fromRGB(50, 52, 60)
 
-	-- Eigene Karte unten links
-	local allyCard = UiKit.Mk("Frame", {
-		BackgroundColor3 = UiKit.Colors.Panel,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.02, 0, 0.72, 0),
-		Size = UDim2.new(0.32, 0, 0.17, 0),
-		Parent = gui,
-	})
-	UiKit.Round(allyCard, 12)
-	UiKit.Stroke(allyCard)
-	allyName = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.05, 0),
-		Size = UDim2.new(0.9, 0, 0.3, 0),
-		Parent = allyCard,
-	}), 24)
-	allyInfo = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.37, 0),
-		Size = UDim2.new(0.55, 0, 0.15, 0),
-		Parent = allyCard,
-	}), 14)
-	allyHpText = UiKit.Constrain(UiKit.Label({
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextColor3 = UiKit.Colors.TextDim,
-		Position = UDim2.new(0.6, 0, 0.37, 0),
-		Size = UDim2.new(0.35, 0, 0.15, 0),
-		Parent = allyCard,
-	}), 14)
-	allyBar = UiKit.HpBar({
-		Position = UDim2.new(0.05, 0, 0.57, 0),
-		Size = UDim2.new(0.9, 0, 0.16, 0),
-		Parent = allyCard,
-	})
+	local function makePlate(anchor, position)
+		local card = UiKit.Mk("Frame", {
+			BackgroundColor3 = plateGray,
+			AnchorPoint = anchor,
+			Position = position,
+			Size = UDim2.new(0.32, 0, 0.15, 0),
+			Parent = gui,
+		})
+		UiKit.Round(card, 12)
+		UiKit.Stroke(card, Color3.fromRGB(20, 20, 26), 3)
+		local nameLabel = UiKit.Constrain(UiKit.Label({
+			Text = "?",
+			TextColor3 = plateDark,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0.05, 0, 0.06, 0),
+			Size = UDim2.new(0.6, 0, 0.28, 0),
+			Parent = card,
+		}), 17)
+		local lvlLabel = UiKit.Constrain(UiKit.Label({
+			Text = "LVL ?",
+			TextColor3 = plateDark,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Position = UDim2.new(0.67, 0, 0.06, 0),
+			Size = UDim2.new(0.28, 0, 0.28, 0),
+			Parent = card,
+		}), 17)
+		local infoLabel = UiKit.Constrain(UiKit.Label({
+			Text = "",
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0.05, 0, 0.36, 0),
+			Size = UDim2.new(0.9, 0, 0.16, 0),
+			Parent = card,
+		}), 12)
+		local bar = UiKit.HpBar({
+			Position = UDim2.new(0.05, 0, 0.58, 0),
+			Size = UDim2.new(0.9, 0, 0.26, 0),
+			ShowText = true,
+			Parent = card,
+		})
+		return card, nameLabel, lvlLabel, infoLabel, bar
+	end
+
+	local enemyCard, allyCard
+	enemyCard, enemyName, enemyLvl, enemyInfo, enemyBar = makePlate(Vector2.new(1, 0), UDim2.new(0.98, 0, 0.05, 0))
+	allyCard, allyName, allyLvl, allyInfo, allyBar = makePlate(Vector2.new(0, 1), UDim2.new(0.02, 0, 0.72, 0))
 	local xpBack = UiKit.Mk("Frame", {
 		BackgroundColor3 = Color3.fromRGB(25, 25, 38),
 		BorderSizePixel = 0,
-		Position = UDim2.new(0.05, 0, 0.8, 0),
-		Size = UDim2.new(0.9, 0, 0.08, 0),
+		Position = UDim2.new(0.05, 0, 0.88, 0),
+		Size = UDim2.new(0.9, 0, 0.07, 0),
 		Parent = allyCard,
 	})
 	UiKit.Round(xpBack, 4)
@@ -5576,18 +5812,18 @@ function BattleUi.Init(sender)
 
 	mainGrid = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = buttonsArea })
 	grid(mainGrid, 2)
-	UiKit.Constrain(UiKit.Button({ Text = "Kampf", BackgroundColor3 = Color3.fromRGB(200, 70, 70), LayoutOrder = 1, Parent = mainGrid }, function()
+	UiKit.Constrain(UiKit.Button({ Text = "KAMPF", BackgroundColor3 = Color3.fromRGB(225, 70, 80), LayoutOrder = 1, Parent = mainGrid }, function()
 		showMoves()
-	end), 24)
-	UiKit.Constrain(UiKit.Button({ Text = "Beutel", BackgroundColor3 = Color3.fromRGB(190, 130, 60), LayoutOrder = 2, Parent = mainGrid }, function()
+	end), 22)
+	UiKit.Constrain(UiKit.Button({ Text = "TASCHE", BackgroundColor3 = Color3.fromRGB(210, 140, 55), LayoutOrder = 2, Parent = mainGrid }, function()
 		showBag()
-	end), 24)
-	UiKit.Constrain(UiKit.Button({ Text = "Team", BackgroundColor3 = Color3.fromRGB(210, 170, 60), LayoutOrder = 3, Parent = mainGrid }, function()
+	end), 22)
+	UiKit.Constrain(UiKit.Button({ Text = "TEAM", BackgroundColor3 = Color3.fromRGB(55, 170, 110), LayoutOrder = 3, Parent = mainGrid }, function()
 		showSwitch(false)
-	end), 24)
-	UiKit.Constrain(UiKit.Button({ Text = "Flucht", BackgroundColor3 = Color3.fromRGB(110, 110, 130), LayoutOrder = 4, Parent = mainGrid }, function()
+	end), 22)
+	UiKit.Constrain(UiKit.Button({ Text = "FLUCHT", BackgroundColor3 = Color3.fromRGB(70, 115, 220), LayoutOrder = 4, Parent = mainGrid }, function()
 		send({ kind = "run" })
-	end), 24)
+	end), 22)
 
 	movesFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
 	grid(movesFrame, 3)

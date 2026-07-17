@@ -18,66 +18,85 @@ local RoamService = require(script.Parent:WaitForChild("RoamService"))
 
 local BattleService = {}
 
-local STAGE_COUNT = 8
-
 local rng = Random.new()
 local battles = {} -- [player] = Kampfzustand
-local stages = {} -- { base, folder, busy }
+local arenaRoot = nil -- Ordner fuer alle Kampfplaetze
 local BattleStartRemote = nil
 local BattleUpdateRemote = nil
 
--- ---------- Kampf-Buehnen ----------
+-- ---------- Kampfplatz direkt in der Welt ----------
+-- Zwei leuchtende Ziegel-Plattformen erscheinen vor dem Spieler
+-- (wie im Vorbild), die Monster stellen sich darauf.
 
-local function buildStages()
-	local stageFolder = Instance.new("Folder")
-	stageFolder.Name = "Kampfarenen"
-	for i = 1, STAGE_COUNT do
-		local base = Vector3.new(-600 + i * 150, 240, 900)
-		local folder = Instance.new("Folder")
-		folder.Name = "Arena" .. i
-
-		local function p(props)
-			local prt = Instance.new("Part")
-			prt.Anchored = true
-			prt.TopSurface = Enum.SurfaceType.Smooth
-			prt.BottomSurface = Enum.SurfaceType.Smooth
-			for k, v in pairs(props) do
-				prt[k] = v
-			end
-			prt.Parent = folder
-			return prt
-		end
-
-		-- Boden der Buehne
-		p({ Size = Vector3.new(46, 1, 28), Color = Color3.fromRGB(120, 170, 100), Material = Enum.Material.Grass, CFrame = CFrame.new(base) })
-		p({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 10, 10), Color = Color3.fromRGB(220, 215, 200), Material = Enum.Material.Concrete, CanCollide = false,
-			CFrame = CFrame.new(base + Vector3.new(-10, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
-		p({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 10, 10), Color = Color3.fromRGB(220, 215, 200), Material = Enum.Material.Concrete, CanCollide = false,
-			CFrame = CFrame.new(base + Vector3.new(10, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
-
-		-- Kamerapunkt fuer den Client
-		local cam = p({ Size = Vector3.new(1, 1, 1), Transparency = 1, CanCollide = false, Name = "KameraPunkt" })
-		cam.CFrame = CFrame.lookAt(base + Vector3.new(-16, 9, 16), base + Vector3.new(3, 3, 0))
-
-		folder.Parent = stageFolder
-		table.insert(stages, { base = base, folder = folder, busy = false })
+local function makeArena(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local origin = root and root.Position or Vector3.new(0, 3, 20)
+	local look = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude < 0.05 then
+		flat = Vector3.new(0, 0, -1)
 	end
-	stageFolder.Parent = workspace
+	flat = flat.Unit
+	local center = Vector3.new(
+		math.clamp(origin.X + flat.X * 16, -420, 420), 0,
+		math.clamp(origin.Z + flat.Z * 16, -420, 420))
+	local right = Vector3.new(-flat.Z, 0, flat.X)
+
+	local folder = Instance.new("Folder")
+	folder.Name = "Arena" .. player.UserId
+
+	local function platform(pos)
+		local pad = Instance.new("Part")
+		pad.Size = Vector3.new(9, 0.8, 9)
+		pad.Color = Color3.fromRGB(205, 150, 95)
+		pad.Material = Enum.Material.Brick
+		pad.Anchored = true
+		pad.TopSurface = Enum.SurfaceType.Smooth
+		pad.CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0))
+		pad.Parent = folder
+		local rim = Instance.new("Part")
+		rim.Size = Vector3.new(9.8, 0.3, 9.8)
+		rim.Color = Color3.fromRGB(255, 195, 100)
+		rim.Material = Enum.Material.Neon
+		rim.Transparency = 0.4
+		rim.Anchored = true
+		rim.CanCollide = false
+		rim.CFrame = CFrame.new(pos + Vector3.new(0, 0.12, 0))
+		rim.Parent = folder
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 205, 130)
+		light.Range = 17
+		light.Brightness = 1.8
+		light.Parent = pad
+	end
+
+	local allyPos = center - right * 8
+	local enemyPos = center + right * 8
+	platform(allyPos)
+	platform(enemyPos)
+
+	-- Kamerapunkt: leicht erhoeht von der Spielerseite
+	local cam = Instance.new("Part")
+	cam.Name = "KameraPunkt"
+	cam.Transparency = 1
+	cam.CanCollide = false
+	cam.Anchored = true
+	cam.Size = Vector3.new(1, 1, 1)
+	cam.CFrame = CFrame.lookAt(center - flat * 14 + Vector3.new(0, 8, 0), center + Vector3.new(0, 2.5, 0))
+	cam.Parent = folder
+
+	folder.Parent = arenaRoot
+	return {
+		folder = folder,
+		allyPos = allyPos + Vector3.new(0, 0.8, 0),
+		enemyPos = enemyPos + Vector3.new(0, 0.8, 0),
+	}
 end
 
-local function takeStage()
-	for _, stage in ipairs(stages) do
-		if not stage.busy then
-			stage.busy = true
-			return stage
-		end
-	end
-	return nil
-end
-
--- Monster-Figur auf die Buehne stellen. side = "ally"/"enemy"
+-- Monster-Figur auf den Kampfplatz stellen. side = "ally"/"enemy"
 local function spawnStageModel(state, side, speciesId)
-	local stage = state.stage
+	local arena = state.arena
 	local counterKey = side .. "Counter"
 	state[counterKey] = (state[counterKey] or 0) + 1
 	local name = (side == "ally" and "AllyMon" or "EnemyMon") .. state[counterKey]
@@ -90,11 +109,10 @@ local function spawnStageModel(state, side, speciesId)
 
 	local model = MonsterFactory.Create(speciesId, 1.1)
 	model.Name = name
-	local x = (side == "ally") and -10 or 10
-	local pos = stage.base + Vector3.new(x, 0.6, 0)
-	local look = stage.base + Vector3.new(-x, 0.6, 0)
+	local pos = (side == "ally") and arena.allyPos or arena.enemyPos
+	local look = (side == "ally") and arena.enemyPos or arena.allyPos
 	MonsterFactory.PlaceOnGround(model, pos, look)
-	model.Parent = stage.folder
+	model.Parent = arena.folder
 	state[oldKey] = model
 	return name
 end
@@ -367,9 +385,9 @@ local function cleanup(player, state)
 	if state.charConn then
 		state.charConn:Disconnect()
 	end
-	if state.allyModel then state.allyModel:Destroy() end
-	if state.enemyModel then state.enemyModel:Destroy() end
-	if state.stage then state.stage.busy = false end
+	if state.arena and state.arena.folder then
+		state.arena.folder:Destroy()
+	end
 	battles[player] = nil
 	setFrozen(player, false)
 end
@@ -419,14 +437,8 @@ local function makeEnemy(speciesId, level)
 end
 
 local function startBattle(player, session, aliveIndex, mode, enemy, trainerDef)
-	local stage = takeStage()
-	if not stage then
-		PlayerData.Notify(player, "Alle Kampfarenen sind gerade belegt. Versuch es gleich nochmal!", "bad")
-		return false
-	end
-
 	local state = {
-		mode = mode, stage = stage, monIndex = aliveIndex,
+		mode = mode, arena = makeArena(player), monIndex = aliveIndex,
 		enemy = enemy, trainer = trainerDef, trainerTeamIndex = 1,
 		forcedSwitch = false, over = false, result = nil, busy = false,
 		leveled = {}, charConn = nil,
@@ -447,7 +459,7 @@ local function startBattle(player, session, aliveIndex, mode, enemy, trainerDef)
 	BattleStartRemote:FireClient(player, {
 		mode = mode,
 		trainerName = trainerDef and trainerDef.name or nil,
-		stageName = stage.folder.Name,
+		stageName = state.arena.folder.Name,
 		allyModel = allyName,
 		enemyModel = enemyName,
 		enemy = enemyView(enemy),
@@ -705,7 +717,9 @@ local function onBattleAction(player, action)
 end
 
 function BattleService.Init()
-	buildStages()
+	arenaRoot = Instance.new("Folder")
+	arenaRoot.Name = "Kampfarenen"
+	arenaRoot.Parent = workspace
 	BattleStartRemote = Remotes.Get("BattleStart")
 	BattleUpdateRemote = Remotes.Get("BattleUpdate")
 	Remotes.Get("BattleAction").OnServerEvent:Connect(onBattleAction)

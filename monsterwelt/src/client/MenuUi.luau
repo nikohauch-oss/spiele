@@ -474,7 +474,7 @@ function MenuUi.Init(cb)
 	callbacks = cb
 	gui = UiKit.Screen("MonsterMenus", 10)
 
-	bagPanel = makePanel("Beutel", UDim2.new(0, 420, 0, 440))
+	bagPanel = makePanel("Tasche", UDim2.new(0, 420, 0, 440))
 	bagScroll = makeScroll(bagPanel, 48)
 
 	teamPanel, teamTitle = makePanel("Dein Team", UDim2.new(0, 480, 0, 520))

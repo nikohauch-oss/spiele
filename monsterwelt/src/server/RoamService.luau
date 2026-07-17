@@ -109,32 +109,47 @@ local function spawnRoamer(patchIndex, speciesId, level, isLegendary)
 	local pos = randomInPatch(patch)
 	MonsterFactory.PlaceOnGround(model, pos, pos + Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)))
 
-	-- Namensschild
+	-- Namensschild im Pixel-Stil: LEVEL, Name, roter Mini-HP-Balken
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(220, isLegendary and 76 or 56)
-	billboard.StudsOffset = Vector3.new(0, isLegendary and 4.6 or 3.2, 0)
-	billboard.MaxDistance = isLegendary and 220 or 100
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, isLegendary and 0.6 or 1, 0)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.Text = isLegendary and ("⭐ " .. sp.name .. " ⭐") or (sp.name .. "  Lv. " .. level)
-	label.TextColor3 = isLegendary and Color3.fromRGB(255, 210, 70) or GameData.TypeColors[sp.typ]
-	label.TextStrokeTransparency = 0.2
-	label.Parent = billboard
-	if isLegendary then
-		local sub = Instance.new("TextLabel")
-		sub.Position = UDim2.new(0, 0, 0.6, 0)
-		sub.Size = UDim2.new(1, 0, 0.4, 0)
-		sub.BackgroundTransparency = 1
-		sub.Font = Enum.Font.FredokaOne
-		sub.TextScaled = true
-		sub.Text = "Lv. " .. level .. " • LEGENDÄR"
-		sub.TextColor3 = Color3.fromRGB(255, 255, 255)
-		sub.TextStrokeTransparency = 0.3
-		sub.Parent = billboard
-	end
+	billboard.Size = UDim2.fromOffset(240, 84)
+	billboard.StudsOffset = Vector3.new(0, isLegendary and 4.8 or 3.4, 0)
+	billboard.MaxDistance = isLegendary and 240 or 110
+
+	local lvlLabel = Instance.new("TextLabel")
+	lvlLabel.Size = UDim2.new(1, 0, 0.3, 0)
+	lvlLabel.BackgroundTransparency = 1
+	lvlLabel.Font = Enum.Font.Arcade
+	lvlLabel.TextScaled = true
+	lvlLabel.Text = isLegendary and ("LEVEL " .. level .. " • LEGENDÄR") or ("LEVEL " .. level)
+	lvlLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lvlLabel.TextStrokeTransparency = 0.1
+	lvlLabel.Parent = billboard
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Position = UDim2.new(0, 0, 0.3, 0)
+	nameLabel.Size = UDim2.new(1, 0, 0.42, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.Arcade
+	nameLabel.TextScaled = true
+	nameLabel.Text = isLegendary and ("⭐ " .. sp.name .. " ⭐") or sp.name
+	nameLabel.TextColor3 = isLegendary and Color3.fromRGB(255, 210, 70) or GameData.TypeColors[sp.typ]
+	nameLabel.TextStrokeTransparency = 0.1
+	nameLabel.Parent = billboard
+
+	local barBack = Instance.new("Frame")
+	barBack.AnchorPoint = Vector2.new(0.5, 0)
+	barBack.Position = UDim2.new(0.5, 0, 0.78, 0)
+	barBack.Size = UDim2.new(0.5, 0, 0.14, 0)
+	barBack.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+	barBack.BorderSizePixel = 0
+	barBack.Parent = billboard
+	local barFill = Instance.new("Frame")
+	barFill.Size = UDim2.new(1, -2, 1, -2)
+	barFill.Position = UDim2.new(0, 1, 0, 1)
+	barFill.BackgroundColor3 = Color3.fromRGB(235, 90, 90)
+	barFill.BorderSizePixel = 0
+	barFill.Parent = barBack
+
 	billboard.Parent = model.PrimaryPart
 
 	-- Legendaere zaehlen nicht zum normalen Nachschub (patchIndex 0)

@@ -118,10 +118,13 @@ function UiKit.Stroke(inst, color, thickness)
 	return inst
 end
 
+-- Pixel-Schrift wie im Vorbild-Spiel
+UiKit.Font = Enum.Font.Arcade
+
 function UiKit.Label(props)
 	local defaults = {
 		BackgroundTransparency = 1,
-		Font = Enum.Font.FredokaOne,
+		Font = UiKit.Font,
 		TextScaled = true,
 		TextColor3 = UiKit.Colors.Text,
 	}
@@ -133,7 +136,7 @@ end
 
 function UiKit.Button(props, callback)
 	local defaults = {
-		Font = Enum.Font.FredokaOne,
+		Font = UiKit.Font,
 		TextScaled = true,
 		TextColor3 = UiKit.Colors.Text,
 		BackgroundColor3 = UiKit.Colors.PanelLight,
@@ -185,6 +188,23 @@ function UiKit.HpBar(props)
 	})
 	UiKit.Round(fill, 6)
 
+	-- Optional: "97 HP" mitten im Balken (wie im Vorbild)
+	local text = nil
+	if props.ShowText then
+		text = UiKit.Mk("TextLabel", {
+			BackgroundTransparency = 1,
+			Font = UiKit.Font,
+			TextScaled = true,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextStrokeTransparency = 0.15,
+			Size = UDim2.new(1, 0, 0.9, 0),
+			Position = UDim2.new(0, 0, 0.05, 0),
+			ZIndex = 3,
+			Parent = frame,
+		})
+		UiKit.Mk("UITextSizeConstraint", { MaxTextSize = 16, Parent = text })
+	end
+
 	local api = { frame = frame }
 	function api.Set(hp, maxHp, instant)
 		local frac = 0
@@ -203,6 +223,9 @@ function UiKit.HpBar(props)
 			fill.Size = goal
 		else
 			TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = goal }):Play()
+		end
+		if text then
+			text.Text = hp .. " HP"
 		end
 	end
 	return api
@@ -278,9 +301,9 @@ function UiKit.Toast(msg, kind)
 	local toast = UiKit.Mk("TextLabel", {
 		BackgroundColor3 = color,
 		BackgroundTransparency = 0.08,
-		Font = Enum.Font.FredokaOne,
+		Font = UiKit.Font,
 		TextColor3 = UiKit.Colors.Text,
-		TextSize = 18,
+		TextSize = 15,
 		Text = "  " .. msg .. "  ",
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.new(0, 0, 0, 34),

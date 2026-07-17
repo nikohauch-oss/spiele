@@ -156,7 +156,7 @@ function PlayerData.Sync(player)
 	updateLeaderstats(player)
 	DataSyncRemote:FireClient(player, {
 		team = session.team, box = session.box, items = session.items,
-		coins = session.coins, starter = session.starter,
+		coins = session.coins, starter = session.starter, catches = session.catches,
 	})
 	PlayerData.OnTeamChanged(player)
 end

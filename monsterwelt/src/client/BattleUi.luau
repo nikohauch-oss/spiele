@@ -24,8 +24,8 @@ local bobConn = nil
 -- UI-Referenzen
 local logLabel, buttonsArea, mainGrid, movesFrame, bagFrame, switchFrame
 local resultBanner, resultText
-local enemyName, enemyInfo, enemyBar
-local allyName, allyInfo, allyHpText, allyBar, xpFill
+local enemyName, enemyLvl, enemyInfo, enemyBar
+local allyName, allyLvl, allyInfo, allyBar, xpFill
 
 local function setLog(msg)
 	logLabel.Text = msg
@@ -43,7 +43,8 @@ end
 local function renderEnemy(instant)
 	if not state or not state.enemy then return end
 	local e = state.enemy
-	enemyName.Text = e.name .. "   Lv. " .. e.level
+	enemyName.Text = e.name
+	enemyLvl.Text = "LVL " .. e.level
 	enemyInfo.Text = e.typ .. statusText(e.status)
 	enemyInfo.TextColor3 = e.status and UiKit.Colors.Bad or GameData.TypeColors[e.typ]
 	enemyBar.Set(e.hp, e.maxHp, instant)
@@ -52,11 +53,11 @@ end
 local function renderAlly(instant)
 	if not state or not state.ally then return end
 	local a = state.ally
-	allyName.Text = a.name .. "   Lv. " .. a.level
+	allyName.Text = a.name
+	allyLvl.Text = "LVL " .. a.level
 	allyInfo.Text = a.typ .. statusText(a.status)
 	allyInfo.TextColor3 = a.status and UiKit.Colors.Bad or GameData.TypeColors[a.typ]
 	allyBar.Set(a.hp, a.maxHp, instant)
-	allyHpText.Text = a.hp .. " / " .. a.maxHp
 	local frac = 0
 	if a.xpNext and a.xpNext > 0 then
 		frac = math.max(0, math.min(1, a.xp / a.xpNext))
@@ -413,7 +414,6 @@ function BattleUi.Update(payload)
 				elseif state.ally then
 					state.ally.hp = ev.hp
 					allyBar.Set(ev.hp, state.ally.maxHp, false)
-					allyHpText.Text = ev.hp .. " / " .. state.ally.maxHp
 				end
 				task.wait(0.5)
 			elseif ev.t == "hit" then
@@ -490,78 +490,61 @@ function BattleUi.Init(sender)
 	gui = UiKit.Screen("MonsterBattle", 20)
 	gui.Enabled = false
 
-	-- Gegner-Karte oben rechts
-	local enemyCard = UiKit.Mk("Frame", {
-		BackgroundColor3 = UiKit.Colors.Panel,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(0.98, 0, 0.05, 0),
-		Size = UDim2.new(0.32, 0, 0.14, 0),
-		Parent = gui,
-	})
-	UiKit.Round(enemyCard, 12)
-	UiKit.Stroke(enemyCard)
-	enemyName = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.07, 0),
-		Size = UDim2.new(0.9, 0, 0.36, 0),
-		Parent = enemyCard,
-	}), 24)
-	enemyInfo = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.44, 0),
-		Size = UDim2.new(0.9, 0, 0.18, 0),
-		Parent = enemyCard,
-	}), 15)
-	enemyBar = UiKit.HpBar({
-		Position = UDim2.new(0.05, 0, 0.68, 0),
-		Size = UDim2.new(0.9, 0, 0.18, 0),
-		Parent = enemyCard,
-	})
+	-- Graue Namens-Plaketten mit "LVL X" und "97 HP" im Balken
+	-- (wie im Vorbild-Spiel)
+	local plateGray = Color3.fromRGB(152, 154, 162)
+	local plateDark = Color3.fromRGB(50, 52, 60)
 
-	-- Eigene Karte unten links
-	local allyCard = UiKit.Mk("Frame", {
-		BackgroundColor3 = UiKit.Colors.Panel,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.02, 0, 0.72, 0),
-		Size = UDim2.new(0.32, 0, 0.17, 0),
-		Parent = gui,
-	})
-	UiKit.Round(allyCard, 12)
-	UiKit.Stroke(allyCard)
-	allyName = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.05, 0),
-		Size = UDim2.new(0.9, 0, 0.3, 0),
-		Parent = allyCard,
-	}), 24)
-	allyInfo = UiKit.Constrain(UiKit.Label({
-		Text = "?",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0.05, 0, 0.37, 0),
-		Size = UDim2.new(0.55, 0, 0.15, 0),
-		Parent = allyCard,
-	}), 14)
-	allyHpText = UiKit.Constrain(UiKit.Label({
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextColor3 = UiKit.Colors.TextDim,
-		Position = UDim2.new(0.6, 0, 0.37, 0),
-		Size = UDim2.new(0.35, 0, 0.15, 0),
-		Parent = allyCard,
-	}), 14)
-	allyBar = UiKit.HpBar({
-		Position = UDim2.new(0.05, 0, 0.57, 0),
-		Size = UDim2.new(0.9, 0, 0.16, 0),
-		Parent = allyCard,
-	})
+	local function makePlate(anchor, position)
+		local card = UiKit.Mk("Frame", {
+			BackgroundColor3 = plateGray,
+			AnchorPoint = anchor,
+			Position = position,
+			Size = UDim2.new(0.32, 0, 0.15, 0),
+			Parent = gui,
+		})
+		UiKit.Round(card, 12)
+		UiKit.Stroke(card, Color3.fromRGB(20, 20, 26), 3)
+		local nameLabel = UiKit.Constrain(UiKit.Label({
+			Text = "?",
+			TextColor3 = plateDark,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0.05, 0, 0.06, 0),
+			Size = UDim2.new(0.6, 0, 0.28, 0),
+			Parent = card,
+		}), 17)
+		local lvlLabel = UiKit.Constrain(UiKit.Label({
+			Text = "LVL ?",
+			TextColor3 = plateDark,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Position = UDim2.new(0.67, 0, 0.06, 0),
+			Size = UDim2.new(0.28, 0, 0.28, 0),
+			Parent = card,
+		}), 17)
+		local infoLabel = UiKit.Constrain(UiKit.Label({
+			Text = "",
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.new(0.05, 0, 0.36, 0),
+			Size = UDim2.new(0.9, 0, 0.16, 0),
+			Parent = card,
+		}), 12)
+		local bar = UiKit.HpBar({
+			Position = UDim2.new(0.05, 0, 0.58, 0),
+			Size = UDim2.new(0.9, 0, 0.26, 0),
+			ShowText = true,
+			Parent = card,
+		})
+		return card, nameLabel, lvlLabel, infoLabel, bar
+	end
+
+	local enemyCard, allyCard
+	enemyCard, enemyName, enemyLvl, enemyInfo, enemyBar = makePlate(Vector2.new(1, 0), UDim2.new(0.98, 0, 0.05, 0))
+	allyCard, allyName, allyLvl, allyInfo, allyBar = makePlate(Vector2.new(0, 1), UDim2.new(0.02, 0, 0.72, 0))
 	local xpBack = UiKit.Mk("Frame", {
 		BackgroundColor3 = Color3.fromRGB(25, 25, 38),
 		BorderSizePixel = 0,
-		Position = UDim2.new(0.05, 0, 0.8, 0),
-		Size = UDim2.new(0.9, 0, 0.08, 0),
+		Position = UDim2.new(0.05, 0, 0.88, 0),
+		Size = UDim2.new(0.9, 0, 0.07, 0),
 		Parent = allyCard,
 	})
 	UiKit.Round(xpBack, 4)
@@ -612,18 +595,18 @@ function BattleUi.Init(sender)
 
 	mainGrid = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = buttonsArea })
 	grid(mainGrid, 2)
-	UiKit.Constrain(UiKit.Button({ Text = "Kampf", BackgroundColor3 = Color3.fromRGB(200, 70, 70), LayoutOrder = 1, Parent = mainGrid }, function()
+	UiKit.Constrain(UiKit.Button({ Text = "KAMPF", BackgroundColor3 = Color3.fromRGB(225, 70, 80), LayoutOrder = 1, Parent = mainGrid }, function()
 		showMoves()
-	end), 24)
-	UiKit.Constrain(UiKit.Button({ Text = "Beutel", BackgroundColor3 = Color3.fromRGB(190, 130, 60), LayoutOrder = 2, Parent = mainGrid }, function()
+	end), 22)
+	UiKit.Constrain(UiKit.Button({ Text = "TASCHE", BackgroundColor3 = Color3.fromRGB(210, 140, 55), LayoutOrder = 2, Parent = mainGrid }, function()
 		showBag()
-	end), 24)
-	UiKit.Constrain(UiKit.Button({ Text = "Team", BackgroundColor3 = Color3.fromRGB(210, 170, 60), LayoutOrder = 3, Parent = mainGrid }, function()
+	end), 22)
+	UiKit.Constrain(UiKit.Button({ Text = "TEAM", BackgroundColor3 = Color3.fromRGB(55, 170, 110), LayoutOrder = 3, Parent = mainGrid }, function()
 		showSwitch(false)
-	end), 24)
-	UiKit.Constrain(UiKit.Button({ Text = "Flucht", BackgroundColor3 = Color3.fromRGB(110, 110, 130), LayoutOrder = 4, Parent = mainGrid }, function()
+	end), 22)
+	UiKit.Constrain(UiKit.Button({ Text = "FLUCHT", BackgroundColor3 = Color3.fromRGB(70, 115, 220), LayoutOrder = 4, Parent = mainGrid }, function()
 		send({ kind = "run" })
-	end), 24)
+	end), 22)
 
 	movesFrame = UiKit.Mk("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false, Parent = buttonsArea })
 	grid(movesFrame, 3)

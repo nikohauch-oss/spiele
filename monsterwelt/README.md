@@ -5,10 +5,17 @@ eigenen Monstern im Voxel-Klötzchen-Stil** (wie aus Bausteinen gebaut, mit
 leuchtenden Augen und Neon-Flammen/Kristallen/Blitzen — keine echten
 Pokémon-Namen oder -Figuren, also keine Urheberrechts-Probleme).
 Alle normalen Monster haben **Entwicklungen**, die **6 Legendären** nicht —
-die sind dafür extrem selten und stark. Moderne Grafik („Future"-Lighting,
-Atmosphäre, Bloom) und moderne Häuser mit Flachdach und Glasfronten.
-Die ganze Welt, alle Monster-Figuren und die komplette Oberfläche werden
-**per Skript erzeugt** — du brauchst keine Modelle, keine Assets.
+die sind dafür extrem selten und stark.
+
+Die ganze Welt ist im Voxel-Look gebaut: **Würfel-Bäume**, **Ziegelwege**,
+**Backstein-Häuser** mit Stufen-Dächern, leuchtenden Fenstern und
+Neon-Schildern, Lattenzäune — dazu „Future"-Lighting, Atmosphäre und Bloom.
+**Kämpfe finden direkt in der Welt statt**: Vor dir erscheinen zwei
+leuchtende Ziegel-Plattformen, die Monster stellen sich darauf, die Kamera
+fährt hin. Die Oberfläche ist im **Pixel-Stil** (Kampf/Tasche/Team/Flucht,
+„LVL 5", „97 HP" im Balken), mit Quest-Banner oben und einer
+**Zonen-Anzeige mit Fang-Chancen** unten links, sobald du im hohen Gras
+stehst. Alles wird **per Skript erzeugt** — keine Modelle, keine Assets.
 
 ## 🚀 Schnellstart (einfachster Weg)
 
