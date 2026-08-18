@@ -214,6 +214,36 @@ await withPage(async(page,errs)=>{
     return offen;
   });
   note(r.length===4,'Spieler kommt durch Türen in allen 4 Richtungen','(geht: '+r.join(',')+')');
+
+  // Verschlossene Türen (Schatzraum/Shop): mit Schlüssel auf, ohne zu.
+  // Der Spieler wird von der Wand aufgehalten, kommt also nie ganz an die
+  // Türmitte heran — genau daran scheiterte das Aufschließen früher.
+  const schloss=await page.evaluate(()=>{
+    const lauf=(schluessel,richtung)=>{
+      for(let s=0;s<80;s++){
+        startRun(0,'L'+s);
+        const p=KB.G.player; p.keys=schluessel; p.redMax=99;p.red=99;
+        const t=KB.G.room.doors[richtung];
+        if(!t||!t.edge.locked) continue;
+        const vorher=KB.G.roomKey, dp=doorXY(richtung);
+        for(let i=0;i<500&&KB.G.roomKey===vorher;i++){
+          const a=Math.atan2(dp.y-p.y,dp.x-p.x);
+          p.vx=Math.cos(a)*200; p.vy=Math.sin(a)*200; updateGame(1/60);
+        }
+        for(let i=0;i<40;i++) updateGame(1/60);
+        return {gewechselt:KB.G.roomKey!==vorher, rest:KB.G.player.keys, gefunden:true};
+      }
+      return {gefunden:false};
+    };
+    const auf=['u','d','l','r'].filter(d=>lauf(5,d).gewechselt);
+    const zu=lauf(0,'u').gefunden?lauf(0,'u'):lauf(0,'d');
+    return {auf, ohneSchluessel:zu.gewechselt, verbraucht:lauf(5,'u').rest};
+  });
+  note(schloss.auf.length===4,'verschlossene Türen öffnen sich mit Schlüssel',
+       '(geht: '+schloss.auf.join(',')+')');
+  note(schloss.ohneSchluessel===false,'ohne Schlüssel bleibt die Tür zu');
+  note(schloss.verbraucht===4,'das Aufschließen verbraucht genau einen Schlüssel',
+       '(5 → '+schloss.verbraucht+')');
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 

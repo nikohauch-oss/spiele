@@ -988,7 +988,13 @@ function moveEntityPlayer(p,dx,dy,mode,lanes){
 function handleDoors(p){
   for(const d in G.room.doors){
     const door=G.room.doors[d], dp=doorXY(d);
-    if(dist(p,dp)<20&&door.edge.locked&&roomIsClear()) tryUnlockDoor(door);
+    /* Verschlossene Türen springen auf, sobald man mit einem Schlüssel in der
+       Türgasse davorsteht. Die Wand hält den Spieler auf, er kommt nur bis auf
+       21 Pixel an die Türmitte heran — die Schwelle muss darüber liegen, sonst
+       lässt sich die Tür nie öffnen. Die Gassenprüfung verhindert, dass man
+       beim Streifen einer Ecke unabsichtlich einen Schlüssel verbraucht. */
+    const inGasse=(d==='u'||d==='d')?Math.abs(p.x-dp.x)<18:Math.abs(p.y-dp.y)<18;
+    if(door.edge.locked&&inGasse&&dist(p,dp)<30&&roomIsClear()) tryUnlockDoor(door);
     // durchgegangen?
     let through=false;
     if(d==='u'&&p.y<RY-14) through=true;

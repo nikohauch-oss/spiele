@@ -41,6 +41,14 @@ einem Raster erzeugt. Raumtypen: Start, Normal, Schatzraum, Shop, Boss,
 Geheimraum, Fluchraum, Opferraum und Arkade. Die Automap oben rechts deckt
 sich beim Erkunden auf.
 
+**Schatzräume und Shops** sind verschlossen und brauchen einen **Schlüssel**.
+Man stellt sich einfach mit einem Schlüssel im Gepäck vor die goldene Tür —
+sie springt von selbst auf und ein Schlüssel wird verbraucht. Hat man keinen,
+ertönt nur ein Fehlton. Schlüssel fallen aus geräumten Räumen, Steinen,
+Kothaufen und Truhen, kosten im Shop 5 Münzen, und es gibt sie über die Pille
+*Schlüsselglück* (+2) und den *Dietrichfinger* (+3, spart Schlüssel manchmal
+ganz ein). Die Karte *Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
+
 **Türen.** Steinrahmen in leichter Aufsichtsperspektive mit zwei Türblättern,
 die aufschwingen, sobald alle Gegner im Raum tot sind. Jede Türart ist auf
 einen Blick erkennbar: die Schlosstür golden mit Vorhängeschloss, die Bosstür
