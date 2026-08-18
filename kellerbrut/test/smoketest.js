@@ -187,6 +187,37 @@ await withPage(async(page,errs)=>{
 });
 
 }
+// --- 7b. Türen in allen vier Richtungen begehbar ---
+if(want(7)){
+console.log('\n[7b] Türen begehbar');
+await withPage(async(page,errs)=>{
+  const r=await page.evaluate(()=>{
+    const offen=[];
+    for(const richtung of ['u','d','l','r']){
+      let geschafft=false;
+      for(let s=0;s<40&&!geschafft;s++){
+        startRun(0,'T'+s);
+        const p=KB.G.player; p.redMax=99;p.red=99;p.keys=9;
+        if(!KB.G.room.doors[richtung]) continue;
+        const vorher=KB.G.roomKey;
+        for(let i=0;i<200&&KB.G.roomKey===vorher;i++){   // gegen die Tür laufen
+          const dp=doorXY(richtung);
+          const a=Math.atan2(dp.y-p.y,dp.x-p.x);
+          p.vx=Math.cos(a)*200; p.vy=Math.sin(a)*200;
+          updateGame(1/60);
+        }
+        for(let i=0;i<40;i++) updateGame(1/60);          // Übergang abwarten
+        if(KB.G.roomKey!==vorher) geschafft=true;
+      }
+      if(geschafft) offen.push(richtung);
+    }
+    return offen;
+  });
+  note(r.length===4,'Spieler kommt durch Türen in allen 4 Richtungen','(geht: '+r.join(',')+')');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 // --- 8. Spezialräume, Truhen, Automaten, Bomben ---
 if(want(8)){
 console.log('\n[8] Spezialräume, Truhen, Automaten, Bomben');

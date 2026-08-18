@@ -46,7 +46,8 @@
 const W=640, H=360;              // Basisauflösung (wird per CSS skaliert)
 const TILE=40, COLS=13, ROWS=7;  // Raumraster 13x7 Kacheln
 const RX=(W-COLS*TILE)/2;        // Raum-Ursprung X (=60)
-const RY=56;                     // Raum-Ursprung Y
+const RY=50;                     // Raum-Ursprung Y (so, dass auch die untere
+                                 // Wand samt Tür noch vollständig ins Bild passt)
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 ctx.imageSmoothingEnabled=false;
@@ -754,6 +755,8 @@ function enterRoom(key,fromDir){
   spawnFamiliars();
   G.roomFresh=0.5; // kurze Schonfrist beim Betreten
   updateDoorsOpen(true);
+  // Türen stehen beim Betreten sofort richtig, sie schwingen nicht erst auf
+  for(const d in room.doors) room.doors[d].anim=doorPassable(room.doors[d])?1:0;
 }
 
 function saveRoomState(){
@@ -765,6 +768,16 @@ function saveRoomState(){
 }
 
 function roomIsClear(){ return G.enemies.length===0; }
+
+/* Türblätter schwingen weich auf und zu, statt umzuspringen. */
+function updateDoorAnim(dt){
+  if(!G.room) return;
+  for(const d in G.room.doors){
+    const door=G.room.doors[d], ziel=doorPassable(door)?1:0;
+    if(door.anim===undefined) door.anim=ziel;
+    else door.anim=lerp(door.anim,ziel,1-Math.pow(0.0008,dt));
+  }
+}
 
 function updateDoorsOpen(silent){
   const room=G.room; const clear=roomIsClear();
@@ -2038,37 +2051,139 @@ function drawRoom(){
   }
 }
 
+/* --- TÜREN ---------------------------------------------------------------
+   Gezeichnet wird immer in lokalen Koordinaten, in denen -y nach außen
+   (aus dem Raum heraus) zeigt; die Wandseite ergibt sich allein aus der
+   Drehung. Aufbau: dunkler Durchgang, davor zwei Türblätter, die beim
+   Öffnen zur Seite wegschwenken, darüber der Rahmen in leichter
+   Aufsichtsperspektive (außen breiter als innen).                        */
+const DOOR_ROT={u:0, d:Math.PI, l:-Math.PI/2, r:Math.PI/2};
+
+function doorStyle(kind){
+  switch(kind){
+    case 'boss':   return {rahmen:'#4a4038',hell:'#6d5f52',dunkel:'#241e1a',
+                           blatt:'#5c4c44',blattTief:'#33292410',schein:'#c03a5a'};
+    case 'locked': return {rahmen:'#8a6f2a',hell:'#d4af41',dunkel:'#54410f',
+                           blatt:'#b08d33',blattTief:'#7a6021'};
+    case 'curse':  return {rahmen:'#5a2424',hell:'#833636',dunkel:'#331313',
+                           blatt:'#6a2a2a',blattTief:'#431a1a',schein:'#c03a5a'};
+    case 'secret': return {rahmen:'#4a4a52',hell:'#65656f',dunkel:'#2b2b31',
+                           blatt:'#4a4a52',blattTief:'#2b2b31'};
+    default:       return {rahmen:'#6b5b47',hell:'#8d7862',dunkel:'#42382c',
+                           blatt:'#7a6448',blattTief:'#4e3f2c'};
+  }
+}
+function poly(pts,color){
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+  ctx.closePath(); ctx.fill();
+}
+// Rahmen als Ring: äußeres Polygon minus Öffnung
+function polyRing(aussen,innen,color){
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.moveTo(aussen[0][0],aussen[0][1]);
+  for(let i=1;i<aussen.length;i++) ctx.lineTo(aussen[i][0],aussen[i][1]);
+  ctx.closePath();
+  ctx.moveTo(innen[0][0],innen[0][1]);
+  for(let i=innen.length-1;i>=1;i--) ctx.lineTo(innen[i][0],innen[i][1]);
+  ctx.closePath();
+  ctx.fill('evenodd');
+}
+
 function drawDoor(d,door){
-  const e=door.edge, dp=doorXY(d);
-  if(e.kind==='secret'&&!e.revealed) return; // unsichtbar in der Wand
-  const open=doorPassable(door);
-  const horiz=(d==='u'||d==='d');
-  const fw=44,fd=26; // Rahmenbreite/-tiefe
+  const e=door.edge;
+  if(e.kind==='secret'&&!e.revealed) return; // steckt unsichtbar in der Wand
+  const dp=doorXY(d), st=doorStyle(e.kind);
+  const a=clamp(door.anim===undefined?(doorPassable(door)?1:0):door.anim,0,1);
+
+  // Rahmenform: außen (-14) breiter als innen (+13)
+  const AUSSEN=[[-24,-14],[24,-14],[20,13],[-20,13]];
+  const OEFFN =[[-16,-11],[16,-11],[13,12],[-13,12]];
+
   ctx.save();
   ctx.translate(dp.x,dp.y);
-  // Rahmen
-  let frame='#6e675e';
-  if(e.kind==='boss') frame='#8a2a2a';
-  if(e.kind==='locked') frame='#8a7a2a';
-  if(e.kind==='curse') frame='#5a2a2a';
-  if(e.kind==='secret') frame='#3a3a4a';
-  ctx.fillStyle=frame;
-  if(horiz){ ctx.fillRect(-fw/2,-fd/2,fw,fd); }
-  else { ctx.fillRect(-fd/2,-fw/2,fd,fw); }
-  // Öffnung / Türblatt
-  ctx.fillStyle=open?'#0d0d10':'#3a3230';
-  if(horiz) ctx.fillRect(-fw/2+5,-fd/2+3,fw-10,fd-6);
-  else ctx.fillRect(-fd/2+3,-fw/2+5,fd-6,fw-10);
-  if(!open&&e.locked){ // Schlüsselloch
-    disc(0,-2,3,'#111');rrect(-1,-2,2,6,'#111');
+  ctx.rotate(DOOR_ROT[d]);
+
+  // Durchgang
+  poly(OEFFN,'#07070a');
+  // Bossräume glühen rot aus dem Spalt
+  if(st.schein&&a>0.05){
+    const g=ctx.createLinearGradient(0,-11,0,12);
+    g.addColorStop(0,'rgba(0,0,0,0)');
+    g.addColorStop(1,`rgba(192,58,90,${0.30*a})`);
+    ctx.fillStyle=g; ctx.beginPath();
+    ctx.moveTo(-16,-11);ctx.lineTo(16,-11);ctx.lineTo(13,12);ctx.lineTo(-13,12);
+    ctx.closePath(); ctx.fill();
   }
-  if(e.kind==='curse'){ // Stachelrahmen
-    ctx.fillStyle='#9a9a9a';
-    for(let i=-1;i<=1;i++){
-      const ox=horiz?i*12:0, oy=horiz?0:i*12;
-      ctx.beginPath();ctx.moveTo(ox-3,oy+3);ctx.lineTo(ox,oy-4);ctx.lineTo(ox+3,oy+3);ctx.fill();}
+
+  // Türblätter — schwenken beim Öffnen nach außen zur Seite weg
+  if(a<0.98){
+    const b=14*(1-a*0.88);        // sichtbare Blattbreite
+    const weg=a*2.5;              // Versatz nach außen
+    for(const s of [-1,1]){
+      const x0=s*(0.8+weg), x1=s*(0.8+weg+b), x2=s*(0.8+weg+b*0.84);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x0,-10.5); ctx.lineTo(x1,-11); ctx.lineTo(x2,11.5); ctx.lineTo(x0,11.5);
+      ctx.closePath(); ctx.clip();
+      ctx.fillStyle=st.blatt; ctx.fillRect(-30,-12,60,26);
+      // Maserung / Beschläge
+      ctx.fillStyle=st.blattTief;
+      for(let y=-7;y<11;y+=6) ctx.fillRect(-30,y,60,1.2);
+      ctx.fillStyle='rgba(255,255,255,0.10)';
+      ctx.fillRect(-30,-11,60,1.5);
+      ctx.restore();
+      // Außenkante des Blattes betonen
+      ctx.strokeStyle=st.blattTief; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x1,-11); ctx.lineTo(x2,11.5); ctx.stroke();
+    }
+    // Vorhängeschloss bei verschlossenen Türen
+    if(e.locked){
+      ctx.strokeStyle='#c8a032'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,-2.5,3.2,Math.PI,0); ctx.stroke();
+      rrect(-4.5,-1,9,8,'#d4af37');
+      rrect(-4.5,-1,9,2,'#f0d98a');
+      disc(0,3,1.6,'#4a3a10');
+      ctx.fillStyle='#4a3a10'; ctx.fillRect(-0.7,3,1.4,3);
+    }
   }
-  if(e.kind==='boss'){ disc(0,horiz?0:0,4,'#c03a5a'); ring(0,0,4,'#5a1a1a',1.5); }
+
+  // Rahmen über die Blätter legen
+  polyRing(AUSSEN,OEFFN,st.rahmen);
+  // Lichtkante oben, Schattenkante unten
+  poly([[-24,-14],[24,-14],[22,-11],[-22,-11]],st.hell);
+  poly([[-20,11],[20,11],[20,13],[-20,13]],st.dunkel);
+  // Steinfugen im Rahmen
+  ctx.fillStyle=st.dunkel;
+  ctx.fillRect(-21,-6,4.5,1.2); ctx.fillRect(16.5,-6,4.5,1.2);
+  ctx.fillRect(-20,2,4,1.2);    ctx.fillRect(16,2,4,1.2);
+
+  /* Typ-Verzierungen. Alles bleibt innerhalb von y >= -12: die untere
+     Raumwand endet knapp am Bildrand, nach außen ragende Zierrat würde
+     dort abgeschnitten. */
+  if(e.kind==='boss'){                       // Schädel im Türsturz
+    disc(0,-8,4.2,'#d8d0c0');
+    rrect(-3,-6.5,6,2.6,'#d8d0c0');
+    disc(-1.7,-8.5,1.2,'#241e1a'); disc(1.7,-8.5,1.2,'#241e1a');
+    ctx.fillStyle='#241e1a';
+    ctx.fillRect(-1.7,-5.2,0.9,1.8); ctx.fillRect(0.8,-5.2,0.9,1.8);
+    disc(-18,-12,1.8,'#8a7a66'); disc(18,-12,1.8,'#8a7a66'); // Nieten
+  } else if(e.kind==='locked'){               // goldene Nieten
+    for(const nx of [-18,-9,9,18]) disc(nx,-12,1.5,'#f0d98a');
+  } else if(e.kind==='curse'){                // Zähne, die in die Öffnung ragen
+    ctx.fillStyle='#b0b0b8';
+    for(let i=-2;i<=2;i++){ const x=i*7;
+      ctx.beginPath(); ctx.moveTo(x-2.6,-11.5); ctx.lineTo(x,-5.5); ctx.lineTo(x+2.6,-11.5);
+      ctx.closePath(); ctx.fill(); }
+  } else if(e.kind==='secret'){               // aufgesprengter Mauerriss
+    ctx.strokeStyle='#1c1c22'; ctx.lineWidth=1.4;
+    ctx.beginPath();
+    ctx.moveTo(-21,-11); ctx.lineTo(-13,-7); ctx.lineTo(-17,-1); ctx.lineTo(-9,4);
+    ctx.moveTo(21,-11);  ctx.lineTo(14,-6);  ctx.lineTo(18,0);   ctx.lineTo(10,5);
+    ctx.stroke();
+    for(const bx of [-19,-8,9,19]) disc(bx,10,1.3,'#1c1c22'); // Schutt
+  }
   ctx.restore();
 }
 
@@ -2579,6 +2694,7 @@ function updateGame(dt){
   updateCreeps(dt);
   updateFx(dt);
   updateDoorsOpen(false);
+  updateDoorAnim(dt);
   // Sieg: Endboss auf der letzten Etage besiegt (kurze Pause für den Todeseffekt)
   if(G.depth>=FLOORS.length&&G.room.type==='boss'&&G.room.cleared&&!G.winQueued){
     G.winQueued=true; G.winTimer=2.5;

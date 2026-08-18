@@ -38,8 +38,17 @@ kostet ein halbes Herz, danach kurze Unverwundbarkeit mit Blinken.
 
 **Etagen.** Sechs Etagen mit eigenen Tilesets und Gegnerpools, prozedural auf
 einem Raster erzeugt. Raumtypen: Start, Normal, Schatzraum, Shop, Boss,
-Geheimraum, Fluchraum, Opferraum und Arkade. Türen öffnen erst, wenn alle
-Gegner tot sind. Die Automap oben rechts deckt sich beim Erkunden auf.
+Geheimraum, Fluchraum, Opferraum und Arkade. Die Automap oben rechts deckt
+sich beim Erkunden auf.
+
+**Türen.** Steinrahmen in leichter Aufsichtsperspektive mit zwei Türblättern,
+die aufschwingen, sobald alle Gegner im Raum tot sind. Jede Türart ist auf
+einen Blick erkennbar: die Schlosstür golden mit Vorhängeschloss, die Bosstür
+mit Schädel im Sturz und rotem Schein aus dem Spalt, die Fluchtür dunkelrot
+mit Zähnen im Durchgang, der Geheimgang als aufgesprengter Mauerriss mit
+Schutt. Gezeichnet wird immer in lokalen Koordinaten, die Wandseite ergibt
+sich allein aus der Drehung (`DOOR_ROT`) — eine neue Türart braucht daher nur
+einen Eintrag in `doorStyle()` und einen Verzierungsblock in `drawDoor()`.
 
 **Seeds.** Gleicher Seed erzeugt garantiert dieselben Etagen — in der
 Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten
@@ -131,8 +140,9 @@ node test/smoketest.js 4,5   # nur einzelne Phasen
 Geprüft werden unter anderem: Seed-Determinismus, 240 erzeugte Etagen auf
 Vollständigkeit und Erreichbarkeit aller Räume, alle 17 Gegnertypen, alle
 6 Bosse samt Phasenwechsel, alle 48 Items unter Dauerfeuer, alle Pillen und
-Karten, jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, das Zeichnen
-sämtlicher Sprites sowie die Bildrate unter Last.
+Karten, das Durchschreiten von Türen in allen vier Richtungen, jeder Raumtyp,
+ein kompletter Durchlauf bis zum Sieg, das Zeichnen sämtlicher Sprites sowie
+die Bildrate unter Last.
 
 Zwei Umgebungsvariablen sind optional: `KB_CHROMIUM` setzt einen abweichenden
 Browser-Pfad, `KB_SHOTS` das Verzeichnis für die Screenshots.
