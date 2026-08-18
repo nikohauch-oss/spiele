@@ -361,13 +361,17 @@ const CHARS=[
 /* --- ETAGEN: Tileset-Farben, Gegnerpool, Bosse, Musik --- */
 const FLOORS=[
  {name:'Feuchter Keller', bg:'#1a1512',fa:'#2b241d',fb:'#241e18',wall:'#3d2f22',accent:'#5a442f',
-  pool:['blobling','huepfer','spucker','zuckfliege','wanderauge'],bosses:['matschkoenig'],mus:0},
+  pool:['blobling','huepfer','spucker','zuckfliege','wanderauge','kotkrabbler'],
+  bosses:['matschkoenig','kloakenfuerst'],mus:0},
  {name:'Pilzgrotte',      bg:'#121a14',fa:'#1d2b20',fb:'#18241b',wall:'#24402b',accent:'#3a5f42',
-  pool:['sporling','mauerkriecher','blobling','huepfer','rennratte','zuckfliege'],bosses:['augenwaechter'],mus:1},
+  pool:['sporling','mauerkriecher','blobling','huepfer','rennratte','zuckfliege','kotkrabbler','kotspritzer'],
+  bosses:['augenwaechter','kloakenfuerst'],mus:1},
  {name:'Knochengang',     bg:'#171717',fa:'#262624',fb:'#201f1e',wall:'#3b3a36',accent:'#5c5a52',
-  pool:['knochenwurf','rennratte','steinmaul','schleicher','doppelding','spucker'],bosses:['knochengeneral'],mus:2},
+  pool:['knochenwurf','rennratte','steinmaul','schleicher','doppelding','spucker','kotspritzer'],
+  bosses:['knochengeneral'],mus:2},
  {name:'Giftschlund',     bg:'#160f1b',fa:'#251a2e',fb:'#1e1526',wall:'#3a2749',accent:'#5b3a74',
-  pool:['sporling','pulsqualle','brutmutter','spucker','doppelding','zuckfliege'],bosses:['giftbrut'],mus:3},
+  pool:['sporling','pulsqualle','brutmutter','spucker','doppelding','zuckfliege','kotspritzer'],
+  bosses:['giftbrut'],mus:3},
  {name:'Blutkammer',      bg:'#1b0e0e',fa:'#2e1717',fb:'#261212',wall:'#4a2020',accent:'#6e2e2e',
   pool:['stachelkugel','schleicher','pulsqualle','brutmutter','knochenwurf','grabgraeber'],bosses:['doppelherz'],mus:0},
  {name:'Wurzel des Kellers',bg:'#0d0d12',fa:'#191926',fb:'#14141f',wall:'#26263d',accent:'#3d3d5c',
@@ -400,6 +404,8 @@ const ENEMY_TYPES={
  stachelkugel:{name:'Stachelkugel',hp:28, spd:95, r:11, ai:'bounce'},
  pulsqualle:  {name:'Pulsqualle',  hp:16, spd:30, r:11, ai:'ring',   fly:true, shotCd:2.6},
  grabgraeber: {name:'Grabgräber',  hp:18, spd:0,  r:11, ai:'burrow'},
+ kotkrabbler: {name:'Kotkrabbler', hp:8,  spd:44, r:8,  ai:'chase'},
+ kotspritzer: {name:'Kotspritzer', hp:16, spd:16, r:11, ai:'spray', shotCd:2.0},
 };
 
 /* Boss-Schema: KI-Muster stecken in updateBoss (Sektion 9).
@@ -411,6 +417,7 @@ const BOSS_TYPES={
  giftbrut:      {name:'Giftbrut',        hp:440, r:23, ai:'gift',    color:'#8a4ab0'},
  doppelherz:    {name:'Doppelherz',      hp:250, r:18, ai:'herz',    color:'#c03a5a', twin:true},
  kellervater:   {name:'Der Kellervater', hp:750, r:26, ai:'vater',   color:'#4a4a6a'},
+ kloakenfuerst: {name:'Der Kloakenfürst',hp:520,r:24, ai:'kloake',  color:'#7a5b3a'},
 };
 
 /* --- RAUM-TEMPLATES (13x7). Türgassen freihalten!
@@ -1115,7 +1122,7 @@ function hitGridTile(x,y,dmg){
     if(cell.hp<=0){
       G.room.grid[hit.rr][hit.cc]=null;
       burst(tx(hit.cc),ty(hit.rr),cell.t==='poop'?'#7a5b3a':'#e8862a',8);
-      if(cell.t==='poop'&&frand.chance(0.18)) spawnPickup(tx(hit.cc),ty(hit.rr),randomDrop());
+      if(cell.t==='poop') kothaufenAufgebrochen(tx(hit.cc),ty(hit.rr));
       Sfx.hit();
     }
   }
@@ -1261,6 +1268,7 @@ function explode(x,y,rad,dmg,hurtsPlayer){
       G.room.grid[rr][cc]=null;
       burst(tx(cc),ty(rr),'#8a7a66',6);
       if(cell.t==='rock'&&frand.chance(0.1)) spawnPickup(tx(cc),ty(rr),randomDrop());
+      if(cell.t==='poop') kothaufenAufgebrochen(tx(cc),ty(rr));
     }
   }
   // Geheimtüren aufsprengen
@@ -1273,6 +1281,18 @@ function explode(x,y,rad,dmg,hurtsPlayer){
   }
   // Kettenreaktion
   for(const b of G.bombs){ if(!b.dead&&dist(b,{x,y})<rad){ b.t=Math.min(b.t,0.1); } }
+}
+
+/* Ein aufgebrochener Kothaufen gibt entweder Beute her — oder es krabbelt
+   ein Kotkrabbler heraus. Die Chance darauf steigt mit der Etagentiefe.
+   Räume, die bereits geschafft sind, bleiben geschafft: updateDoorsOpen
+   setzt cleared nie zurück, man wird also nicht nachträglich eingesperrt. */
+function kothaufenAufgebrochen(x,y){
+  if(frand.chance(0.18)) spawnPickup(x,y,randomDrop());
+  else if(frand.chance(0.10+G.depth*0.03)){
+    spawnEnemy('kotkrabbler',x,y,null);
+    burst(x,y,'#63492e',6); Sfx.splash();
+  }
 }
 
 /* --- Bodengefahren: Stacheln, Feuer, Pfützen --- */
@@ -1704,6 +1724,14 @@ function updateEnemyAI(e,dt,slow,mode){
         for(const off of [-0.3,0,0.3]) fireEshot(e.x,e.y,a+off,120); }
       break;
 
+    case 'spray': // Kotspritzer: lobt Klumpen im Bogen, die als Pfütze zerplatzen
+      wanderMove(e,dt,slow,mode);
+      if(e.cd<=0&&dist(e,p)<280){ e.cd=e.shotCd*frand.range(0.85,1.2);
+        const weite=Math.max(60,dist(e,p));
+        const sh=fireEshot(e.x,e.y,ang(e,p),weite/0.9,{arc:true,z:0,zt:0,zdur:0.9});
+        sh.life=1.0; Sfx.splash(); }
+      break;
+
     case 'dart': // Zuckfliege: ruckartige Sprints
       if(e.cd<=0){ e.cd=frand.range(0.25,0.6);
         const a=frand.chance(0.6)?ang(e,p)+frand.range(-0.8,0.8):frand()*TAU;
@@ -1860,6 +1888,56 @@ function updateBossAI(e,dt,slow){
         e.y=lerp(e.y,ty(3)+Math.sin(e.hovA*1.4)*40,1.2*dt);
         if(e.cd<=0){ e.cd=2.4/rage;
           for(let i=0;i<10;i++) fireEshot(e.x,e.y,i*TAU/10+e.t,105); }
+      }
+      break; }
+
+    case 'kloake': { // Der Kloakenfürst: Sprünge, Klumpenregen, ab Phase 2 Rutschattacke
+      if(e.state===0){                       // Anlauf zum Sprung
+        e.z=0;
+        if(e.cd<=0){ e.state=1; e.t=0;
+          const a=ang(e,p), sp=e.phase===2?210:165;
+          e.vx=Math.cos(a)*sp; e.vy=Math.sin(a)*sp; Sfx.tick(); }
+      } else if(e.state===1){                // Sprung
+        const dur=0.62;
+        e.z=Math.sin(Math.PI*Math.min(1,e.t/dur))*30;
+        moveEntity(e,e.vx*dt*slow,e.vy*dt*slow,'fly');
+        if(e.t>=dur){                        // Aufschlag: Pfütze + Klumpenring
+          e.state=0; e.t=0; e.z=0; G.shake=6; Sfx.splash();
+          G.creeps.push({x:e.x,y:e.y,r:24,t:4});
+          const n=e.phase===2?12:8;
+          for(let i=0;i<n;i++) fireEshot(e.x,e.y,i*TAU/n+frand()*0.3,120);
+          e.spruenge=(e.spruenge||0)+1;
+          if(e.phase===2&&e.spruenge%3===0){ // Rutschattacke quer durch den Raum
+            e.state=2; e.t=0; e.cd=0;
+            const a=frand.pick([0,Math.PI/2,Math.PI,-Math.PI/2]);
+            e.rvx=Math.cos(a)*260; e.rvy=Math.sin(a)*260;
+          } else if(e.spruenge%2===0){ e.state=3; e.t=0; e.cd=0; }
+          else e.cd=frand.range(0.5,0.9);
+        }
+      } else if(e.state===2){                // rutscht und prallt von Wänden ab
+        e.gcd=(e.gcd||0)-dt;
+        if(e.gcd<=0){ e.gcd=0.12; G.creeps.push({x:e.x,y:e.y,r:16,t:3}); }
+        const ox=e.x, oy=e.y;
+        e.x+=e.rvx*dt*slow;
+        if(circleHitsGrid(e.x,e.y,e.r,'walk')||e.x<RX+e.r||e.x>RX+COLS*TILE-e.r){
+          e.x=ox; e.rvx*=-1; G.shake=4; Sfx.splash(); }
+        e.y+=e.rvy*dt*slow;
+        if(circleHitsGrid(e.x,e.y,e.r,'walk')||e.y<RY+e.r||e.y>RY+ROWS*TILE-e.r){
+          e.y=oy; e.rvy*=-1; G.shake=4; Sfx.splash(); }
+        if(e.t>2.6){ e.state=0; e.t=0; e.cd=0.6; }
+      } else {                               // Klumpenregen im Bogen
+        if(e.cd<=0){ e.cd=0.28;
+          const a=ang(e,p)+frand.range(-0.6,0.6);
+          const weite=Math.max(60,dist(e,p)*frand.range(0.7,1.2));
+          const sh=fireEshot(e.x,e.y,a,weite/0.9,{arc:true,z:0,zt:0,zdur:0.9});
+          sh.life=1.0;
+        }
+        if(e.t>1.5){ e.state=0; e.t=0; e.cd=0.5;
+          // In Phase 2 krabbeln Diener aus dem Dreck
+          if(e.phase===2&&G.enemies.filter(x=>x.type==='kotkrabbler').length<4)
+            for(let i=0;i<2;i++)
+              spawnEnemy('kotkrabbler',e.x+frand.range(-24,24),e.y+frand.range(-16,16),null);
+        }
       }
       break; }
 
@@ -2025,9 +2103,10 @@ function drawRoom(){
       disc(cx,cy-6+fl*0.7,2.5,'#fff2a8');
     } else if(cell.t==='poop'){
       shadow(cx,cy+10,10);
-      disc(cx,cy+6,9,'#7a5b3a');disc(cx,cy,7,'#8a6b46');disc(cx,cy-6,4.5,'#9a7b52');
-      if(cell.hp<2){ctx.strokeStyle='#4a3520';ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(cx-4,cy-4);ctx.lineTo(cx+2,cy+4);ctx.stroke();}
+      drawKot(cx,cy+3,10,'#8a6b46','#63492e'); // gleiche Form wie die Kotgegner
+      if(cell.hp<2){ctx.strokeStyle='#3d2c19';ctx.lineWidth=1.2; // angeschlagen
+        ctx.beginPath();ctx.moveTo(cx-5,cy-3);ctx.lineTo(cx-1,cy+2);
+        ctx.lineTo(cx-4,cy+6);ctx.stroke();}
     }
   }
   // Falltür
@@ -2235,6 +2314,32 @@ function drawFamiliar(f){
     disc(f.x+2,f.y-1+fl,1,'#111'); }
 }
 
+/* Gestapelte Wülste mit Spitze — Grundform für Kotkrabbler, Kotspritzer
+   und den Kloakenfürsten. r ist der Radius des untersten Wulstes. */
+function drawKot(x,y,r,hell,dunkel){
+  // Jeder Wulst: dunkle Grundscheibe, darüber die hellere versetzt — der
+  // stehenbleibende dunkle Rand unten trennt die Wülste sichtbar voneinander.
+  disc(x, y+r*0.46, r,       dunkel);
+  disc(x, y+r*0.31, r*0.90,  hell);
+  disc(x, y-r*0.14, r*0.74,  dunkel);
+  disc(x, y-r*0.28, r*0.65,  hell);
+  disc(x, y-r*0.62, r*0.48,  dunkel);
+  disc(x, y-r*0.74, r*0.40,  hell);
+  ctx.fillStyle=dunkel;                     // umgeknickte Spitze
+  ctx.beginPath();
+  ctx.moveTo(x-r*0.26, y-r*0.96);
+  ctx.quadraticCurveTo(x+r*0.14, y-r*1.66, x+r*0.36, y-r*1.02);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle=hell;
+  ctx.beginPath();
+  ctx.moveTo(x-r*0.16, y-r*1.00);
+  ctx.quadraticCurveTo(x+r*0.12, y-r*1.52, x+r*0.28, y-r*1.06);
+  ctx.closePath(); ctx.fill();
+  // Glanzlicht oben links
+  ctx.fillStyle='rgba(255,255,255,0.16)';
+  ctx.beginPath(); ctx.ellipse(x-r*0.30,y-r*0.80,r*0.16,r*0.10,-0.5,0,TAU); ctx.fill();
+}
+
 function drawEnemy(e){
   const alpha=e.ghosted?0.25:1;
   ctx.save(); ctx.globalAlpha=alpha;
@@ -2313,6 +2418,17 @@ function drawEnemy(e){
       for(let i=-2;i<=2;i++){const sw=Math.sin(performance.now()/200+i)*3;
         ctx.fillRect(e.x+i*4-1,y+e.r-2,2,8+sw);}
       disc(e.x-3,y-2,1.5,'#111');disc(e.x+3,y-2,1.5,'#111');break;
+    case 'kotkrabbler': {
+      drawKot(e.x,y,e.r*0.95,col('#8a6b46'),col('#63492e'));
+      disc(e.x-2.8,y-2,1.7,'#f0ece0'); disc(e.x+2.8,y-2,1.7,'#f0ece0');
+      disc(e.x-2.8,y-2,0.9,'#111');    disc(e.x+2.8,y-2,0.9,'#111');
+      ctx.fillStyle='#111'; ctx.fillRect(e.x-1.8,y+2.5,3.6,1); break; }
+    case 'kotspritzer': {
+      drawKot(e.x,y,e.r*0.95,col('#7a5b3a'),col('#553d24'));
+      disc(e.x-4,y-3,2.2,'#f0ece0'); disc(e.x+4,y-3,2.2,'#f0ece0');
+      disc(e.x-4,y-3,1.1,'#111');    disc(e.x+4,y-3,1.1,'#111');
+      disc(e.x,y+3.5,3,'#2e2114');   // offenes Maul zum Spucken
+      break; }
     case 'grabgraeber':
       if(e.ghosted){ // Erdhügel
         ctx.globalAlpha=1;
@@ -2374,6 +2490,31 @@ function drawBossSprite(e,y,col){
     heartPath(0,0);ctx.fill();
     ctx.restore();
     disc(e.x-4,y-2,2,'#111');disc(e.x+4,y-2,2,'#111');
+  } else if(e.ai==='kloake'){
+    const hell=e.flash>0?'#ffffff':'#7a5b3a', dunkel=e.flash>0?'#e8e8e8':'#553d24';
+    drawKot(e.x,y,e.r,hell,dunkel);
+    // Augen folgen dem Spieler
+    const p=G.player, ax=clamp((p.x-e.x)/70,-1,1), ay=clamp((p.y-e.y)/70,-1,1);
+    disc(e.x-8,y-5,4.2,'#f0ece0'); disc(e.x+8,y-5,4.2,'#f0ece0');
+    disc(e.x-8+ax*1.6,y-5+ay*1.6,2.1,'#111');
+    disc(e.x+8+ax*1.6,y-5+ay*1.6,2.1,'#111');
+    // grinsendes Maul
+    ctx.strokeStyle='#2e2114'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(e.x,y+2,6,0.25,Math.PI-0.25); ctx.stroke();
+    // Fliegenschwarm als Krone — hell genug, um sich vom Boden abzuheben
+    for(let i=0;i<5;i++){ const a=performance.now()/280+i*TAU/5;
+      const fx=e.x+Math.cos(a)*e.r*0.9, fy=y-e.r*1.2+Math.sin(a*1.7)*5;
+      ctx.strokeStyle='rgba(210,210,225,0.55)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(fx-2.5,fy-1.5); ctx.lineTo(fx+2.5,fy-1.5); ctx.stroke();
+      disc(fx,fy,1.7,'#1a1a1e');
+    }
+    // Ab Phase 2 tropft der Fürst
+    if(e.phase===2){
+      for(let i=0;i<3;i++){
+        const dx=(i-1)*e.r*0.55, t=(performance.now()/620+i*0.4)%1;
+        disc(e.x+dx, y+e.r*0.5+t*10, 2.2*(1-t*0.5), dunkel);
+      }
+    }
   } else if(e.ai==='vater'){
     // Endboss: vermummte Riesengestalt
     ctx.fillStyle=e.flash>0?'#fff':d.color;

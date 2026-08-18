@@ -62,9 +62,17 @@ einen Eintrag in `doorStyle()` und einen Verzierungsblock in `drawDoor()`.
 Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten
 rechts.
 
-**Inhalte.** 48 Items (passiv und aktiv), 17 Gegnertypen mit Champion-Varianten,
-6 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
+**Inhalte.** 48 Items (passiv und aktiv), 19 Gegnertypen mit Champion-Varianten,
+7 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 4 Charaktere (drei davon freischaltbar).
+
+**Kothaufen** sind mehr als Deko: Wer einen aufbricht, findet manchmal Beute —
+manchmal krabbelt aber auch ein **Kotkrabbler** heraus, und die Chance darauf
+steigt mit jeder Etage. Der **Kotspritzer** lobt Klumpen im Bogen, die als
+ätzende Pfütze zerplatzen. Beide gehören zum **Kloakenfürsten**, einem Boss,
+der auf den Spieler springt (bei der Landung spritzt ein Ring aus Klumpen weg),
+Klumpenregen wirft und ab der Hälfte seiner Lebenspunkte quer durch den Raum
+rutscht, dabei eine Spur hinterlässt und Diener aus dem Dreck ruft.
 
 **Progression.** Permadeath. Der Schwierigkeitsgrad steigt pro Etage (mehr
 Lebenspunkte, mehr Gegner, häufiger Champions). Nach dem Run gibt es einen
@@ -109,8 +117,8 @@ zornbeisser: { name:'Zornbeißer', hp:14, spd:60, r:11, ai:'chase' },
 ```
 
 Fertige Verhaltensmuster für `ai`: `chase`, `hop`, `shoot`, `wall`, `charge`,
-`creeper`, `spread`, `dart`, `turret`, `ghost`, `spawner`, `bounce`, `ring`,
-`burrow`. Optional: `fly:true` (ignoriert Bodenhindernisse), `shotCd` in
+`creeper`, `spread`, `spray`, `dart`, `turret`, `ghost`, `spawner`, `bounce`,
+`ring`, `burrow`. Optional: `fly:true` (ignoriert Bodenhindernisse), `shotCd` in
 Sekunden, `onDeath:{split:['typ',anzahl]}` für Splittergegner. Damit der Gegner
 auch auftaucht, muss seine ID in den `pool` einer Etage in `FLOORS`.
 
@@ -141,16 +149,17 @@ Es gibt einen Smoke-Test, der das Spiel in einem echten Browser durchspielt:
 
 ```bash
 npm install
-npm test                 # alle 12 Phasen
+npm test                     # alle Phasen
 node test/smoketest.js 4,5   # nur einzelne Phasen
 ```
 
 Geprüft werden unter anderem: Seed-Determinismus, 240 erzeugte Etagen auf
-Vollständigkeit und Erreichbarkeit aller Räume, alle 17 Gegnertypen, alle
-6 Bosse samt Phasenwechsel, alle 48 Items unter Dauerfeuer, alle Pillen und
-Karten, das Durchschreiten von Türen in allen vier Richtungen, jeder Raumtyp,
-ein kompletter Durchlauf bis zum Sieg, das Zeichnen sämtlicher Sprites sowie
-die Bildrate unter Last.
+Vollständigkeit und Erreichbarkeit aller Räume, jeder Gegnertyp, jeder Boss
+samt Phasenwechsel, jedes Item unter Dauerfeuer, alle Pillen und Karten, das
+Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
+jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, das Zeichnen sämtlicher
+Sprites sowie die Bildrate unter Last. Die Zahlen zieht der Test aus den
+Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
 
 Zwei Umgebungsvariablen sind optional: `KB_CHROMIUM` setzt einen abweichenden
 Browser-Pfad, `KB_SHOTS` das Verzeichnis für die Screenshots.

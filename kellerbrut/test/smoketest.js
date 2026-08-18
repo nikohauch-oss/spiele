@@ -102,10 +102,11 @@ await withPage(async(page)=>{
 }
 // --- 4. Alle Gegnertypen ---
 if(want(4)){
-console.log('\n[4] Gegner (17 Typen, je 400 Ticks)');
+console.log('\n[4] Gegner');
 await withPage(async(page,errs)=>{
   const bad=[];
-  for(const t of await page.evaluate(()=>Object.keys(KB.ENEMY_TYPES))){
+  const typen=await page.evaluate(()=>Object.keys(KB.ENEMY_TYPES));
+  for(const t of typen){
     const err=await page.evaluate((t)=>{ try{
       startRun(0,'GEGNER'); const p=KB.G.player; p.redMax=200;p.red=200;
       KB.G.enemies.length=0; KB.G.room.cleared=false;
@@ -114,17 +115,18 @@ await withPage(async(page,errs)=>{
       return null;}catch(e){return e.message;} },t);
     if(err) bad.push(t+': '+err);
   }
-  note(bad.length===0,'alle Gegnertypen laufen fehlerfrei',bad.join('; '));
+  note(bad.length===0,'alle '+typen.length+' Gegnertypen laufen fehlerfrei (je 400 Ticks)',bad.join('; '));
   note(errs.length===0,'keine JS-Fehler in der Gegnerphase',errs.join(' '));
 });
 
 }
 // --- 5. Alle Bosse inkl. Phasenwechsel ---
 if(want(5)){
-console.log('\n[5] Bosse (6, je 1200 Ticks)');
+console.log('\n[5] Bosse');
 await withPage(async(page,errs)=>{
   const bad=[], phases=[];
-  for(const id of await page.evaluate(()=>Object.keys(KB.BOSS_TYPES))){
+  const bossIds=await page.evaluate(()=>Object.keys(KB.BOSS_TYPES));
+  for(const id of bossIds){
     const r=await page.evaluate((id)=>{ try{
       startRun(0,'BOSS'); const p=KB.G.player; p.redMax=400;p.red=400;
       KB.G.enemies.length=0; spawnBoss(id); KB.G.bossIntro=null;
@@ -136,7 +138,7 @@ await withPage(async(page,errs)=>{
       return {ph};}catch(e){return {err:e.message};} },id);
     if(r.err) bad.push(id+': '+r.err); else phases.push(id+'=P'+r.ph);
   }
-  note(bad.length===0,'alle Bosse laufen fehlerfrei',bad.join('; '));
+  note(bad.length===0,'alle '+bossIds.length+' Bosse laufen fehlerfrei (je 1200 Ticks)',bad.join('; '));
   note(phases.every(p=>!p.endsWith('P1')),'alle Bosse erreichen Phase 2+',phases.join(' '));
   note(errs.length===0,'keine JS-Fehler in der Bossphase',errs.join(' '));
 });
@@ -144,10 +146,11 @@ await withPage(async(page,errs)=>{
 }
 // --- 6. Alle Items ---
 if(want(6)){
-console.log('\n[6] Items (48, je 300 Ticks mit Dauerfeuer)');
+console.log('\n[6] Items');
 await withPage(async(page,errs)=>{
   const bad=[]; let done=0;
-  for(const id of await page.evaluate(()=>Object.keys(KB.ITEMS))){
+  const itemIds=await page.evaluate(()=>Object.keys(KB.ITEMS));
+  for(const id of itemIds){
     const err=await page.evaluate((id)=>{ try{
       startRun(0,'ITEM'); const p=KB.G.player; p.redMax=200;p.red=200;
       acquireItem(id,null); p.itemGet=null; KB.G.enemies.length=0;
@@ -163,8 +166,8 @@ await withPage(async(page,errs)=>{
     if(err) bad.push(id+': '+err);
     else done++;
   }
-  console.log('    Items ohne Befund:',done,'/',48);
-  note(bad.length===0,'alle 48 Items laufen fehlerfrei',bad.slice(0,3).join('; '));
+  note(bad.length===0,'alle '+itemIds.length+' Items laufen fehlerfrei (je 300 Ticks Dauerfeuer)',bad.slice(0,3).join('; '));
+  note(done===itemIds.length,'jedes Item vollständig durchlaufen','('+done+'/'+itemIds.length+')');
   note(errs.length===0,'keine JS-Fehler in der Itemphase',errs.join(' '));
 });
 
@@ -182,7 +185,7 @@ await withPage(async(page,errs)=>{
       KB.G.player.pocket={kind:'card',id:i}; usePocket();
       for(let t=0;t<60;t++)updateGame(1/60);}catch(e){b.push('Karte '+card.name+': '+e.message);}});
     return b;});
-  note(bad.length===0,'alle 10 Pillen und 8 Karten wirken fehlerfrei',bad.join('; '));
+  note(bad.length===0,'alle Pillen und Karten wirken fehlerfrei',bad.join('; '));
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 
