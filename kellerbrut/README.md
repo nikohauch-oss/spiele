@@ -41,6 +41,13 @@ einem Raster erzeugt. Raumtypen: Start, Normal, Schatzraum, Shop, Boss,
 Geheimraum, Fluchraum, Opferraum und Arkade. Die Automap oben rechts deckt
 sich beim Erkunden auf.
 
+**Schlüssel sind garantiert.** Jede Etage legt 1–2 Schlüssel aus, und zwar
+immer in Räumen, die man ohne Schlüssel und ohne Bombe erreicht — sonst
+bräuchte man ja einen Schlüssel, um an den Schlüssel zu kommen. Sie liegen
+außerdem nur auf Feldern, die zu Fuß mit dem Raumrand verbunden sind, also nie
+in einer von Steinen umschlossenen Nische. Dazu kommen die üblichen
+Zufallsfunde.
+
 **Schatzräume und Shops** sind verschlossen und brauchen einen **Schlüssel**.
 Man stellt sich einfach mit einem Schlüssel im Gepäck vor die goldene Tür —
 sie springt von selbst auf und ein Schlüssel wird verbraucht. Hat man keinen,

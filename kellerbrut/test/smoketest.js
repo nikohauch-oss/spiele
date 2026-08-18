@@ -251,6 +251,118 @@ await withPage(async(page,errs)=>{
 });
 
 }
+// --- 7c. Garantierte Schlüssel je Etage ---
+if(want(7)){
+console.log('\n[7c] Garantierte Schlüssel');
+await withPage(async(page,errs)=>{
+  // Exakte Prüfung über viele Etagen: jeder garantierte Schlüssel muss in
+  // einem ohne Schlüssel und ohne Bombe erreichbaren Raum liegen, und dort
+  // auf einem Feld, das zu Fuß mit dem Raumrand verbunden ist.
+  const r=await page.evaluate(()=>{
+    let etagen=0, gesamt=0, schlecht=[], verteilung={};
+    for(let s=0;s<40;s++){
+      startRun(0,'S'+s);
+      for(let d=1;d<=6;d++){
+        const f=KB.G.floor;
+        const frei=new Set([f.startKey]), q=[f.startKey];
+        while(q.length){ const k=q.shift();
+          for(const dd in f.rooms[k].doors){ const t=f.rooms[k].doors[dd];
+            if(t.edge.locked||t.edge.kind==='secret') continue;   // kostet Schlüssel/Bombe
+            if(!frei.has(t.to)){frei.add(t.to);q.push(t.to);} } }
+        let n=0;
+        for(const k of Object.keys(f.rooms)){
+          const room=f.rooms[k];
+          for(const drop of room.drops){
+            if(drop.type!=='key'||!drop.garantiert) continue;
+            n++; gesamt++;
+            const c=Math.floor((drop.x-RX)/TILE), rr=Math.floor((drop.y-RY)/TILE);
+            if(!frei.has(k))                    schlecht.push('S'+s+' E'+d+': hinter verschlossener Tür');
+            else if(room.type==='boss')         schlecht.push('S'+s+' E'+d+': im Bossraum');
+            else if(!randVerbundeneFelder(room)[rr][c])
+                                                schlecht.push('S'+s+' E'+d+': von Steinen umschlossen');
+          }
+        }
+        if(n<1||n>2) schlecht.push('S'+s+' E'+d+': '+n+' Schlüssel');
+        verteilung[n]=(verteilung[n]||0)+1; etagen++;
+        if(d<6) nextFloor();
+      }
+    }
+    return {etagen,gesamt,schlecht:schlecht.slice(0,5),anzahl:schlecht.length,verteilung};
+  });
+  note(r.anzahl===0,'jede Etage hat 1-2 erreichbare Schlüssel',
+       '('+r.etagen+' Etagen, '+r.gesamt+' Schlüssel, Verteilung '+JSON.stringify(r.verteilung)+') '+r.schlecht.join('; '));
+
+  // Praxis: hinlaufen und aufheben. Der Testläufer weicht bei Blockade seitlich
+  // aus, sonst bliebe er an Steinen hängen und meldete falsche Fehler.
+  const praxis=await page.evaluate(()=>{
+    let geholt=0, laeufe=0;
+    for(let s=0;s<20;s++){
+      startRun(0,'P'+s);
+      const zielRaum=Object.keys(KB.G.floor.rooms).find(k=>
+        KB.G.floor.rooms[k].drops.some(d=>d.garantiert));
+      if(!zielRaum) continue;
+      laeufe++;
+      const p=KB.G.player; p.redMax=200;p.red=200;
+      enterRoom(zielRaum,null); KB.G.enemies.length=0;
+      const ziel=KB.G.pickups.find(q=>q.garantiert);
+      if(!ziel) continue;
+      // Weg über das Kachelraster suchen und Wegpunkt für Wegpunkt ablaufen.
+      // Stures Geradeauslaufen bliebe an Steinen hängen und meldete Fehler,
+      // die es im Spiel gar nicht gibt.
+      const room=KB.G.room;
+      const blockiert=(r,c)=>{const z=room.grid[r][c];
+        return !!z&&(z.t==='rock'||z.t==='poop'||z.t==='fire'||z.t==='pit');};
+      const zr=Math.floor((ziel.y-RY)/TILE), zc=Math.floor((ziel.x-RX)/TILE);
+      const sr=Math.floor((p.y-RY)/TILE),    sc=Math.floor((p.x-RX)/TILE);
+      const vor=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+      const bfs=[[sr,sc]]; vor[sr][sc]=[sr,sc];
+      while(bfs.length){ const [rr,cc]=bfs.shift();
+        for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+          const nr=rr+dr,nc=cc+dc;
+          if(nr<0||nr>=ROWS||nc<0||nc>=COLS||vor[nr][nc]||blockiert(nr,nc)) continue;
+          vor[nr][nc]=[rr,cc]; bfs.push([nr,nc]); } }
+      if(!vor[zr][zc]) continue;              // wirklich unerreichbar
+      const pfad=[]; let cur=[zr,zc];
+      while(cur[0]!==sr||cur[1]!==sc){ pfad.unshift(cur); cur=vor[cur[0]][cur[1]]; }
+      pfad.push([zr,zc]);
+      const vorher=p.keys; let idx=0;
+      for(let i=0;i<1200&&p.keys===vorher;i++){
+        p.red=200;
+        const wp={x:tx(pfad[idx][1]), y:ty(pfad[idx][0])};
+        if(Math.hypot(p.x-wp.x,p.y-wp.y)<7 && idx<pfad.length-1) idx++;
+        const a=Math.atan2(wp.y-p.y,wp.x-p.x);
+        p.vx=Math.cos(a)*140; p.vy=Math.sin(a)*140;
+        updateGame(1/60);
+      }
+      if(p.keys>vorher) geholt++;
+    }
+    return {geholt,laeufe};
+  });
+  note(praxis.geholt===praxis.laeufe,'Schlüssel lässt sich auch wirklich einsammeln',
+       '('+praxis.geholt+'/'+praxis.laeufe+')');
+
+  // Teleport darf nie in einer von Steinen umschlossenen Nische landen
+  const tp=await page.evaluate(()=>{
+    let geprueft=0, eingesperrt=0;
+    for(let s=0;s<30;s++){
+      startRun(0,'TP'+s);
+      const p=KB.G.player; p.redMax=200;p.red=200;
+      for(const k of Object.keys(KB.G.floor.rooms)){
+        if(KB.G.floor.rooms[k].type!=='normal') continue;
+        enterRoom(k,null); KB.G.enemies.length=0; geprueft++;
+        const room=KB.G.room, ges=randVerbundeneFelder(room);
+        const rr=Math.floor((p.y-RY)/TILE), cc=Math.floor((p.x-RX)/TILE);
+        if(!ges[rr]||!ges[rr][cc]) eingesperrt++;
+      }
+    }
+    return {geprueft,eingesperrt};
+  });
+  note(tp.eingesperrt===0,'Teleport setzt nie in einer eingeschlossenen Nische ab',
+       '('+tp.geprueft+' Teleports, '+tp.eingesperrt+' eingesperrt)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 // --- 8. Spezialräume, Truhen, Automaten, Bomben ---
 if(want(8)){
 console.log('\n[8] Spezialräume, Truhen, Automaten, Bomben');

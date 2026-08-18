@@ -645,7 +645,54 @@ function genFloor(depth){
       room.doors[d]={to:nk,edge:doors[ek]};
     }
   }
-  return {depth,rooms,doors,startKey:'0,0',bossKey:bossK,data:FLOORS[Math.min(depth-1,FLOORS.length-1)]};
+  const floor={depth,rooms,doors,startKey:'0,0',bossKey:bossK,
+               data:FLOORS[Math.min(depth-1,FLOORS.length-1)]};
+  platziereSchluessel(floor,rng);
+  return floor;
+}
+
+/* Garantierte Schlüssel: 1–2 pro Etage, damit man nie ohne Schatzraum
+   dasteht. Sie dürfen nur in Räumen liegen, die man OHNE Schlüssel und
+   OHNE Bombe erreicht — sonst bräuchte man einen Schlüssel, um an den
+   Schlüssel zu kommen. Verschlossene und geheime Türen bleiben bei der
+   Erreichbarkeitssuche deshalb außen vor. */
+function platziereSchluessel(floor,rng){
+  const erreichbar=new Set([floor.startKey]), q=[floor.startKey];
+  while(q.length){
+    const k=q.shift();
+    for(const d in floor.rooms[k].doors){
+      const tuer=floor.rooms[k].doors[d];
+      if(tuer.edge.locked||tuer.edge.kind==='secret') continue;
+      if(!erreichbar.has(tuer.to)){ erreichbar.add(tuer.to); q.push(tuer.to); }
+    }
+  }
+  // Normale Räume bevorzugen; der Bossraum scheidet aus, dort nützt der
+  // Schlüssel nichts mehr. Notfalls landet er im Startraum.
+  let kandidaten=[...erreichbar].filter(k=>floor.rooms[k].type==='normal');
+  if(!kandidaten.length) kandidaten=[...erreichbar].filter(k=>floor.rooms[k].type==='start');
+  for(let i=kandidaten.length-1;i>0;i--){const j=rng.int(i+1);
+    [kandidaten[i],kandidaten[j]]=[kandidaten[j],kandidaten[i]];}
+
+  const anzahl=Math.min(kandidaten.length,1+rng.int(2));
+  for(let i=0;i<anzahl;i++){
+    const room=floor.rooms[kandidaten[i]];
+    const platz=freierBodenplatz(room,rng);
+    // garantiert:true kennzeichnet die Etagen-Schlüssel gegenüber Shop-Ware
+    // und Zufallsbeute — der Smoke-Test prüft gezielt diese hier.
+    room.drops.push({x:platz.x,y:platz.y,type:'key',garantiert:true});
+  }
+}
+
+/* Freies Bodenfeld suchen. Es genügt nicht, dass die Kachel selbst leer ist —
+   sie muss auch vom Raumeingang aus zu Fuß erreichbar sein, sonst liegt der
+   Schlüssel womöglich in einer von Steinen umschlossenen Nische. Deshalb wird
+   von den Türen (und der Raummitte) aus geflutet. */
+function freierBodenplatz(room,rng){
+  const gesehen=randVerbundeneFelder(room);
+  const plaetze=[];
+  for(let r=1;r<ROWS-1;r++) for(let c=1;c<COLS-1;c++)
+    if(!room.grid[r][c]&&gesehen[r][c]) plaetze.push({x:tx(c),y:ty(r)});
+  return plaetze.length?rng.pick(plaetze):{x:tx(6),y:ty(3)};
 }
 
 /* Raumobjekt erzeugen: Template auflösen, Spawns & Inhalte festlegen */
@@ -750,7 +797,7 @@ function enterRoom(key,fromDir){
     const dp=doorXY(fromDir);
     const inX={u:0,d:0,l:34,r:-34}[fromDir], inY={u:34,d:-34,l:0,r:0}[fromDir];
     p.x=dp.x+inX; p.y=dp.y+inY;
-  } else { p.x=tx(6); p.y=ty(3); }
+  } else { const lp=teleportLandeplatz(room); p.x=lp.x; p.y=lp.y; }
   p.vx=p.vy=0;
   // Persistente Pickups & Podeste laden
   for(const d of room.drops) G.pickups.push({...d});
@@ -766,12 +813,52 @@ function enterRoom(key,fromDir){
   for(const d in room.doors) room.doors[d].anim=doorPassable(room.doors[d])?1:0;
 }
 
+/* Landeplatz beim Teleport (Karten, Raumfalter, rote Truhe). Die Raummitte
+   kann von Steinen völlig umschlossen sein — wer dort abgesetzt wird, säße
+   ohne Bombe fest und der Run wäre verloren. Gewählt wird deshalb das der
+   Mitte nächstgelegene Feld, das mit dem Raumrand und damit mit den Türen
+   verbunden ist. */
+/* Alle Felder, die zu Fuß mit dem Raumrand verbunden sind — und damit mit
+   den Türen, denn der Rand ist in allen Layouts frei. Wichtig: die Suche darf
+   NICHT in der Raummitte starten. Manche Layouts umschließen die Mitte mit
+   Steinen; sie ist dann zwar frei, aber von außen unerreichbar. */
+function randVerbundeneFelder(room){
+  const blockiert=(r,c)=>{ const z=room.grid[r][c];
+    return !!z&&(z.t==='rock'||z.t==='poop'||z.t==='fire'||z.t==='pit'); };
+  const gesehen=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  const q=[];
+  const saat=(r,c)=>{ if(!blockiert(r,c)&&!gesehen[r][c]){gesehen[r][c]=true;q.push([r,c]);} };
+  for(let c=0;c<COLS;c++){ saat(0,c); saat(ROWS-1,c); }
+  for(let r=0;r<ROWS;r++){ saat(r,0); saat(r,COLS-1); }
+  while(q.length){
+    const [r,c]=q.shift();
+    for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nr=r+dr, nc=c+dc;
+      if(nr<0||nr>=ROWS||nc<0||nc>=COLS||gesehen[nr][nc]||blockiert(nr,nc)) continue;
+      gesehen[nr][nc]=true; q.push([nr,nc]);
+    }
+  }
+  return gesehen;
+}
+
+function teleportLandeplatz(room){
+  const mr=(ROWS-1)>>1, mc=(COLS-1)>>1;
+  const gesehen=randVerbundeneFelder(room);
+  let best=null, bestD=Infinity;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(!gesehen[r][c]) continue;
+    const d=(r-mr)*(r-mr)+(c-mc)*(c-mc);
+    if(d<bestD){ bestD=d; best={r,c}; }
+  }
+  return best?{x:tx(best.c),y:ty(best.r)}:{x:tx(mc),y:ty(mr)};
+}
+
 function saveRoomState(){
   const room=G.room; if(!room) return;
   // Pickups (ohne aufgehobene) zurückschreiben. pillId/cardId müssen mit,
   // sonst wird eine abgelegte Pille beim Wiederbetreten zu einer anderen.
   room.drops=G.pickups.filter(q=>!q.dead).map(q=>({x:q.x,y:q.y,type:q.type,
-    price:q.price,pillId:q.pillId,cardId:q.cardId}));
+    price:q.price,pillId:q.pillId,cardId:q.cardId,garantiert:q.garantiert}));
 }
 
 function roomIsClear(){ return G.enemies.length===0; }
