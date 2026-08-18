@@ -1,0 +1,138 @@
+# KELLERBRUT
+
+Ein 2D-Twin-Stick-Roguelite im Geist von *The Binding of Isaac* — mit
+denselben Mechaniken, aber komplett eigenen Grafiken, Namen und Items.
+Alles steckt in **einer einzigen HTML-Datei** (`index.html`, ca. 2800 Zeilen):
+kein Build, keine Abhängigkeiten, keine externen Assets.
+
+**Spielen:** `index.html` im Browser öffnen. Fertig.
+
+---
+
+## Steuerung
+
+| Taste | Wirkung |
+|---|---|
+| WASD | Bewegen |
+| Pfeiltasten | Schießen (8 Richtungen) |
+| E | Aktives Item benutzen |
+| Leertaste | Bombe legen |
+| Q | Pille / Karte benutzen |
+| P oder ESC | Pause |
+| M / N | Musik / Ton umschalten |
+
+Gamepads werden unterstützt: linker Stick bewegt, rechter Stick schießt,
+A = Bombe, B = aktives Item, X = Pille/Karte, Start = Pause.
+
+---
+
+## Was drin ist
+
+**Kampf.** Tränen als Projektile mit Reichweite, Flughöhe samt Schatten und
+Streuung. Die Statwerte sind Tempo, Feuerrate, Schaden, Reichweite,
+Schussgeschwindigkeit und Glück. Treffer erzeugen Rückstoß und Screenshake.
+
+**Leben.** Rote Herzcontainer in halben Schritten, dazu Seelenherzen und
+schwarze Herzen (die beim Verlust alle Gegner im Raum verletzen). Ein Treffer
+kostet ein halbes Herz, danach kurze Unverwundbarkeit mit Blinken.
+
+**Etagen.** Sechs Etagen mit eigenen Tilesets und Gegnerpools, prozedural auf
+einem Raster erzeugt. Raumtypen: Start, Normal, Schatzraum, Shop, Boss,
+Geheimraum, Fluchraum, Opferraum und Arkade. Türen öffnen erst, wenn alle
+Gegner tot sind. Die Automap oben rechts deckt sich beim Erkunden auf.
+
+**Seeds.** Gleicher Seed erzeugt garantiert dieselben Etagen — in der
+Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten
+rechts.
+
+**Inhalte.** 48 Items (passiv und aktiv), 17 Gegnertypen mit Champion-Varianten,
+6 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
+4 Charaktere (drei davon freischaltbar).
+
+**Progression.** Permadeath. Der Schwierigkeitsgrad steigt pro Etage (mehr
+Lebenspunkte, mehr Gegner, häufiger Champions). Nach dem Run gibt es einen
+Auswertungsbildschirm mit Statistik und allen gefundenen Items. Freischaltungen
+und Statistiken liegen im `localStorage`.
+
+**Ton.** Sämtliche Geräusche und die Hintergrundmusik werden zur Laufzeit per
+WebAudio synthetisiert — es wird keine Audiodatei geladen.
+
+---
+
+## Eigene Inhalte hinzufügen
+
+Alle Inhalte stehen in Datentabellen am Anfang der Datei. Suche im Code nach
+`==== 4.` und `==== 5.`, dort liegt alles beieinander.
+
+### Neues Item
+
+```js
+defItem({
+  id:'donnerkeil', name:'Donnerkeil', desc:'Schaden hoch, aber langsamer',
+  type:'passive',                 // 'passive' oder 'active'
+  pool:['treasure','boss'],       // treasure | boss | shop | curse | secret
+  mod:s=>{ s.dmg+=2; s.tps-=0.3; },   // verändert die Statwerte
+  flags:['pierce'],               // Schussverhalten, siehe unten
+});
+```
+
+Verfügbare `flags`: `triple`, `quad`, `homing`, `pierce`, `spectral`, `bounce`,
+`poison`, `burn`, `frost`, `split`, `bigshot`, `needle`, `beam`, `laser`,
+`heavyknock`, `crit`, `flight`, `spikeimmun`, `bombimmun`, `keysaver`, `greed`,
+`thorns`.
+
+Weitere Felder: `pickup:p=>{}` für einmalige Effekte beim Aufheben (etwa
+Herzcontainer), `famil:'shadow'` für einen Begleiter (`shadow`, `orbit`, `bug`,
+`rat`, `bird`), sowie `charge` und `use:p=>{}` für aktive Items.
+
+### Neuer Gegner
+
+```js
+zornbeisser: { name:'Zornbeißer', hp:14, spd:60, r:11, ai:'chase' },
+```
+
+Fertige Verhaltensmuster für `ai`: `chase`, `hop`, `shoot`, `wall`, `charge`,
+`creeper`, `spread`, `dart`, `turret`, `ghost`, `spawner`, `bounce`, `ring`,
+`burrow`. Optional: `fly:true` (ignoriert Bodenhindernisse), `shotCd` in
+Sekunden, `onDeath:{split:['typ',anzahl]}` für Splittergegner. Damit der Gegner
+auch auftaucht, muss seine ID in den `pool` einer Etage in `FLOORS`.
+
+### Neues Raumlayout
+
+In `TEMPLATES.normal` einen Block aus 7 Zeilen à 13 Zeichen ergänzen:
+
+```
+'.'  frei        'R'  Stein        'r'  Stein (50% Chance)
+'P'  Loch        'S'  Stacheln     'F'  Feuerstelle
+'C'  Kothaufen   'e'  Gegner-Spawnpunkt
+```
+
+Die mittleren Felder der Außenkanten bitte frei lassen — das sind die
+Türgassen.
+
+### Neue Etage
+
+Einen Eintrag in `FLOORS` ergänzen (Farben des Tilesets, `pool` mit
+Gegner-IDs, `bosses`, `mus` als Index der Musikschleife). Die Anzahl der Etagen
+ergibt sich automatisch aus der Länge der Tabelle.
+
+---
+
+## Tests
+
+Es gibt einen Smoke-Test, der das Spiel in einem echten Browser durchspielt:
+
+```bash
+npm install
+npm test                 # alle 12 Phasen
+node test/smoketest.js 4,5   # nur einzelne Phasen
+```
+
+Geprüft werden unter anderem: Seed-Determinismus, 240 erzeugte Etagen auf
+Vollständigkeit und Erreichbarkeit aller Räume, alle 17 Gegnertypen, alle
+6 Bosse samt Phasenwechsel, alle 48 Items unter Dauerfeuer, alle Pillen und
+Karten, jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, das Zeichnen
+sämtlicher Sprites sowie die Bildrate unter Last.
+
+Zwei Umgebungsvariablen sind optional: `KB_CHROMIUM` setzt einen abweichenden
+Browser-Pfad, `KB_SHOTS` das Verzeichnis für die Screenshots.
