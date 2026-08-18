@@ -81,6 +81,16 @@ der auf den Spieler springt (bei der Landung spritzt ein Ring aus Klumpen weg),
 Klumpenregen wirft und ab der Hälfte seiner Lebenspunkte quer durch den Raum
 rutscht, dabei eine Spur hinterlässt und Diener aus dem Dreck ruft.
 
+**Die Figuren** haben Isaac-Proportionen: großer runder Kopf auf kleinem
+Körper, Beine treten im Laufen abwechselnd, die Pupillen folgen der
+Schussrichtung, gelegentlich wird geblinzelt, bei Schaden reißt der Mund auf.
+Die Frisur unterscheidet sie — Lumo trägt eine Kapuze, Flink Stachelhaar,
+Brocken Zotteln mit wippenden Büscheln, Schemen schwebt als Geist mit
+Schleier und Schweif statt Beinen. Gezeichnet werden alle von derselben
+Funktion `zeichneCharakter()`, die auch die Charakterauswahl benutzt; eine
+neue Frisur braucht nur einen Zweig in `zeichneFrisur()` und das Feld
+`frisur` im Charaktereintrag.
+
 **Progression.** Permadeath. Der Schwierigkeitsgrad steigt pro Etage (mehr
 Lebenspunkte, mehr Gegner, häufiger Champions). Nach dem Run gibt es einen
 Auswertungsbildschirm mit Statistik und allen gefundenen Items. Freischaltungen

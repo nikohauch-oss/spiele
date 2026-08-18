@@ -418,6 +418,20 @@ await withPage(async(page,errs)=>{
     await page.waitForTimeout(150);
     if(id==='kellervater') await page.screenshot({path:OUT+'shot-4-bosskampf.png'});
   }
+  // Alle Spielfiguren in allen Zuständen zeichnen
+  for(const i of [0,1,2,3]){
+    await page.evaluate((i)=>{
+      startRun(i,'FIG'); const p=KB.G.player;
+      p.redMax=99;p.red=99; KB.G.enemies.length=0; KB.G.bossIntro=null;
+      p.vx=120; p.hitFlash=0.2; p.shield=3; p.itemGet={id:'glutkern',t:5};
+    },i);
+    await page.waitForTimeout(120);
+    await page.evaluate(()=>{ const p=KB.G.player; p.itemGet=null; p.flags.add('flight'); });
+    await page.waitForTimeout(120);
+  }
+  await page.evaluate(()=>{KB.G.state='charsel';});
+  await page.waitForTimeout(250);
+  await page.screenshot({path:OUT+'shot-11-charsel.png'});
   note(errs.length===0,'alle Sprites zeichnen fehlerfrei',errs.join(' '));
 });
 
