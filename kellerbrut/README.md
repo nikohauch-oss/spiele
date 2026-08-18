@@ -69,7 +69,15 @@ einen Eintrag in `doorStyle()` und einen Verzierungsblock in `drawDoor()`.
 Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten
 rechts.
 
-**Inhalte.** 52 Items (passiv und aktiv), 33 Gegnertypen mit Champion-Varianten,
+**Jede Etage hat eigene Gegner.** Drei Kennzeichen-Arten je Etage, die es
+nirgendwo sonst gibt und die aus dem Material der Etage gemacht sind: im
+*Knochengang* Klapperer, Schädelroller und Rippenwächter, im *Giftschlund*
+Säureblase, Laugenkriecher und Giftsprüher, in der *Blutkammer* Blutegel,
+Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
+ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
+Seeds nach.
+
+**Inhalte.** 52 Items (passiv und aktiv), 52 Gegnertypen mit Champion-Varianten,
 7 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 4 Charaktere (drei davon freischaltbar).
 

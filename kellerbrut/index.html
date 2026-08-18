@@ -398,28 +398,33 @@ const CHARS=[
 
 /* --- ETAGEN: Tileset-Farben, Gegnerpool, Bosse, Musik --- */
 const FLOORS=[
+ /* Jeder Pool beginnt mit den drei Kennzeichen-Gegnern dieser Etage — die
+    stehen in keinem anderen Pool. Danach folgen wenige allgemeine Arten als
+    Füllung, damit sich die Kämpfe nicht zu gleichförmig anfühlen. */
  {name:'Feuchter Keller', bg:'#1a1512',fa:'#2b241d',fb:'#241e18',wall:'#3d2f22',accent:'#5a442f',
-  pool:['blobling','huepfer','spucker','zuckfliege','wanderauge','kotkrabbler',
-        'talgwicht','zwiebelbalg'],
+  pool:['tropfling','kellerassel','moosbalg',
+        'blobling','huepfer','zuckfliege','talgwicht','zwiebelbalg'],
   bosses:['matschkoenig','kloakenfuerst'],mus:0},
  {name:'Pilzgrotte',      bg:'#121a14',fa:'#1d2b20',fb:'#18241b',wall:'#24402b',accent:'#3a5f42',
-  pool:['sporling','mauerkriecher','blobling','huepfer','rennratte','zuckfliege','kotkrabbler','kotspritzer',
-        'spinnwirt','sporenwirt','zwiebelbalg'],
+  pool:['huetling','sporenschleuder','myzelwurm',
+        'sporling','zuckfliege','rennratte','spinnwirt','sporenwirt'],
   bosses:['augenwaechter','kloakenfuerst'],mus:1},
  {name:'Knochengang',     bg:'#171717',fa:'#262624',fb:'#201f1e',wall:'#3b3a36',accent:'#5c5a52',
-  pool:['knochenwurf','rennratte','steinmaul','schleicher','doppelding','spucker','kotspritzer',
-        'glockenmaul','schlundling','kettenhund'],
+  pool:['klapperer','schaedelroller','rippenwaechter',
+        'knochenwurf','schleicher','glockenmaul','schlundling','kettenhund'],
   bosses:['knochengeneral'],mus:2},
  {name:'Giftschlund',     bg:'#160f1b',fa:'#251a2e',fb:'#1e1526',wall:'#3a2749',accent:'#5b3a74',
-  pool:['sporling','pulsqualle','brutmutter','spucker','doppelding','zuckfliege','kotspritzer',
-        'sporenwirt','aschgeist','schimmelherz','laternenfisch'],
+  pool:['saeureblase','laugenkriecher','giftspruehler',
+        'pulsqualle','brutmutter','sporenwirt','aschgeist','laternenfisch'],
   bosses:['giftbrut'],mus:3},
  {name:'Blutkammer',      bg:'#1b0e0e',fa:'#2e1717',fb:'#261212',wall:'#4a2020',accent:'#6e2e2e',
-  pool:['stachelkugel','schleicher','pulsqualle','brutmutter','knochenwurf','grabgraeber',
-        'klingenrad','aschgeist','steinruecken','kettenhund'],bosses:['doppelherz'],mus:0},
+  pool:['blutegel','aderngeist','herzklopfer',
+        'stachelkugel','grabgraeber','klingenrad','steinruecken','schimmelherz'],
+  bosses:['doppelherz'],mus:0},
  {name:'Wurzel des Kellers',bg:'#0d0d12',fa:'#191926',fb:'#14141f',wall:'#26263d',accent:'#3d3d5c',
-  pool:['grabgraeber','stachelkugel','schleicher','pulsqualle','doppelding','knochenwurf','brutmutter',
-        'klingenrad','steinruecken','schimmelherz','laternenfisch','glockenmaul'],bosses:['kellervater'],mus:3},
+  pool:['wurzelgreifer','leerling','knotenwaechter',
+        'grabgraeber','stachelkugel','klingenrad','steinruecken','schlundling','glockenmaul'],
+  bosses:['kellervater'],mus:3},
 ];
 
 /* ==== 5. DATEN: GEGNER / BOSSE / RAUM-TEMPLATES ====
@@ -466,6 +471,43 @@ const ENEMY_TYPES={
  kettenhund:  {name:'Kettenhund',  hp:34, spd:0,  r:12, ai:'kette'},
  schimmelherz:{name:'Schimmelherz',hp:28, spd:22, r:12, ai:'heiler'},
  steinruecken:{name:'Steinrücken', hp:40, spd:34, r:14, ai:'panzer'},
+
+ /* --- Kennzeichen-Gegner je Etage ---------------------------------------
+    Diese Arten stehen nur im Pool ihrer eigenen Etage. Sie sind aus dem
+    Material der Etage gemacht, damit man auf einen Blick sieht, wo man ist:
+    Knochen im Knochengang, Lauge im Giftschlund, Fleisch in der Blutkammer. */
+
+ // Etage 1 — Feuchter Keller
+ tropfling:   {name:'Tropfling',    hp:9,  spd:0,  r:9,  ai:'hop',    etage:1},
+ kellerassel: {name:'Kellerassel',  hp:12, spd:80, r:9,  ai:'wall',   etage:1},
+ moosbalg:    {name:'Moosbalg',     hp:16, spd:34, r:12, ai:'chase',  etage:1},
+
+ // Etage 2 — Pilzgrotte
+ huetling:    {name:'Hütling',      hp:10, spd:50, r:10, ai:'chase',  etage:2},
+ sporenschleuder:{name:'Sporenschleuder',hp:15,spd:14,r:11,ai:'spread',shotCd:2.1, etage:2},
+ myzelwurm:   {name:'Myzelwurm',    hp:18, spd:0,  r:11, ai:'burrow', etage:2},
+
+ // Etage 3 — Knochengang
+ klapperer:   {name:'Klapperer',    hp:13, spd:58, r:11, ai:'asche',  etage:3},
+ schaedelroller:{name:'Schädelroller',hp:24,spd:105,r:10,ai:'bounce', etage:3},
+ rippenwaechter:{name:'Rippenwächter',hp:26,spd:0, r:13, ai:'turret', shotCd:1.9, etage:3},
+
+ // Etage 4 — Giftschlund
+ saeureblase: {name:'Säureblase',   hp:11, spd:38, r:11, ai:'chase',  etage:4,
+               onDeath:{split:['saeuretropfen',2]}},
+ saeuretropfen:{name:'Säuretropfen',hp:4, spd:82, r:7,  ai:'chase',  noChamp:true},
+ laugenkriecher:{name:'Laugenkriecher',hp:16,spd:40,r:11,ai:'creeper',etage:4},
+ giftspruehler:{name:'Giftsprüher', hp:17, spd:16, r:11, ai:'spray',  shotCd:1.9, etage:4},
+
+ // Etage 5 — Blutkammer
+ blutegel:    {name:'Blutegel',     hp:15, spd:62, r:10, ai:'chase',  etage:5},
+ aderngeist:  {name:'Aderngeist',   hp:9,  spd:130,r:8,  ai:'dart',   fly:true, etage:5},
+ herzklopfer: {name:'Herzklopfer',  hp:28, spd:20, r:13, ai:'glocke', shotCd:2.4, etage:5},
+
+ // Etage 6 — Wurzel des Kellers
+ wurzelgreifer:{name:'Wurzelgreifer',hp:20,spd:0,  r:11, ai:'burrow', etage:6},
+ leerling:    {name:'Leerling',     hp:14, spd:60, r:10, ai:'ghost',  fly:true, etage:6},
+ knotenwaechter:{name:'Knotenwächter',hp:38,spd:30,r:14, ai:'panzer', etage:6},
 };
 
 /* Boss-Schema: KI-Muster stecken in updateBoss (Sektion 9).
@@ -2600,6 +2642,13 @@ function vieleck(pts,color){
   for(let i=1;i<pts.length;i++) gr=Math.max(gr,Math.hypot(pts[i][0]-pts[0][0],pts[i][1]-pts[0][1]));
   if(gr>7){ handZug(pts,k+0.9); tusche(Math.max(0.8,gr*0.05),KONTUR,k); }
 }
+/* Feuchter Glanzpunkt — lässt nasse Oberflächen glänzen */
+function glanz(x,y,rx,ry,rot,staerke){
+  ctx.save(); ctx.globalAlpha=staerke||0.32; ctx.fillStyle='#ffffff';
+  if(tuscheAn){ const k=formSchluessel(); handPfad(x,y,rx,ry,rot,k); }
+  else { ctx.beginPath(); ctx.ellipse(x,y,rx,ry,rot||0,0,TAU); }
+  ctx.fill(); ctx.restore();
+}
 /* Hohle Augenhöhle mit Glut darin */
 function hohlauge(x,y,r,glutfarbe,glut){
   const k=formSchluessel();
@@ -3244,6 +3293,238 @@ function drawEnemy(e){
       disc(e.x-4,y-3,1.1,'#111');    disc(e.x+4,y-3,1.1,'#111');
       disc(e.x,y+3.5,3,'#2e2114');   // offenes Maul zum Spucken
       break; }
+    /* --- Kennzeichen-Gegner: Etage 1, Feuchter Keller (Stein & Wasser) --- */
+    case 'tropfling': {                      // Wassertropfen mit Gesicht
+      fleisch(e.x,y+e.r*0.15,e.r*0.72,e.r*0.62,0,col('#9fd4ef'),col('#5a9ec4'),'#1e3a4a');
+      vieleck([[e.x-e.r*0.3,y-e.r*0.3],[e.x,y-e.r*1.1],[e.x+e.r*0.3,y-e.r*0.3]],col('#7ab8dc'));
+      glanz(e.x-e.r*0.24,y-e.r*0.1,e.r*0.16,e.r*0.1,-0.5,0.4);
+      hohlauge(e.x-e.r*0.24,y+e.r*0.1,e.r*0.1,'#e8f8ff',0.7);
+      hohlauge(e.x+e.r*0.24,y+e.r*0.12,e.r*0.09,'#e8f8ff',0.7);
+      break; }
+    case 'kellerassel': {                    // gepanzerte Assel mit Beinreihen
+      ctx.strokeStyle=col('#3a3028'); ctx.lineWidth=Math.max(1,e.r*0.09);
+      for(const s of [-1,1]) for(let i=-2;i<=2;i++){
+        const bx=e.x+i*e.r*0.28, by=y+e.r*0.2;
+        ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+s*e.r*0.3,by+e.r*0.55); ctx.stroke(); }
+      for(let i=-2;i<=2;i++)
+        fleisch(e.x+i*e.r*0.26,y,e.r*0.24,e.r*0.4,0,col('#8a7a62'),col('#5c5040'),'#241d16');
+      hohlauge(e.x-e.r*0.62,y-e.r*0.06,e.r*0.08,'#c8a83a',0.8);
+      break; }
+    case 'moosbalg': {                       // Steinklumpen unter Moospolster
+      fleisch(e.x,y+e.r*0.12,e.r*0.72,e.r*0.6,0,col('#7d766a'),col('#585249'),'#2c2823');
+      for(const [dx,dy,rr] of [[-0.4,-0.3,0.24],[0.2,-0.42,0.2],[0.5,-0.1,0.16],[-0.1,-0.5,0.17]])
+        ellipse(e.x+dx*e.r,y+dy*e.r,rr*e.r,rr*e.r*0.7,0,col('#4a6a30'));
+      hohlauge(e.x-e.r*0.2,y+e.r*0.16,e.r*0.1,'#9de85a',0.7);
+      hohlauge(e.x+e.r*0.22,y+e.r*0.2,e.r*0.09,'#9de85a',0.7);
+      break; }
+
+    /* --- Etage 2, Pilzgrotte (Schwamm & Spore) --- */
+    case 'huetling': {                       // laufender Pilz
+      vieleck([[e.x-e.r*0.26,y+e.r*0.8],[e.x-e.r*0.2,y-e.r*0.05],
+               [e.x+e.r*0.2,y-e.r*0.05],[e.x+e.r*0.26,y+e.r*0.8]],col('#ded2b6'));
+      hohlauge(e.x-e.r*0.14,y+e.r*0.34,e.r*0.085,'#c8e07a',0.6);
+      hohlauge(e.x+e.r*0.15,y+e.r*0.36,e.r*0.075,'#c8e07a',0.6);
+      ctx.fillStyle=KONTUR; ctx.beginPath();
+      ctx.ellipse(e.x,y-e.r*0.2,e.r*0.9,e.r*0.5,0,Math.PI,TAU); ctx.fill();
+      ctx.fillStyle=col('#87a64c'); ctx.beginPath();
+      ctx.ellipse(e.x,y-e.r*0.2,e.r*0.84,e.r*0.44,0,Math.PI,TAU); ctx.fill();
+      for(const [dx,dy,rr] of [[-0.42,-0.12,0.13],[0.26,-0.2,0.1]])
+        ellipse(e.x+dx*e.r,y-e.r*0.2+dy*e.r,rr*e.r,rr*e.r*0.6,0,col('#cfe0a0'));
+      break; }
+    case 'sporenschleuder': {                // Schwammkugel, die Sporen wirft
+      fleisch(e.x,y,e.r*0.76,e.r*0.68,0,col('#9dbb56'),col('#657f34'),'#2e3a18');
+      for(const [dx,dy,rr] of [[-0.3,-0.24,0.16],[0.28,-0.1,0.13],[0.02,0.3,0.12],[-0.34,0.24,0.1]]){
+        ellipse(e.x+dx*e.r,y+dy*e.r,rr*e.r,rr*e.r*0.85,0,'#2a3814');
+        if(e.cd<0.5) ellipse(e.x+dx*e.r,y+dy*e.r-rr*e.r*0.3,rr*e.r*0.5,rr*e.r*0.3,0,'#c8ff7a');
+      }
+      hohlauge(e.x-e.r*0.18,y-e.r*0.02,e.r*0.09,'#dfff9a',0.6);
+      hohlauge(e.x+e.r*0.2,y,e.r*0.08,'#dfff9a',0.6);
+      break; }
+    case 'myzelwurm': {                      // Pilzgeflecht, das auftaucht
+      if(e.ghosted){ ellipse(e.x,e.y+e.r*0.3,e.r*0.6,e.r*0.24,0,col('#3f5a28'));
+        for(let i=0;i<3;i++) ellipse(e.x-e.r*0.3+i*e.r*0.3,e.y+e.r*0.2,e.r*0.1,e.r*0.06,0,col('#87a64c'));
+        break; }
+      fleisch(e.x,y,e.r*0.5,e.r*0.72,0,col('#c8bb9a'),col('#8f8468'),'#33301f');
+      ctx.strokeStyle=col('#657f34'); ctx.lineWidth=Math.max(1,e.r*0.09);
+      for(const s of [-1,1]){ ctx.beginPath();
+        ctx.moveTo(e.x,y+e.r*0.3);
+        ctx.quadraticCurveTo(e.x+s*e.r*0.7,y,e.x+s*e.r*0.5,y-e.r*0.7); ctx.stroke(); }
+      ctx.fillStyle='#1c1a10'; ctx.beginPath();
+      ctx.ellipse(e.x,y-e.r*0.16,e.r*0.24,e.r*0.2,0,0,TAU); ctx.fill();
+      zaehneSpiel(e.x,y-e.r*0.32,e.r*0.42,4,e.r*0.14,true,'#e0d8b8');
+      break; }
+
+    /* --- Etage 3, Knochengang (Gebein) --- */
+    case 'klapperer': {                      // Skelett, das sich wieder aufrichtet
+      const zerfallen=e.sammelt>0;
+      ctx.save(); if(zerfallen) ctx.globalAlpha=0.35;
+      ctx.strokeStyle=col('#cfc6ae'); ctx.lineWidth=Math.max(1.2,e.r*0.13); ctx.lineCap='round';
+      for(const s of [-1,1]){                // Arme und Beine
+        ctx.beginPath(); ctx.moveTo(e.x,y+e.r*0.1);
+        ctx.lineTo(e.x+s*e.r*0.55,y+e.r*0.35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(e.x,y+e.r*0.45);
+        ctx.lineTo(e.x+s*e.r*0.3,y+e.r*0.92); ctx.stroke(); }
+      ctx.lineCap='butt';
+      for(let i=0;i<3;i++)                   // Rippen
+        ring(e.x,y+e.r*0.12+i*e.r*0.18,e.r*0.3-i*e.r*0.04,col('#b8b0a0'),Math.max(1,e.r*0.07));
+      fleisch(e.x,y-e.r*0.42,e.r*0.42,e.r*0.36,0,col('#e0d8c2'),col('#b8b0a0'),'#3a3630');
+      hohlauge(e.x-e.r*0.15,y-e.r*0.44,e.r*0.11,'#8ad8ff',zerfallen?0.2:0.8);
+      hohlauge(e.x+e.r*0.16,y-e.r*0.44,e.r*0.1,'#8ad8ff',zerfallen?0.2:0.8);
+      zaehneSpiel(e.x,y-e.r*0.2,e.r*0.4,4,e.r*0.1,true,'#e8e0cc');
+      ctx.restore();
+      break; }
+    case 'schaedelroller': {                 // rollender Schädel
+      ctx.save(); ctx.translate(e.x,y);
+      ctx.rotate((e.bvx||0)*0.02+performance.now()/300);
+      ctx.translate(-e.x,-y);
+      fleisch(e.x,y,e.r*0.82,e.r*0.72,0,col('#e0d8c2'),col('#b8b0a0'),'#3a3630');
+      ctx.restore();
+      hohlauge(e.x-e.r*0.28,y-e.r*0.1,e.r*0.16,'#8ad8ff',0.85);
+      hohlauge(e.x+e.r*0.3,y-e.r*0.08,e.r*0.15,'#8ad8ff',0.85);
+      ctx.fillStyle='#2a2622';
+      ctx.beginPath(); ctx.ellipse(e.x,y+e.r*0.2,e.r*0.1,e.r*0.14,0,0,TAU); ctx.fill();
+      zaehneSpiel(e.x,y+e.r*0.42,e.r*0.6,5,e.r*0.14,false,'#efe6d4');
+      break; }
+    case 'rippenwaechter': {                 // festsitzender Rippenkorb
+      ctx.strokeStyle=col('#b8b0a0'); ctx.lineWidth=Math.max(1.4,e.r*0.14);
+      for(let i=0;i<4;i++){ ctx.beginPath();
+        ctx.ellipse(e.x,y-e.r*0.3+i*e.r*0.26,e.r*0.66-i*e.r*0.05,e.r*0.2,0,0,Math.PI);
+        ctx.stroke(); }
+      ctx.strokeStyle=col('#8f8878'); ctx.lineWidth=Math.max(1.2,e.r*0.12);
+      ctx.beginPath(); ctx.moveTo(e.x,y-e.r*0.6); ctx.lineTo(e.x,y+e.r*0.66); ctx.stroke();
+      fleisch(e.x,y-e.r*0.7,e.r*0.32,e.r*0.28,0,col('#e0d8c2'),col('#b8b0a0'),'#3a3630');
+      hohlauge(e.x-e.r*0.12,y-e.r*0.72,e.r*0.085,'#8ad8ff',0.8);
+      hohlauge(e.x+e.r*0.13,y-e.r*0.72,e.r*0.08,'#8ad8ff',0.8);
+      break; }
+
+    /* --- Etage 4, Giftschlund (Lauge) --- */
+    case 'saeureblase': case 'saeuretropfen': {
+      const gr=e.type==='saeureblase'?1:0.72;
+      ctx.save(); ctx.globalAlpha=0.9;
+      fleisch(e.x,y,e.r*0.78*gr,e.r*0.72*gr,0,col('#a8e84a'),col('#5aa82a'),'#1e3a10');
+      ctx.restore();
+      glanz(e.x-e.r*0.24,y-e.r*0.24,e.r*0.2,e.r*0.12,-0.5,0.45);
+      for(let i=0;i<3;i++){                  // Blasen im Inneren
+        const ph=(performance.now()/900+i*0.33)%1;
+        ctx.save(); ctx.globalAlpha=0.5*(1-ph);
+        disc(e.x-e.r*0.2+i*e.r*0.2,y+e.r*0.3-ph*e.r*0.6,e.r*0.08*(1-ph)+1,'#dfff9a');
+        ctx.restore(); }
+      hohlauge(e.x-e.r*0.2,y-e.r*0.02,e.r*0.1*gr,'#1e3a10',0.9);
+      hohlauge(e.x+e.r*0.22,y,e.r*0.09*gr,'#1e3a10',0.9);
+      break; }
+    case 'laugenkriecher': {                 // Schnecke, die Lauge absondert
+      ctx.save(); ctx.globalAlpha=0.55;
+      ellipse(e.x-e.r*0.1,y+e.r*0.5,e.r*0.8,e.r*0.24,0,col('#4a7a2a')); ctx.restore();
+      fleisch(e.x+e.r*0.1,y,e.r*0.66,e.r*0.5,0,col('#8ad84a'),col('#4a7a2a'),'#16280c');
+      ctx.save(); ctx.translate(e.x-e.r*0.2,y-e.r*0.16);
+      ctx.strokeStyle=col('#6b4a86'); ctx.lineWidth=Math.max(1.2,e.r*0.13);
+      ctx.beginPath();                        // gewundenes Haus
+      for(let a=0;a<TAU*1.8;a+=0.25){ const rr=e.r*0.1+a*e.r*0.07;
+        const px=Math.cos(a)*rr, py=Math.sin(a)*rr*0.8;
+        if(a===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+      ctx.stroke(); ctx.restore();
+      for(const s of [-1,1]){                 // Fühler
+        ctx.strokeStyle=col('#4a7a2a'); ctx.lineWidth=Math.max(1,e.r*0.07);
+        ctx.beginPath(); ctx.moveTo(e.x+e.r*0.6,y-e.r*0.1);
+        ctx.lineTo(e.x+e.r*0.85,y-e.r*0.4+s*e.r*0.15); ctx.stroke();
+        disc(e.x+e.r*0.85,y-e.r*0.4+s*e.r*0.15,e.r*0.07,'#c8ff7a'); }
+      break; }
+    case 'giftspruehler': {                  // Drüsensack mit Spritzrohr
+      fleisch(e.x,y+e.r*0.1,e.r*0.7,e.r*0.62,0,col('#7ad84a'),col('#3e6a1c'),'#16280c');
+      ctx.fillStyle=col('#2a4a12');
+      ctx.beginPath(); ctx.ellipse(e.x+e.r*0.6,y-e.r*0.1,e.r*0.3,e.r*0.16,0.3,0,TAU); ctx.fill();
+      disc(e.x+e.r*0.86,y-e.r*0.16,e.r*0.12,e.cd<0.4?'#dfff9a':'#1e3a10');
+      for(const [dx,dy,rr] of [[-0.3,-0.24,0.14],[0.16,-0.3,0.11],[-0.06,0.26,0.1]])
+        ellipse(e.x+dx*e.r,y+e.r*0.1+dy*e.r,rr*e.r,rr*e.r*0.8,0,col('#a8e84a'));
+      hohlauge(e.x-e.r*0.22,y,e.r*0.09,'#dfff9a',0.7);
+      break; }
+
+    /* --- Etage 5, Blutkammer (Fleisch & Blut) --- */
+    case 'blutegel': {                       // Egel, der sich festsaugt
+      const p=1+Math.sin(performance.now()/280)*0.06;
+      fleisch(e.x,y,e.r*0.78*p,e.r*0.5*p,0.1,col('#b0454e'),col('#6e1c26'),'#26080c');
+      ctx.strokeStyle='rgba(40,8,14,0.5)'; ctx.lineWidth=Math.max(1,e.r*0.07);
+      for(let i=-1;i<=1;i++){ ctx.beginPath();
+        ctx.ellipse(e.x+i*e.r*0.24,y,e.r*0.1,e.r*0.42,0.1,0,TAU); ctx.stroke(); }
+      ctx.fillStyle='#160406';                // Saugmaul
+      ctx.beginPath(); ctx.arc(e.x-e.r*0.6,y,e.r*0.22,0,TAU); ctx.fill();
+      ctx.fillStyle='#e8d8c0';
+      for(let i=0;i<7;i++){ const a=i*TAU/7;
+        disc(e.x-e.r*0.6+Math.cos(a)*e.r*0.16,y+Math.sin(a)*e.r*0.16,e.r*0.035,'#e8d8c0'); }
+      break; }
+    case 'aderngeist': {                     // Blutfaden, der durch die Luft zuckt
+      ctx.strokeStyle=col('#a8323e'); ctx.lineWidth=Math.max(1.4,e.r*0.24);
+      ctx.lineCap='round'; ctx.beginPath();
+      const a0=Math.atan2(e.vy||0,e.vx||1);
+      ctx.moveTo(e.x-Math.cos(a0)*e.r*1.2,y-Math.sin(a0)*e.r*1.2);
+      ctx.quadraticCurveTo(e.x,y+Math.sin(performance.now()/90)*e.r*0.5,
+                           e.x+Math.cos(a0)*e.r*0.6,y+Math.sin(a0)*e.r*0.6);
+      ctx.stroke(); ctx.lineCap='butt';
+      fleisch(e.x,y,e.r*0.6,e.r*0.5,0,col('#d0606a'),col('#8a1c24'),'#2a0508');
+      hohlauge(e.x,y,e.r*0.16,'#ffd0d8',0.9);
+      break; }
+    case 'herzklopfer': {                     // schlagendes Herz, das Wellen schickt
+      const p=1+Math.pow(Math.max(0,Math.sin(performance.now()/300)),4)*0.16;
+      ctx.save(); ctx.translate(e.x,y); ctx.scale(p,p); ctx.translate(-e.x,-y);
+      ctx.fillStyle=col('#8f3f4e'); ctx.beginPath();
+      ctx.moveTo(e.x,y+e.r*0.8);
+      ctx.bezierCurveTo(e.x-e.r*1.05,y-e.r*0.12,e.x-e.r*0.72,y-e.r*0.92,e.x-e.r*0.34,y-e.r*0.6);
+      ctx.bezierCurveTo(e.x-e.r*0.14,y-e.r*0.45,e.x,y-e.r*0.3,e.x,y-e.r*0.22);
+      ctx.bezierCurveTo(e.x,y-e.r*0.3,e.x+e.r*0.14,y-e.r*0.45,e.x+e.r*0.34,y-e.r*0.6);
+      ctx.bezierCurveTo(e.x+e.r*0.72,y-e.r*0.92,e.x+e.r*1.05,y-e.r*0.12,e.x,y+e.r*0.8);
+      ctx.fill(); ctx.restore();
+      ctx.strokeStyle='rgba(40,6,12,0.5)'; ctx.lineWidth=Math.max(1,e.r*0.06);
+      for(const [sx,sy,ex,ey] of [[-0.2,-0.3,-0.5,0.3],[0.1,-0.2,0.35,0.35]]){
+        ctx.beginPath(); ctx.moveTo(e.x+sx*e.r,y+sy*e.r);
+        ctx.quadraticCurveTo(e.x+(sx+ex)*e.r*0.6,y+(sy+ey)*e.r*0.5,e.x+ex*e.r,y+ey*e.r);
+        ctx.stroke(); }
+      hohlauge(e.x-e.r*0.2,y,e.r*0.1,'#ffb0b8',0.6);
+      hohlauge(e.x+e.r*0.21,y+e.r*0.02,e.r*0.09,'#ffb0b8',0.6);
+      break; }
+
+    /* --- Etage 6, Wurzel des Kellers (Wurzel & Leere) --- */
+    case 'wurzelgreifer': {                   // Wurzelklaue aus dem Boden
+      if(e.ghosted){ ctx.strokeStyle=col('#4a3d2c'); ctx.lineWidth=Math.max(1.2,e.r*0.1);
+        for(let i=0;i<3;i++){ const a=i*2.1+0.4; ctx.beginPath();
+          ctx.moveTo(e.x,e.y); ctx.lineTo(e.x+Math.cos(a)*e.r*0.5,e.y+Math.sin(a)*e.r*0.3);
+          ctx.stroke(); }
+        break; }
+      ctx.strokeStyle=col('#4a3d2c'); ctx.lineWidth=Math.max(1.6,e.r*0.16); ctx.lineCap='round';
+      for(let i=-2;i<=2;i++){ const a=-Math.PI/2+i*0.42;
+        ctx.beginPath(); ctx.moveTo(e.x,y+e.r*0.6);
+        ctx.quadraticCurveTo(e.x+Math.cos(a)*e.r*0.5,y,
+                             e.x+Math.cos(a)*e.r*1.0,y-e.r*0.7); ctx.stroke(); }
+      ctx.lineCap='butt';
+      fleisch(e.x,y+e.r*0.42,e.r*0.5,e.r*0.34,0,col('#6a5c46'),col('#463a2a'),'#1e1812');
+      hohlauge(e.x,y+e.r*0.36,e.r*0.12,'#b0b0f0',0.8);
+      break; }
+    case 'leerling': {                        // Schatten mit zwei Lichtpunkten
+      ctx.save(); ctx.globalAlpha=e.ghosted?0.25:0.8;
+      ctx.fillStyle='#0b0b12'; ctx.beginPath();
+      ctx.moveTo(e.x-e.r*0.6,y+e.r*0.8);
+      ctx.quadraticCurveTo(e.x-e.r*0.75,y-e.r*0.3,e.x,y-e.r*0.85);
+      ctx.quadraticCurveTo(e.x+e.r*0.75,y-e.r*0.3,e.x+e.r*0.6,y+e.r*0.8);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='rgba(140,140,220,0.4)'; ctx.lineWidth=1;
+      ctx.stroke(); ctx.restore();
+      const gl=(e.ghosted?0.3:0.9)*(0.7+Math.sin(performance.now()/260)*0.3);
+      for(const s of [-1,1]) hohlauge(e.x+s*e.r*0.2,y-e.r*0.2,e.r*0.09,'#b0b0f0',gl);
+      break; }
+    case 'knotenwaechter': {                  // Wurzelknoten mit Panzer
+      fleisch(e.x,y+e.r*0.24,e.r*0.76,e.r*0.5,0,col('#6a5c46'),col('#463a2a'),'#1e1812');
+      const bx=e.x+Math.cos(e.blick||0)*e.r*0.62, by=y+Math.sin(e.blick||0)*e.r*0.46;
+      hohlauge(bx,by,e.r*0.1,'#b0b0f0',0.8);
+      ctx.save(); ctx.translate(e.x,y); ctx.rotate((e.blick||0)+Math.PI); ctx.translate(-e.x,-y);
+      fleisch(e.x+e.r*0.1,y-e.r*0.1,e.r*0.82,e.r*0.64,0,col('#5a4d38'),col('#38301f'),'#150f0a');
+      ctx.strokeStyle='rgba(200,190,160,0.3)'; ctx.lineWidth=Math.max(1,e.r*0.06);
+      for(let i=0;i<4;i++){ const a=Math.PI*0.2+i*Math.PI*0.2;
+        ctx.beginPath();
+        ctx.moveTo(e.x+e.r*0.1+Math.cos(a)*e.r*0.2,y-e.r*0.1+Math.sin(a)*e.r*0.16);
+        ctx.lineTo(e.x+e.r*0.1+Math.cos(a)*e.r*0.8,y-e.r*0.1+Math.sin(a)*e.r*0.62);
+        ctx.stroke(); }
+      ctx.restore();
+      break; }
+
     /* --- Die zwölf Entwürfe --- */
     case 'talgwicht': {
       const aus=e.hp<e.maxHp*0.4;

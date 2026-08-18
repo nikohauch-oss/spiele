@@ -207,6 +207,51 @@ await withPage(async(page,errs)=>{
 });
 
 }
+// --- 4c. Kennzeichen-Gegner erscheinen nur auf ihrer Etage ---
+if(want(4)){
+console.log('\n[4c] Etagen-Exklusivität');
+await withPage(async(page,errs)=>{
+  const r=await page.evaluate(()=>{
+    const schlecht=[], bericht=[];
+    // Wer ein Feld `etage` trägt, darf ausschließlich dort im Pool stehen
+    for(const id of Object.keys(KB.ENEMY_TYPES)){
+      const soll=KB.ENEMY_TYPES[id].etage;
+      if(!soll) continue;
+      const drin=[];
+      KB.FLOORS.forEach((f,i)=>{ if(f.pool.includes(id)) drin.push(i+1); });
+      if(drin.length!==1||drin[0]!==soll)
+        schlecht.push(KB.ENEMY_TYPES[id].name+' steht auf Etage '+(drin.join(',')||'keiner')+
+                      ' statt nur auf '+soll);
+    }
+    // Jede Etage muss drei eigene Kennzeichen-Gegner haben
+    KB.FLOORS.forEach((f,i)=>{
+      const eigen=f.pool.filter(id=>KB.ENEMY_TYPES[id].etage===i+1);
+      bericht.push('E'+(i+1)+' '+f.name+': '+eigen.map(id=>KB.ENEMY_TYPES[id].name).join(', '));
+      if(eigen.length<3) schlecht.push(f.name+' hat nur '+eigen.length+' eigene Gegner');
+    });
+    // Und im Spiel darf auf einer Etage nichts Fremdes auftauchen
+    for(let s=0;s<12;s++){
+      startRun(0,'X'+s);
+      for(let d=1;d<=6;d++){
+        for(const k of Object.keys(KB.G.floor.rooms)){
+          for(const sp of KB.G.floor.rooms[k].spawns){
+            const soll=KB.ENEMY_TYPES[sp.type].etage;
+            if(soll&&soll!==d)
+              schlecht.push('Seed X'+s+' E'+d+': '+KB.ENEMY_TYPES[sp.type].name+' gehört auf E'+soll);
+          }
+        }
+        if(d<6) nextFloor();
+      }
+    }
+    return {schlecht:[...new Set(schlecht)].slice(0,6),anzahl:schlecht.length,bericht};
+  });
+  r.bericht.forEach(b=>console.log('      '+b));
+  note(r.anzahl===0,'Kennzeichen-Gegner erscheinen nur auf ihrer eigenen Etage',
+       r.schlecht.join('; '));
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 // --- 5. Alle Bosse inkl. Phasenwechsel ---
 if(want(5)){
 console.log('\n[5] Bosse');
