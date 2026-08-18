@@ -288,6 +288,10 @@ defItem({id:'kreiselgeist',name:'Kreiselgeist',desc:'Kreist um dich und blockt',
 defItem({id:'brummkaefer',name:'Brummkäfer',desc:'Krabbelt umher und vergiftet',type:'passive',pool:['treasure','curse'],famil:'bug'});
 defItem({id:'sammelratte',name:'Sammelratte',desc:'Zieht Pickups zu dir',type:'passive',pool:['shop','treasure'],famil:'rat'});
 defItem({id:'bombenvogel',name:'Bombenvogel',desc:'Spuckt explosive Kugeln',type:'passive',pool:['treasure','secret'],famil:'bird'});
+defItem({id:'frostgeist',name:'Frostgeist',desc:'Vereist Gegner in der Nähe',type:'passive',pool:['treasure'],famil:'frostgeist'});
+defItem({id:'glutmotte',name:'Glutmotte',desc:'Lässt brennende Glut fallen',type:'passive',pool:['treasure','curse'],famil:'motte'});
+defItem({id:'panzerling',name:'Panzerling',desc:'Stellt sich schützend vor dich',type:'passive',pool:['shop','treasure'],famil:'panzer'});
+defItem({id:'spaeherauge',name:'Späherauge',desc:'Jagt Gegner und durchbohrt sie',type:'passive',pool:['treasure','secret'],famil:'spaeher'});
 
 /* --- Nützliches --- */
 defItem({id:'dietrich',name:'Dietrichfinger',desc:'+3 Schlüssel, Türen klemmen nie',type:'passive',pool:['shop','secret'],flags:['keysaver'],pickup:p=>{p.keys+=3;}});
@@ -1398,6 +1402,70 @@ function updateFamiliars(dt){
         t.explosive=true;
       }
     }
+
+    /* Frostgeist: schwebt seitlich mit und vereist regelmäßig den nächsten
+       Gegner — hält also die Gefahr auf Abstand, statt Schaden zu machen. */
+    if(f.kind==='frostgeist'){
+      f.angle+=1.4*dt;
+      f.x=lerp(f.x,p.x-20+Math.cos(f.angle)*8, 4*dt);
+      f.y=lerp(f.y,p.y-16+Math.sin(f.angle*1.3)*5, 4*dt);
+      f.cd-=dt;
+      if(f.cd<=0&&G.enemies.length){
+        let nah=null,bd=150;
+        for(const e of G.enemies){const d=dist(f,e); if(d<bd){bd=d;nah=e;}}
+        if(nah){ f.cd=2.4; nah.frost=Math.max(nah.frost||0,3); damageEnemy(nah,2);
+          blitz(nah.x,nah.y,nah.r+5,'#bfe8ff',0.25);
+          funken(f.x,f.y,ang(f,nah),'#dff4ff',5,0.35); }
+      }
+    }
+
+    /* Glutmotte: flattert eigene Bahnen und lässt Glut fallen, die Gegner
+       in Brand setzt. Die Glut liegt als eigene Pfütze auf dem Boden. */
+    if(f.kind==='motte'){
+      if(!f.tgtT||f.tgtT<=0){ f.tgtT=frand.range(0.5,1.1);
+        f.wx=clamp(p.x+frand.range(-70,70),RX+20,RX+COLS*TILE-20);
+        f.wy=clamp(p.y+frand.range(-60,60),RY+20,RY+ROWS*TILE-20); }
+      f.tgtT-=dt;
+      const a=Math.atan2(f.wy-f.y,f.wx-f.x);
+      f.x+=Math.cos(a)*95*dt; f.y+=Math.sin(a)*95*dt;
+      f.cd-=dt;
+      if(f.cd<=0){ f.cd=0.5;
+        G.creeps.push({x:f.x,y:f.y,r:11,t:2.6,feindlich:false,glut:true});
+        schweber(f.x,f.y,'#ff9a3a',-frand.range(15,35),0.35);
+      }
+    }
+
+    /* Panzerling: stellt sich in Blickrichtung vor den Spieler und fängt
+       gegnerische Geschosse ab. Kein Schaden, aber ein wandernder Schild. */
+    if(f.kind==='panzer'){
+      const a=p.aimDir;
+      const zx=p.x+a.x*22, zy=p.y+a.y*22+4;
+      f.x=lerp(f.x,zx,7*dt); f.y=lerp(f.y,zy,7*dt);
+      for(const sh of G.eshots){
+        if(sh.arc) continue;                       // Bogenwürfe fliegen darüber
+        if(dist(f,sh)<11){ sh.dead=true; f.blockT=0.15;
+          funken(sh.x,sh.y,Math.atan2(-sh.vy,-sh.vx),'#d8d0c0',4,0.8); Sfx.hit(); }
+      }
+      f.blockT=Math.max(0,(f.blockT||0)-dt);
+    }
+
+    /* Späherauge: fliegt dem nächsten Gegner entgegen und feuert durch-
+       schlagende Schüsse — greift also selbstständig an. */
+    if(f.kind==='spaeher'){
+      let ziel=null,bd=1e9;
+      for(const e of G.enemies){const d=dist(f,e); if(d<bd){bd=d;ziel=e;}}
+      if(ziel){
+        const a=ang(f,ziel);
+        if(bd>60){ f.x+=Math.cos(a)*110*dt; f.y+=Math.sin(a)*110*dt; }
+        f.fireT-=dt;
+        if(f.fireT<=0){ f.fireT=1.1;
+          const t=spawnTear(f.x,f.y,a,{...p.stats,dmg:3.5,range:200,shot:5},new Set(),true);
+          t.pierce=true; Sfx.shoot();
+        }
+      } else { // kein Ziel: zum Spieler zurück
+        f.x=lerp(f.x,p.x-16,3*dt); f.y=lerp(f.y,p.y-20,3*dt);
+      }
+    }
   }
 }
 
@@ -1805,12 +1873,16 @@ function updateEshots(dt){
   G.eshots=G.eshots.filter(s=>!s.dead);
 }
 function updateCreeps(dt){
-  // Eigene Giftpfützen vergiften Gegner, die hineinlaufen
+  // Eigene Pfützen wirken auf Gegner, die hineinlaufen: Gift vergiftet,
+  // die Glut der Glutmotte setzt in Brand.
   for(const c of G.creeps){
     if(c.feindlich) continue;
     c.tick=(c.tick||0)-dt;
     if(c.tick<=0){ c.tick=0.4;
-      for(const e of G.enemies) if(dist(e,c)<c.r+e.r*0.6){ e.poison=Math.max(e.poison||0,2); }
+      for(const e of G.enemies) if(dist(e,c)<c.r+e.r*0.6){
+        if(c.glut){ e.burn=Math.max(e.burn||0,2.5); damageEnemy(e,1); }
+        else e.poison=Math.max(e.poison||0,2);
+      }
     }
   }
   for(const c of G.creeps) c.t-=dt;
@@ -2288,9 +2360,11 @@ function drawRoom(){
   // sieht, welche einem schadet und welche für einen arbeitet.
   for(const c of G.creeps){
     const a=clamp(c.t/2,0.15,0.5);
-    ctx.fillStyle=c.feindlich?`rgba(120,60,160,${a})`:`rgba(120,200,60,${a})`;
+    const unten=c.feindlich?`rgba(120,60,160,${a})`:(c.glut?`rgba(210,90,20,${a})`:`rgba(120,200,60,${a})`);
+    const oben =c.feindlich?`rgba(170,110,210,${a*0.7})`:(c.glut?`rgba(255,180,60,${a*0.8})`:`rgba(180,240,120,${a*0.7})`);
+    ctx.fillStyle=unten;
     ctx.beginPath();ctx.ellipse(c.x,c.y,c.r,c.r*0.6,0,0,TAU);ctx.fill();
-    ctx.fillStyle=c.feindlich?`rgba(170,110,210,${a*0.7})`:`rgba(180,240,120,${a*0.7})`;
+    ctx.fillStyle=oben;
     ctx.beginPath();ctx.ellipse(c.x-c.r*0.2,c.y-c.r*0.12,c.r*0.5,c.r*0.28,0,0,TAU);ctx.fill();
   }
   // Raster-Objekte
@@ -2626,6 +2700,44 @@ function drawFamiliar(f){
     disc(f.x,f.y+fl,5,'#b0684a'); ctx.fillStyle='#8a4a2a';
     ctx.beginPath();ctx.moveTo(f.x-5,f.y+fl);ctx.lineTo(f.x-10,f.y-3+fl);ctx.lineTo(f.x-4,f.y-3+fl);ctx.fill();
     disc(f.x+2,f.y-1+fl,1,'#111'); }
+  if(f.kind==='frostgeist'){                    // schwebender Eisgeist
+    const fl=Math.sin(performance.now()/300)*1.5;
+    ctx.globalAlpha=0.85;
+    disc(f.x,f.y-3+fl,6,'#bfe8ff');
+    ctx.fillStyle='#bfe8ff';                    // ausgefranster Schweif
+    ctx.beginPath(); ctx.moveTo(f.x-6,f.y-2+fl);
+    ctx.lineTo(f.x-4,f.y+6+fl); ctx.lineTo(f.x,f.y+3+fl);
+    ctx.lineTo(f.x+4,f.y+6+fl); ctx.lineTo(f.x+6,f.y-2+fl); ctx.fill();
+    ctx.globalAlpha=1;
+    disc(f.x-2,f.y-4+fl,1.1,'#2a4a6a'); disc(f.x+2,f.y-4+fl,1.1,'#2a4a6a');
+  }
+  if(f.kind==='motte'){                         // Glutmotte mit Flügelschlag
+    const w=Math.sin(performance.now()/45)*3;
+    ctx.fillStyle='rgba(255,190,110,0.55)';
+    ctx.beginPath(); ctx.ellipse(f.x-5,f.y-2-w*0.3,4.5,2.6,-0.5,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(f.x+5,f.y-2+w*0.3,4.5,2.6, 0.5,0,TAU); ctx.fill();
+    disc(f.x,f.y,3.6,'#c8681f'); disc(f.x,f.y-2,2.4,'#ff9a3a');
+    disc(f.x-1.2,f.y-2.6,0.8,'#2a1a0a'); disc(f.x+1.2,f.y-2.6,0.8,'#2a1a0a');
+  }
+  if(f.kind==='panzer'){                        // Schildpanzer, blitzt beim Block
+    const hell=f.blockT>0;
+    disc(f.x,f.y,7.5,hell?'#ffffff':'#8a8276');
+    disc(f.x,f.y-1,6,hell?'#e8e0d0':'#a9a294');
+    ctx.strokeStyle=hell?'#ffffff':'#6a6459'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.arc(f.x,f.y-1,6,0,TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(f.x,f.y-7); ctx.lineTo(f.x,f.y+5); ctx.stroke();
+    disc(f.x-2.5,f.y+1,1,'#3a3630'); disc(f.x+2.5,f.y+1,1,'#3a3630');
+  }
+  if(f.kind==='spaeher'){                       // fliegendes Auge
+    const fl=Math.sin(performance.now()/200)*1.2;
+    disc(f.x,f.y+fl,6,'#e8e0d8');
+    const p=G.player, a=Math.atan2(f.vy||0,f.vx||1);
+    disc(f.x,f.y+fl,3.2,'#6a9ac0'); disc(f.x,f.y+fl,1.6,'#111');
+    ctx.strokeStyle='rgba(200,220,240,0.6)'; ctx.lineWidth=1.2;   // Flügelchen
+    const w=Math.sin(performance.now()/50)*2.5;
+    ctx.beginPath(); ctx.moveTo(f.x-5,f.y-3+fl); ctx.lineTo(f.x-10,f.y-6-w+fl);
+    ctx.moveTo(f.x+5,f.y-3+fl); ctx.lineTo(f.x+10,f.y-6-w+fl); ctx.stroke();
+  }
 }
 
 /* Gestapelte Wülste mit Spitze — Grundform für Kotkrabbler, Kotspritzer

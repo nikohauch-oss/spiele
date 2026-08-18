@@ -237,6 +237,59 @@ await withPage(async(page,errs)=>{
   note(pfuetze.spielerLeben===12,'eigene Giftpfütze schadet dem Spieler nicht',
        '(Leben '+pfuetze.spielerLeben+'/12)');
   note(pfuetze.gegnerVergiftet,'eigene Giftpfütze vergiftet Gegner');
+  // Jeder Begleiter muss im Kampf etwas bewirken: Schaden, Statuseffekt
+  // oder abgefangene Geschosse. Ein Begleiter, der nur mitläuft, wäre ein Bug.
+  const begleiter=await page.evaluate(()=>{
+    const ohne=[], bericht=[];
+    for(const id of Object.keys(KB.ITEMS)){
+      if(!KB.ITEMS[id].famil) continue;
+      startRun(0,'FAM'); const p=KB.G.player; p.redMax=200;p.red=200;
+      acquireItem(id,null); p.itemGet=null; KB.G.enemies.length=0;
+      for(let i=0;i<4;i++){const e=spawnEnemy('blobling',tx(3+i*2),ty(2),null); e.hp=400;}
+      const hpVor=KB.G.enemies.reduce((s,e)=>s+e.hp,0);
+      let blockt=0, zieht=0;
+      const q=KB.G.pickups.length;
+      spawnPickup(p.x+70,p.y,'coin');
+      const muenze=KB.G.pickups[KB.G.pickups.length-1];
+      const mVor=dist(p,muenze);
+      for(let k=0;k<400;k++){
+        p.red=200; p.vx=p.vy=0; p.aimDir={x:1,y:0};
+        if(k%20===0) fireEshot(tx(11),ty(3),Math.PI,150);
+        if(KB.ITEMS[id].famil==='shadow'){ p.fireTimer=0; fireShot(p.aimDir); }
+        const vor=KB.G.eshots.length;
+        updateGame(1/60);
+        if(KB.G.eshots.length<vor) blockt++;
+      }
+      const hpNach=KB.G.enemies.reduce((s,e)=>s+e.hp,0);
+      const status=KB.G.enemies.filter(e=>e.poison>0||e.burn>0||e.frost>0).length;
+      if(muenze&&!muenze.dead) zieht=mVor-dist(p,muenze);
+      const wirkt=(hpVor-hpNach)>0||status>0||blockt>0||zieht>5;
+      bericht.push(KB.ITEMS[id].name+'='+Math.round(hpVor-hpNach));
+      if(!wirkt) ohne.push(KB.ITEMS[id].name);
+    }
+    return {ohne,bericht};
+  });
+  note(begleiter.ohne.length===0,'jeder Begleiter wirkt im Kampf',
+       begleiter.ohne.length?begleiter.ohne.join(', '):'(Schaden: '+begleiter.bericht.join(' ')+')');
+
+  // Der Panzerling ist ein Schild: mit ihm dürfen Geschosse nicht durchkommen
+  const schild=await page.evaluate(()=>{
+    const lauf=(mit)=>{
+      startRun(0,'BLOCK'); const p=KB.G.player;
+      p.redMax=99;p.red=99; KB.G.enemies.length=0;
+      if(mit){ acquireItem('panzerling',null); p.itemGet=null; }
+      p.x=tx(6); p.y=ty(3); p.aimDir={x:1,y:0};
+      for(let k=0;k<240;k++){
+        p.vx=p.vy=0; p.iframes=0;
+        if(k%12===0) fireEshot(tx(11),ty(3),Math.PI,160);
+        updateGame(1/60);
+      }
+      return p.red;
+    };
+    return {ohne:lauf(false), mit:lauf(true)};
+  });
+  note(schild.mit>schild.ohne,'Panzerling fängt gegnerische Geschosse ab',
+       '(ohne '+schild.ohne+', mit '+schild.mit+' Leben)');
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 

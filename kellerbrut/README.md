@@ -91,6 +91,15 @@ Funktion `zeichneCharakter()`, die auch die Charakterauswahl benutzt; eine
 neue Frisur braucht nur einen Zweig in `zeichneFrisur()` und das Feld
 `frisur` im Charaktereintrag.
 
+**Neun Begleiter** kämpfen mit, jeder auf eigene Art: der *Schattengeselle*
+schießt im Takt mit dir, der *Kreiselgeist* kreist und blockt, der
+*Brummkäfer* vergiftet im Vorbeikrabbeln, die *Sammelratte* zieht Beute
+heran, der *Bombenvogel* spuckt explosive Kugeln, der *Frostgeist* vereist
+den nächsten Gegner, die *Glutmotte* lässt brennende Glut fallen, der
+*Panzerling* stellt sich in Blickrichtung vor dich und fängt gegnerische
+Geschosse ab, und das *Späherauge* jagt selbstständig Gegner mit
+durchschlagenden Schüssen.
+
 **Item-Wirkungen sind sichtbar.** Elementare Schüsse ziehen ihre Spur — Gift
 qualmt grün, Feuer sprüht Funken, Frost stäubt. Getroffene Gegner zeigen den
 Zustand deutlich: Vergiftete blubbern und färben sich grün, Brennende lodern,
@@ -137,7 +146,8 @@ Verfügbare `flags`: `triple`, `quad`, `homing`, `pierce`, `spectral`, `bounce`,
 
 Weitere Felder: `pickup:p=>{}` für einmalige Effekte beim Aufheben (etwa
 Herzcontainer), `famil:'shadow'` für einen Begleiter (`shadow`, `orbit`, `bug`,
-`rat`, `bird`), sowie `charge` und `use:p=>{}` für aktive Items.
+`rat`, `bird`, `frostgeist`, `motte`, `panzer`, `spaeher`), sowie `charge` und
+`use:p=>{}` für aktive Items.
 
 ### Neuer Gegner
 
