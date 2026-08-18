@@ -58,6 +58,36 @@ im Shop 5 Münzen, und es gibt sie über die Pille *Schlüsselglück* (+2) und d
 *Dietrichfinger* (+3, spart Schlüssel manchmal ganz ein). Die Karte
 *Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
 
+**Zwanzig benannte Grundrisse.** Jeder Normalraum kommt aus einem von zwanzig
+Plänen mit eigenem Einfall: der *Kreuzgang* teilt den Raum in vier Viertel, die
+*Säulenhalle* schluckt jeden weiten Schuss, die *Brücke* lässt nur einen
+schmalen Steg über ein Loch, das *Schneckenhaus* dreht sich als Spirale nach
+innen, der *Altar* liegt als Insel hinter Löchern und einem Stachelring. Man
+erkennt Räume dadurch wieder, statt immer dasselbe Gestrüpp zu sehen. In jedem
+Plan sind alle vier Türgassen begehbar und miteinander verbunden — auch dann,
+wenn jeder Zufallsstein wirklich steht.
+
+**Jede Etage hat ihre eigene Handschrift.** Nicht nur die Bodenfarbe ändert
+sich, sondern das Material, aus dem alles gemacht ist. Im *Feuchten Keller*
+sind es nasse Feldsteine, Pfützen und Moos in den Fugen, von der Decke tropft
+es. Die *Pilzgrotte* wächst aus jeder Fuge, die Feuerstellen brennen grün und
+Sporen steigen auf. Der *Knochengang* ist ein Beinhaus: Schädel im Boden,
+Rippenbögen, eingemauerte Schädel in den Wänden, kalter Zug quer durch den
+Raum. Im *Giftschlund* sind die Steine violette Kristalle, die Lauge frisst
+Flecken in den Boden und läuft die Wände herunter. Die *Blutkammer* ist
+Fleisch: Adern unter dem Boden, Schleifspuren, und der ganze Raum schlägt wie
+ein Herz. In der *Wurzel des Kellers* brechen Wurzeln durch den Boden und
+blasse Lichter treiben durch die Dunkelheit.
+
+**Licht und Tiefe.** Das Licht kommt von oben links: eine Deckenlampe hellt die
+Raummitte auf, die Wände werfen Schatten auf den Boden (oben am tiefsten, unten
+am flachsten), jedes Hindernis wirft einen Schlagschatten, Löcher bekommen
+helle und dunkle Innenkanten, Feuerstellen leuchten flackernd den Boden aus,
+und eine Vignette drückt die Dunkelheit von den Rändern herein. Der ruhende
+Teil davon wird beim Betreten eines Raums einmal auf zwei Nebenleinwände
+gezeichnet und danach nur noch kopiert — sonst wäre das mit Schraffur und
+Handkontur nicht bei 60 Bildern die Sekunde zu halten.
+
 **Türen.** Steinrahmen in leichter Aufsichtsperspektive mit zwei Türblättern,
 die aufschwingen, sobald alle Gegner im Raum tot sind. Jede Türart ist auf
 einen Blick erkennbar: die **Schatztür golden** (mit Vorhängeschloss, wenn sie
@@ -91,7 +121,9 @@ statt Verlauf. Die Linien werden siebenmal je Sekunde neu gezogen, wie eine
 auf Dreier animierte Zeichnung. Das HUD bleibt ausgenommen — Zahlen und
 Herzen sollen ruhig stehen, deshalb schaltet `drawHUD()` den Stil ab
 (`tuscheAn`). Auch der Boden zeichnet ohne Kontur, sonst ergäbe jede Kachel
-ein Gitter, das alles andere erschlägt.
+ein Gitter, das alles andere erschlägt. Die ruhende Kulisse — Steine, Stacheln,
+Wucherungen, Löcher, Wände — wird vorgebacken und zittert deshalb nicht mit;
+Feuer, Wände-Bewuchs und alles Lebende schon.
 
 **Zwölf Kreaturen mit eigenem Haken.** Der *Talgwicht* wird gefährlicher,
 wenn man ihn trifft: Erlischt seine Flamme, rennt er blind und doppelt so
@@ -215,14 +247,34 @@ In `TEMPLATES.normal` einen Block aus 7 Zeilen à 13 Zeichen ergänzen:
 'C'  Kothaufen   'e'  Gegner-Spawnpunkt
 ```
 
-Die mittleren Felder der Außenkanten bitte frei lassen — das sind die
-Türgassen.
+Die vier Türfelder — Zeile 0 und 6 in Spalte 6, Zeile 3 in Spalte 0 und 12 —
+müssen begehbar bleiben **und untereinander verbunden sein**, sonst sperrt man
+sich im Raum ein. Auch jeder Gegnerplatz muss von den Türen aus erreichbar
+sein, sonst lässt sich der Raum nie leerräumen und die Türen gehen nicht auf.
+Testphase 14 prüft beides für jedes Layout durch, im ungünstigsten Fall, in
+dem jedes `r` zum Stein wird.
 
 ### Neue Etage
 
-Einen Eintrag in `FLOORS` ergänzen (Farben des Tilesets, `pool` mit
-Gegner-IDs, `bosses`, `mus` als Index der Musikschleife). Die Anzahl der Etagen
-ergibt sich automatisch aus der Länge der Tabelle.
+Zwei Einträge: einen in `FLOORS` (Farben des Tilesets, `pool` mit Gegner-IDs,
+`bosses`, `mus` als Index der Musikschleife) und einen in `HANDSCHRIFTEN`
+(siehe Abschnitt 10 im Code). Die Anzahl der Etagen ergibt sich automatisch aus
+der Länge von `FLOORS`.
+
+Die Handschrift bestimmt, **woraus** die Etage gemacht ist:
+
+```js
+{ licht:'rgba(230,186,120,0.16)',   // Farbe der Deckenlampe
+  tiefe:'#0b0806',                  // Farbe im Loch und hinter allem
+  feuerschein:'rgba(232,134,42,0.38)',
+  bodenDeko(x,y,s,k){ … },          // liegt flach IM Boden, ohne Kontur
+  wandDeko(ox,oy,bw,bh,rand,t){ … },// darf sich bewegen
+  dunst(x,y,w,h,t){ … },            // Raumstimmung über allem
+  stein(x,y,s){ … }, loch(x,y,s){ … }, stachel(x,y,s){ … },
+  feuer(x,y,s,rot,t){ … }, wuchs(x,y,s){ … } }
+```
+
+Fehlt der Eintrag, erbt die Etage die letzte vorhandene Handschrift.
 
 ---
 
@@ -242,7 +294,9 @@ samt Phasenwechsel, jedes Item unter Dauerfeuer, alle Pillen und Karten, das
 Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
 jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
 Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
-der Item-Abwurf der Gegner, das Zeichnen sämtlicher Sprites sowie die Bildrate
+der Item-Abwurf der Gegner, die Spielbarkeit aller zwanzig Grundrisse, die
+Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
+wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate
 unter Last. Die Zahlen zieht der Test aus den
 Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
 

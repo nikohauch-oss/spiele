@@ -49,7 +49,12 @@ const RX=(W-COLS*TILE)/2;        // Raum-Ursprung X (=60)
 const RY=50;                     // Raum-Ursprung Y (so, dass auch die untere
                                  // Wand samt Tür noch vollständig ins Bild passt)
 const cv=document.getElementById('cv');
-const ctx=cv.getContext('2d');
+/* Nicht const: für das Vorbacken des Raumhintergrunds wird kurzzeitig auf
+   einen Nebenkontext umgeschaltet (siehe raumBildBacken). Alle Zeichen-
+   helfer schreiben in ctx, deshalb genügt das Umhängen dieser einen
+   Variablen — sie brauchen den Kontext nicht als Parameter. */
+let ctx=cv.getContext('2d');
+const HAUPTCTX=ctx;
 ctx.imageSmoothingEnabled=false;
 
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
@@ -528,104 +533,171 @@ const BOSS_TYPES={
 const T=(...rows)=>rows;
 const TEMPLATES={
  normal:[
+  /* Zwanzig benannte Grundrisse. Jeder hat einen eigenen Einfall — Deckung,
+     Löcher, Stacheln, Feuer oder Wucherung — damit man Räume wiedererkennt,
+     statt immer dasselbe Gestrüpp zu sehen. Alle vier Türgassen sind in
+     jedem Plan begehbar und miteinander verbunden, auch im ungünstigsten
+     Fall, in dem jedes 'r' zum Stein wird. */
+  /*  1 Kreuzgang — Steinkreuz in der Mitte; man sieht nie den ganzen Raum */
+  T('..e...e...e..',
+    '......R......',
+    'e.R...R...R.e',
+    '.RRRRRRRRRRR.',
+    'e.R...R...R.e',
+    '......R......',
+    '..e...e...e..'),
+  /*  2 Säulenhalle — Säulenraster; Schüsse gehen selten weit */
   T('.............',
+    '.e.R.R.R.R.e.',
     '..e.......e..',
+    '..R.R.R.R.R..',
+    '..e.......e..',
+    '.e.R.R.R.R.e.',
+    '.............'),
+  /*  3 Die Grube — großes Loch in der Mitte, ringsum ein Steg */
+  T('..e.......e..',
+    '.e...PPP...e.',
+    '...PPPPPPP...',
+    'e..PPPPPPP..e',
+    '...PPPPPPP...',
+    '.e...PPP...e.',
+    '..e.......e..'),
+  /*  4 Stachelgasse — drei Stachelbänder mit schmalen Lücken */
+  T('..e..........',
+    '.SSSS.e.SSSS.',
+    '..e.......e..',
+    '.SS.SSSSS.SS.',
+    '..e.......e..',
+    '.SSSS.e.SSSS.',
+    '..........e..'),
+  /*  5 Feuerring — Kranz aus Feuerstellen um die Raummitte */
+  T('.............',
+    '...FF.e.FF...',
+    '..F.e...e.F..',
+    'e.F...e...F.e',
+    '..F.e...e.F..',
+    '...FF.e.FF...',
+    '.............'),
+  /*  6 Irrgang — versetzte Wände erzwingen einen Zickzackweg */
+  T('..e.......e..',
+    '.RRRR.RRRRR.e',
+    '..e..R...e...',
+    'e.RRRRRRR.RR.',
+    '..e....R..e..',
+    '.RRRRR.RRRR.e',
+    '..e.......e..'),
+  /*  7 Vier Kammern — schmale Steinpferche, nur von unten offen */
+  T('..e.......e..',
+    '.RRR.....RRR.',
+    '.ReR.....ReR.',
+    '.R.R.....R.R.',
+    '.ReR.....ReR.',
+    '.R.R.....R.R.',
+    '....e...e....'),
+  /*  8 Die Brücke — Loch teilt den Raum, ein schmaler Steg verbindet */
+  T('..e.......e..',
+    'PPPPPP.PPPPPP',
+    'PPPPPP.PPPPPP',
+    '..e...e...e..',
+    'PPPPPP.PPPPPP',
+    'PPPPPP.PPPPPP',
+    '..e.......e..'),
+  /*  9 Eckenlöcher — weite offene Mitte, alle vier Ecken fehlen */
+  T('PPP.......PPP',
+    'PPP...e...PPP',
+    '..e.......e..',
+    '..e.......e..',
+    '..e.......e..',
+    'PPP...e...PPP',
+    'PPP.......PPP'),
+  /* 10 Zahnreihe — Steinzähne von oben und unten, versetzt */
+  T('.R.R.R.R.R.R.',
+    '.R.R.R.R.R.R.',
+    '...e.....e...',
+    'e....e.e....e',
+    '...e.....e...',
+    '.R.R.R.R.R.R.',
+    '.R.R.R.R.R.R.'),
+  /* 11 Schneckenhaus — Steinspirale, der Weg zur Mitte ist lang */
+  T('..e.......e..',
+    '.RRRRRRRRRR..',
+    '.R.e....e.R..',
+    '.R.RRRRRR.R..',
+    '.R.Re.e.R.R..',
+    '.R.RRRR.R.R..',
+    '..e...e..R...'),
+  /* 12 Schachbrett — Steine im Schachmuster; jede Bewegung diagonal */
+  T('..e.......e..',
+    '.R.R.R.R.R.R.',
+    '..e.......e..',
+    '.R.R.ReR.R.R.',
+    '..e.......e..',
+    '.R.R.R.R.R.R.',
+    '..e.......e..'),
+  /* 13 Torbogen — Mauer mit einem einzigen Durchlass */
+  T('..e.......e..',
+    '....e...e....',
+    '.RRRR...RRRR.',
+    '.RRRR...RRRR.',
+    '.............',
+    '..e...e...e..',
+    '.............'),
+  /* 14 Zwei Schluchten — zwei Gräben teilen den Raum in drei Bahnen */
+  T('.............',
+    '.PPPPPPPPPPP.',
+    '..e...e...e..',
+    'e...........e',
+    '..e...e...e..',
+    '.PPPPPPPPPPP.',
+    '.............'),
+  /* 15 Brutnest — Wucherungen in Trauben, dazwischen kaum Platz */
+  T('..e.......e..',
+    '.CC.e...e.CC.',
+    '.CCC.....CCC.',
+    '...C..e..C...',
+    '.CCC.....CCC.',
+    '.CC.e...e.CC.',
+    '..e.......e..'),
+  /* 16 Der Schnitt — diagonale Mauer mit einer einzigen Lücke */
+  T('..e.......RRR',
+    '.e.....RRRR..',
     '.....RRR.....',
-    '.....R.R.....',
-    '.....RRR.....',
+    '..RR.....e...',
+    'RRR....e.....',
+    '......e....e.',
+    '..e.......e..'),
+  /* 17 Kesselraum — Feuerreihe quer durch den Raum, mit Lücken */
+  T('.............',
+    '..e.......e..',
+    '...e...e.....',
+    '.FF.FF.FF.FF.',
+    '...e...e.....',
     '..e.......e..',
     '.............'),
-  T('.............',
-    '.RR..e....RR.',
-    '.R.........R.',
-    '......e......',
-    '.R.........R.',
-    '.RR....e..RR.',
-    '.............'),
-  T('.............',
-    '..P..e...P...',
-    '..P......P...',
-    '..P..e...P...',
-    '..P......P...',
-    '..P...e..P...',
-    '.............'),
-  T('.............',
-    '.e...R...R...',
-    '...C...e...C.',
-    '.....F.......',
-    '.C...e...C...',
-    '...R...R..e..',
-    '.............'),
-  T('.............',
-    '..rr.....rr..',
-    '..r..e.e..r..',
-    '......P......',
-    '..r..e.e..r..',
-    '..rr.....rr..',
-    '.............'),
-  T('.............',
-    '.S.S..e..S.S.',
-    '.............',
-    '..e...R...e..',
-    '.............',
-    '.S.S..e..S.S.',
-    '.............'),
-  T('.............',
-    '....PPPPP....',
-    '..e.......e..',
-    '....R.R.R....',
-    '..e.......e..',
-    '....PPPPP....',
-    '.............'),
-  T('.............',
-    '.C..e....C...',
-    '....RRR......',
-    '..e.....e....',
-    '......RRR....',
-    '...C....e..C.',
-    '.............'),
-  T('.............',
-    '.F....e....F.',
-    '.....r.r.....',
-    '..e...P...e..',
-    '.....r.r.....',
-    '.F....e....F.',
-    '.............'),
-  T('.............',
-    '.rr.e....e.rr',
-    '.r.........r.',
-    '.....SSS.....',
-    '.r.........r.',
-    '.rr.e....e.rr',
-    '.............'),
-  T('.............',
-    '......e......',
-    '..RRR...RRR..',
-    '..R.e...e.R..',
-    '..RRR...RRR..',
-    '......e......',
-    '.............'),
-  T('.............',
-    '.P.P.P.P.P.P.',
-    '....e...e....',
-    '.............',
-    '....e...e....',
-    '.P.P.P.P.P.P.',
-    '.............'),
-  T('.............',
-    '.e..C...C..e.',
-    '.............',
-    '.CC...e...CC.',
-    '.............',
-    '.e..C...C..e.',
-    '.............'),
-  T('.............',
-    '....e...e....',
-    '.rPr.....rPr.',
-    '.............',
-    '.rPr.....rPr.',
-    '....e...e....',
-    '.............'),
+  /* 18 Splitterfeld — Steinbrocken ohne Ordnung verstreut */
+  T('..r...e...r..',
+    '.r..R.e.r..R.',
+    '...r..r.e.r..',
+    'e.R..r..R...e',
+    '..r.e.r..r...',
+    '.R..r.e.R..r.',
+    '..r...e...r..'),
+  /* 19 Der Zwinger — geschlossener Steinring mit vier Lücken */
+  T('..e.......e..',
+    '.RRRR.R.RRRR.',
+    '.R.e.....e.R.',
+    '...e..e..e...',
+    '.R.e.....e.R.',
+    '.RRRR.R.RRRR.',
+    '..e.......e..'),
+  /* 20 Der Altar — Insel in der Mitte, Löcher ringsum, Stacheln davor */
+  T('..e.......e..',
+    '.PPPPP.PPPPP.',
+    'eP.SSSSSSS.Pe',
+    '.P.S.e.e.S.P.',
+    '.P.SSSSSSS.P.',
+    '.PPPPPPPPPPP.',
+    '..e.......e..'),
  ],
  boss:[
   T('.............',
@@ -1330,6 +1402,7 @@ function hitGridTile(x,y,dmg){
   const cell=hit.cell;
   if(cell.t==='poop'||cell.t==='fire'){
     cell.hp-=Math.max(1,dmg*0.5);
+    raumBildNeu();                      // angeschlagen sieht anders aus
     if(cell.hp<=0){
       G.room.grid[hit.rr][hit.cc]=null;
       burst(tx(hit.cc),ty(hit.rr),cell.t==='poop'?'#7a5b3a':'#e8862a',8);
@@ -1572,7 +1645,7 @@ function explode(x,y,rad,dmg,hurtsPlayer){
     const cell=G.room.grid[rr][cc]; if(!cell) continue;
     if(Math.hypot(tx(cc)-x,ty(rr)-y)>rad+14) continue;
     if(cell.t==='rock'||cell.t==='poop'||cell.t==='fire'){
-      G.room.grid[rr][cc]=null;
+      G.room.grid[rr][cc]=null; raumBildNeu();
       burst(tx(cc),ty(rr),'#8a7a66',6);
       if(cell.t==='rock'&&frand.chance(0.1)) spawnPickup(tx(cc),ty(rr),randomDrop());
       if(cell.t==='poop') kothaufenAufgebrochen(tx(cc),ty(rr));
@@ -2778,31 +2851,630 @@ function drawItemIcon(id,x,y,s){
 }
 
 /* --- Raum zeichnen --- */
-function drawRoom(){
-  const F=G.floor.data;
-  // Boden. Ohne Tusche gezeichnet: eine Kontur je Kachel ergäbe ein unruhiges
-  // Gitter, das alles andere erschlägt. Der Boden soll zurücktreten.
-  tuscheAn=false;
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
-    rrect(RX+c*TILE,RY+r*TILE,TILE,TILE,(r+c)%2?F.fa:F.fb);
-  tuscheAn=true;
+/* --- ETAGEN-HANDSCHRIFTEN ------------------------------------------------
+   FLOORS sagt, WAS auf einer Etage vorkommt (Gegnerpool, Bosse, Musik,
+   Grundfarben). Hier steht, WIE sie aussieht: woraus Boden, Wände und die
+   fünf Hindernisarten gemacht sind. Das ist der eigentliche Unterschied
+   zwischen den Etagen — nicht die Bodenfarbe, sondern das Material.
+
+   Eine neue Etage braucht also zwei Einträge: einen in FLOORS und einen
+   hier. Fehlt der hier, greift der letzte vorhandene.
+
+   bodenDeko(x,y,s,k)  liegt flach IM Boden: keine Kontur, kein Schatten,
+                       damit man es nie mit einem Hindernis verwechselt.
+                       k ist der feste Streuwert des Feldes — dieselbe
+                       Kachel sieht bei jedem Betreten gleich aus.
+   wandDeko(...,t)     wird jedes Bild neu gezeichnet und darf sich bewegen.
+   dunst(x,y,w,h,t)    Raumstimmung über allem, ebenfalls lebendig.
+   stein/loch/stachel/feuer/wuchs zeichnen je ein Rasterfeld, Mittelpunkt
+   (x,y), Kantenlänge s.                                                  */
+const HANDSCHRIFTEN=[
+{ /* 1 — Feuchter Keller: Stein & Pfütze */
+  licht:'rgba(230,186,120,0.16)', tiefe:'#0b0806', feuerschein:'rgba(232,134,42,0.38)',
+  bodenDeko(x,y,s,k){
+    const w=rausch(k)*4|0;
+    if(w===0){ ctx.strokeStyle='rgba(20,15,10,0.6)'; ctx.lineWidth=1;      // Riss
+      ctx.beginPath(); ctx.moveTo(x-s*0.3,y-s*0.2);
+      ctx.lineTo(x-s*0.05,y+s*0.05); ctx.lineTo(x+s*0.28,y+s*0.24); ctx.stroke(); }
+    else if(w===1){ ctx.save(); ctx.globalAlpha=0.32; ctx.fillStyle='#4a6a72'; // Pfütze
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.3,s*0.16,rausch(k+1)*3,0,TAU); ctx.fill();
+      ctx.globalAlpha=0.2; ctx.fillStyle='#8fb4c4';
+      ctx.beginPath(); ctx.ellipse(x-s*0.06,y-s*0.03,s*0.12,s*0.05,0,0,TAU); ctx.fill(); ctx.restore(); }
+    else if(w===2){ ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle='#4a5c30'; // Moos in der Fuge
+      for(let i=0;i<4;i++){ const a=rausch(k+i*3)*TAU, d=rausch(k+i*7)*s*0.3;
+        ctx.beginPath(); ctx.ellipse(x+Math.cos(a)*d,y+Math.sin(a)*d*0.6,s*0.09,s*0.05,a,0,TAU); ctx.fill(); }
+      ctx.restore(); }
+    else { ctx.save(); ctx.globalAlpha=0.28; ctx.strokeStyle='#2a2018'; ctx.lineWidth=1; // Ziegelfeld
+      ctx.strokeRect(x-s*0.26,y-s*0.2,s*0.52,s*0.4);
+      for(let i=-1;i<=1;i++){ ctx.beginPath();
+        ctx.moveTo(x+i*s*0.13,y-s*0.2); ctx.lineTo(x+i*s*0.13,y+s*0.2); ctx.stroke(); }
+      ctx.restore(); }
+  },
+  wandDeko(ox,oy,bw,bh,rand,t){                        // Ziegelfugen und nasse Schlieren
+    ctx.save(); ctx.globalAlpha=0.3; ctx.strokeStyle='#1a120c'; ctx.lineWidth=1;
+    for(let i=0;i<14;i++){ const px=ox+(i+0.5)*(bw/14);
+      ctx.beginPath(); ctx.moveTo(px,oy-rand); ctx.lineTo(px,oy-rand*0.35); ctx.stroke(); }
+    ctx.globalAlpha=0.22; ctx.fillStyle='#5a7a84';
+    for(let i=0;i<5;i++){ const px=ox+rausch(i*17)*bw;
+      ctx.fillRect(px,oy-rand*0.5,1.5,rand*0.5); }
+    ctx.restore();
+  },
+  dunst(x,y,w,h,t){                                    // Tropfen von der Decke
+    for(let i=0;i<7;i++){
+      const px=x+((i*137)%100)/100*w, ph=((t*0.35+i*0.19)%1), py=y+ph*h;
+      ctx.save(); ctx.globalAlpha=0.32*(1-ph*0.3); ctx.fillStyle='#8fb4c4';
+      ctx.fillRect(px,py,1,3+ph*3); ctx.restore();
+      if(ph>0.94){ ctx.save(); ctx.globalAlpha=(1-ph)*8;
+        ctx.strokeStyle='#8fb4c4'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.ellipse(px,y+h,6*(ph-0.94)*16,2.5*(ph-0.94)*16,0,0,TAU);
+        ctx.stroke(); ctx.restore(); }
+    }
+    staub(x,y,w,h,t,'rgba(230,200,160,0.5)',9);
+  },
+  stein(x,y,s){ fleisch(x,y+s*0.04,s*0.42,s*0.38,0,'#7d766a','#585249','#2c2823');
+    glanz(x-s*0.14,y-s*0.1,s*0.1,s*0.06,0.3,0.3); },
+  loch(x,y,s){ ellipse(x,y,s*0.42,s*0.36,0,'#07070a');
+    ctx.save(); ctx.globalAlpha=0.4; ellipse(x+s*0.06,y+s*0.06,s*0.2,s*0.1,0.2,'#2b3a44'); ctx.restore(); },
+  stachel(x,y,s){ for(let i=0;i<3;i++) vieleck([[x-s*0.3+i*s*0.22,y+s*0.2],
+      [x-s*0.22+i*s*0.22,y-s*0.24],[x-s*0.14+i*s*0.22,y+s*0.2]],'#9aa0a8'); },
+  feuer(x,y,s,rot,t){ const f=Math.sin(t*7)*s*0.05;
+    ellipse(x,y+s*0.22,s*0.3,s*0.1,0,'#453626');
+    ellipse(x,y+f,s*0.17,s*0.28,0,rot?'#d43a4a':'#d9701a');
+    ellipse(x,y-s*0.06+f,s*0.09,s*0.16,0,rot?'#ff8a6a':'#ffc23a'); },
+  wuchs(x,y,s){ ellipse(x,y+s*0.14,s*0.3,s*0.2,0,'#6b5136');
+    ellipse(x,y-s*0.06,s*0.22,s*0.16,0,'#8a6b46'); ellipse(x,y-s*0.22,s*0.13,s*0.1,0,'#9a7b52'); }
+},
+{ /* 2 — Pilzgrotte: Schwamm & Spore */
+  licht:'rgba(150,220,120,0.14)', tiefe:'#070c08', feuerschein:'rgba(140,255,106,0.32)',
+  bodenDeko(x,y,s,k){
+    const w=rausch(k)*3|0;
+    if(w===0){ for(let i=0;i<3;i++){ const a=rausch(k+i*5)*TAU, d=rausch(k+i*9)*s*0.26;
+        const px=x+Math.cos(a)*d, py=y+Math.sin(a)*d*0.6;
+        ctx.fillStyle='#d8d0b0'; ctx.fillRect(px-0.7,py-s*0.02,1.4,s*0.1);
+        ctx.fillStyle='#87a64c';
+        ctx.beginPath(); ctx.ellipse(px,py-s*0.03,s*0.07,s*0.045,0,Math.PI,TAU); ctx.fill(); } }
+    else if(w===1){ ctx.save(); ctx.globalAlpha=0.42; ctx.fillStyle='#3f5a28';
+      for(let i=0;i<5;i++){ const a=rausch(k+i*3)*TAU, d=rausch(k+i*11)*s*0.32;
+        ctx.beginPath(); ctx.ellipse(x+Math.cos(a)*d,y+Math.sin(a)*d*0.6,s*0.11,s*0.06,a,0,TAU); ctx.fill(); }
+      ctx.restore(); }
+    else { ctx.save(); ctx.globalAlpha=0.5; ctx.strokeStyle='#3a4a22'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(x-s*0.32,y+s*0.1);
+      ctx.quadraticCurveTo(x,y-s*0.1,x+s*0.32,y+s*0.14); ctx.stroke(); ctx.restore(); }
+  },
+  wandDeko(ox,oy,bw,bh,rand,t){                        // Pilze wachsen von der Wandkante herein
+    for(let i=0;i<11;i++){
+      const px=ox+rausch(i*23)*bw, gr=0.5+rausch(i*7)*0.7;
+      ctx.fillStyle='#4a6a2c';
+      ctx.beginPath(); ctx.ellipse(px,oy-rand*0.15,rand*0.3*gr,rand*0.2*gr,0,Math.PI,TAU); ctx.fill();
+      ctx.save(); ctx.globalAlpha=0.35+Math.sin(t*1.6+i)*0.2; ctx.fillStyle='#b8e87a';
+      ctx.beginPath(); ctx.ellipse(px,oy-rand*0.15,rand*0.2*gr,rand*0.12*gr,0,Math.PI,TAU); ctx.fill();
+      ctx.restore();
+    }
+  },
+  dunst(x,y,w,h,t){                                    // Sporen steigen träge auf
+    for(let i=0;i<16;i++){
+      const px=x+((i*89)%100)/100*w+Math.sin(t*0.5+i)*5;
+      const ph=1-((t*0.11+i*0.0625)%1), py=y+ph*h;
+      const gr=0.6+Math.sin(t*2+i*1.7)*0.4;
+      ctx.save(); ctx.globalAlpha=0.5*(1-Math.abs(ph-0.5)*1.1)*gr; ctx.fillStyle='#b8e87a';
+      ctx.beginPath(); ctx.arc(px,py,1.4,0,TAU); ctx.fill(); ctx.restore();
+    }
+  },
+  stein(x,y,s){ fleisch(x,y+s*0.06,s*0.4,s*0.34,0,'#6b7a5e','#4a5741','#232b1e');
+    for(const [dx,dy,r] of [[-0.18,-0.18,0.1],[0.14,-0.24,0.075]])
+      ellipse(x+dx*s,y+dy*s,r*s,r*s*0.6,0,'#9dbb56'); },
+  loch(x,y,s){ ellipse(x,y,s*0.42,s*0.36,0,'#080c08');
+    ctx.save(); ctx.globalAlpha=0.4; ellipse(x,y-s*0.06,s*0.2,s*0.12,0,'#87a64c'); ctx.restore(); },
+  stachel(x,y,s){ for(let i=0;i<3;i++) vieleck([[x-s*0.3+i*s*0.22,y+s*0.2],
+      [x-s*0.24+i*s*0.22,y-s*0.26],[x-s*0.14+i*s*0.22,y+s*0.2]],'#c8b98a'); },
+  feuer(x,y,s,rot,t){ const p=0.6+Math.sin(t*2.4)*0.3;
+    ctx.save(); ctx.globalAlpha=p*0.4; disc(x,y,s*0.36,rot?'#ff9a6a':'#9dff6a'); ctx.restore();
+    ellipse(x,y+s*0.1,s*0.2,s*0.14,0,'#4a7a2a'); disc(x,y-s*0.08,s*0.13,rot?'#ffd07a':'#c8ff7a'); },
+  wuchs(x,y,s){ vieleck([[x-s*0.06,y+s*0.24],[x-s*0.04,y-s*0.04],[x+s*0.05,y-s*0.04],[x+s*0.07,y+s*0.24]],'#ded2b6');
+    ellipse(x,y-s*0.1,s*0.26,s*0.15,0,'#657f34'); ellipse(x-s*0.08,y-s*0.14,s*0.08,s*0.05,0,'#c4d68e'); }
+},
+{ /* 3 — Knochengang: Gebein & Grube */
+  licht:'rgba(170,200,230,0.12)', tiefe:'#050505', feuerschein:'rgba(90,160,240,0.34)',
+  bodenDeko(x,y,s,k){
+    const w=rausch(k)*4|0, bein='#b8b0a0', beinHell='#d8d0c0', beinTief='#3a3630';
+    if(w===0){                                         // halb eingesunkener Schädel
+      ctx.save(); ctx.globalAlpha=0.85; ctx.fillStyle=bein;
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.2,s*0.15,rausch(k+1)*0.8,0,TAU); ctx.fill();
+      ctx.fillStyle=beinHell;
+      ctx.beginPath(); ctx.ellipse(x-s*0.03,y-s*0.03,s*0.13,s*0.09,0,0,TAU); ctx.fill();
+      ctx.fillStyle=beinTief;
+      ctx.beginPath(); ctx.ellipse(x-s*0.06,y-s*0.01,s*0.035,s*0.03,0,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x+s*0.05,y-s*0.02,s*0.035,s*0.03,0,0,TAU); ctx.fill();
+      ctx.restore();
+    } else if(w===1){                                  // Rippenbogen im Boden
+      ctx.save(); ctx.globalAlpha=0.7; ctx.strokeStyle=bein; ctx.lineWidth=Math.max(1,s*0.05);
+      const rot=rausch(k+2)*1.2-0.6;
+      for(let i=-2;i<=2;i++){ ctx.beginPath();
+        ctx.ellipse(x+i*s*0.11,y,s*0.055,s*0.19,rot,Math.PI*0.15,Math.PI*0.85); ctx.stroke(); }
+      ctx.strokeStyle=beinTief; ctx.lineWidth=Math.max(1,s*0.04);
+      ctx.beginPath(); ctx.moveTo(x-s*0.26,y-s*0.06); ctx.lineTo(x+s*0.26,y-s*0.06); ctx.stroke();
+      ctx.restore();
+    } else if(w===2){                                  // verstreute Splitter
+      ctx.save(); ctx.globalAlpha=0.7; ctx.fillStyle=bein;
+      for(let i=0;i<4;i++){ const a=rausch(k+i*13)*TAU, d=rausch(k+i*5)*s*0.3;
+        const px=x+Math.cos(a)*d, py=y+Math.sin(a)*d*0.6;
+        ctx.beginPath(); ctx.ellipse(px,py,s*0.09,s*0.028,a,0,TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(px-Math.cos(a)*s*0.08,py-Math.sin(a)*s*0.08,s*0.03,0,TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(px+Math.cos(a)*s*0.08,py+Math.sin(a)*s*0.08,s*0.03,0,TAU); ctx.fill(); }
+      ctx.restore();
+    } else {                                           // Wirbelkette
+      ctx.save(); ctx.globalAlpha=0.6; ctx.fillStyle=bein;
+      const rot=rausch(k+4)*TAU;
+      for(let i=-2;i<=2;i++){
+        const px=x+Math.cos(rot)*i*s*0.12, py=y+Math.sin(rot)*i*s*0.12;
+        ctx.beginPath(); ctx.ellipse(px,py,s*0.055,s*0.04,rot,0,TAU); ctx.fill(); }
+      ctx.restore();
+    }
+  },
+  wandDeko(ox,oy,bw,bh,rand,t){                        // eingemauerte Schädel und Knochen
+    const setze=(px,py,r0)=>{
+      ctx.save(); ctx.globalAlpha=0.8; ctx.fillStyle='#c4bcac';
+      ctx.beginPath(); ctx.ellipse(px,py,r0,r0*0.82,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#2a2622';
+      ctx.beginPath(); ctx.ellipse(px-r0*0.36,py-r0*0.1,r0*0.24,r0*0.22,0,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px+r0*0.36,py-r0*0.1,r0*0.24,r0*0.22,0,0,TAU); ctx.fill();
+      ctx.fillRect(px-r0*0.12,py+r0*0.3,r0*0.24,r0*0.3);
+      ctx.restore();
+    };
+    for(let i=0;i<6;i++) setze(ox+(i+0.5)*(bw/6)+rausch(i*31)*10-5, oy-rand*0.5, rand*0.3);
+    for(let i=0;i<4;i++) setze(ox+(i+0.5)*(bw/4)+rausch(i*17)*10-5, oy+bh+rand*0.5, rand*0.26);
+    ctx.save(); ctx.globalAlpha=0.55; ctx.strokeStyle='#b8b0a0'; ctx.lineWidth=Math.max(1,rand*0.14);
+    for(let i=0;i<4;i++){ const py=oy+(i+0.5)*(bh/4);
+      ctx.beginPath(); ctx.moveTo(ox-rand*0.8,py-rand*0.3); ctx.lineTo(ox-rand*0.2,py+rand*0.3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox+bw+rand*0.2,py-rand*0.3); ctx.lineTo(ox+bw+rand*0.8,py+rand*0.3); ctx.stroke(); }
+    ctx.restore();
+  },
+  dunst(x,y,w,h,t){                                    // kalter Zug quer durch den Raum
+    for(let i=0;i<4;i++){
+      const ph=((t*0.09+i*0.25)%1);
+      const px=x-w*0.2+ph*w*1.4, py=y+h*(0.2+i*0.19);
+      ctx.save(); ctx.globalAlpha=0.14*Math.sin(ph*Math.PI); ctx.fillStyle='#b8c8dc';
+      ctx.beginPath(); ctx.ellipse(px,py,w*0.22,h*0.05,0,0,TAU); ctx.fill(); ctx.restore();
+    }
+    staub(x,y,w,h,t,'rgba(200,220,240,0.45)',7);
+  },
+  stein(x,y,s){ fleisch(x,y+s*0.08,s*0.38,s*0.3,0,'#cfc6ae','#a49b85','#4e453a');
+    disc(x-s*0.1,y-s*0.14,s*0.13,'#e0d8c2');
+    disc(x-s*0.13,y-s*0.16,s*0.04,'#241f18'); disc(x-s*0.05,y-s*0.16,s*0.04,'#241f18'); },
+  loch(x,y,s){ ellipse(x,y,s*0.42,s*0.36,0,'#060606');
+    ctx.strokeStyle='rgba(210,200,180,0.35)'; ctx.lineWidth=1;
+    for(let i=-1;i<=1;i++){ ctx.beginPath();
+      ctx.moveTo(x+i*s*0.14,y+s*0.16); ctx.lineTo(x+i*s*0.1,y-s*0.16); ctx.stroke(); } },
+  stachel(x,y,s){ for(let i=0;i<3;i++) vieleck([[x-s*0.3+i*s*0.22,y+s*0.2],
+      [x-s*0.23+i*s*0.22,y-s*0.28],[x-s*0.15+i*s*0.22,y+s*0.2]],'#e4dcc6'); },
+  feuer(x,y,s,rot,t){ const f=Math.sin(t*6)*s*0.05;
+    ellipse(x,y+s*0.22,s*0.26,s*0.09,0,'#3a3a3a');
+    ellipse(x,y+f,s*0.16,s*0.26,0,rot?'#c83a5a':'#3a7ac8');
+    ellipse(x,y-s*0.06+f,s*0.08,s*0.14,0,rot?'#ffb0b0':'#bfe8ff'); },
+  wuchs(x,y,s){ for(let i=0;i<3;i++)
+      ellipse(x-s*0.16+i*s*0.16,y+s*0.1-i*s*0.06,s*0.12,s*0.05,0.5+i*0.4,'#cfc6ae'); }
+},
+{ /* 4 — Giftschlund: Kristall & Lauge */
+  licht:'rgba(150,240,110,0.13)', tiefe:'#0a0410', feuerschein:'rgba(120,220,60,0.34)',
+  bodenDeko(x,y,s,k){
+    const w=rausch(k)*4|0;
+    if(w===0){                                         // Ätzfleck mit hellem Rand
+      ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle='#3e6a1c';
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.32,s*0.2,rausch(k+1)*3,0,TAU); ctx.fill();
+      /* Rand gedämpft und ruhig: kräftig leuchtende, pulsierende Ränder
+         heißen im Spiel "aktive Gefahr" — das hier ist nur zerfressener
+         Boden und darf nicht mit einer Giftpfütze verwechselt werden. */
+      ctx.globalAlpha=0.34; ctx.strokeStyle='#a8e84a'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.32,s*0.2,rausch(k+1)*3,0,TAU); ctx.stroke();
+      ctx.restore();
+    } else if(w===1){                                  // Restpfütze
+      ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#5aa82a';
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.22,s*0.13,0,0,TAU); ctx.fill();
+      ctx.globalAlpha=0.6; ctx.fillStyle='#c8ff8a';
+      for(let i=0;i<3;i++){ ctx.beginPath();
+        ctx.arc(x-s*0.1+i*s*0.1,y-rausch(k+i)*s*0.05,s*0.02+0.6,0,TAU); ctx.fill(); }
+      ctx.restore();
+    } else if(w===2){                                  // zerfressene Fuge
+      ctx.save(); ctx.globalAlpha=0.5; ctx.strokeStyle='#7ad84a'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x-s*0.3,y-s*0.16);
+      ctx.lineTo(x-s*0.08,y+s*0.02); ctx.lineTo(x+s*0.14,y-s*0.06);
+      ctx.lineTo(x+s*0.3,y+s*0.18); ctx.stroke();
+      ctx.globalAlpha=0.25; ctx.lineWidth=3; ctx.stroke();
+      ctx.restore();
+    } else {                                           // Kristallsplitter
+      ctx.save(); ctx.globalAlpha=0.55; ctx.fillStyle='#9a72b8';
+      for(let i=0;i<3;i++){ const a=rausch(k+i*7)*TAU, d=rausch(k+i*3)*s*0.26;
+        const px=x+Math.cos(a)*d, py=y+Math.sin(a)*d*0.6;
+        ctx.beginPath(); ctx.moveTo(px-s*0.05,py+s*0.04); ctx.lineTo(px,py-s*0.07);
+        ctx.lineTo(px+s*0.05,py+s*0.04); ctx.fill(); }
+      ctx.restore();
+    }
+  },
+  wandDeko(ox,oy,bw,bh,rand,t){                        // Schleim läuft die Wand herab
+    for(let i=0;i<9;i++){
+      const px=ox+rausch(i*29)*bw, l=rand*(0.35+rausch(i*13)*0.6);
+      ctx.save(); ctx.globalAlpha=0.5; ctx.fillStyle='#5aa82a';
+      ctx.fillRect(px,oy-rand,2.4,l);
+      ctx.globalAlpha=0.7; ctx.fillStyle='#a8e84a';
+      const tropf=((t*0.35+rausch(i*5))%1);
+      ctx.beginPath(); ctx.arc(px+1.2,oy-rand+l*tropf,1.6,0,TAU); ctx.fill();
+      ctx.restore();
+    }
+  },
+  dunst(x,y,w,h,t){                                    // ätzende Schwaden am Boden
+    ctx.save();
+    const gr=ctx.createLinearGradient(0,y+h*0.55,0,y+h);
+    gr.addColorStop(0,'rgba(90,168,42,0)'); gr.addColorStop(1,'rgba(90,168,42,0.16)');
+    ctx.fillStyle=gr; ctx.fillRect(x,y+h*0.55,w,h*0.45); ctx.restore();
+    for(let i=0;i<10;i++){
+      const px=x+((i*173)%100)/100*w, ph=1-((t*0.2+i*0.1)%1);
+      ctx.save(); ctx.globalAlpha=0.4*(1-ph); ctx.strokeStyle='#c8ff8a'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(px,y+h*0.6+ph*h*0.4,1.6+(1-ph)*1.6,0,TAU); ctx.stroke(); ctx.restore();
+    }
+  },
+  stein(x,y,s){ vieleck([[x-s*0.36,y+s*0.3],[x-s*0.24,y-s*0.3],[x+s*0.06,y-s*0.38],
+      [x+s*0.34,y-s*0.06],[x+s*0.26,y+s*0.32]],'#6b4a86');
+    vieleck([[x-s*0.24,y-s*0.3],[x+s*0.06,y-s*0.38],[x+s*0.02,y+s*0.06],[x-s*0.16,y+s*0.1]],'#9a72b8'); },
+  loch(x,y,s){ ellipse(x,y,s*0.42,s*0.36,0,'#12061a');
+    ctx.save(); ctx.globalAlpha=0.5; ellipse(x,y,s*0.32,s*0.24,0,'#7ad84a'); ctx.restore();
+    ctx.save(); ctx.globalAlpha=0.3; ellipse(x-s*0.08,y-s*0.05,s*0.12,s*0.07,0.3,'#c8ff8a'); ctx.restore(); },
+  stachel(x,y,s){ for(let i=0;i<3;i++) vieleck([[x-s*0.3+i*s*0.22,y+s*0.2],
+      [x-s*0.22+i*s*0.22,y-s*0.26],[x-s*0.14+i*s*0.22,y+s*0.2]],'#b98ad8'); },
+  feuer(x,y,s,rot,t){ const f=Math.sin(t*8)*s*0.04;
+    ellipse(x,y+s*0.22,s*0.28,s*0.1,0,'#2e1a3a');
+    ellipse(x,y+f,s*0.17,s*0.26,0,rot?'#c8286a':'#5aa82a');
+    ellipse(x,y-s*0.06+f,s*0.08,s*0.14,0,rot?'#ff9ac8':'#c8ff7a'); },
+  wuchs(x,y,s){ ellipse(x,y+s*0.1,s*0.28,s*0.19,0,'#5a3a74');
+    ctx.save(); ctx.globalAlpha=0.7; ellipse(x-s*0.08,y+s*0.02,s*0.1,s*0.07,0.3,'#a86ad8'); ctx.restore(); }
+},
+{ /* 5 — Blutkammer: Fleisch & Wunde */
+  licht:'rgba(230,110,110,0.15)', tiefe:'#0d0304', feuerschein:'rgba(230,50,60,0.36)',
+  bodenDeko(x,y,s,k){
+    const w=rausch(k)*4|0;
+    if(w===0){                                         // Blutlache
+      ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#5c0e16';
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.3,s*0.18,rausch(k+1)*3,0,TAU); ctx.fill();
+      ctx.globalAlpha=0.3; ctx.fillStyle='#8a1c24';
+      ctx.beginPath(); ctx.ellipse(x-s*0.06,y-s*0.03,s*0.14,s*0.07,0,0,TAU); ctx.fill();
+      for(let i=0;i<3;i++){ const a=rausch(k+i*9)*TAU, d=s*(0.3+rausch(k+i)*0.14);
+        ctx.globalAlpha=0.35;
+        ctx.beginPath(); ctx.arc(x+Math.cos(a)*d,y+Math.sin(a)*d*0.6,s*0.035,0,TAU); ctx.fill(); }
+      ctx.restore();
+    } else if(w===1){                                  // Schleifspur
+      ctx.save(); ctx.globalAlpha=0.32; ctx.strokeStyle='#6e1218';
+      ctx.lineWidth=Math.max(2,s*0.13); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(x-s*0.3,y-s*0.1);
+      ctx.quadraticCurveTo(x,y+s*0.1,x+s*0.32,y-s*0.04); ctx.stroke();
+      ctx.restore();
+    } else if(w===2){                                  // Adern unter dem Boden
+      ctx.save(); ctx.globalAlpha=0.35; ctx.strokeStyle='#a8323e'; ctx.lineWidth=1.2;
+      const a0=rausch(k+3)*TAU;
+      ctx.beginPath(); ctx.moveTo(x-Math.cos(a0)*s*0.32,y-Math.sin(a0)*s*0.24);
+      ctx.quadraticCurveTo(x,y,x+Math.cos(a0)*s*0.32,y+Math.sin(a0)*s*0.24); ctx.stroke();
+      for(const vz of [-1,1]){ ctx.beginPath();
+        ctx.moveTo(x,y); ctx.lineTo(x+Math.cos(a0+vz*1.1)*s*0.16,y+Math.sin(a0+vz*1.1)*s*0.12);
+        ctx.stroke(); }
+      ctx.restore();
+    } else {                                           // Fleischwucherung
+      ctx.save(); ctx.globalAlpha=0.6; ctx.fillStyle='#7a1c26';
+      ctx.beginPath(); ctx.ellipse(x,y,s*0.14,s*0.1,0,0,TAU); ctx.fill();
+      ctx.fillStyle='#b0454e'; ctx.globalAlpha=0.5;
+      ctx.beginPath(); ctx.ellipse(x-s*0.03,y-s*0.02,s*0.06,s*0.04,0,0,TAU); ctx.fill();
+      ctx.restore();
+    }
+  },
+  wandDeko(ox,oy,bw,bh,rand,t){                        // Fleisch an den Wänden, im Herzschlag
+    const p=1+Math.pow(Math.max(0,Math.sin(t*2.1)),6)*0.12;
+    for(let i=0;i<8;i++){
+      const px=ox+rausch(i*19)*bw, gr=(0.4+rausch(i*11)*0.6)*p;
+      ctx.save(); ctx.globalAlpha=0.55; ctx.fillStyle='#6e1c26';
+      ctx.beginPath(); ctx.ellipse(px,oy-rand*0.35,rand*0.34*gr,rand*0.5*gr,0,0,TAU); ctx.fill();
+      ctx.globalAlpha=0.35; ctx.fillStyle='#a83a48';
+      ctx.beginPath(); ctx.ellipse(px-rand*0.08,oy-rand*0.45,rand*0.14*gr,rand*0.2*gr,0,0,TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.save(); ctx.globalAlpha=0.4; ctx.strokeStyle='#8a2028'; ctx.lineWidth=1.4;
+    for(let i=0;i<5;i++){ const py=oy+rausch(i*37)*bh;
+      ctx.beginPath(); ctx.moveTo(ox-rand,py); ctx.lineTo(ox-rand*0.15,py+rand*0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox+bw+rand,py); ctx.lineTo(ox+bw+rand*0.15,py+rand*0.5); ctx.stroke(); }
+    ctx.restore();
+  },
+  dunst(x,y,w,h,t){                                    // der ganze Raum schlägt wie ein Herz
+    const schlag=Math.pow(Math.max(0,Math.sin(t*2.1)),6);
+    ctx.save(); ctx.globalAlpha=0.05+schlag*0.13;
+    const gr=ctx.createRadialGradient(x+w/2,y+h/2,0,x+w/2,y+h/2,Math.max(w,h)*0.62);
+    gr.addColorStop(0,'rgba(220,60,70,0)'); gr.addColorStop(1,'rgba(200,30,45,1)');
+    ctx.fillStyle=gr; ctx.fillRect(x,y,w,h); ctx.restore();
+    for(let i=0;i<5;i++){
+      const px=x+((i*211)%100)/100*w, ph=((t*0.28+i*0.2)%1);
+      ctx.save(); ctx.globalAlpha=0.4*(1-ph*0.4); ctx.fillStyle='#8a1c24';
+      ctx.fillRect(px,y+ph*h,1.4,4); ctx.restore();
+    }
+  },
+  stein(x,y,s){ fleisch(x,y+s*0.05,s*0.4,s*0.35,0,'#b0555c','#7a3038','#2c1014');
+    ctx.save(); ctx.globalAlpha=0.5; ctx.strokeStyle='#4a1418'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x-s*0.2,y-s*0.1); ctx.quadraticCurveTo(x,y+s*0.06,x+s*0.22,y-s*0.04);
+    ctx.stroke(); ctx.restore(); },
+  loch(x,y,s){ ellipse(x,y,s*0.42,s*0.36,0,'#1a0406');
+    ellipse(x,y,s*0.3,s*0.22,0,'#3d0c12');
+    for(let i=-2;i<=2;i++) vieleck([[x+i*s*0.11-s*0.03,y-s*0.2],[x+i*s*0.11+s*0.03,y-s*0.2],
+      [x+i*s*0.11,y-s*0.1]],'#e8d8c0'); },
+  stachel(x,y,s){ for(let i=0;i<3;i++) vieleck([[x-s*0.3+i*s*0.22,y+s*0.2],
+      [x-s*0.23+i*s*0.22,y-s*0.28],[x-s*0.15+i*s*0.22,y+s*0.2]],'#f0e4d0'); },
+  feuer(x,y,s,rot,t){ const f=Math.sin(t*9)*s*0.05;
+    ellipse(x,y+s*0.22,s*0.28,s*0.1,0,'#3a1414');
+    ellipse(x,y+f,s*0.18,s*0.28,0,rot?'#ff3a2a':'#c8283a');
+    ellipse(x,y-s*0.06+f,s*0.09,s*0.15,0,rot?'#ffd0a0':'#ff9a8a'); },
+  wuchs(x,y,s){ ellipse(x,y+s*0.1,s*0.26,s*0.2,0,'#6e1c26');
+    ellipse(x-s*0.06,y+s*0.02,s*0.1,s*0.08,0,'#a83a48'); }
+},
+{ /* 6 — Wurzel des Kellers: Wurzel & Leere */
+  licht:'rgba(150,150,220,0.10)', tiefe:'#000000', feuerschein:'rgba(150,130,230,0.32)',
+  bodenDeko(x,y,s,k){
+    const w=rausch(k)*3|0;
+    if(w===0){                                         // Wurzelstrang
+      ctx.save(); ctx.globalAlpha=0.65; ctx.strokeStyle='#4a3d2c';
+      ctx.lineWidth=Math.max(1.4,s*0.09); ctx.lineCap='round';
+      const a0=rausch(k+1)*TAU;
+      ctx.beginPath();
+      ctx.moveTo(x-Math.cos(a0)*s*0.34,y-Math.sin(a0)*s*0.26);
+      ctx.quadraticCurveTo(x+Math.sin(a0)*s*0.14,y-Math.cos(a0)*s*0.1,
+                           x+Math.cos(a0)*s*0.34,y+Math.sin(a0)*s*0.26);
+      ctx.stroke();
+      ctx.lineWidth=Math.max(1,s*0.05);
+      ctx.beginPath(); ctx.moveTo(x,y);
+      ctx.lineTo(x+Math.cos(a0+1.3)*s*0.18,y+Math.sin(a0+1.3)*s*0.14); ctx.stroke();
+      ctx.restore();
+    } else if(w===1){                                  // leuchtender Riss
+      ctx.save(); ctx.globalAlpha=0.5; ctx.strokeStyle='#8a8ae0'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x-s*0.28,y-s*0.14);
+      ctx.lineTo(x-s*0.04,y+s*0.04); ctx.lineTo(x+s*0.26,y+s*0.2); ctx.stroke();
+      ctx.globalAlpha=0.15; ctx.lineWidth=4; ctx.stroke();
+      ctx.restore();
+    } else {                                           // Steinsplitter im Dunkel
+      ctx.save(); ctx.globalAlpha=0.35; ctx.fillStyle='#3a3a50';
+      for(let i=0;i<3;i++){ const a=rausch(k+i*7)*TAU, d=rausch(k+i*3)*s*0.28;
+        ctx.beginPath();
+        ctx.ellipse(x+Math.cos(a)*d,y+Math.sin(a)*d*0.6,s*0.07,s*0.035,a,0,TAU); ctx.fill(); }
+      ctx.restore();
+    }
+  },
+  wandDeko(ox,oy,bw,bh,rand,t){                        // Wurzeln kriechen über die Wände
+    ctx.save(); ctx.globalAlpha=0.6; ctx.strokeStyle='#3d3220'; ctx.lineCap='round';
+    for(let i=0;i<7;i++){
+      const px=ox+rausch(i*23)*bw;
+      ctx.lineWidth=Math.max(1.2,rand*0.16);
+      ctx.beginPath(); ctx.moveTo(px,oy-rand);
+      ctx.quadraticCurveTo(px+rand*0.5,oy-rand*0.5,px-rand*0.3,oy); ctx.stroke();
+    }
+    for(let i=0;i<4;i++){
+      const py=oy+rausch(i*41)*bh;
+      ctx.lineWidth=Math.max(1.2,rand*0.14);
+      ctx.beginPath(); ctx.moveTo(ox-rand,py);
+      ctx.quadraticCurveTo(ox-rand*0.4,py+rand*0.6,ox,py+rand*0.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox+bw+rand,py);
+      ctx.quadraticCurveTo(ox+bw+rand*0.4,py+rand*0.6,ox+bw,py+rand*0.2); ctx.stroke();
+    }
+    ctx.restore();
+  },
+  dunst(x,y,w,h,t){                                    // blasse Lichtpunkte treiben umher
+    for(let i=0;i<12;i++){
+      const a=t*0.13+i*0.52;
+      const px=x+w*0.5+Math.cos(a*1.3+i)*w*0.42;
+      const py=y+h*0.5+Math.sin(a*0.9+i*2.1)*h*0.4;
+      const gl=Math.max(0,0.35+Math.sin(t*1.6+i*2)*0.3);
+      ctx.save(); ctx.globalAlpha=gl*0.7; ctx.fillStyle='#b0b0f0';
+      ctx.beginPath(); ctx.arc(px,py,1.5,0,TAU); ctx.fill();
+      ctx.globalAlpha=gl*0.2;
+      ctx.beginPath(); ctx.arc(px,py,5,0,TAU); ctx.fill(); ctx.restore();
+    }
+  },
+  stein(x,y,s){ fleisch(x,y+s*0.06,s*0.4,s*0.33,0,'#6a5c46','#463a2a','#1e1812');
+    ctx.strokeStyle='#2c2418'; ctx.lineWidth=Math.max(1,s*0.035);
+    for(let i=-1;i<=1;i++){ ctx.beginPath();
+      ctx.moveTo(x-s*0.34,y+i*s*0.12); ctx.quadraticCurveTo(x,y+i*s*0.2,x+s*0.34,y+i*s*0.08);
+      ctx.stroke(); } },
+  loch(x,y,s){ ellipse(x,y,s*0.44,s*0.38,0,'#000000');
+    ctx.save(); ctx.globalAlpha=0.35;
+    for(let i=0;i<3;i++){ const a=i*2.1;
+      disc(x+Math.cos(a)*s*0.16,y+Math.sin(a)*s*0.1,s*0.04,'#7a7ac0'); }
+    ctx.restore(); },
+  stachel(x,y,s){ for(let i=0;i<3;i++) vieleck([[x-s*0.3+i*s*0.22,y+s*0.2],
+      [x-s*0.25+i*s*0.22,y-s*0.3],[x-s*0.15+i*s*0.22,y+s*0.2]],'#6a5c46'); },
+  feuer(x,y,s,rot,t){ const f=Math.sin(t*5)*s*0.04;
+    ellipse(x,y+s*0.22,s*0.26,s*0.09,0,'#26263d');
+    ellipse(x,y+f,s*0.16,s*0.26,0,rot?'#d83a8a':'#8a7ad8');
+    ellipse(x,y-s*0.06+f,s*0.08,s*0.14,0,rot?'#ffd0f0':'#e0d8ff'); },
+  wuchs(x,y,s){ ctx.strokeStyle='#463a2a'; ctx.lineWidth=Math.max(1.2,s*0.07); ctx.lineCap='round';
+    for(let i=0;i<3;i++){ const a=i*2.1+0.5; ctx.beginPath();
+      ctx.moveTo(x,y+s*0.16); ctx.quadraticCurveTo(x+Math.cos(a)*s*0.2,y,x+Math.cos(a)*s*0.3,y-s*0.2);
+      ctx.stroke(); } ctx.lineCap='butt'; }
+}
+];
+/* Handschrift der aktuellen Etage; tiefere Etagen als beschrieben erben die letzte. */
+function handschrift(){ return HANDSCHRIFTEN[Math.min(G.depth-1,HANDSCHRIFTEN.length-1)]||HANDSCHRIFTEN[0]; }
+
+/* Feiner Staub, der im Licht schwebt — von mehreren Handschriften benutzt */
+function staub(x,y,w,h,t,farbe,anzahl){
+  for(let i=0;i<anzahl;i++){
+    const px=x+((i*67)%100)/100*w+Math.sin(t*0.4+i*1.3)*6;
+    const py=y+((i*151)%100)/100*h+Math.cos(t*0.3+i)*4;
+    ctx.save(); ctx.globalAlpha=0.3+Math.sin(t*1.5+i*2)*0.25;
+    ctx.fillStyle=farbe; ctx.fillRect(px,py,1,1); ctx.restore();
+  }
+}
+
+/* --- Raumhintergrund vorbacken -------------------------------------------
+   Boden, Bodenhandschrift, Deckenlicht, Wandschatten, Löcher, die festen
+   Hindernisse und die Wände ändern sich innerhalb eines Raumbesuchs nicht.
+   Sie einmal auf zwei Nebenleinwände zu zeichnen und danach nur noch zu
+   kopieren spart pro Bild hunderte Pfade — mit Schraffur und Handkontur
+   wäre das sonst nicht bei 60 Bildern die Sekunde zu halten.
+   BODENBILD liegt unter den Pfützen, AUFBAUBILD darüber.
+   Der Preis: gebackene Formen zittern nicht mit dem Tuschetakt. Für ruhende
+   Kulisse ist das sogar angenehmer — Feuer, Wände und alles Lebende zittern
+   weiter.                                                                */
+let bodenBild=null, aufbauBild=null, bildStand='', gitterStand=0;
+function raumBildNeu(){ gitterStand++; }   // nach jeder Gitteränderung rufen
+
+function raumBildBacken(stand){
+  const F=G.floor.data, HS=handschrift(), room=G.room;
+  const bw=COLS*TILE, bh=ROWS*TILE, rand=26;
+  if(!bodenBild){
+    bodenBild=document.createElement('canvas');  bodenBild.width=W;  bodenBild.height=H;
+    aufbauBild=document.createElement('canvas'); aufbauBild.width=W; aufbauBild.height=H;
+  }
+  const echterCtx=ctx, zaehlerVorher=formZaehler;
+  try{
+
+  /* ---- Lage 1: alles, was flach am Boden liegt ---- */
+  ctx=bodenBild.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  ctx.imageSmoothingEnabled=false;
+  flaecheBeginnen(); tuscheAn=false;
+
+  // Kacheln. Ohne Tusche: eine Kontur je Kachel ergäbe ein unruhiges Gitter.
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    ctx.fillStyle=(r+c)%2?F.fa:F.fb;
+    ctx.fillRect(RX+c*TILE,RY+r*TILE,TILE,TILE);
+  }
+  /* Bodenhandschrift der Etage: liegt IM Boden, ohne Kontur und ohne
+     Schlagschatten — dadurch klar von Hindernissen zu unterscheiden. Die
+     Streuung hängt an der Raumkoordinate, ist also bei jedem Betreten
+     dieselbe. Nur gut jedes dritte freie Feld bekommt etwas ab. */
+  if(HS.bodenDeko) for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(room.grid[r][c]) continue;
+    const k=Math.abs(room.gx*911+room.gy*577+r*31+c*7)+13;
+    if(rausch(k)>0.42) continue;
+    ctx.save(); ctx.globalAlpha=0.9;
+    HS.bodenDeko(RX+c*TILE+TILE/2,RY+r*TILE+TILE/2,TILE,k);
+    ctx.restore();
+  }
   // Spezialraum-Bodenfärbung
-  if(G.room.type==='treasure') { ctx.fillStyle='rgba(212,175,55,0.05)'; ctx.fillRect(RX,RY,COLS*TILE,ROWS*TILE); }
-  if(G.room.type==='curse')    { ctx.fillStyle='rgba(160,30,30,0.08)';  ctx.fillRect(RX,RY,COLS*TILE,ROWS*TILE); }
-  if(G.room.type==='secret')   { ctx.fillStyle='rgba(120,80,200,0.06)'; ctx.fillRect(RX,RY,COLS*TILE,ROWS*TILE); }
-  // Wände
+  if(room.type==='treasure'){ ctx.fillStyle='rgba(212,175,55,0.05)'; ctx.fillRect(RX,RY,bw,bh); }
+  if(room.type==='curse')   { ctx.fillStyle='rgba(160,30,30,0.08)';  ctx.fillRect(RX,RY,bw,bh); }
+  if(room.type==='secret')  { ctx.fillStyle='rgba(120,80,200,0.06)'; ctx.fillRect(RX,RY,bw,bh); }
+
+  // Deckenlampe: heller zur Mitte, dunkel zu den Rändern
+  let gr=ctx.createRadialGradient(RX+bw*0.5,RY+bh*0.34,0,RX+bw*0.5,RY+bh*0.5,bw*0.62);
+  gr.addColorStop(0,HS.licht); gr.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=gr; ctx.fillRect(RX,RY,bw,bh);
+
+  /* Die Wände werfen Schatten auf den Boden. Das Licht kommt von oben
+     links, deshalb ist der Schatten oben am tiefsten und unten am flachsten. */
+  const wandSchatten=(x0,y0,x1,y1,w0,h0)=>{
+    const lg=ctx.createLinearGradient(x0,y0,x1,y1);
+    lg.addColorStop(0,'rgba(0,0,0,0.55)'); lg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=lg; ctx.fillRect(x0,y0,w0,h0);
+  };
+  wandSchatten(RX,RY,RX,RY+TILE*1.5,bw,TILE*1.5);
+  wandSchatten(RX,RY,RX+TILE*1.1,RY,TILE*1.1,bh);
+  wandSchatten(RX+bw,RY,RX+bw-TILE*0.7,RY,-TILE*0.7,bh);
+  wandSchatten(RX,RY+bh,RX,RY+bh-TILE*0.55,bw,-TILE*0.55);
+
+  /* Löcher: erst der Schlund, dann die Innenwände. Die hellen und dunklen
+     Kanten sind es, die dem Loch spürbare Tiefe geben. */
+  tuscheAn=true;
+  const istLoch=(r,c)=>r>=0&&r<ROWS&&c>=0&&c<COLS&&!!room.grid[r][c]&&room.grid[r][c].t==='pit';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(!istLoch(r,c)) continue;
+    const x=RX+c*TILE, y=RY+r*TILE;
+    ctx.fillStyle=HS.tiefe; ctx.fillRect(x,y,TILE,TILE);
+    ctx.save(); ctx.beginPath(); ctx.rect(x,y,TILE,TILE); ctx.clip();
+    HS.loch(x+TILE/2,y+TILE/2,TILE);
+    ctx.restore();
+    if(!istLoch(r-1,c)){                       // Innenwand oben
+      const ig=ctx.createLinearGradient(0,y,0,y+TILE*0.5);
+      ig.addColorStop(0,'rgba(255,255,255,0.10)'); ig.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=ig; ctx.fillRect(x,y,TILE,TILE*0.5);
+      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(x,y,TILE,4);
+    }
+    if(!istLoch(r+1,c)){                       // helle Bruchkante unten
+      ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(x,y+TILE-5,TILE,5);
+    }
+    if(!istLoch(r,c-1)){ ctx.fillStyle='rgba(0,0,0,0.35)';       ctx.fillRect(x,y,4,TILE); }
+    if(!istLoch(r,c+1)){ ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.fillRect(x+TILE-4,y,4,TILE); }
+  }
+
+  /* ---- Lage 2: was über den Pfützen steht ---- */
+  ctx=aufbauBild.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  ctx.imageSmoothingEnabled=false;
+  flaecheBeginnen(); tuscheAn=true;
+
+  // Schlagschatten aller stehenden Hindernisse, Licht von oben links
+  ctx.save(); ctx.globalAlpha=0.42; ctx.fillStyle='#000000';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const z=room.grid[r][c]; if(!z||(z.t!=='rock'&&z.t!=='poop')) continue;
+    ctx.beginPath();
+    ctx.ellipse(RX+c*TILE+TILE/2+TILE*0.14,RY+r*TILE+TILE/2+TILE*0.24,TILE*0.4,TILE*0.17,0,0,TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Die Hindernisse selbst, in der Handschrift der Etage
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const z=room.grid[r][c]; if(!z) continue;
+    const cx=RX+c*TILE+TILE/2, cy=RY+r*TILE+TILE/2;
+    if(z.t==='rock')       HS.stein(cx,cy,TILE);
+    else if(z.t==='spike') HS.stachel(cx,cy,TILE);
+    else if(z.t==='poop'){ HS.wuchs(cx,cy,TILE);
+      if(z.hp<2){ ctx.strokeStyle='rgba(20,16,20,0.8)'; ctx.lineWidth=1.4;  // angeschlagen
+        ctx.beginPath(); ctx.moveTo(cx-5,cy-3); ctx.lineTo(cx-1,cy+2);
+        ctx.lineTo(cx-4,cy+6); ctx.stroke(); } }
+  }
+
+  /* Wände zuletzt: Lichtkante oben und links, Schattenkante unten und
+     rechts — dieselbe Lichtrichtung wie bei den Hindernissen. */
+  tuscheAn=false;
   ctx.fillStyle=F.wall;
-  ctx.fillRect(RX-26,RY-26,COLS*TILE+52,26);
-  ctx.fillRect(RX-26,RY+ROWS*TILE,COLS*TILE+52,26);
-  ctx.fillRect(RX-26,RY-26,26,ROWS*TILE+52);
-  ctx.fillRect(RX+COLS*TILE,RY-26,26,ROWS*TILE+52);
-  ctx.strokeStyle=F.accent;ctx.lineWidth=2;
-  ctx.strokeRect(RX-1,RY-1,COLS*TILE+2,ROWS*TILE+2);
-  // Ziegel-Struktur
+  ctx.fillRect(RX-rand,RY-rand,bw+rand*2,rand);
+  ctx.fillRect(RX-rand,RY+bh,bw+rand*2,rand);
+  ctx.fillRect(RX-rand,RY-rand,rand,bh+rand*2);
+  ctx.fillRect(RX+bw,RY-rand,rand,bh+rand*2);
+  ctx.fillStyle='rgba(255,255,255,0.14)';
+  ctx.fillRect(RX-rand,RY-rand,bw+rand*2,7);
+  ctx.fillRect(RX-rand,RY-rand,7,bh+rand*2);
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+  ctx.fillRect(RX-rand,RY+bh+rand-8,bw+rand*2,8);
+  ctx.fillRect(RX+bw+rand-8,RY-rand,8,bh+rand*2);
+  ctx.strokeStyle=F.accent; ctx.lineWidth=2;
+  ctx.strokeRect(RX-1,RY-1,bw+2,bh+2);
+  // Ziegelfugen im Mauerwerk
   ctx.fillStyle='rgba(0,0,0,0.15)';
-  for(let i=0;i<COLS+2;i+=2){ctx.fillRect(RX-26+i*TILE,RY-26,2,10);ctx.fillRect(RX-26+i*TILE+TILE,RY+ROWS*TILE+14,2,10);}
-  // Türen
-  for(const d in G.room.doors) drawDoor(d,G.room.doors[d]);
+  for(let i=0;i<COLS+2;i+=2){
+    ctx.fillRect(RX-rand+i*TILE,RY-rand,2,10);
+    ctx.fillRect(RX-rand+i*TILE+TILE,RY+bh+14,2,10);
+  }
+
+  bildStand=stand;
+  } finally {
+    // Der Zeichenkontext MUSS zurück, sonst zeichnet das Spiel ab hier
+    // unsichtbar auf die Nebenleinwand weiter.
+    ctx=echterCtx; tuscheAn=true; formZaehler=zaehlerVorher;
+  }
+}
+
+function drawRoom(){
+  const HS=handschrift(), t=performance.now()/1000;
+  const bw=COLS*TILE, bh=ROWS*TILE;
+  const stand=G.seedNum+'|'+G.depth+'|'+G.roomKey+'|'+gitterStand;
+  if(bildStand!==stand) raumBildBacken(stand);
+
+  ctx.drawImage(bodenBild,0,0);
+
+  // Feuerstellen leuchten den Boden aus — flackert, bleibt also lebendig
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const z=G.room.grid[r][c]; if(!z||z.t!=='fire') continue;
+    const x=RX+c*TILE+TILE/2, y=RY+r*TILE+TILE/2;
+    const fl=0.75+Math.sin(t*7+c*1.7+r)*0.25;
+    const fg=ctx.createRadialGradient(x,y,0,x,y,TILE*1.7);
+    fg.addColorStop(0,z.red?'rgba(230,50,50,0.4)':HS.feuerschein);
+    fg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.save(); ctx.globalAlpha=fl; ctx.fillStyle=fg;
+    ctx.fillRect(x-TILE*1.7,y-TILE*1.7,TILE*3.4,TILE*3.4); ctx.restore();
+  }
+
   /* Pfützen. Gegnerische violett, eigene giftgrün, Glut orange, Netze silbrig.
      Sporenwolken werden erst nach den Figuren gezeichnet, weil sie die Sicht
      nehmen sollen — siehe drawSporen(). */
@@ -2830,38 +3502,24 @@ function drawRoom(){
     ctx.beginPath();ctx.ellipse(c.x-c.r*0.2,c.y-c.r*0.12,c.r*0.5,c.r*0.28,0,0,TAU);ctx.fill();
   }
   tuscheAn=true;
-  // Raster-Objekte
+
+  // Steine, Stacheln, Wucherungen und die Wände in einem Zug
+  ctx.drawImage(aufbauBild,0,0);
+
+  // Feuer selbst: züngelt, muss also jedes Bild neu
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    const cell=G.room.grid[r][c]; if(!cell) continue;
-    const x=RX+c*TILE,y=RY+r*TILE,cx=x+TILE/2,cy=y+TILE/2;
-    if(cell.t==='rock'){
-      rrect(x+4,y+6,TILE-8,TILE-10,'#55504a');
-      rrect(x+6,y+8,TILE-12,TILE-14,'#6e675e');
-      rrect(x+9,y+10,8,5,'#8a8276');
-    } else if(cell.t==='pit'){
-      rrect(x+2,y+2,TILE-4,TILE-4,'#08080c');
-      ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.strokeRect(x+2.5,y+2.5,TILE-5,TILE-5);
-    } else if(cell.t==='spike'){
-      rrect(x+3,y+3,TILE-6,TILE-6,'rgba(0,0,0,0.15)');
-      ctx.fillStyle='#9a9a9a';
-      for(let i=0;i<3;i++)for(let j=0;j<3;j++){
-        const sx=x+8+i*10,sy=y+8+j*10;
-        ctx.beginPath();ctx.moveTo(sx,sy+6);ctx.lineTo(sx+3,sy-2);ctx.lineTo(sx+6,sy+6);ctx.fill();}
-    } else if(cell.t==='fire'){
-      shadow(cx,cy+10,10);
-      rrect(x+12,y+22,16,8,'#4a3a2a');
-      const fl=Math.sin(performance.now()/90+c*3)*3;
-      disc(cx,cy+2+fl*0.3,8,cell.red?'#d43a4a':'#e8862a');
-      disc(cx,cy-2+fl*0.5,5,cell.red?'#ff8a6a':'#ffc84a');
-      disc(cx,cy-6+fl*0.7,2.5,'#fff2a8');
-    } else if(cell.t==='poop'){
-      shadow(cx,cy+10,10);
-      drawKot(cx,cy+3,10,'#8a6b46','#63492e'); // gleiche Form wie die Kotgegner
-      if(cell.hp<2){ctx.strokeStyle='#3d2c19';ctx.lineWidth=1.2; // angeschlagen
-        ctx.beginPath();ctx.moveTo(cx-5,cy-3);ctx.lineTo(cx-1,cy+2);
-        ctx.lineTo(cx-4,cy+6);ctx.stroke();}
-    }
+    const z=G.room.grid[r][c]; if(!z||z.t!=='fire') continue;
+    const cx=RX+c*TILE+TILE/2, cy=RY+r*TILE+TILE/2;
+    shadow(cx,cy+10,10);
+    HS.feuer(cx,cy,TILE,z.red,t);
   }
+
+  // Wandhandschrift der Etage: Fleisch pulst, Tropfen laufen — bleibt lebendig
+  if(HS.wandDeko){ ctx.save(); HS.wandDeko(RX,RY,bw,bh,26,t); ctx.restore(); }
+
+  // Türen
+  for(const d in G.room.doors) drawDoor(d,G.room.doors[d]);
+
   // Falltür
   if(G.room.trapdoor){
     const x=tx(8),y=ty(3);
@@ -2887,6 +3545,23 @@ function drawRoom(){
     txt(m.broken?'X':(m.kind==='slot'?'?':'★'),m.x,m.y-7,m.broken?'#666':'#ffd75a',9);
     rrect(m.x-8,m.y+2,16,4,'#222');
   }
+}
+
+/* Raumstimmung über allem: der Dunst der Etage und die Vignette, die die
+   Dunkelheit von den Rändern hereindrückt. Wird nach der Spielwelt und vor
+   dem HUD gezeichnet, damit das HUD lesbar bleibt. */
+let vignette=null;
+function raumStimmung(){
+  const HS=handschrift(), t=performance.now()/1000;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(RX,RY,COLS*TILE,ROWS*TILE); ctx.clip();
+  if(HS.dunst) HS.dunst(RX,RY,COLS*TILE,ROWS*TILE,t);
+  ctx.restore();
+  if(!vignette){
+    vignette=ctx.createRadialGradient(W/2,H*0.46,Math.min(W,H)*0.34,W/2,H*0.5,Math.max(W,H)*0.72);
+    vignette.addColorStop(0,'rgba(0,0,0,0)'); vignette.addColorStop(1,'rgba(0,0,0,0.55)');
+  }
+  ctx.fillStyle=vignette; ctx.fillRect(0,0,W,H);
 }
 
 /* --- TÜREN ---------------------------------------------------------------
@@ -4296,6 +4971,7 @@ function render(){
   }
   drawSporen();     // legt sich über alles, nimmt die Sicht
   ctx.setTransform(1,0,0,1,0,0);
+  raumStimmung();   // Dunst der Etage und Vignette, noch unter dem HUD
   drawHUD();
   if(G.bossIntro) drawBossIntro();
   if(G.trans){ // Übergangs-Fade
@@ -4462,7 +5138,8 @@ requestAnimationFrame(frame);
 
 /* Test-Hooks (für automatisierte Smoke-Tests) */
 window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
-  CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS };
+  CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES,
+  HANDSCHRIFTEN, get raumBildStand(){return bildStand;} };
 </script>
 </body>
 </html>

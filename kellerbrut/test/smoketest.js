@@ -864,6 +864,93 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 14. Grundrisse und Etagen-Handschriften ---
+if(want(14)){
+console.log('\n[14] Grundrisse und Etagen-Handschriften');
+await withPage(async(page,errs)=>{
+  // Jeder Grundriss muss spielbar sein: alle vier Türgassen begehbar und
+  // untereinander verbunden — auch dann, wenn jedes 'r' zum Stein wird.
+  const plaene=await page.evaluate(()=>{
+    const ROWS=7, COLS=13, TUEREN=[[0,6],[6,6],[3,0],[3,12]];
+    const probleme=[];
+    KB.TEMPLATES.normal.forEach((plan,i)=>{
+      for(const schlimm of [true,false]){
+        const zu=z=>z==='R'||z==='P'||z==='F'||z==='C'||(schlimm&&z==='r');
+        const ges=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+        if(zu(plan[0][6])){ probleme.push('#'+(i+1)+' Türgasse oben verbaut'); continue; }
+        const q=[[0,6]]; ges[0][6]=true;
+        while(q.length){ const [r,c]=q.shift();
+          for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+            const nr=r+dr,nc=c+dc;
+            if(nr<0||nr>=ROWS||nc<0||nc>=COLS||ges[nr][nc]||zu(plan[nr][nc])) continue;
+            ges[nr][nc]=true; q.push([nr,nc]); } }
+        for(const [r,c] of TUEREN)
+          if(!ges[r][c]) probleme.push('#'+(i+1)+' Tür '+r+','+c+' unerreichbar');
+        for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+          if(plan[r][c]==='e'&&!ges[r][c]) probleme.push('#'+(i+1)+' Gegnerplatz eingeschlossen');
+      }
+    });
+    return {anzahl:KB.TEMPLATES.normal.length, probleme:[...new Set(probleme)]};
+  });
+  note(plaene.anzahl>=20,'zwanzig Grundrisse vorhanden','('+plaene.anzahl+')');
+  note(plaene.probleme.length===0,'jeder Grundriss ist von allen vier Türen aus spielbar',
+       plaene.probleme.slice(0,4).join('; '));
+
+  // Jede Etage braucht eine eigene Handschrift, und jede muss zeichnen können.
+  const hs=await page.evaluate(()=>{
+    const noetig=['licht','tiefe','feuerschein','bodenDeko','wandDeko','dunst',
+                  'stein','loch','stachel','feuer','wuchs'];
+    const fehlt=[];
+    KB.HANDSCHRIFTEN.forEach((h,i)=>noetig.forEach(k=>{ if(h[k]===undefined) fehlt.push('E'+(i+1)+'.'+k); }));
+    return {anzahl:KB.HANDSCHRIFTEN.length, etagen:KB.FLOORS.length, fehlt};
+  });
+  note(hs.anzahl===hs.etagen,'jede Etage hat eine eigene Handschrift',
+       '('+hs.anzahl+' von '+hs.etagen+')');
+  note(hs.fehlt.length===0,'keine Handschrift lässt etwas aus',hs.fehlt.join(' '));
+
+  /* Jede Etage muss sichtbar anders aussehen. Geprüft über das fertige Bild:
+     derselbe Raum auf sechs Etagen darf nie zweimal dasselbe ergeben. */
+  const bilder=await page.evaluate(async()=>{
+    const sig=[];
+    for(let etage=1;etage<=KB.FLOORS.length;etage++){
+      startRun(0,'BILD'); for(let d=1;d<etage;d++) nextFloor();
+      KB.G.bossIntro=null; KB.G.enemies.length=0;
+      // ein Raum mit allen fünf Hindernisarten
+      for(let r=0;r<7;r++)for(let c=0;c<13;c++) KB.G.room.grid[r][c]=null;
+      KB.G.room.grid[1][2]={t:'rock'};  KB.G.room.grid[1][4]={t:'pit'};
+      KB.G.room.grid[1][8]={t:'spike'}; KB.G.room.grid[5][4]={t:'fire',hp:4,red:false};
+      KB.G.room.grid[5][8]={t:'poop',hp:3};
+      raumBildNeu();
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const c=document.querySelector('canvas');
+      const d=c.getContext('2d').getImageData(60,50,520,280).data;
+      let h=0; for(let i=0;i<d.length;i+=97) h=(h*31+d[i])>>>0;   // grober Fingerabdruck
+      sig.push(h);
+    }
+    return sig;
+  });
+  note(new Set(bilder).size===bilder.length,
+       'jede Etage sieht wirklich anders aus','('+new Set(bilder).size+' verschiedene von '+bilder.length+')');
+
+  /* Der vorgebackene Hintergrund muss verworfen werden, sobald sich am
+     Raster etwas ändert — sonst bliebe ein gesprengter Stein stehen. */
+  const backen=await page.evaluate(async()=>{
+    startRun(0,'BACK'); KB.G.bossIntro=null;
+    for(let r=0;r<7;r++)for(let c=0;c<13;c++) KB.G.room.grid[r][c]=null;
+    KB.G.room.grid[3][4]={t:'rock'};
+    await new Promise(r=>requestAnimationFrame(r));
+    const vorher=KB.raumBildStand;
+    explode(tx(4),ty(3),60,0);                       // Stein wegsprengen
+    await new Promise(r=>requestAnimationFrame(r));
+    return {vorher, nachher:KB.raumBildStand, stein:!!KB.G.room.grid[3][4]};
+  });
+  note(backen.stein===false&&backen.vorher!==backen.nachher&&backen.nachher!=='',
+       'gesprengter Stein verschwindet auch aus dem vorgebackenen Bild');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');
