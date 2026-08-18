@@ -172,6 +172,75 @@ await withPage(async(page,errs)=>{
 });
 
 }
+// --- 6b. Item-Wirkungen sind sichtbar und greifen wirklich ---
+if(want(6)){
+console.log('\n[6b] Sichtbare Item-Wirkungen');
+await withPage(async(page,errs)=>{
+  // Jedes Aktivitem muss beim Einsatz auch etwas auf dem Schirm erzeugen
+  const aktiv=await page.evaluate(()=>{
+    const ohne=[];
+    for(const id of Object.keys(KB.ITEMS)){
+      const it=KB.ITEMS[id];
+      if(it.type!=='active') continue;
+      startRun(0,'AKTIV'); const p=KB.G.player;
+      p.redMax=12; p.red=4;                 // damit auch Heilitems anschlagen
+      KB.G.enemies.length=0;
+      for(let i=0;i<4;i++) spawnEnemy('blobling',tx(3+i*2),ty(2),null);
+      KB.G.fx.length=0;
+      it.use(p);
+      if(KB.G.fx.length===0) ohne.push(id);
+    }
+    return ohne;
+  });
+  note(aktiv.length===0,'jedes Aktivitem erzeugt einen sichtbaren Effekt',aktiv.join(', '));
+
+  // Elementare Schüsse müssen Spuren ziehen
+  const spuren=await page.evaluate(()=>{
+    const ohne=[];
+    for(const [id,name] of [['giftdruese','Gift'],['glutzunge','Feuer'],['frostkern','Frost'],['suchtraene','Suchen']]){
+      startRun(0,'SPUR'); const p=KB.G.player;
+      acquireItem(id,null); p.itemGet=null; KB.G.enemies.length=0;
+      KB.G.fx.length=0; p.aimDir={x:1,y:0}; p.fireTimer=0; fireShot(p.aimDir);
+      for(let k=0;k<20;k++) updateGame(1/60);
+      if(KB.G.fx.length===0) ohne.push(name);
+    }
+    return ohne;
+  });
+  note(spuren.length===0,'elementare Schüsse hinterlassen eine Spur',spuren.join(', '));
+
+  // Der Bombenvogel verspricht explosive Kugeln — das muss auch passieren
+  const vogel=await page.evaluate(()=>{
+    startRun(0,'VOGEL'); const p=KB.G.player;
+    p.redMax=99;p.red=99; KB.G.enemies.length=0;
+    // ein Ziel weit weg vom Einschlag: nur eine echte Explosion erreicht es
+    const fern=spawnEnemy('blobling',tx(6)+30,ty(3),null); fern.hp=999;
+    const t=spawnTear(tx(6),ty(3),0,{...p.stats,dmg:1,range:10,shot:4},new Set(),true);
+    t.explosive=true; t.life=0.001;
+    const vorher=fern.hp;
+    for(let k=0;k<5;k++) updateGame(1/60);
+    return {schaden:vorher-fern.hp};
+  });
+  note(vogel.schaden>0,'Bombenvogel-Kugeln explodieren wirklich',
+       '(Flächenschaden '+vogel.schaden.toFixed(0)+')');
+
+  // Eigene Giftpfützen dürfen nur Gegnern schaden, nicht dem Spieler
+  const pfuetze=await page.evaluate(()=>{
+    startRun(0,'PFUETZE'); const p=KB.G.player;
+    p.redMax=12;p.red=12; KB.G.enemies.length=0; KB.G.creeps.length=0;
+    // Gegner weit genug weg, sonst käme der Schaden aus der Berührung
+    // Gegner ohne Fernkampf und bewegungslos, damit nur die Pfütze wirken kann
+    const e=spawnEnemy('blobling',p.x+46,p.y,null); e.hp=999; e.spd=0;
+    G.creeps.push({x:p.x+23,y:p.y,r:34,t:9,feindlich:false});
+    for(let k=0;k<90;k++){ p.iframes=0; p.vx=p.vy=0; updateGame(1/60); }
+    return {spielerLeben:p.red, gegnerVergiftet:e.poison>0};
+  });
+  note(pfuetze.spielerLeben===12,'eigene Giftpfütze schadet dem Spieler nicht',
+       '(Leben '+pfuetze.spielerLeben+'/12)');
+  note(pfuetze.gegnerVergiftet,'eigene Giftpfütze vergiftet Gegner');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 // --- 7. Pillen und Karten ---
 if(want(7)){
 console.log('\n[7] Pillen und Karten');

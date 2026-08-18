@@ -91,6 +91,18 @@ Funktion `zeichneCharakter()`, die auch die Charakterauswahl benutzt; eine
 neue Frisur braucht nur einen Zweig in `zeichneFrisur()` und das Feld
 `frisur` im Charaktereintrag.
 
+**Item-Wirkungen sind sichtbar.** Elementare Schüsse ziehen ihre Spur — Gift
+qualmt grün, Feuer sprüht Funken, Frost stäubt. Getroffene Gegner zeigen den
+Zustand deutlich: Vergiftete blubbern und färben sich grün, Brennende lodern,
+Erfrorene bekommen einen Eispanzer mit Zacken. Kritische Treffer blitzen auf
+und lassen das Bild kurz wackeln. Jedes Aktivitem hat eine eigene Signatur,
+etwa die Druckwelle des *Sturmatems*, die Schallringe der *Knochenglocke*
+oder das rote Aufwallen des *Berserkerkelchs*.
+
+**Giftpfützen haben einen Besitzer.** Gegnerische sind violett und schaden
+dir, deine eigenen (aus Schüssen mit der *Giftdrüse*) sind grün und vergiften
+Gegner, die hineinlaufen.
+
 **Progression.** Permadeath. Der Schwierigkeitsgrad steigt pro Etage (mehr
 Lebenspunkte, mehr Gegner, häufiger Champions). Nach dem Run gibt es einen
 Auswertungsbildschirm mit Statistik und allen gefundenen Items. Freischaltungen

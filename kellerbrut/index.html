@@ -300,21 +300,51 @@ defItem({id:'blutlinse',name:'Blutlinse',desc:'Chance auf kritische Treffer',typ
 
 /* --- Aktive Items (E; Aufladung: 1 Balken pro geschafftem Raum) --- */
 defItem({id:'knochenglocke',name:'Knochenglocke',desc:'Läutet Schaden für alle ein',type:'active',pool:['treasure','shop'],charge:4,
-  use:p=>{G.enemies.forEach(e=>damageEnemy(e,30));G.shake=8;Sfx.boom();return true;}});
+  use:p=>{G.enemies.forEach(e=>{damageEnemy(e,30);blitz(e.x,e.y,e.r+6,'#e8e0d0',0.25);});
+    for(let i=0;i<3;i++) schockwelle(p.x,p.y,150+i*40,'#e8e0d0',0.5+i*0.12,4);
+    G.shake=8;Sfx.boom();return true;}});
 defItem({id:'lebensquell',name:'Lebensquell',desc:'Volle rote Heilung',type:'active',pool:['shop','treasure'],charge:6,
-  use:p=>{if(p.red>=p.redMax)return false;p.red=p.redMax;Sfx.heart();return true;}});
+  use:p=>{if(p.red>=p.redMax)return false;p.red=p.redMax;
+    schockwelle(p.x,p.y,44,'#ff6a8a',0.5,3);
+    for(let i=0;i<16;i++) schweber(p.x+frand.range(-12,12),p.y+frand.range(-6,10),'#ff8aa8',-frand.range(30,70),0.9);
+    Sfx.heart();return true;}});
 defItem({id:'raumfalter',name:'Raumfalter',desc:'Teleport in zufälligen Raum',type:'active',pool:['treasure','secret'],charge:4,
-  use:p=>{teleportRandom();return true;}});
+  use:p=>{for(let i=0;i<14;i++){const a=frand()*TAU;
+      G.fx.push({kind:'p',x:p.x+Math.cos(a)*26,y:p.y+Math.sin(a)*26,
+        vx:-Math.cos(a)*90,vy:-Math.sin(a)*90,t:0.3,color:'#c9a8e8',size:2.5});}
+    blitz(p.x,p.y,20,'#c9a8e8',0.25);
+    teleportRandom();
+    blitz(p.x,p.y,20,'#c9a8e8',0.25); schockwelle(p.x,p.y,40,'#c9a8e8',0.4,3);
+    return true;}});
 defItem({id:'wuerfelkiste',name:'Würfelkiste',desc:'Würfelt Items & Pickups neu',type:'active',pool:['treasure','secret'],charge:6,
-  use:p=>{rerollRoom();return true;}});
+  use:p=>{rerollRoom();
+    for(let i=0;i<20;i++) blitz(RX+frand()*COLS*TILE,RY+frand()*ROWS*TILE,
+      frand.range(3,7),'#8ab4e8',frand.range(0.15,0.4));
+    return true;}});
 defItem({id:'sturmatem',name:'Sturmatem',desc:'Stoßwelle wirft alles zurück',type:'active',pool:['treasure'],charge:3,
-  use:p=>{G.eshots.length=0;G.enemies.forEach(e=>{const a=ang(p,e);e.kx=Math.cos(a)*260;e.ky=Math.sin(a)*260;damageEnemy(e,8);});G.shake=6;Sfx.boom();return true;}});
+  use:p=>{G.eshots.length=0;
+    G.enemies.forEach(e=>{const a=ang(p,e);e.kx=Math.cos(a)*260;e.ky=Math.sin(a)*260;
+      damageEnemy(e,8); funken(e.x,e.y,a,'#d8f0ff',5,0.5);});
+    schockwelle(p.x,p.y,170,'#d8f0ff',0.45,5);
+    for(let i=0;i<22;i++){const a=frand()*TAU;
+      G.fx.push({kind:'p',x:p.x,y:p.y,vx:Math.cos(a)*frand.range(140,300),
+        vy:Math.sin(a)*frand.range(140,300),t:0.35,color:'#d8f0ff',size:frand.range(1.5,3)});}
+    G.shake=6;Sfx.boom();return true;}});
 defItem({id:'zeitglas',name:'Zeitglas',desc:'Verlangsamt Gegner kurzzeitig',type:'active',pool:['shop','treasure'],charge:4,
-  use:p=>{G.enemies.forEach(e=>e.frost=Math.max(e.frost||0,5));Sfx.active();return true;}});
+  use:p=>{G.enemies.forEach(e=>{e.frost=Math.max(e.frost||0,5);
+      blitz(e.x,e.y,e.r+5,'#bfe8ff',0.3);});
+    schockwelle(p.x,p.y,180,'#9fd8ff',0.6,4);
+    Sfx.active();return true;}});
 defItem({id:'berserkerkelch',name:'Berserkerkelch',desc:'+3 Schaden in diesem Raum',type:'active',pool:['curse','treasure'],charge:5,
-  use:p=>{p.roomDmgBonus+=3;recomputeStats();Sfx.active();return true;}});
+  use:p=>{p.roomDmgBonus+=3;recomputeStats();
+    schockwelle(p.x,p.y,50,'#c03a5a',0.45,4); blitz(p.x,p.y-6,16,'#ff5a6a',0.3);
+    for(let i=0;i<14;i++) schweber(p.x+frand.range(-10,10),p.y+8,'#c03a5a',-frand.range(40,90),0.7);
+    addText(p.x,p.y-26,'WUT!','#ff5a6a');
+    Sfx.active();return true;}});
 defItem({id:'schutzschale',name:'Schutzschale',desc:'5 Sekunden unverwundbar',type:'active',pool:['shop','treasure'],charge:4,
-  use:p=>{p.shield=5;Sfx.active();return true;}});
+  use:p=>{p.shield=5;
+    schockwelle(p.x,p.y-5,46,'#78c8ff',0.5,4); blitz(p.x,p.y-5,18,'#bfe8ff',0.3);
+    Sfx.active();return true;}});
 
 /* Item-Pools werden aus den Tabellen aufgebaut */
 const POOLS={treasure:[],boss:[],shop:[],curse:[],secret:[]};
@@ -1157,6 +1187,8 @@ function fireLaser(a,dmg,src){
     if(!spectral&&circleHitsGrid(x,y,3,'tear')){hitGridTile(x,y,dmg);break;}
   }
   G.lasers.push({x1:p.x,y1:p.y-4,x2:x,y2:y,t:0.12});
+  blitz(p.x,p.y-4,5,'#bfe8ff',0.1);                    // Mündungsblitz
+  funken(x,y,a+Math.PI,'#bfe8ff',4,1.0);               // Einschlagfunken
   // Alle Gegner auf der Linie treffen
   for(const e of [...G.enemies]){
     const t=((e.x-p.x)*dx+(e.y-p.y)*dy);
@@ -1170,6 +1202,8 @@ function fireBeam(aim){
   const p=G.player,s=p.stats;
   G.beams.push({x:p.x,y:p.y-4,dx:aim.x,dy:aim.y,t:0.7,tick:0,dmg:s.dmg*0.6,w:10+s.dmg});
   Sfx.beam(); G.shake=4;
+  blitz(p.x,p.y-4,14,'#ff8a6a',0.22);                  // Entfesselung
+  schockwelle(p.x,p.y-4,26,'#ff5a3a',0.3,3);
 }
 function updateBeams(dt){
   for(const b of G.beams){
@@ -1182,6 +1216,9 @@ function updateBeams(dt){
         if(x<RX-10||x>RX+COLS*TILE+10||y<RY-10||y>RY+ROWS*TILE+10) break;
         if(!spectral&&circleHitsGrid(x,y,3,'tear')){hitGridTile(x,y,b.dmg);break;} }
       b.len=len;
+      // Der Strahl bebt und wirft am Auftreffpunkt Funken
+      G.shake=Math.max(G.shake,2.5);
+      funken(b.x+b.dx*len,b.y+b.dy*len,Math.atan2(-b.dy,-b.dx),'#ffb07a',3,1.1);
       for(const e of [...G.enemies]){
         const t=((e.x-b.x)*b.dx+(e.y-b.y)*b.dy);
         if(t<0||t>len) continue;
@@ -1197,7 +1234,11 @@ function updateBeams(dt){
 function hitEnemyWithMods(e,dmg,a,isTear){
   const p=G.player,f=p.flags;
   let d=dmg;
-  if(f.has('crit')&&frand.chance(0.1+p.stats.luck*0.02)){d*=3;addText(e.x,e.y-14,'KRIT!','#ffd75a');}
+  if(f.has('crit')&&frand.chance(0.1+p.stats.luck*0.02)){
+    d*=3; addText(e.x,e.y-14,'KRIT!','#ffd75a');
+    blitz(e.x,e.y,e.r+8,'#ffe07a',0.2); schockwelle(e.x,e.y,e.r+18,'#ffd75a',0.28,2.5);
+    burst(e.x,e.y,'#ffd75a',8); G.shake=Math.max(G.shake,3);
+  }
   if(f.has('poison')) e.poison=Math.max(e.poison||0,3);
   if(f.has('burn'))   e.burn=Math.max(e.burn||0,3);
   if(f.has('frost'))  e.frost=Math.max(e.frost||0,2);
@@ -1224,6 +1265,18 @@ function hitGridTile(x,y,dmg){
 function updateTears(dt){
   for(const t of G.tears){
     t.life-=dt;
+    /* Spur hinter besonderen Schüssen: erst dadurch sieht man im Getümmel,
+       welches Item gerade wirkt. Der Takt ist begrenzt, damit auch ein
+       Vierfachschuss mit Dauerfeuer die Bildrate nicht drückt. */
+    t.spur=(t.spur||0)-dt;
+    if(t.spur<=0&&(t.poison||t.burn||t.frost||t.explosive||t.homing)){
+      t.spur=0.045;
+      if(t.burn)          schweber(t.x,t.y,'#ff9a3a',-frand.range(10,30),0.22);
+      else if(t.poison)   schweber(t.x,t.y,'#8ac850',-frand.range(4,16),0.28);
+      else if(t.frost)    schweber(t.x,t.y,'#bfe8ff',frand.range(-6,6),0.25);
+      else if(t.explosive)schweber(t.x,t.y,'#8a8276',-frand.range(6,18),0.3);
+      else                schweber(t.x,t.y,'#7fb4d8',frand.range(-4,4),0.16);
+    }
     if(t.homing){
       let best=null,bd=1e9;
       for(const e of G.enemies){const d=dist(t,e); if(d<bd){bd=d;best=e;}}
@@ -1267,18 +1320,34 @@ function updateTears(dt){
             nt.isSplit=true; nt.split=false;
           }
         }
+        // Einschlag: Funken entgegen der Flugrichtung, in Elementfarbe
+        funken(t.x,t.y,Math.atan2(-t.vy,-t.vx),schussFarbe(t),t.pierce?3:6,0.9);
         if(t.pierce){t.hit.add(e); t.dmg*=0.85;} else {dead=true;}
         break;
       }
     }
     if(t.life<=0){dead=true;}
-    if(dead){t.dead=true; splashFx(t.x,t.y);}
+    if(dead){t.dead=true; splashFx(t);}
   }
   G.tears=G.tears.filter(t=>!t.dead);
   for(const l of G.lasers) l.t-=dt;
   G.lasers=G.lasers.filter(l=>l.t>0);
 }
-function splashFx(x,y){ burst(x,y,'#9fd4ef',4); }
+/* Zerplatzender Schuss. Elementare Schüsse hinterlassen dabei ihre Spur:
+   Gift eine Pfütze, Feuer eine Stichflamme, Frost einen Eissplitter — so ist
+   an der Wirkung zu sehen, welches Item gerade arbeitet. */
+function splashFx(t){
+  const farbe=schussFarbe(t);
+  burst(t.x,t.y,farbe,t.explosive?0:4);
+  if(t.explosive){                 // Bombenvogel: die Kugel geht wirklich hoch
+    explode(t.x,t.y,42,14,false);
+    return;
+  }
+  if(t.burn){ blitz(t.x,t.y,7,'#ffd07a',0.16);
+    for(let i=0;i<3;i++) schweber(t.x,t.y,'#ff8a3a',-frand.range(20,45),0.3); }
+  else if(t.poison){ if(frand.chance(0.35)) G.creeps.push({x:t.x,y:t.y,r:9,t:1.6,feindlich:false}); }
+  else if(t.frost){ blitz(t.x,t.y,6,'#dff4ff',0.14); }
+}
 
 /* --- Familiars --- */
 function spawnFamiliars(){
@@ -1344,6 +1413,10 @@ function explode(x,y,rad,dmg,hurtsPlayer){
   Sfx.boom(); G.shake=Math.max(G.shake,9);
   burst(x,y,'#ffb347',18); burst(x,y,'#ff6b35',12);
   G.fx.push({kind:'boom',x,y,t:0.35,r:rad});
+  blitz(x,y,rad*0.55,'#fff0c0',0.16);
+  schockwelle(x,y,rad*1.25,'#ffd08a',0.4,4);
+  for(let i=0;i<10;i++) schweber(x+frand.range(-rad*0.4,rad*0.4),y+frand.range(-8,8),
+    '#6a6058',-frand.range(18,46),frand.range(0.5,0.9));
   // Gegner
   for(const e of G.enemies){ if(dist(e,{x,y})<rad+e.r){ damageEnemy(e,dmg);
     const a=ang({x,y},e); e.kx=(e.kx||0)+Math.cos(a)*200; e.ky=(e.ky||0)+Math.sin(a)*200; } }
@@ -1397,7 +1470,7 @@ function groundHazards(p,dt){
   const fh=circleHitsGrid(p.x,p.y,p.r,'fly'); // Feuer ist solide; Berührung prüfen
   if(fh&&fh.cell.t==='fire') hurtPlayer(1);
   if(!p.flags.has('spikeimmun'))
-    for(const c of G.creeps){ if(dist(p,c)<c.r) hurtPlayer(1); }
+    for(const c of G.creeps){ if(c.feindlich&&dist(p,c)<c.r) hurtPlayer(1); }
 }
 function sacrificeReward(){
   const room=G.room; room.sacrificeCount++;
@@ -1550,6 +1623,11 @@ function acquireItem(id,pedestal){
   }
   p.itemGet={id,t:1.4};
   G.banner={title:it.name,desc:it.desc,t:2.6};
+  // Lichtausbruch beim Aufheben, eingefärbt wie das Item selbst
+  const farbe=itemColor(id);
+  blitz(p.x,p.y-20,22,farbe,0.45);
+  schockwelle(p.x,p.y-14,54,farbe,0.6,4);
+  for(let i=0;i<18;i++) schweber(p.x+frand.range(-14,14),p.y+frand.range(-4,8),farbe,-frand.range(40,95),0.9);
   Sfx.item();
 }
 
@@ -1585,6 +1663,40 @@ function addText(x,y,str,color){ G.texts.push({x,y,str,color,t:1.2}); }
 function burst(x,y,color,n){
   for(let i=0;i<n;i++){const a=frand()*TAU,sp=frand.range(30,130);
     G.fx.push({kind:'p',x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,t:frand.range(0.25,0.6),color,size:frand.range(1.5,3.5)});}
+}
+
+/* --- Effekt-Bausteine -----------------------------------------------------
+   Damit Item-Wirkungen sichtbar werden und nicht nur in den Zahlen stehen. */
+
+// Aufziehender Ring — für Explosionen, Schockwellen, Aktivitems
+function schockwelle(x,y,radius,color,dauer,breite){
+  G.fx.push({kind:'welle',x,y,r:radius,t:dauer||0.4,max:dauer||0.4,color,w:breite||3});
+}
+// Gerichteter Funkenkegel — für Einschläge
+function funken(x,y,winkel,color,n,streuung){
+  for(let i=0;i<n;i++){
+    const a=winkel+frand.range(-(streuung||0.7),(streuung||0.7));
+    const sp=frand.range(60,190);
+    G.fx.push({kind:'p',x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+      t:frand.range(0.15,0.35),color,size:frand.range(1,2.5)});
+  }
+}
+// Langsam aufsteigendes Teilchen — Gift, Rauch, Heilung
+function schweber(x,y,color,steigen,lebensdauer){
+  G.fx.push({kind:'p',x,y,vx:frand.range(-14,14),vy:steigen,
+    t:lebensdauer||frand.range(0.4,0.8),color,size:frand.range(1.5,3)});
+}
+// Kurzer Lichtblitz an einer Stelle
+function blitz(x,y,radius,color,dauer){
+  G.fx.push({kind:'glanz',x,y,r:radius,t:dauer||0.18,max:dauer||0.18,color});
+}
+// Farbe passend zum Element eines Schusses
+function schussFarbe(t){
+  if(t.poison) return '#a8e07a';
+  if(t.burn)   return '#ffb347';
+  if(t.frost)  return '#c8f0ff';
+  if(t.explosive) return '#ffb347';
+  return '#9fd4ef';
 }
 
 /* Nächste Etage betreten */
@@ -1679,7 +1791,7 @@ function updateEshots(dt){
     if(sh.arc){ // Bogenwurf (Giftglob)
       sh.zt+=dt; sh.z=Math.max(0,Math.sin(Math.PI*sh.zt/sh.zdur)*26);
       if(sh.zt>=sh.zdur){ sh.dead=true;
-        G.creeps.push({x:sh.x,y:sh.y,r:20,t:5}); Sfx.splash(); burst(sh.x,sh.y,'#8a4ab0',6);}
+        G.creeps.push({x:sh.x,y:sh.y,r:20,t:5,feindlich:true}); Sfx.splash(); burst(sh.x,sh.y,'#8a4ab0',6);}
     } else {
       if(sh.x<RX||sh.x>RX+COLS*TILE||sh.y<RY||sh.y>RY+ROWS*TILE) sh.dead=true;
       else if(circleHitsGrid(sh.x,sh.y,3,'tear')) sh.dead=true;
@@ -1693,6 +1805,14 @@ function updateEshots(dt){
   G.eshots=G.eshots.filter(s=>!s.dead);
 }
 function updateCreeps(dt){
+  // Eigene Giftpfützen vergiften Gegner, die hineinlaufen
+  for(const c of G.creeps){
+    if(c.feindlich) continue;
+    c.tick=(c.tick||0)-dt;
+    if(c.tick<=0){ c.tick=0.4;
+      for(const e of G.enemies) if(dist(e,c)<c.r+e.r*0.6){ e.poison=Math.max(e.poison||0,2); }
+    }
+  }
   for(const c of G.creeps) c.t-=dt;
   G.creeps=G.creeps.filter(c=>c.t>0);
 }
@@ -1806,7 +1926,7 @@ function updateEnemyAI(e,dt,slow,mode){
 
     case 'creeper': // Sporling: hinterlässt Pfützen
       wanderMove(e,dt,slow,mode);
-      if(e.cd<=0){ e.cd=0.55; G.creeps.push({x:e.x,y:e.y,r:13,t:3.2}); }
+      if(e.cd<=0){ e.cd=0.55; G.creeps.push({x:e.x,y:e.y,r:13,t:3.2,feindlich:true}); }
       break;
 
     case 'spread': // Knochenwurf: 3er-Fächer
@@ -1954,7 +2074,7 @@ function updateBossAI(e,dt,slow){
       chaseMove(e,dt,slow,'walk',e.phase===2?0.85:0.55);
       if(e.gcd===undefined) e.gcd=0;
       e.gcd-=dt;
-      if(e.gcd<=0){ e.gcd=0.4; G.creeps.push({x:e.x,y:e.y,r:14,t:3}); }
+      if(e.gcd<=0){ e.gcd=0.4; G.creeps.push({x:e.x,y:e.y,r:14,t:3,feindlich:true}); }
       if(e.cd<=0){ e.cd=e.phase===2?1.1:1.8;
         for(let i=0;i<(e.phase===2?3:2);i++){
           const a=ang(e,p)+frand.range(-0.5,0.5), d0=dist(e,p);
@@ -1995,7 +2115,7 @@ function updateBossAI(e,dt,slow){
         moveEntity(e,e.vx*dt*slow,e.vy*dt*slow,'fly');
         if(e.t>=dur){                        // Aufschlag: Pfütze + Klumpenring
           e.state=0; e.t=0; e.z=0; G.shake=6; Sfx.splash();
-          G.creeps.push({x:e.x,y:e.y,r:24,t:4});
+          G.creeps.push({x:e.x,y:e.y,r:24,t:4,feindlich:true});
           const n=e.phase===2?12:8;
           for(let i=0;i<n;i++) fireEshot(e.x,e.y,i*TAU/n+frand()*0.3,120);
           e.spruenge=(e.spruenge||0)+1;
@@ -2008,7 +2128,7 @@ function updateBossAI(e,dt,slow){
         }
       } else if(e.state===2){                // rutscht und prallt von Wänden ab
         e.gcd=(e.gcd||0)-dt;
-        if(e.gcd<=0){ e.gcd=0.12; G.creeps.push({x:e.x,y:e.y,r:16,t:3}); }
+        if(e.gcd<=0){ e.gcd=0.12; G.creeps.push({x:e.x,y:e.y,r:16,t:3,feindlich:true}); }
         const ox=e.x, oy=e.y;
         e.x+=e.rvx*dt*slow;
         if(circleHitsGrid(e.x,e.y,e.r,'walk')||e.x<RX+e.r||e.x>RX+COLS*TILE-e.r){
@@ -2164,10 +2284,14 @@ function drawRoom(){
   for(let i=0;i<COLS+2;i+=2){ctx.fillRect(RX-26+i*TILE,RY-26,2,10);ctx.fillRect(RX-26+i*TILE+TILE,RY+ROWS*TILE+14,2,10);}
   // Türen
   for(const d in G.room.doors) drawDoor(d,G.room.doors[d]);
-  // Pfützen
+  // Pfützen: gegnerische violett, eigene giftgrün — damit man auf einen Blick
+  // sieht, welche einem schadet und welche für einen arbeitet.
   for(const c of G.creeps){
-    ctx.fillStyle=`rgba(120,60,160,${clamp(c.t/2,0.15,0.5)})`;
+    const a=clamp(c.t/2,0.15,0.5);
+    ctx.fillStyle=c.feindlich?`rgba(120,60,160,${a})`:`rgba(120,200,60,${a})`;
     ctx.beginPath();ctx.ellipse(c.x,c.y,c.r,c.r*0.6,0,0,TAU);ctx.fill();
+    ctx.fillStyle=c.feindlich?`rgba(170,110,210,${a*0.7})`:`rgba(180,240,120,${a*0.7})`;
+    ctx.beginPath();ctx.ellipse(c.x-c.r*0.2,c.y-c.r*0.12,c.r*0.5,c.r*0.28,0,0,TAU);ctx.fill();
   }
   // Raster-Objekte
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
@@ -2635,10 +2759,36 @@ function drawEnemy(e){
     default: // Bosse
       drawBossSprite(e,y,col);
   }
-  // Statusanzeigen
-  if(e.poison>0) ring(e.x,y,e.r+2,'rgba(120,200,60,0.6)',1.5);
-  if(e.burn>0)   ring(e.x,y,e.r+3,'rgba(255,140,40,0.6)',1.5);
-  if(e.frost>0)  ring(e.x,y,e.r+4,'rgba(120,200,255,0.6)',1.5);
+  /* Statuseffekte: Vergiftete blubbern grün, Brennende lodern, Erfrorene
+     bekommen einen Eispanzer. Deutlich sichtbar, damit man die Wirkung der
+     Items im Kampf tatsächlich mitbekommt. */
+  const takt=performance.now()/1000;
+  if(e.poison>0){
+    ctx.fillStyle='rgba(120,200,60,0.55)';
+    for(let i=0;i<3;i++){
+      const ph=(takt*1.5+i*0.37)%1;
+      disc(e.x+Math.sin(takt*3+i*2)*e.r*0.6, y-e.r*0.3-ph*(e.r+9), 1.6*(1-ph)+0.7, 'rgba(140,220,80,0.6)');
+    }
+    ctx.globalAlpha=0.20; disc(e.x,y,e.r+1,'#7ac040'); ctx.globalAlpha=alpha;
+  }
+  if(e.burn>0){
+    for(let i=0;i<3;i++){
+      const ph=(takt*2.2+i*0.33)%1;
+      const fx0=e.x+Math.sin(takt*7+i*2.1)*e.r*0.5;
+      disc(fx0, y-e.r*0.4-ph*(e.r+11), (1-ph)*2.6+0.6, ph<0.45?'rgba(255,214,120,0.75)':'rgba(240,110,40,0.5)');
+    }
+    ctx.globalAlpha=0.22; disc(e.x,y,e.r+1,'#ff7a2a'); ctx.globalAlpha=alpha;
+  }
+  if(e.frost>0){
+    ctx.globalAlpha=0.32; disc(e.x,y,e.r+1.5,'#9fd8ff'); ctx.globalAlpha=alpha;
+    ctx.fillStyle='rgba(220,245,255,0.85)';            // Eiszacken
+    for(let i=0;i<4;i++){ const a=i*TAU/4+0.5;
+      const bx=e.x+Math.cos(a)*e.r*0.85, by=y+Math.sin(a)*e.r*0.85;
+      ctx.beginPath();
+      ctx.moveTo(bx-1.6,by+1.2); ctx.lineTo(bx+Math.cos(a)*3.6,by+Math.sin(a)*3.6); ctx.lineTo(bx+1.6,by-1.2);
+      ctx.closePath(); ctx.fill();
+    }
+  }
   ctx.restore();
 }
 
@@ -2992,6 +3142,10 @@ function updateFx(dt){
     if(f.kind==='p'){ f.x+=f.vx*dt; f.y+=f.vy*dt; f.vx*=0.92; f.vy*=0.92; }
   }
   G.fx=G.fx.filter(f=>f.t>0);
+  // Obergrenze: bei extremen Kombinationen (Vierfachschuss mit Gift, Feuer und
+  // Frost) sollen die Partikel die Bildrate auch auf schwachen Rechnern nicht
+  // drücken. Die ältesten fallen zuerst weg.
+  if(G.fx.length>700) G.fx.splice(0,G.fx.length-700);
   for(const t of G.texts) t.t-=dt;
   G.texts=G.texts.filter(t=>t.t>0);
   if(G.banner) G.banner.t-=dt;
@@ -3068,6 +3222,19 @@ function render(){
     if(f.kind==='p'){ ctx.globalAlpha=clamp(f.t*2,0,1); rrect(f.x,f.y,f.size,f.size,f.color); ctx.globalAlpha=1; }
     else if(f.kind==='boom'){ ctx.globalAlpha=f.t/0.35;
       ring(f.x,f.y,f.r*(1-f.t/0.35+0.3),'#ffb347',4); ctx.globalAlpha=1; }
+    else if(f.kind==='welle'){                 // aufziehender Ring
+      const p0=1-f.t/f.max;
+      ctx.globalAlpha=Math.pow(f.t/f.max,0.7);
+      ring(f.x,f.y,Math.max(1,f.r*p0),f.color,f.w*(1-p0*0.7)+0.5);
+      ctx.globalAlpha=1;
+    } else if(f.kind==='glanz'){               // kurzer Lichtblitz
+      const a=f.t/f.max;
+      ctx.globalAlpha=a*0.85;
+      disc(f.x,f.y,f.r*(0.5+a*0.5),f.color);
+      ctx.globalAlpha=a;
+      disc(f.x,f.y,f.r*0.45*a,'#ffffff');
+      ctx.globalAlpha=1;
+    }
   }
   ctx.setTransform(1,0,0,1,0,0);
   drawHUD();
