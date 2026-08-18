@@ -48,20 +48,24 @@ außerdem nur auf Feldern, die zu Fuß mit dem Raumrand verbunden sind, also nie
 in einer von Steinen umschlossenen Nische. Dazu kommen die üblichen
 Zufallsfunde.
 
-**Schatzräume und Shops** sind verschlossen und brauchen einen **Schlüssel**.
-Man stellt sich einfach mit einem Schlüssel im Gepäck vor die goldene Tür —
-sie springt von selbst auf und ein Schlüssel wird verbraucht. Hat man keinen,
-ertönt nur ein Fehlton. Schlüssel fallen aus geräumten Räumen, Steinen,
-Kothaufen und Truhen, kosten im Shop 5 Münzen, und es gibt sie über die Pille
-*Schlüsselglück* (+2) und den *Dietrichfinger* (+3, spart Schlüssel manchmal
-ganz ein). Die Karte *Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
+**Schatzräume und Shops.** Shoptüren sind immer verschlossen. Schatzräume
+dagegen nur etwa zur Hälfte — die anderen stehen offen, damit man nie ganz
+ohne Item dasteht, bloß weil kein Schlüssel gefallen ist. Vor einer
+verschlossenen Tür genügt ein Schlüssel im Gepäck: sie springt von selbst auf
+und ein Schlüssel wird verbraucht. Hat man keinen, ertönt nur ein Fehlton.
+Schlüssel fallen aus geräumten Räumen, Steinen, Kothaufen und Truhen, kosten
+im Shop 5 Münzen, und es gibt sie über die Pille *Schlüsselglück* (+2) und den
+*Dietrichfinger* (+3, spart Schlüssel manchmal ganz ein). Die Karte
+*Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
 
 **Türen.** Steinrahmen in leichter Aufsichtsperspektive mit zwei Türblättern,
 die aufschwingen, sobald alle Gegner im Raum tot sind. Jede Türart ist auf
-einen Blick erkennbar: die Schlosstür golden mit Vorhängeschloss, die Bosstür
-mit Schädel im Sturz und rotem Schein aus dem Spalt, die Fluchtür dunkelrot
-mit Zähnen im Durchgang, der Geheimgang als aufgesprengter Mauerriss mit
-Schutt. Gezeichnet wird immer in lokalen Koordinaten, die Wandseite ergibt
+einen Blick erkennbar: die **Schatztür golden** (mit Vorhängeschloss, wenn sie
+verschlossen ist, sonst einfach offen), die **Ladentür kupfern mit einer
+Münze im Sturz**, die Bosstür mit Schädel im Sturz und rotem Schein aus dem
+Spalt, die Fluchtür dunkelrot mit Zähnen im Durchgang, der Geheimgang als
+aufgesprengter Mauerriss mit Schutt. Schatz und Laden trägt man so schon vom
+Nachbarraum aus auseinander. Gezeichnet wird immer in lokalen Koordinaten, die Wandseite ergibt
 sich allein aus der Drehung (`DOOR_ROT`) — eine neue Türart braucht daher nur
 einen Eintrag in `doorStyle()` und einen Verzierungsblock in `drawDoor()`.
 
@@ -110,6 +114,15 @@ steigt mit jeder Etage. Der **Kotspritzer** lobt Klumpen im Bogen, die als
 der auf den Spieler springt (bei der Landung spritzt ein Ring aus Klumpen weg),
 Klumpenregen wirft und ab der Hälfte seiner Lebenspunkte quer durch den Raum
 rutscht, dabei eine Spur hinterlässt und Diener aus dem Dreck ruft.
+
+**Gegner lassen auch Items fallen.** Neben Münzen, Herzen, Schlüsseln und
+Bomben fällt selten ein richtiges Item aus einem erlegten Gegner: bei
+gewöhnlichen Gegnern in gut einem von hundert Fällen, bei **Champions** rund
+neunmal so oft — es lohnt sich also, sie zu jagen statt zu umgehen. Glück
+(*Luck*) erhöht beides. Das Item liegt leuchtend am Boden und wird beim
+Darüberlaufen aufgenommen; es kommt aus demselben Topf wie die Schatzräume,
+man findet also nichts doppelt. Hatte man schon ein Aktivitem, legt man das
+alte daneben ab, statt es zu verlieren.
 
 **Die Figuren** haben Isaac-Proportionen: großer runder Kopf auf kleinem
 Körper, Beine treten im Laufen abwechselnd, die Pupillen folgen der
@@ -227,8 +240,10 @@ Geprüft werden unter anderem: Seed-Determinismus, 240 erzeugte Etagen auf
 Vollständigkeit und Erreichbarkeit aller Räume, jeder Gegnertyp, jeder Boss
 samt Phasenwechsel, jedes Item unter Dauerfeuer, alle Pillen und Karten, das
 Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
-jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, das Zeichnen sämtlicher
-Sprites sowie die Bildrate unter Last. Die Zahlen zieht der Test aus den
+jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
+Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
+der Item-Abwurf der Gegner, das Zeichnen sämtlicher Sprites sowie die Bildrate
+unter Last. Die Zahlen zieht der Test aus den
 Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
 
 Zwei Umgebungsvariablen sind optional: `KB_CHROMIUM` setzt einen abweichenden

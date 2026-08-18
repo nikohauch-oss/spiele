@@ -762,6 +762,108 @@ await withPage(async(page)=>{
 
 
 }
+
+// --- 13. Türkennzeichnung der Sonderräume und Item-Abwurf der Gegner ---
+if(want(13)){
+console.log('\n[13] Sondertüren und Item-Abwurf');
+await withPage(async(page,errs)=>{
+  // Verteilung der Sondertüren über 40 Läufe à 6 Etagen zählen.
+  const z=await page.evaluate(()=>{
+    let shop=0,shopZu=0,schatz=0,schatzZu=0,alt=0;
+    for(let s=0;s<40;s++){
+      startRun(0,'D'+s);
+      for(let d=1;d<=6;d++){
+        for(const ek in KB.G.floor.doors){
+          const e=KB.G.floor.doors[ek];
+          if(e.kind==='shop'){ shop++; if(e.locked) shopZu++; }
+          if(e.kind==='schatz'){ schatz++; if(e.locked) schatzZu++; }
+          if(e.kind==='locked') alt++;      // alte, jetzt ungültige Türart
+        }
+        if(d<6) nextFloor();
+      }
+    }
+    return {shop,shopZu,schatz,schatzZu,alt};
+  });
+  note(z.shop>0&&z.shop===z.shopZu,'Shoptüren sind immer verschlossen',
+       '('+z.shopZu+' von '+z.shop+')');
+  note(z.schatzZu>0&&z.schatzZu<z.schatz,'Schatztüren kommen verschlossen UND offen vor',
+       '('+z.schatzZu+' zu, '+(z.schatz-z.schatzZu)+' offen von '+z.schatz+')');
+  note(z.alt===0,'keine Tür trägt mehr die alte Sammelart "locked"');
+
+  // Eine offene Schatztür muss ohne Schlüssel durchlässig sein. Der Raum
+  // davor wird für den Test von Steinen befreit — geprüft wird die Tür,
+  // nicht das Ausweichen um Hindernisse.
+  const durch=await page.evaluate(()=>{
+    let versuche=0, geschafft=0;
+    for(let s=0;s<120&&versuche<10;s++){
+      startRun(0,'O'+s);
+      const f=KB.G.floor;
+      let fertig=false;
+      for(const k in f.rooms){
+        if(fertig) break;
+        for(const d in f.rooms[k].doors){
+          const t=f.rooms[k].doors[d];
+          if(t.edge.kind!=='schatz'||t.edge.locked) continue;
+          if(f.rooms[t.to].type!=='treasure') continue;
+          enterRoom(k,null);
+          KB.G.enemies.length=0; KB.G.room.cleared=true;
+          for(const zeile of KB.G.room.grid) zeile.fill(null);
+          const p=KB.G.player; p.keys=0; p.red=99; p.redMax=99;
+          const vorher=KB.G.roomKey, dp=doorXY(d);
+          for(let i=0;i<400&&KB.G.roomKey===vorher;i++){
+            const a=Math.atan2(dp.y-p.y,dp.x-p.x);
+            p.vx=Math.cos(a)*200; p.vy=Math.sin(a)*200; updateGame(1/60);
+          }
+          for(let i=0;i<40;i++) updateGame(1/60);
+          versuche++;
+          if(KB.G.room.type==='treasure'&&p.keys===0) geschafft++;
+          fertig=true; break;
+        }
+      }
+    }
+    return {versuche,geschafft};
+  });
+  note(durch.versuche>=8&&durch.geschafft===durch.versuche,
+       'offene Schatztür lässt ohne Schlüssel durch',
+       '('+durch.geschafft+'/'+durch.versuche+')');
+
+  // Ein von einem Gegner fallengelassenes Item liegt am Boden und lässt
+  // sich einsammeln wie jedes andere Aufsammelbare.
+  const einsammeln=await page.evaluate(()=>{
+    startRun(0,'ABWURF');
+    const p=KB.G.player; p.red=99; p.redMax=99;
+    KB.G.enemies.length=0;
+    const vorher=p.items.length;
+    spawnItemAbwurf(p.x+26,p.y);
+    const lag=KB.G.pickups.filter(q=>q.type==='item').length;
+    for(let i=0;i<180;i++){ p.vx=60; p.vy=0; updateGame(1/60); }
+    return {lag, dazu:p.items.length-vorher,
+            liegtNoch:KB.G.pickups.filter(q=>q.type==='item'&&!q.dead).length};
+  });
+  note(einsammeln.lag===1,'abgeworfenes Item liegt am Boden');
+  note(einsammeln.dazu===1&&einsammeln.liegtNoch===0,
+       'abgeworfenes Item lässt sich einsammeln',
+       '(+'+einsammeln.dazu+' Item)');
+
+  // Abwurfquote: selten bei normalen Gegnern, deutlich häufiger bei Champions.
+  const quote=await page.evaluate(()=>{
+    const messen=(champ)=>{
+      startRun(0,'Q'+(champ?'C':'N'));
+      KB.G.pickups.length=0; KB.G.enemies.length=0;
+      for(let n=0;n<2000;n++)
+        killEnemy(spawnEnemy('tropfling',tx(6),ty(3),champ));
+      return KB.G.pickups.filter(q=>q.type==='item').length;
+    };
+    return {normal:messen(null), champion:messen({tint:'#ff5a5a',hpMul:1.7})};
+  });
+  note(quote.normal>=8&&quote.normal<=60,'normale Gegner lassen selten ein Item fallen',
+       '('+quote.normal+' aus 2000)');
+  note(quote.champion>quote.normal*3,'Champions lassen deutlich öfter Items fallen',
+       '('+quote.champion+' aus 2000)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

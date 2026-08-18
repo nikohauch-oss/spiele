@@ -740,7 +740,12 @@ function genFloor(depth){
         let kind='normal', locked=false;
         if(a==='secret'||b==='secret'){kind='secret';}
         else if(a==='boss'||b==='boss'){kind='boss';}
-        else if(a==='treasure'||b==='treasure'||a==='shop'||b==='shop'){kind='locked';locked=true;}
+        /* Shop und Schatzraum bekommen eigene Türarten, damit man sie von
+           außen auseinanderhält. Schatzräume sind nur zu etwa der Hälfte
+           verschlossen — die anderen stehen offen, damit man nie ganz ohne
+           Schatz dasteht, bloß weil kein Schlüssel gefallen ist. */
+        else if(a==='shop'||b==='shop'){kind='shop';locked=true;}
+        else if(a==='treasure'||b==='treasure'){kind='schatz';locked=rng.chance(0.55);}
         else if(a==='curse'||b==='curse'){kind='curse';}
         doors[ek]={kind,locked,revealed:kind!=='secret'};
       }
@@ -960,7 +965,7 @@ function saveRoomState(){
   // Pickups (ohne aufgehobene) zurückschreiben. pillId/cardId müssen mit,
   // sonst wird eine abgelegte Pille beim Wiederbetreten zu einer anderen.
   room.drops=G.pickups.filter(q=>!q.dead).map(q=>({x:q.x,y:q.y,type:q.type,
-    price:q.price,pillId:q.pillId,cardId:q.cardId,garantiert:q.garantiert}));
+    price:q.price,pillId:q.pillId,cardId:q.cardId,itemId:q.itemId,garantiert:q.garantiert}));
 }
 
 function roomIsClear(){ return G.enemies.length===0; }
@@ -1681,6 +1686,7 @@ function collectPickup(q){
       if(!(p.flags.has('keysaver')&&frand.chance(0.25))) p.keys--;
       openChest(q,'gold'); return; }
     case 'redchest': openChest(q,'red'); return;
+    case 'item': q.dead=true; acquireItem(q.itemId,null); return;
   }
   q.dead=true;
 }
@@ -1752,8 +1758,11 @@ function acquireItem(id,pedestal){
   const p=G.player, it=ITEMS[id];
   G.runItems.push(id);
   if(it.type==='active'){
-    if(p.active){ // altes Aktivitem zurücklegen
+    if(p.active){
+      // Altes Aktivitem zurücklegen: auf das Podest, oder — wenn das Item am
+      // Boden lag — daneben ablegen. Sonst ginge es kommentarlos verloren.
       if(pedestal){pedestal.taken=false;pedestal.itemId=p.active.id;pedestal.price=0;pedestal.cd=1.5;}
+      else G.pickups.push({x:p.x+18,y:p.y+10,type:'item',itemId:p.active.id,cd:1.2});
     }
     p.active={id,charge:0,max:it.charge};
   } else {
@@ -1938,10 +1947,26 @@ function killEnemy(e){
   }
   if(e.isBoss){ G.shake=Math.max(G.shake,10); }
   else {
-    const dropP=0.13+(G.player.stats.luck*0.02)+(G.player.flags.has('greed')?0.07:0);
-    if(e.champ&&e.champ.gold) spawnPickup(e.x,e.y,randomDrop());
-    else if(frand.chance(dropP)) spawnPickup(e.x,e.y,G.player.flags.has('greed')&&frand.chance(0.5)?'coin':randomDrop());
+    /* Seltener Item-Abwurf. Champions haben die deutlich besseren Chancen —
+       damit lohnt es sich, sie zu jagen, statt sie zu umgehen. */
+    const itemP=(e.champ?0.09:0.012)+G.player.stats.luck*0.004;
+    if(frand.chance(itemP)) spawnItemAbwurf(e.x,e.y);
+    else {
+      const dropP=0.13+(G.player.stats.luck*0.02)+(G.player.flags.has('greed')?0.07:0);
+      if(e.champ&&e.champ.gold) spawnPickup(e.x,e.y,randomDrop());
+      else if(frand.chance(dropP)) spawnPickup(e.x,e.y,G.player.flags.has('greed')&&frand.chance(0.5)?'coin':randomDrop());
+    }
   }
+}
+
+/* Ein gefallenes Item liegt am Boden statt auf einem Podest. Es zählt in
+   denselben Pool wie Schatzräume, damit es keine Doppelfunde gibt. */
+function spawnItemAbwurf(x,y){
+  const id=pickFromPool('treasure');
+  G.pickups.push({x,y,type:'item',itemId:id,cd:0.5});
+  blitz(x,y,20,itemColor(id),0.5);
+  schockwelle(x,y,44,itemColor(id),0.6,3);
+  Sfx.item();
 }
 
 /* Gegnergeschoss */
@@ -2876,8 +2901,10 @@ function doorStyle(kind){
   switch(kind){
     case 'boss':   return {rahmen:'#4a4038',hell:'#6d5f52',dunkel:'#241e1a',
                            blatt:'#5c4c44',blattTief:'#33292410',schein:'#c03a5a'};
-    case 'locked': return {rahmen:'#8a6f2a',hell:'#d4af41',dunkel:'#54410f',
+    case 'schatz': return {rahmen:'#8a6f2a',hell:'#d4af41',dunkel:'#54410f',
                            blatt:'#b08d33',blattTief:'#7a6021'};
+    case 'shop':   return {rahmen:'#7a5230',hell:'#c98a4a',dunkel:'#452c17',
+                           blatt:'#9a6a3c',blattTief:'#6a4726'};
     case 'curse':  return {rahmen:'#5a2424',hell:'#833636',dunkel:'#331313',
                            blatt:'#6a2a2a',blattTief:'#431a1a',schein:'#c03a5a'};
     case 'secret': return {rahmen:'#4a4a52',hell:'#65656f',dunkel:'#2b2b31',
@@ -2982,8 +3009,18 @@ function drawDoor(d,door){
     ctx.fillStyle='#241e1a';
     ctx.fillRect(-1.7,-5.2,0.9,1.8); ctx.fillRect(0.8,-5.2,0.9,1.8);
     disc(-18,-12,1.8,'#8a7a66'); disc(18,-12,1.8,'#8a7a66'); // Nieten
-  } else if(e.kind==='locked'){               // goldene Nieten
+  } else if(e.kind==='schatz'){               // goldene Nieten
     for(const nx of [-18,-9,9,18]) disc(nx,-12,1.5,'#f0d98a');
+  } else if(e.kind==='shop'){                 // Münze im Türsturz
+    /* Die Münze sitzt so weit oben im Sturz, dass sie dem Vorhängeschloss
+       nicht ins Gehege kommt — sonst verschwimmen beide zu einem Klecks. */
+    disc(0,-9.6,4.4,'#3a2a12');
+    disc(0,-9.6,3.7,'#a8862a');
+    disc(0,-10,3.1,'#ffd75a');
+    ctx.fillStyle='#8a6a1a';
+    ctx.font='bold 6px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('¢',0,-9.4);
+    for(const nx of [-18,18]) disc(nx,-12,1.5,'#d8a86a');
   } else if(e.kind==='curse'){                // Zähne, die in die Öffnung ragen
     ctx.fillStyle='#b0b0b8';
     for(let i=-2;i<=2;i++){ const x=i*7;
@@ -3883,6 +3920,12 @@ function drawPickup(q){
     case 'chest': drawChest(q.x,y,'#8a6a3a','#6a4a2a');break;
     case 'goldchest': drawChest(q.x,y,'#d4af37','#a8862a');break;
     case 'redchest': drawChest(q.x,y,'#a03a3a','#701a1a');break;
+    case 'item': {                       // gefallenes Item, leuchtet auffällig
+      const f=itemColor(q.itemId), p=0.55+Math.sin(performance.now()/280)*0.25;
+      ctx.save(); ctx.globalAlpha=p*0.4;
+      ctx.beginPath(); ctx.arc(q.x,y,13,0,TAU); ctx.fillStyle=f; ctx.fill(); ctx.restore();
+      drawItemIcon(q.itemId,q.x,y,1);
+      break; }
   }
   if(q.price) txt(q.price+'¢',q.x,q.y+16,'#ffd75a',9);
 }
