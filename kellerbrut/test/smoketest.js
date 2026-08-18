@@ -120,6 +120,93 @@ await withPage(async(page,errs)=>{
 });
 
 }
+// --- 4b. Die zwölf neuen Kreaturen tun auch, was sie versprechen ---
+if(want(4)){
+console.log('\n[4b] Verhalten der neuen Kreaturen');
+await withPage(async(page,errs)=>{
+  const r=await page.evaluate(()=>{
+    const schlecht=[], bericht=[];
+    const neu=()=>{startRun(0,'M');const p=KB.G.player;p.redMax=200;p.red=200;
+      KB.G.enemies.length=0;KB.G.creeps.length=0;return p;};
+    const pruef=(name,bedingung,text)=>{ bericht.push(name+': '+text);
+      if(!bedingung) schlecht.push(name+' — '+text); };
+
+    {const p=neu();const e=spawnEnemy('steinruecken',tx(6),ty(3),null);e.hp=500;e.blick=0;
+     const h0=e.hp; damageEnemy(e,20,Math.PI); const vorn=h0-e.hp;
+     const h1=e.hp; damageEnemy(e,20,0);       const hinten=h1-e.hp;
+     pruef('Steinrücken',vorn===0&&hinten>20,'vorn '+vorn+', hinten '+hinten);}
+
+    {const p=neu();const e=spawnEnemy('aschgeist',tx(6),ty(3),null);
+     e.hp=1; damageEnemy(e,50); const zurueck=!e.dead&&e.sammelt>0;
+     const e2=spawnEnemy('aschgeist',tx(4),ty(3),null); e2.burn=3;e2.hp=1; damageEnemy(e2,50);
+     pruef('Aschgeist',zurueck&&e2.dead,'sammelt sich, brennend endgültig tot');}
+
+    {const p=neu();p.x=tx(1);p.y=ty(1); spawnPickup(tx(6),ty(3),'coin');
+     const e=spawnEnemy('schlundling',tx(6)+20,ty(3),null); e.hp=500;
+     for(let k=0;k<120;k++) updateGame(1/60);
+     const geklaut=!!e.beute; e.hp=1; damageEnemy(e,10);
+     const zurueck=KB.G.pickups.some(q=>q.type==='coin'&&!q.dead);
+     pruef('Schlundling',geklaut&&zurueck,'klaut und gibt beim Tod zurück');}
+
+    {const p=neu();const h=spawnEnemy('schimmelherz',tx(6),ty(3),null);h.hp=500;
+     const o=spawnEnemy('blobling',tx(5),ty(3),null); o.hp=o.maxHp*0.3; const vor=o.hp;
+     for(let k=0;k<300;k++){p.red=200;updateGame(1/60);}
+     pruef('Schimmelherz',o.hp>vor,'heilt '+vor.toFixed(1)+' auf '+o.hp.toFixed(1));}
+
+    {const p=neu();p.x=tx(6);p.y=ty(3);const e=spawnEnemy('glockenmaul',tx(4),ty(3),null);
+     e.hp=500;e.cd=0; let maxV=0;
+     for(let k=0;k<200;k++){p.red=200;updateGame(1/60);maxV=Math.max(maxV,Math.hypot(p.vx,p.vy));}
+     pruef('Glockenmaul',maxV>300,'Rückstoß '+Math.round(maxV)+' px/s');}
+
+    {const p=neu();p.x=tx(6);p.y=ty(3);
+     G.creeps.push({x:p.x,y:p.y,r:30,t:9,feindlich:true,netz:true});
+     for(let k=0;k<30;k++){p.red=200;updateGame(1/60);}
+     pruef('Spinnwirt',p.imNetz&&p.red===200,'Netz bremst, verletzt aber nicht');}
+
+    {const p=neu();const e=spawnEnemy('sporenwirt',tx(6),ty(3),null);e.hp=500;
+     damageEnemy(e,5); for(let k=0;k<10;k++) updateGame(1/60);
+     const n=KB.G.creeps.filter(c=>c.sporen).length;
+     pruef('Sporenwirt',n>0,n+' Sporenwolke(n) nach Treffer');}
+
+    {const p=neu();const e=spawnEnemy('klingenrad',tx(6),ty(1),null);e.hp=9000;
+     for(let k=0;k<60;k++) updateGame(1/60); const t0=e.tempo;
+     for(let k=0;k<1400;k++) updateGame(1/60);
+     pruef('Klingenrad',e.tempo>t0,'Tempo '+t0+' auf '+e.tempo+' nach '+e.runden+' Runden');}
+
+    {const p=neu();p.x=tx(6);p.y=ty(3);const e=spawnEnemy('laternenfisch',tx(9),ty(3),null);
+     e.hp=500;e.spd=0; const d0=dist(p,e);
+     for(let k=0;k<60;k++){p.red=200;updateGame(1/60);}
+     pruef('Laternenfisch',dist(p,e)<d0,'zieht von '+Math.round(d0)+' auf '+Math.round(dist(p,e)));}
+
+    {const p=neu();const e=spawnEnemy('kettenhund',tx(5),ty(3),null);e.hp=9000;
+     let maxD=0, saetze=0;
+     for(let k=0;k<900;k++){ p.red=200;p.x=tx(7);p.y=ty(3);p.vx=p.vy=0;
+       const vor=e.state; updateGame(1/60);
+       if(vor===0&&e.state===1) saetze++;
+       maxD=Math.max(maxD,Math.hypot(e.x-e.ankerX,e.y-e.ankerY)); }
+     pruef('Kettenhund',saetze>0&&maxD<e.kette+12,
+           saetze+' Sätze, bleibt bei '+Math.round(maxD)+' px an der Kette');}
+
+    {const p=neu();const e=spawnEnemy('talgwicht',tx(6),ty(3),null);
+     for(let k=0;k<30;k++) updateGame(1/60);
+     const glut=KB.G.creeps.filter(c=>c.glut).length;
+     pruef('Talgwicht',glut>0,glut+' Brandflecken hinterlassen');}
+
+    {const p=neu(); let e=spawnEnemy('zwiebelbalg',tx(6),ty(3),null);
+     const stufen=[];
+     for(let i=0;i<3;i++){ e=KB.G.enemies.find(q=>!q.dead&&q.type.startsWith('zwiebel'));
+       if(!e) break; stufen.push(e.type); damageEnemy(e,999); }
+     pruef('Zwiebelbalg',stufen.length===3,stufen.length+' Stufen');}
+
+    return {schlecht,bericht};
+  });
+  r.bericht.forEach(b=>console.log('      '+b));
+  note(r.schlecht.length===0,'alle zwölf neuen Kreaturen wirken wie beschrieben',
+       r.schlecht.join('; '));
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 // --- 5. Alle Bosse inkl. Phasenwechsel ---
 if(want(5)){
 console.log('\n[5] Bosse');

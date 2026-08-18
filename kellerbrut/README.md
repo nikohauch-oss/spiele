@@ -69,9 +69,31 @@ einen Eintrag in `doorStyle()` und einen Verzierungsblock in `drawDoor()`.
 Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten
 rechts.
 
-**Inhalte.** 48 Items (passiv und aktiv), 19 Gegnertypen mit Champion-Varianten,
+**Inhalte.** 52 Items (passiv und aktiv), 33 Gegnertypen mit Champion-Varianten,
 7 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 4 Charaktere (drei davon freischaltbar).
+
+**Alles ist in Tusche gezeichnet.** Die Welt wird wie mit der Feder gesetzt:
+leicht unrunde Pfade, dunkle Kontur mit schwankender Strichstärke, Schraffur
+statt Verlauf. Die Linien werden siebenmal je Sekunde neu gezogen, wie eine
+auf Dreier animierte Zeichnung. Das HUD bleibt ausgenommen — Zahlen und
+Herzen sollen ruhig stehen, deshalb schaltet `drawHUD()` den Stil ab
+(`tuscheAn`). Auch der Boden zeichnet ohne Kontur, sonst ergäbe jede Kachel
+ein Gitter, das alles andere erschlägt.
+
+**Zwölf Kreaturen mit eigenem Haken.** Der *Talgwicht* wird gefährlicher,
+wenn man ihn trifft: Erlischt seine Flamme, rennt er blind und doppelt so
+schnell weiter. Der *Spinnwirt* fällt von der Decke und legt ein Netz, das
+auf ein Drittel Tempo bremst. Das *Glockenmaul* schlägt an und wirft einen
+mit einer Ringwelle zurück. Der *Schlundling* frisst deine Beute und trägt
+sie zur nächsten Tür hinaus. Der *Aschgeist* sammelt sich nach dem Tod wieder
+— außer er brennt oder ist vereist. Der *Sporenwirt* presst bei jedem Treffer
+eine Wolke aus, die die Sicht nimmt. Das *Klingenrad* umrundet den Raum und
+legt pro Runde zu. Der *Zwiebelbalg* schält sich über drei Stufen zu einem
+kleinen, schnellen Kern. Der *Laternenfisch* zieht dich heran, bis seine
+Lampe erlischt. Der *Kettenhund* bewacht einen festen Kreis. Das
+*Schimmelherz* heilt alle anderen und schlägt schneller, je weniger noch
+stehen. Der *Steinrücken* ist von vorn immun und muss umlaufen werden.
 
 **Kothaufen** sind mehr als Deko: Wer einen aufbricht, findet manchmal Beute —
 manchmal krabbelt aber auch ein **Kotkrabbler** heraus, und die Chance darauf
@@ -157,7 +179,8 @@ zornbeisser: { name:'Zornbeißer', hp:14, spd:60, r:11, ai:'chase' },
 
 Fertige Verhaltensmuster für `ai`: `chase`, `hop`, `shoot`, `wall`, `charge`,
 `creeper`, `spread`, `spray`, `dart`, `turret`, `ghost`, `spawner`, `bounce`,
-`ring`, `burrow`. Optional: `fly:true` (ignoriert Bodenhindernisse), `shotCd` in
+`ring`, `burrow`, `talg`, `decke`, `glocke`, `dieb`, `asche`, `sporen`,
+`wandlauf`, `laterne`, `kette`, `heiler`, `panzer`. Optional: `fly:true` (ignoriert Bodenhindernisse), `shotCd` in
 Sekunden, `onDeath:{split:['typ',anzahl]}` für Splittergegner. Damit der Gegner
 auch auftaucht, muss seine ID in den `pool` einer Etage in `FLOORS`.
 
