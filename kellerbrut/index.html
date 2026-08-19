@@ -500,23 +500,23 @@ const FLOORS=[
  {name:'Pilzgrotte',      bg:'#121a14',fa:'#1d2b20',fb:'#18241b',wall:'#24402b',accent:'#3a5f42',
   pool:['huetling','sporenschleuder','myzelwurm',
         'sporling','zuckfliege','rennratte','spinnwirt','sporenwirt'],
-  bosses:['augenwaechter','kloakenfuerst'],mus:1},
+  bosses:['augenwaechter','schlundvater'],mus:1},
  {name:'Knochengang',     bg:'#171717',fa:'#262624',fb:'#201f1e',wall:'#3b3a36',accent:'#5c5a52',
   pool:['klapperer','schaedelroller','rippenwaechter',
         'knochenwurf','schleicher','glockenmaul','schlundling','kettenhund'],
-  bosses:['knochengeneral'],mus:2},
+  bosses:['knochengeneral','gehaengte'],mus:2},
  {name:'Giftschlund',     bg:'#160f1b',fa:'#251a2e',fb:'#1e1526',wall:'#3a2749',accent:'#5b3a74',
   pool:['saeureblase','laugenkriecher','giftspruehler',
         'pulsqualle','brutmutter','sporenwirt','aschgeist','laternenfisch'],
-  bosses:['giftbrut'],mus:3},
+  bosses:['giftbrut','fleischmade'],mus:3},
  {name:'Blutkammer',      bg:'#1b0e0e',fa:'#2e1717',fb:'#261212',wall:'#4a2020',accent:'#6e2e2e',
   pool:['blutegel','aderngeist','herzklopfer',
         'stachelkugel','grabgraeber','klingenrad','steinruecken','schimmelherz'],
-  bosses:['doppelherz'],mus:0},
+  bosses:['doppelherz','kammermutter'],mus:0},
  {name:'Wurzel des Kellers',bg:'#0d0d12',fa:'#191926',fb:'#14141f',wall:'#26263d',accent:'#3d3d5c',
   pool:['wurzelgreifer','leerling','knotenwaechter',
         'grabgraeber','stachelkugel','klingenrad','steinruecken','schlundling','glockenmaul'],
-  bosses:['kellervater'],mus:3},
+  bosses:['kellervater','bittender'],mus:3},
 ];
 
 /* ==== 5. DATEN: GEGNER / BOSSE / RAUM-TEMPLATES ====
@@ -604,14 +604,23 @@ const ENEMY_TYPES={
 
 /* Boss-Schema: KI-Muster stecken in updateBoss (Sektion 9).
    phase2 ab 50% HP — Verhalten wechselt sichtbar.             */
+/* Bosse sind absichtlich groß: unter Radius 28 wirkt im 13x7-Raum nichts
+   bedrohlich. Alle Sprites rechnen mit s = r/20, ein anderer Radius zieht
+   die ganze Zeichnung mit. */
 const BOSS_TYPES={
- matschkoenig:  {name:'Matschkönig',     hp:240, r:22, ai:'matsch',  color:'#7a9a3f'},
- augenwaechter: {name:'Augenwächter',    hp:300, r:20, ai:'auge',    color:'#b04a4a', fly:true},
- knochengeneral:{name:'Knochengeneral',  hp:380, r:20, ai:'knochen', color:'#cfc9b8'},
- giftbrut:      {name:'Giftbrut',        hp:440, r:23, ai:'gift',    color:'#8a4ab0'},
- doppelherz:    {name:'Doppelherz',      hp:250, r:18, ai:'herz',    color:'#c03a5a', twin:true},
- kellervater:   {name:'Der Kellervater', hp:750, r:26, ai:'vater',   color:'#4a4a6a'},
- kloakenfuerst: {name:'Der Kloakenfürst',hp:520,r:24, ai:'kloake',  color:'#7a5b3a'},
+ matschkoenig:  {name:'Matschkönig',     hp:240, r:30, ai:'matsch',  color:'#7a9a3f'},
+ augenwaechter: {name:'Augenwächter',    hp:300, r:28, ai:'auge',    color:'#b04a4a', fly:true},
+ knochengeneral:{name:'Knochengeneral',  hp:380, r:28, ai:'knochen', color:'#cfc9b8'},
+ giftbrut:      {name:'Giftbrut',        hp:440, r:32, ai:'gift',    color:'#8a4ab0'},
+ doppelherz:    {name:'Doppelherz',      hp:250, r:24, ai:'herz',    color:'#c03a5a', twin:true},
+ kellervater:   {name:'Der Kellervater', hp:750, r:38, ai:'vater',   color:'#4a4a6a'},
+ kloakenfuerst: {name:'Der Kloakenfürst',hp:520, r:33, ai:'kloake',  color:'#7a5b3a'},
+ /* --- Die fünf Großen ------------------------------------------------- */
+ kammermutter:  {name:'Die Kammermutter',hp:900, r:52, ai:'mutter',  color:'#8e6656'},
+ schlundvater:  {name:'Der Schlundvater',hp:820, r:48, ai:'schlund', color:'#7a2028'},
+ gehaengte:     {name:'Der Gehängte',    hp:760, r:42, ai:'haenger', color:'#84785e', fly:true},
+ fleischmade:   {name:'Die Fleischmade', hp:880, r:46, ai:'made',    color:'#c8a288'},
+ bittender:     {name:'Der Bittende',    hp:940, r:44, ai:'bittend', color:'#8e7e6e'},
 };
 
 /* --- RAUM-TEMPLATES (13x7). Türgassen freihalten!
@@ -1086,7 +1095,7 @@ function enterRoom(key,fromDir){
     if(room.doors[d].edge.revealed) nb.seen=true;}
   // Entities zurücksetzen
   G.tears=[];G.eshots=[];G.enemies=[];G.bombs=[];G.pickups=[];G.fx=[];
-  G.beams=[];G.creeps=[];G.texts=[];G.lasers=[];
+  G.beams=[];G.creeps=[];G.texts=[];G.lasers=[];G.einschlaege=[];
   const p=G.player;
   p.roomDmgBonus=0; recomputeStats();
   // Spieler platzieren
@@ -2141,6 +2150,49 @@ function burst(x,y,color,n){
    Damit Item-Wirkungen sichtbar werden und nicht nur in den Zahlen stehen. */
 
 // Aufziehender Ring — für Explosionen, Schockwellen, Aktivitems
+/* --- Angekündigte Einschläge ---------------------------------------------
+   Ein Schlag der Kammermutter oder des Bittenden füllt ein Viertel des
+   Raumes. Ohne Vorwarnung wäre ihm nicht auszuweichen, mit Vorwarnung ist
+   er fair: erst zieht sich ein Ring auf der Stelle zusammen, dann schlägt
+   es ein. Auch Gegner nehmen Schaden — wer klug steht, lässt den Boss seine
+   eigene Brut zerschlagen.                                               */
+function einschlagSetzen(x,y,radius,vorlauf,schaden,farbe){
+  G.einschlaege.push({x,y,r:radius,t:vorlauf,max:vorlauf,
+                      dmg:schaden||1,farbe:farbe||'#c03a5a',aus:false});
+}
+function updateEinschlaege(dt){
+  for(const s of G.einschlaege){
+    if(s.aus){ s.t-=dt; continue; }
+    s.t-=dt;
+    if(s.t>0) continue;
+    s.aus=true; s.t=0.25;
+    G.shake=Math.max(G.shake,7);
+    schockwelle(s.x,s.y,s.r,s.farbe,0.35,4);
+    funken(s.x,s.y,-Math.PI/2,s.farbe,10,2.4);
+    Sfx.boom();
+    if(dist(G.player,s)<s.r) hurtPlayer(s.dmg);
+    for(const e of G.enemies) if(!e.isBoss&&dist(e,s)<s.r) damageEnemy(e,8);
+  }
+  G.einschlaege=G.einschlaege.filter(s=>!s.aus||s.t>0);
+}
+function drawEinschlaege(){
+  const merk=tuscheAn; tuscheAn=false;
+  for(const s of G.einschlaege){
+    if(s.aus) continue;
+    const p0=1-s.t/s.max;                      // 0 = eben gesetzt, 1 = gleich
+    ctx.save();
+    ctx.globalAlpha=0.18+p0*0.22;
+    ctx.fillStyle=s.farbe;
+    ctx.beginPath(); ctx.ellipse(s.x,s.y,s.r,s.r*0.62,0,0,TAU); ctx.fill();
+    ctx.globalAlpha=0.55+p0*0.45;
+    ctx.strokeStyle=s.farbe; ctx.lineWidth=1.6+p0*1.6;
+    ctx.beginPath(); ctx.ellipse(s.x,s.y,s.r*(1.5-p0*0.5),s.r*0.62*(1.5-p0*0.5),0,0,TAU);
+    ctx.stroke();
+    ctx.restore();
+  }
+  tuscheAn=merk;
+}
+
 function schockwelle(x,y,radius,color,dauer,breite){
   G.fx.push({kind:'welle',x,y,r:radius,t:dauer||0.4,max:dauer||0.4,color,w:breite||3});
 }
@@ -2899,6 +2951,148 @@ function updateBossAI(e,dt,slow){
           for(let i=0;i<(e.phase>=3?3:2);i++)
             fireEshot(e.x,e.y,e.spiral+i*TAU/3,125); }
         if(e.t>2.2){ e.state=0; e.cd=1.2; }
+      }
+      break; }
+
+    /* --- Die Kammermutter: sechs Arme, die nacheinander einschlagen ----
+       Sie bewegt sich kaum. Gefährlich ist nicht sie selbst, sondern der
+       Ring aus Einschlägen um sie herum — und die Brut, die aus ihrem Leib
+       fällt, sobald man sie trifft. */
+    case 'mutter': {
+      e.x=lerp(e.x,clamp(p.x,RX+70,RX+COLS*TILE-70),0.5*dt);
+      e.y=lerp(e.y,ty(2),0.5*dt);
+      if(e.cd<=0){
+        e.pat=(e.pat+1)%3;
+        if(e.pat===0){                       // Armschlag auf den Spieler
+          const n=e.phase===2?3:2;
+          for(let i=0;i<n;i++)
+            einschlagSetzen(p.x+frand.range(-30,30)*i,p.y+frand.range(-24,24)*i,
+                            38,0.85,1,'#c8705a');
+          e.cd=e.phase===2?1.1:1.7;
+        } else if(e.pat===1){                // Ring aus Schlägen um sie herum
+          const n=e.phase===2?8:6, dreh=frand()*TAU;
+          for(let i=0;i<n;i++){
+            const a=dreh+i*TAU/n;
+            einschlagSetzen(e.x+Math.cos(a)*88,e.y+Math.sin(a)*62,34,1.0,1,'#c8705a');
+          }
+          e.cd=e.phase===2?1.4:2.0;
+        } else {                             // Brut aus dem Leib
+          const wie=G.enemies.filter(x=>!x.isBoss).length;
+          if(wie<7) for(let i=0;i<(e.phase===2?3:2);i++)
+            spawnEnemy(frand.pick(['miniblob','zuckfliege']),
+                       e.x+frand.range(-24,24),e.y+26,null);
+          if(e.phase===2) for(let i=0;i<10;i++) fireEshot(e.x,e.y+20,i*TAU/10+e.t,105);
+          e.cd=1.6;
+        }
+      }
+      break; }
+
+    /* --- Der Schlundvater: ein Maul im Boden, das saugt --------------
+       Er steht fest. Der Sog zieht einen ständig zu ihm, die Zunge peitscht
+       heraus, und wer zu nah kommt, wird gebissen. Man muss dagegen an. */
+    case 'schlund': {
+      e.x=tx(6); e.y=ty(3);
+      const d=dist(p,e), a=ang(p,e);
+      const sog=(e.phase===2?46:30)*(1-clamp(d/300,0,1));
+      p.vx+=Math.cos(a)*sog*dt*60*0.06; p.vy+=Math.sin(a)*sog*dt*60*0.06;
+      if(e.cd<=0){
+        e.pat=(e.pat+1)%3;
+        if(e.pat===0){                       // Zunge peitscht heraus
+          e.state=1; e.t=0;
+          e.zungeA=ang(e,p);
+          einschlagSetzen(e.x+Math.cos(e.zungeA)*90,e.y+Math.sin(e.zungeA)*90,
+                          30,0.7,1,'#c85a66');
+          e.cd=1.3;
+        } else if(e.pat===1){                // Speiring
+          const n=e.phase===2?12:8;
+          for(let i=0;i<n;i++) fireEshot(e.x,e.y,i*TAU/n+e.t*0.7,120);
+          e.cd=1.5;
+        } else {                             // Biss: alles nah am Maul
+          einschlagSetzen(e.x,e.y,58,0.9,1,'#a03a48');
+          if(e.phase===2){
+            const wie=G.enemies.filter(x=>!x.isBoss).length;
+            if(wie<6) for(let i=0;i<2;i++)
+              spawnEnemy('kotkrabbler',e.x+frand.range(-40,40),e.y+40,null);
+          }
+          e.cd=1.8;
+        }
+      }
+      if(e.state===1&&e.t>0.5){ e.state=0; }
+      break; }
+
+    /* --- Der Gehängte: schwingt am Strick quer durch den Raum --------
+       Er lässt sich nicht verfolgen, man muss seinem Bogen ausweichen. An
+       den Umkehrpunkten regnet es Finger. */
+    case 'haenger': {
+      e.schwung=(e.schwung||0)+dt*slow*(e.phase===2?1.5:1.0);
+      const bogen=Math.sin(e.schwung);
+      e.x=tx(6)+bogen*(COLS*TILE*0.34);
+      e.y=ty(2)+Math.abs(bogen)*22;
+      if(Math.abs(bogen)>0.985&&e.cd<=0){    // Umkehrpunkt
+        e.cd=0.9;
+        const n=e.phase===2?7:5;
+        for(let i=0;i<n;i++)
+          einschlagSetzen(e.x+(i-(n-1)/2)*34,ty(4)+frand.range(-14,14),
+                          24,0.8,1,'#cfc2a4');
+        Sfx.tick();
+      }
+      if(e.phase===2&&e.cd<=0.35&&frand.chance(0.06))
+        fireEshot(e.x,e.y,ang(e,p),135);
+      break; }
+
+    /* --- Die Fleischmade: wühlt sich durch den Raum ------------------
+       Unter dem Boden ist sie unverwundbar, dafür sieht man die Spur. Bei
+       halber Kraft speit sie zwei Brutmaden aus, die weiterfressen. */
+    case 'made': {
+      if(e.phase===2&&!e.geteilt){
+        e.geteilt=true;
+        for(let i=0;i<2;i++) spawnEnemy('myzelwurm',e.x+(i?30:-30),e.y,null);
+        G.shake=9; burst(e.x,e.y,'#c8a288',20);
+      }
+      if(e.state===0){                       // eingegraben
+        e.ghosted=true;
+        chaseMove(e,dt,slow,'fly',e.phase===2?1.5:1.1);
+        if(frand.chance(0.5)) burst(e.x,e.y,'#6a5038',1);
+        if(e.cd<=0){                         // auftauchen
+          e.state=1; e.t=0; e.ghosted=false;
+          einschlagSetzen(e.x,e.y,44,0.6,1,'#c8a288');
+          e.cd=e.phase===2?2.2:2.8;
+        }
+      } else {                               // aufgetaucht, schießt
+        if(e.t<0.2) { e.vx*=0.9; e.vy*=0.9; }
+        moveEntity(e,e.vx*dt*0.3,e.vy*dt*0.3,'walk');
+        if(e.cd<=0.9&&e.cd>0.85){
+          const a=ang(e,p);
+          for(const off of [-0.5,-0.25,0,0.25,0.5]) fireEshot(e.x,e.y,a+off,125);
+        }
+        if(e.t>1.6){ e.state=0; e.ghosted=true; }
+      }
+      break; }
+
+    /* --- Der Bittende: wächst mit jedem Viertel, das er verliert ------
+       Er kniet und rührt sich nicht vom Fleck. Mit jeder Stufe schlägt ein
+       weiteres Händepaar zu — am Ende hagelt es aus vier Richtungen. */
+    case 'bittend': {
+      e.x=lerp(e.x,tx(6),0.6*dt); e.y=lerp(e.y,ty(3),0.6*dt);
+      const stufe=Math.min(3,Math.floor((1-e.hp/e.maxHp)*4));
+      if(stufe>(e.stufe||0)){
+        e.stufe=stufe; e.r=44+stufe*5; e.flash=0.4;
+        G.shake=8; Sfx.bossroar(); schockwelle(e.x,e.y,120,'#ffe08a',0.6,5);
+      }
+      if(e.cd<=0){
+        e.pat=(e.pat+1)%2;
+        if(e.pat===0){                       // Hände schlagen zu
+          const n=1+(e.stufe||0);
+          for(let i=0;i<n;i++)
+            einschlagSetzen(p.x+frand.range(-40,40),p.y+frand.range(-32,32),
+                            34,0.75,1,'#cfc0ae');
+          e.cd=1.5-(e.stufe||0)*0.2;
+        } else {                             // Gebetswelle
+          const n=10+(e.stufe||0)*3;
+          for(let i=0;i<n;i++) fireEshot(e.x,e.y,i*TAU/n+e.t*0.5,100+(e.stufe||0)*12);
+          schockwelle(e.x,e.y,90,'#ffe08a',0.5,3);
+          e.cd=1.8;
+        }
       }
       break; }
   }
@@ -4999,34 +5193,38 @@ function drawEnemy(e){
 
 function drawBossSprite(e,y,col){
   const d=e.def, base=col(d.color);
+  /* Alle Maße hängen an s: ein anderer Radius zieht die ganze Zeichnung
+     mit, statt einen Riesen mit winzigen Augen zu ergeben. */
+  const s=e.r/20;
   if(e.ai==='matsch'){
-    disc(e.x,y,e.r,base);disc(e.x,y-4,e.r*0.75,col('#94b455'));
-    disc(e.x-7,y-4,3,'#111');disc(e.x+7,y-4,3,'#111');
-    ctx.fillStyle='#3a4a1f';ctx.fillRect(e.x-8,y+6,16,3); // Maul
+    disc(e.x,y,e.r,base);disc(e.x,y-4*s,e.r*0.75,col('#94b455'));
+    disc(e.x-7*s,y-4*s,3*s,'#111');disc(e.x+7*s,y-4*s,3*s,'#111');
+    ctx.fillStyle='#3a4a1f';ctx.fillRect(e.x-8*s,y+6*s,16*s,3*s); // Maul
     // Krone (eigene Erfindung: Schlammklumpen-Krone)
     ctx.fillStyle=col('#d4af37');
-    ctx.beginPath();ctx.moveTo(e.x-10,y-e.r+2);ctx.lineTo(e.x-10,y-e.r-6);ctx.lineTo(e.x-5,y-e.r);
-    ctx.lineTo(e.x,y-e.r-8);ctx.lineTo(e.x+5,y-e.r);ctx.lineTo(e.x+10,y-e.r-6);ctx.lineTo(e.x+10,y-e.r+2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(e.x-10*s,y-e.r+2*s);ctx.lineTo(e.x-10*s,y-e.r-6*s);
+    ctx.lineTo(e.x-5*s,y-e.r);ctx.lineTo(e.x,y-e.r-8*s);ctx.lineTo(e.x+5*s,y-e.r);
+    ctx.lineTo(e.x+10*s,y-e.r-6*s);ctx.lineTo(e.x+10*s,y-e.r+2*s);ctx.fill();
   } else if(e.ai==='auge'){
     disc(e.x,y,e.r,col('#d8d0c8'));
     disc(e.x,y,e.r*0.55,base);disc(e.x,y,e.r*0.25,'#111');
-    disc(e.x-3,y-3,2,'#fff');
+    disc(e.x-3*s,y-3*s,2*s,'#fff');
     for(let i=0;i<6;i++){const a=i*TAU/6+performance.now()/600;
-      ctx.strokeStyle='#8a5a5a';ctx.lineWidth=2;
+      ctx.strokeStyle='#8a5a5a';ctx.lineWidth=2*s;
       ctx.beginPath();ctx.moveTo(e.x+Math.cos(a)*e.r,y+Math.sin(a)*e.r);
-      ctx.lineTo(e.x+Math.cos(a)*(e.r+7),y+Math.sin(a)*(e.r+7));ctx.stroke();}
+      ctx.lineTo(e.x+Math.cos(a)*(e.r+7*s),y+Math.sin(a)*(e.r+7*s));ctx.stroke();}
   } else if(e.ai==='knochen'){
-    disc(e.x,y-6,e.r*0.7,col('#cfc9b8')); // Schädel
-    rrect(e.x-e.r*0.7,y+2,e.r*1.4,e.r*0.8,col('#b8b2a2'));
-    disc(e.x-5,y-8,3,'#111');disc(e.x+5,y-8,3,'#111');
-    rrect(e.x-6,y-2,12,2,'#8a8276');
-    rrect(e.x-e.r-4,y-2,5,14,col('#cfc9b8')); // Schulterknochen
-    rrect(e.x+e.r-1,y-2,5,14,col('#cfc9b8'));
+    disc(e.x,y-6*s,e.r*0.7,col('#cfc9b8')); // Schädel
+    rrect(e.x-e.r*0.7,y+2*s,e.r*1.4,e.r*0.8,col('#b8b2a2'));
+    disc(e.x-5*s,y-8*s,3*s,'#111');disc(e.x+5*s,y-8*s,3*s,'#111');
+    rrect(e.x-6*s,y-2*s,12*s,2*s,'#8a8276');
+    rrect(e.x-e.r-4*s,y-2*s,5*s,14*s,col('#cfc9b8')); // Schulterknochen
+    rrect(e.x+e.r-1*s,y-2*s,5*s,14*s,col('#cfc9b8'));
   } else if(e.ai==='gift'){
-    disc(e.x,y,e.r,base);disc(e.x,y-4,e.r*0.7,col('#aa6ad0'));
+    disc(e.x,y,e.r,base);disc(e.x,y-4*s,e.r*0.7,col('#aa6ad0'));
     for(let i=0;i<4;i++){const a=i*TAU/4+performance.now()/500;
-      disc(e.x+Math.cos(a)*e.r*0.8,y+Math.sin(a)*e.r*0.8,4,col('#7a3aa0'));}
-    disc(e.x-6,y-5,2.5,'#c8ff5a');disc(e.x+6,y-5,2.5,'#c8ff5a');
+      disc(e.x+Math.cos(a)*e.r*0.8,y+Math.sin(a)*e.r*0.8,4*s,col('#7a3aa0'));}
+    disc(e.x-6*s,y-5*s,2.5*s,'#c8ff5a');disc(e.x+6*s,y-5*s,2.5*s,'#c8ff5a');
   } else if(e.ai==='herz'){
     ctx.save();ctx.translate(e.x,y);ctx.scale(e.r/6,e.r/6);
     const pulse=1+Math.sin(performance.now()/(e.enraged?120:250))*0.08;
@@ -5034,30 +5232,30 @@ function drawBossSprite(e,y,col){
     ctx.fillStyle=e.flash>0?'#fff':(e.variant?'#8a3a5a':'#c03a5a');
     heartPath(0,0);ctx.fill();
     ctx.restore();
-    disc(e.x-4,y-2,2,'#111');disc(e.x+4,y-2,2,'#111');
+    disc(e.x-4*s,y-2*s,2*s,'#111');disc(e.x+4*s,y-2*s,2*s,'#111');
   } else if(e.ai==='kloake'){
     const hell=e.flash>0?'#ffffff':'#7a5b3a', dunkel=e.flash>0?'#e8e8e8':'#553d24';
     drawKot(e.x,y,e.r,hell,dunkel);
     // Augen folgen dem Spieler
     const p=G.player, ax=clamp((p.x-e.x)/70,-1,1), ay=clamp((p.y-e.y)/70,-1,1);
-    disc(e.x-8,y-5,4.2,'#f0ece0'); disc(e.x+8,y-5,4.2,'#f0ece0');
-    disc(e.x-8+ax*1.6,y-5+ay*1.6,2.1,'#111');
-    disc(e.x+8+ax*1.6,y-5+ay*1.6,2.1,'#111');
+    disc(e.x-8*s,y-5*s,4.2*s,'#f0ece0'); disc(e.x+8*s,y-5*s,4.2*s,'#f0ece0');
+    disc(e.x-8*s+ax*1.6*s,y-5*s+ay*1.6*s,2.1*s,'#111');
+    disc(e.x+8*s+ax*1.6*s,y-5*s+ay*1.6*s,2.1*s,'#111');
     // grinsendes Maul
-    ctx.strokeStyle='#2e2114'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(e.x,y+2,6,0.25,Math.PI-0.25); ctx.stroke();
+    ctx.strokeStyle='#2e2114'; ctx.lineWidth=2*s;
+    ctx.beginPath(); ctx.arc(e.x,y+2*s,6*s,0.25,Math.PI-0.25); ctx.stroke();
     // Fliegenschwarm als Krone — hell genug, um sich vom Boden abzuheben
     for(let i=0;i<5;i++){ const a=performance.now()/280+i*TAU/5;
       const fx=e.x+Math.cos(a)*e.r*0.9, fy=y-e.r*1.2+Math.sin(a*1.7)*5;
-      ctx.strokeStyle='rgba(210,210,225,0.55)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(fx-2.5,fy-1.5); ctx.lineTo(fx+2.5,fy-1.5); ctx.stroke();
-      disc(fx,fy,1.7,'#1a1a1e');
+      ctx.strokeStyle='rgba(210,210,225,0.55)'; ctx.lineWidth=1*s;
+      ctx.beginPath(); ctx.moveTo(fx-2.5*s,fy-1.5*s); ctx.lineTo(fx+2.5*s,fy-1.5*s); ctx.stroke();
+      disc(fx,fy,1.7*s,'#1a1a1e');
     }
     // Ab Phase 2 tropft der Fürst
     if(e.phase===2){
       for(let i=0;i<3;i++){
         const dx=(i-1)*e.r*0.55, t=(performance.now()/620+i*0.4)%1;
-        disc(e.x+dx, y+e.r*0.5+t*10, 2.2*(1-t*0.5), dunkel);
+        disc(e.x+dx, y+e.r*0.5+t*10*s, 2.2*s*(1-t*0.5), dunkel);
       }
     }
   } else if(e.ai==='vater'){
@@ -5066,12 +5264,113 @@ function drawBossSprite(e,y,col){
     ctx.beginPath();ctx.moveTo(e.x-e.r,y+e.r*0.8);ctx.quadraticCurveTo(e.x-e.r,y-e.r,e.x,y-e.r);
     ctx.quadraticCurveTo(e.x+e.r,y-e.r,e.x+e.r,y+e.r*0.8);ctx.fill();
     disc(e.x,y-e.r*0.5,e.r*0.5,e.flash>0?'#fff':'#26263d');
-    disc(e.x-6,y-e.r*0.5,3,'#e8d75a');disc(e.x+6,y-e.r*0.5,3,'#e8d75a');
+    disc(e.x-6*s,y-e.r*0.5,3*s,'#e8d75a');disc(e.x+6*s,y-e.r*0.5,3*s,'#e8d75a');
     for(let i=0;i<3;i++){const sw=Math.sin(performance.now()/300+i*2)*4;
-      disc(e.x-e.r*0.6+i*e.r*0.6,y+e.r*0.8+4,5+sw*0.3,e.flash>0?'#fff':'#26263d');}
+      disc(e.x-e.r*0.6+i*e.r*0.6,y+e.r*0.8+4*s,(5+sw*0.3)*s,e.flash>0?'#fff':'#26263d');}
+
+  /* --- Die fünf Großen ---------------------------------------------- */
+  } else if(e.ai==='mutter'){
+    const atem=1+Math.sin(performance.now()/900)*0.04;
+    for(let i=0;i<6;i++){                       // Arme rundherum
+      const a=-Math.PI/2+(i-2.5)*0.92+Math.sin(performance.now()/700+i)*0.18;
+      const l=e.r*(1.5+((i*7)%3)*0.22);
+      ctx.strokeStyle=col('#7a5a52'); ctx.lineWidth=e.r*0.17; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(e.x,y);
+      ctx.quadraticCurveTo(e.x+Math.cos(a)*l*0.6,y+Math.sin(a)*l*0.5,
+                           e.x+Math.cos(a)*l,y+Math.sin(a)*l); ctx.stroke();
+      ctx.lineCap='butt';
+      disc(e.x+Math.cos(a)*l,y+Math.sin(a)*l,e.r*0.17,col('#a8867a'));
+    }
+    fleisch(e.x,y+e.r*0.1,e.r*atem,e.r*0.88*atem,0,col('#c49a88'),col('#8e6656'),'#2e1a16');
+    ellipse(e.x,y+e.r*0.3,e.r*0.52,e.r*0.36,0,'#3a1a18');   // offener Leib
+    for(let i=0;i<5;i++){
+      const bx=e.x+(i-2)*e.r*0.2, by=y+e.r*0.3+Math.sin(performance.now()/500+i)*2;
+      disc(bx,by,e.r*0.09,col('#d8b48a'));
+    }
+    zaehneSpiel(e.x,y-e.r*0.06,e.r*1.6,13,e.r*0.17,true,'#efe4cc');
+    fleisch(e.x,y-e.r*0.9,e.r*0.4,e.r*0.36,0,col('#d8b0a0'),col('#a07a6a'),'#38201c');
+    hohlauge(e.x-e.r*0.17,y-e.r*0.95,e.r*0.1,'#ff9a5a',1);
+    hohlauge(e.x+e.r*0.17,y-e.r*0.95,e.r*0.1,'#ff9a5a',1);
+  } else if(e.ai==='schlund'){
+    const saug=0.7+Math.sin(performance.now()/700)*0.3;
+    ellipse(e.x,y+e.r*0.1,e.r*1.9,e.r*0.95,0,'#2a1a16');
+    ellipse(e.x,y+e.r*0.16,e.r*1.5*saug,e.r*0.75*saug,0,'#120608');
+    if(e.state===1){                            // Zunge
+      const l=e.r*2.2, a=e.zungeA||0;
+      ctx.strokeStyle=col('#a03a48'); ctx.lineWidth=e.r*0.22; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(e.x,y); ctx.lineTo(e.x+Math.cos(a)*l,y+Math.sin(a)*l);
+      ctx.stroke(); ctx.lineCap='butt';
+      disc(e.x+Math.cos(a)*l,y+Math.sin(a)*l,e.r*0.2,col('#c85a66'));
+    }
+    zaehneSpiel(e.x,y-e.r*0.5,e.r*2.7,15,e.r*0.44,true,'#efe4cc');
+    zaehneSpiel(e.x,y+e.r*0.78,e.r*2.5,13,e.r*0.4,false,'#efe4cc');
+    for(let i=0;i<10;i++){                       // Augenkranz rund um das Maul
+      const a=i*TAU/10+0.31;
+      hohlauge(e.x+Math.cos(a)*e.r*1.72,y+e.r*0.1+Math.sin(a)*e.r*0.86,e.r*0.12,
+               '#ffb05a',0.6+Math.sin(performance.now()/400+i)*0.4);
+    }
+  } else if(e.ai==='haenger'){
+    const kip=Math.sin((e.schwung||0))*0.16;
+    ctx.strokeStyle='#8a7a5a'; ctx.lineWidth=e.r*0.11;   // Strick zur Decke
+    ctx.beginPath(); ctx.moveTo(e.x-kip*80,RY-20); ctx.lineTo(e.x,y-e.r*1.5); ctx.stroke();
+    ctx.save(); ctx.translate(e.x,y); ctx.rotate(kip);
+    ctx.strokeStyle=col('#6e6248'); ctx.lineWidth=e.r*0.16; ctx.lineCap='round';
+    for(const vz of [-1,1]){                     // schlaffe Arme
+      ctx.beginPath(); ctx.moveTo(vz*e.r*0.55,-e.r*0.35);
+      ctx.quadraticCurveTo(vz*e.r*1.1,e.r*0.6,vz*e.r*0.9,e.r*1.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(vz*e.r*0.28,e.r*1.35);
+      ctx.lineTo(vz*e.r*0.46,e.r*2.3); ctx.stroke();
+    }
+    ctx.lineCap='butt';
+    fleisch(0,e.r*0.15,e.r*0.7,e.r*1.5,0,col('#b8ac92'),col('#84785e'),'#2a2418');
+    fleisch(0,-e.r*1.3,e.r*0.66,e.r*0.6,0,col('#cfc2a4'),col('#9a8c70'),'#2a2418');
+    ctx.strokeStyle='#6a5c40'; ctx.lineWidth=e.r*0.12;
+    ctx.beginPath(); ctx.moveTo(-e.r*0.6,-e.r*1.72); ctx.lineTo(e.r*0.6,-e.r*1.72); ctx.stroke();
+    hohlauge(-e.r*0.26,-e.r*1.36,e.r*0.16,'#9affc0',0.9);
+    hohlauge( e.r*0.26,-e.r*1.36,e.r*0.16,'#9affc0',0.9);
+    zaehneSpiel(0,-e.r*1.02,e.r*0.62,6,e.r*0.2,true,'#e8dcc0');
+    ctx.restore();
+  } else if(e.ai==='made'){
+    if(e.ghosted){                               // eingegraben: nur der Hügel
+      ctx.save(); ctx.globalAlpha=0.7;
+      ellipse(e.x,y+e.r*0.2,e.r*0.9,e.r*0.42,0,'#4a3a28');
+      ellipse(e.x,y+e.r*0.05,e.r*0.6,e.r*0.26,0,'#6a5038');
+      ctx.restore();
+      return;
+    }
+    const welle=(i)=>Math.sin(performance.now()/300-i*0.6)*e.r*0.2;
+    for(let i=6;i>=1;i--)
+      fleisch(e.x-i*e.r*0.52,y+welle(i),e.r*0.52-i*e.r*0.026,e.r*0.44-i*e.r*0.02,0,
+              col('#e8c8b0'),col('#c09a80'),'#4a3028');
+    fleisch(e.x,y+welle(0),e.r*0.72,e.r*0.64,0,col('#f0d4bc'),col('#c8a288'),'#4a3028');
+    ellipse(e.x+e.r*0.28,y+welle(0),e.r*0.3,e.r*0.34,0,'#2a0e12');
+    zaehneSpiel(e.x+e.r*0.28,y+welle(0)-e.r*0.32,e.r*0.6,7,e.r*0.22,true,'#efe4cc');
+    zaehneSpiel(e.x+e.r*0.28,y+welle(0)+e.r*0.32,e.r*0.6,7,e.r*0.22,false,'#efe4cc');
+    hohlauge(e.x,y+welle(0)-e.r*0.34,e.r*0.13,'#ff8a6a',0.85);
+  } else if(e.ai==='bittend'){
+    const beben=Math.sin(performance.now()/320)*e.r*0.04;
+    fleisch(e.x,y+e.r*0.9,e.r*1.1,e.r*0.72,0,col('#a89a8e'),col('#786a60'),'#241c18');
+    fleisch(e.x,y-e.r*0.2,e.r*0.88,e.r*1.1,0,col('#c2b2a2'),col('#8e7e6e'),'#2a221c');
+    for(let paar=0;paar<=(e.stufe||0);paar++){   // je Stufe ein Händepaar mehr
+      const oy=y-e.r*0.85+paar*e.r*0.62, sp=Math.sin(performance.now()/750+paar)*0.16;
+      for(const vz of [-1,1]){
+        const l=e.r*(1.3+paar*0.16), hx=e.x+vz*(e.r*0.6+l*0.72), hy=oy-l*0.5-sp*e.r*0.2;
+        ctx.strokeStyle=col('#9a8a7a'); ctx.lineWidth=e.r*0.13; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(e.x+vz*e.r*0.6,oy);
+        ctx.quadraticCurveTo(e.x+vz*(e.r*0.6+l*0.4),oy-l*0.24,hx,hy); ctx.stroke();
+        ctx.lineCap='butt';
+        disc(hx,hy,e.r*0.18,col('#cfc0ae'));
+      }
+    }
+    fleisch(e.x,y-e.r*1.6+beben,e.r*0.66,e.r*0.6,0,col('#d8cabc'),col('#a2927e'),'#2a221c');
+    hohlauge(e.x-e.r*0.26,y-e.r*1.68+beben,e.r*0.18,'#ffe08a',0.95);
+    hohlauge(e.x+e.r*0.26,y-e.r*1.68+beben,e.r*0.18,'#ffe08a',0.95);
+    zaehneSpiel(e.x,y-e.r*1.3+beben,e.r*0.75,9,e.r*0.26,true,'#efe4cc');
+    ctx.save(); tuscheAn=false; ctx.globalAlpha=0.22;
+    disc(e.x,y-e.r*1.68,e.r*1.2,'#ffe08a'); tuscheAn=true; ctx.restore();
   } else {
     disc(e.x,y,e.r,base);
-    disc(e.x-5,y-4,2.5,'#111');disc(e.x+5,y-4,2.5,'#111');
+    disc(e.x-5*s,y-4*s,2.5*s,'#111');disc(e.x+5*s,y-4*s,2.5*s,'#111');
   }
 }
 
@@ -5372,7 +5671,7 @@ function startRun(charIdx,seedStr){
     kills:0,time:0,stats:{kills:0,dmgDealt:0,dmgTaken:0},
     shake:0,banner:null,bossIntro:null,trans:null,result:null,
     tears:[],eshots:[],enemies:[],bombs:[],pickups:[],fx:[],beams:[],
-    lasers:[],creeps:[],familiars:[],texts:[],
+    lasers:[],creeps:[],familiars:[],texts:[],einschlaege:[],
     deathTimer:0,roomFresh:0,bossName:'',room:null,roomKey:null,
     floorHit:false,deals:0,        // heil durch die Etage? schon gehandelt?
     floorRooms:()=>G.floor.rooms};
@@ -5456,6 +5755,7 @@ function updateGame(dt){
   updateEnemies(dt);
   updateEshots(dt);
   updateCreeps(dt);
+  updateEinschlaege(dt);
   updateFx(dt);
   updateDoorsOpen(false);
   updateDoorAnim(dt);
@@ -5512,6 +5812,7 @@ function render(){
       ctx.globalAlpha=1;
     }
   }
+  drawEinschlaege();// Vorwarnungen liegen über dem Boden, unter dem Dunst
   drawSporen();     // legt sich über alles, nimmt die Sicht
   tafelnZeichnen(); // Item-Erklärungen zuoberst, aber noch im Raumbild
   grundTransform();

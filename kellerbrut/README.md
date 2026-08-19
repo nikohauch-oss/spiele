@@ -143,7 +143,7 @@ ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen u
 Seeds nach.
 
 **Inhalte.** 61 Items (passiv und aktiv), 52 Gegnertypen mit Champion-Varianten,
-7 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
+12 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 9 Charaktere (acht davon freischaltbar).
 
 **Alles ist in Tusche gezeichnet.** Die Welt wird wie mit der Feder gesetzt:
@@ -155,6 +155,31 @@ Herzen sollen ruhig stehen, deshalb schaltet `drawHUD()` den Stil ab
 ein Gitter, das alles andere erschlägt. Die ruhende Kulisse — Steine, Stacheln,
 Wucherungen, Löcher, Wände — wird vorgebacken und zittert deshalb nicht mit;
 Feuer, Wände-Bewuchs und alles Lebende schon.
+
+**Zwölf Bosse, alle groß.** Jede Etage hat zwei zur Auswahl, man trifft also
+nicht jedes Mal denselben. Die fünf Großen fallen besonders auf:
+
+- **Die Kammermutter** (Radius 52) füllt ein Drittel des Raumes. Sechs Arme
+  schlagen nacheinander ein, aus ihrem offenen Leib fällt Brut nach.
+- **Der Schlundvater** ist ein Maul im Boden, das nicht weggeht. Sein Sog
+  zieht einen ständig zu ihm, die Zunge peitscht heraus, wer zu nah kommt,
+  wird gebissen.
+- **Der Gehängte** schwingt am Strick quer durch den Raum. An jedem
+  Umkehrpunkt regnet es Finger.
+- **Die Fleischmade** wühlt sich unter dem Boden durch — dort ist sie
+  unverwundbar, man sieht nur den Hügel. Bei halber Kraft speit sie Brutmaden aus.
+- **Der Bittende** kniet in der Mitte und wächst mit jedem Viertel, das er
+  verliert; mit jeder Stufe schlägt ein weiteres Händepaar zu.
+
+Auch die sieben älteren sind gewachsen (Radius 24 bis 38 statt 18 bis 26).
+Alle Boss-Sprites rechnen jetzt mit `s = r/20`, ein anderer Radius zieht die
+ganze Zeichnung mit — vorher hätte ein größerer Boss winzige Augen bekommen.
+
+**Schläge werden angekündigt.** Ein Armschlag der Kammermutter füllt ein
+Viertel des Raumes; ohne Vorwarnung wäre ihm nicht auszuweichen. Deshalb
+zieht sich erst ein Ring auf der Stelle zusammen, dann schlägt es ein
+(`einschlagSetzen()`). Getroffen wird, wer dann noch drinsteht — auch
+Gegner. Wer klug steht, lässt den Boss seine eigene Brut zerschlagen.
 
 **Zwölf Kreaturen mit eigenem Haken.** Der *Talgwicht* wird gefährlicher,
 wenn man ihn trifft: Erlischt seine Flamme, rennt er blind und doppelt so
@@ -385,7 +410,8 @@ Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
 der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
 Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
 beschreibung hat, die auch auf die Tafel passt, die echte Bildauflösung, den
-Bosslohn und die Zwölf-Herzen-Grenze, die
+Bosslohn und die Zwölf-Herzen-Grenze, die Größe aller zwölf Bosse samt ihren
+Kennzeichen-Angriffen und der angekündigte Einschlag, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate

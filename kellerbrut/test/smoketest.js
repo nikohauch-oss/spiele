@@ -1364,6 +1364,117 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 19. Die großen Bosse und die Vorwarnung ---
+if(want(19)){
+console.log('\n[19] Große Bosse');
+await withPage(async(page,errs)=>{
+  const tabelle=await page.evaluate(()=>{
+    const zuKlein=Object.keys(KB.BOSS_TYPES).filter(id=>KB.BOSS_TYPES[id].r<24);
+    const ohne=KB.FLOORS.filter(f=>f.bosses.length<2).map(f=>f.name);
+    const fehlend=[];
+    for(const f of KB.FLOORS) for(const b of f.bosses)
+      if(!KB.BOSS_TYPES[b]) fehlend.push(f.name+': '+b);
+    return {anzahl:Object.keys(KB.BOSS_TYPES).length, zuKlein, ohne, fehlend,
+            groessen:Object.values(KB.BOSS_TYPES).map(b=>b.r).sort((a,b)=>a-b)};
+  });
+  note(tabelle.anzahl>=12,'zwölf Bosse stehen bereit','('+tabelle.anzahl+')');
+  note(tabelle.zuKlein.length===0,'kein Boss ist kleiner als Radius 24',
+       tabelle.zuKlein.join(' '));
+  note(tabelle.ohne.length===0,'jede Etage hat zwei Bosse zur Auswahl',tabelle.ohne.join(' '));
+  note(tabelle.fehlend.length===0,'jede Etage nennt nur Bosse, die es gibt',tabelle.fehlend.join(' '));
+  note(tabelle.groessen[tabelle.groessen.length-1]>=48,'die Großen füllen den Raum',
+       '(größter Radius '+tabelle.groessen[tabelle.groessen.length-1]+')');
+
+  /* Angekündigte Einschläge: erst harmlos, dann Treffer — und danach weg. */
+  const warnung=await page.evaluate(()=>{
+    startRun(0,'WARN'); KB.G.bossIntro=null;
+    const p=KB.G.player; p.redMax=20;p.red=20; p.iframes=0; KB.G.roomFresh=0;
+    KB.G.enemies.length=0; KB.G.einschlaege.length=0;
+    einschlagSetzen(p.x,p.y,40,0.5,1,'#c03a5a');
+    for(let i=0;i<20;i++) updateGame(1/60);      // 0.33 s — noch nichts
+    const waehrend={leben:p.red, offen:KB.G.einschlaege.length};
+    for(let i=0;i<20;i++){ p.iframes=0; updateGame(1/60); }
+    const danach={leben:p.red};
+    for(let i=0;i<30;i++) updateGame(1/60);
+    return {waehrend, danach, uebrig:KB.G.einschlaege.length};
+  });
+  note(warnung.waehrend.leben===20&&warnung.waehrend.offen===1,
+       'die Vorwarnung tut zunächst nichts');
+  note(warnung.danach.leben<20,'danach schlägt sie wirklich ein',
+       '(Leben '+warnung.waehrend.leben+' → '+warnung.danach.leben+')');
+  note(warnung.uebrig===0,'und räumt sich danach selbst weg');
+
+  // Wer außerhalb steht, bleibt heil.
+  const daneben=await page.evaluate(()=>{
+    startRun(0,'WARN2'); KB.G.bossIntro=null;
+    const p=KB.G.player; p.redMax=20;p.red=20; p.iframes=0; KB.G.roomFresh=0;
+    KB.G.einschlaege.length=0;
+    einschlagSetzen(p.x+120,p.y,40,0.3,1,'#c03a5a');
+    for(let i=0;i<60;i++){ p.iframes=0; updateGame(1/60); }
+    return p.red;
+  });
+  note(daneben===20,'wer ausweicht, bleibt heil');
+
+  /* Jeder der fünf Großen muss seine Kennzeichen-Handlung auch zeigen. */
+  const zeichen=await page.evaluate(()=>{
+    const laufen=(id,ticks)=>{
+      startRun(0,'Z'+id); KB.G.bossIntro=null;
+      const p=KB.G.player; p.redMax=99;p.red=99; p.x=tx(6); p.y=ty(5);
+      KB.G.enemies.length=0; KB.G.einschlaege.length=0;
+      spawnBoss(id); KB.G.bossIntro=null;
+      const b=KB.G.enemies.find(e=>e.isBoss);
+      let schlaege=0, brut=0, weitesteX=b.x, engsteX=b.x, vergraben=0;
+      let sogSpur=0;
+      for(let i=0;i<(ticks||600);i++){
+        p.red=99; p.vx=0; p.vy=0;
+        const vorher=KB.G.einschlaege.length;
+        updateGame(1/60);
+        if(KB.G.einschlaege.length>vorher) schlaege+=KB.G.einschlaege.length-vorher;
+        brut=Math.max(brut,KB.G.enemies.filter(e=>!e.isBoss).length);
+        weitesteX=Math.max(weitesteX,b.x); engsteX=Math.min(engsteX,b.x);
+        if(b.ghosted) vergraben++;
+        if(Math.abs(p.vx)+Math.abs(p.vy)>1) sogSpur++;
+      }
+      return {schlaege, brut, spanne:Math.round(weitesteX-engsteX), vergraben,
+              sog:sogSpur, hp:Math.round(b.hp)};
+    };
+    return {mutter:laufen('kammermutter'), schlund:laufen('schlundvater'),
+            haenger:laufen('gehaengte'), made:laufen('fleischmade'),
+            bittend:laufen('bittender')};
+  });
+  note(zeichen.mutter.schlaege>0&&zeichen.mutter.brut>0,
+       'die Kammermutter schlägt zu und wirft Brut',
+       '('+zeichen.mutter.schlaege+' Schläge, bis zu '+zeichen.mutter.brut+' Brut)');
+  note(zeichen.schlund.sog>0&&zeichen.schlund.schlaege>0,
+       'der Schlundvater saugt und beißt','('+zeichen.schlund.schlaege+' Bisse)');
+  note(zeichen.haenger.spanne>200,'der Gehängte schwingt quer durch den Raum',
+       '('+zeichen.haenger.spanne+' px Spanne)');
+  note(zeichen.made.vergraben>60,'die Fleischmade wühlt sich unter den Boden',
+       '('+zeichen.made.vergraben+' von 600 Ticks eingegraben)');
+  note(zeichen.bittend.schlaege>0,'der Bittende lässt die Hände fallen',
+       '('+zeichen.bittend.schlaege+' Schläge)');
+
+  // Der Bittende wächst mit jedem Viertel.
+  const wachsen=await page.evaluate(()=>{
+    startRun(0,'WACHS'); KB.G.bossIntro=null;
+    KB.G.enemies.length=0; spawnBoss('bittender'); KB.G.bossIntro=null;
+    const b=KB.G.enemies.find(e=>e.isBoss);
+    const start=b.r, stufen=[];
+    for(const anteil of [0.7,0.45,0.2]){
+      b.hp=b.maxHp*anteil;
+      for(let i=0;i<10;i++) updateGame(1/60);
+      stufen.push(b.r);
+    }
+    return {start, stufen};
+  });
+  note(wachsen.stufen.every((r,i)=>r>(i?wachsen.stufen[i-1]:wachsen.start)),
+       'der Bittende wächst mit jedem verlorenen Viertel',
+       '('+wachsen.start+' → '+wachsen.stufen.join(' → ')+')');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');
