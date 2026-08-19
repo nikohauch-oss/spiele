@@ -672,8 +672,10 @@ await withPage(async(page,errs)=>{
     await page.waitForTimeout(150);
     if(id==='kellervater') await page.screenshot({path:OUT+'shot-4-bosskampf.png'});
   }
-  // Alle Spielfiguren in allen Zuständen zeichnen
-  for(const i of [0,1,2,3]){
+  // Alle Spielfiguren in allen Zuständen zeichnen — die Zahl kommt aus der
+  // Tabelle, neue Figuren werden also automatisch mitgeprüft.
+  const figuren=await page.evaluate(()=>KB.CHARS.map((c,i)=>i));
+  for(const i of figuren){
     await page.evaluate((i)=>{
       startRun(i,'FIG'); const p=KB.G.player;
       p.redMax=99;p.red=99; KB.G.enemies.length=0; KB.G.bossIntro=null;
@@ -1075,6 +1077,129 @@ await withPage(async(page,errs)=>{
   note(engelDanach.engel===0&&engelDanach.ges>20,
        'nach dem ersten Handel zeigt sich kein Engel mehr',
        '('+engelDanach.engel+' von '+engelDanach.ges+')');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
+
+// --- 16. Die neun Spielfiguren und ihre Eigenheiten ---
+if(want(16)){
+console.log('\n[16] Spielfiguren');
+await withPage(async(page,errs)=>{
+  const tabelle=await page.evaluate(()=>{
+    const maengel=[];
+    KB.CHARS.forEach((c,i)=>{
+      for(const feld of ['id','name','desc','color','hood','frisur','red','speed',
+                         'tps','dmg','range','shot','luck'])
+        if(c[feld]===undefined) maengel.push(c.id+': '+feld+' fehlt');
+      if(c.item&&!KB.ITEMS[c.item]) maengel.push(c.id+': Startitem '+c.item+' gibt es nicht');
+      if(c.unlock&&!c.unlockText) maengel.push(c.id+': Freischalttext fehlt');
+      if(c.red===0&&!c.soul.length) maengel.push(c.id+': startet ohne jedes Leben');
+    });
+    // Fahnen der Figur müssen beim Start wirklich gesetzt sein
+    const gesetzt=KB.CHARS.map((c,i)=>{
+      startRun(i,'F'+i);
+      return (c.flags||[]).every(f=>KB.G.player.flags.has(f));
+    });
+    return {anzahl:KB.CHARS.length, maengel, alleFahnen:gesetzt.every(Boolean)};
+  });
+  note(tabelle.anzahl>=9,'neun Figuren stehen zur Wahl','('+tabelle.anzahl+')');
+  note(tabelle.maengel.length===0,'jede Figur ist vollständig beschrieben',
+       tabelle.maengel.slice(0,4).join('; '));
+  note(tabelle.alleFahnen,'jede Figur bringt ihre Fahnen von Anfang an mit');
+
+  // Rosenbraut: verschlossene Tür ohne Schlüssel
+  const braut=await page.evaluate(()=>{
+    const idx=KB.CHARS.findIndex(c=>c.id==='rosenbraut');
+    for(let s=0;s<80;s++){
+      startRun(idx,'RB'+s);
+      KB.G.bossIntro=null;
+      const p=KB.G.player; p.keys=0; p.redMax=99; p.red=99;
+      const t=KB.G.room.doors.u||KB.G.room.doors.d||KB.G.room.doors.l||KB.G.room.doors.r;
+      const richtung=Object.keys(KB.G.room.doors).find(d=>KB.G.room.doors[d].edge.locked);
+      if(!richtung) continue;
+      const tuer=KB.G.room.doors[richtung], vorher=KB.G.roomKey, dp=doorXY(richtung);
+      for(let i=0;i<500&&KB.G.roomKey===vorher;i++){
+        const a=Math.atan2(dp.y-p.y,dp.x-p.x);
+        p.vx=Math.cos(a)*200; p.vy=Math.sin(a)*200; updateGame(1/60);
+      }
+      p.vx=0; p.vy=0;
+      for(let i=0;i<30;i++){ p.vx=0; p.vy=0; updateGame(1/60); }
+      return {gewechselt:KB.G.roomKey!==vorher, keys:p.keys, offen:!tuer.edge.locked};
+    }
+    return null;
+  });
+  note(braut&&braut.gewechselt&&braut.keys===0&&braut.offen,
+       'die Rosenbraut öffnet verschlossene Türen ohne Schlüssel');
+
+  // Mooskind: heilt beim Räumen, aber nie über die eigenen Container
+  const moos=await page.evaluate(()=>{
+    const idx=KB.CHARS.findIndex(c=>c.id==='mooskind');
+    startRun(idx,'MOOS'); KB.G.bossIntro=null;
+    const p=KB.G.player;
+    p.red=1;                                   // stark angeschlagen
+    KB.G.room.type='normal'; KB.G.room.cleared=false;
+    KB.G.enemies.length=0;
+    updateDoorsOpen(true);
+    const nachEinem=p.red;
+    p.red=p.redMax;                            // schon voll
+    KB.G.room.cleared=false; updateDoorsOpen(true);
+    return {start:1, nachEinem, ueberVoll:p.red, max:p.redMax};
+  });
+  note(moos.nachEinem===2,'das Mooskind heilt ein halbes Herz je geräumtem Raum',
+       '(1 → '+moos.nachEinem+' Hälften)');
+  note(moos.ueberVoll===moos.max,'es heilt nie über die eigenen Container hinaus');
+
+  // Flickenpuppe: steht genau einmal wieder auf
+  const puppe=await page.evaluate(()=>{
+    const idx=KB.CHARS.findIndex(c=>c.id==='flickenpuppe');
+    startRun(idx,'PUPPE'); KB.G.bossIntro=null;
+    const p=KB.G.player;
+    p.soul.length=0; p.red=1;
+    hurtPlayer(9,true);
+    const nachErstem={tot:p.dead, red:p.red};
+    p.iframes=0; p.soul.length=0; p.red=Math.max(1,p.red);
+    hurtPlayer(9,true);
+    return {nachErstem, totNachZweitem:p.dead};
+  });
+  note(puppe.nachErstem.tot===false&&puppe.nachErstem.red>0,
+       'die Flickenpuppe übersteht den ersten Tod',
+       '(Leben danach: '+puppe.nachErstem.red+' Hälften)');
+  note(puppe.totNachZweitem===true,'beim zweiten Mal bleibt sie liegen');
+
+  // Laternenkind: kennt die Etage, aber keine Geheimräume
+  const laterne=await page.evaluate(()=>{
+    const idx=KB.CHARS.findIndex(c=>c.id==='laternenkind');
+    startRun(idx,'LAT');
+    const f=KB.G.floor, alle=Object.values(f.rooms);
+    const offen=alle.filter(r=>r.type!=='secret');
+    const geheim=alle.filter(r=>r.type==='secret');
+    // zum Vergleich eine Figur ohne Laterne
+    startRun(0,'LAT');
+    const f2=KB.G.floor;
+    const ungesehen=Object.values(f2.rooms).filter(r=>!r.seen).length;
+    return {gesehen:offen.every(r=>r.seen), geheimVerborgen:geheim.every(r=>!r.seen),
+            ohneLaterneUngesehen:ungesehen};
+  });
+  note(laterne.gesehen,'das Laternenkind kennt die ganze Etage sofort');
+  note(laterne.geheimVerborgen,'Geheimräume bleiben auch für es verborgen');
+  note(laterne.ohneLaterneUngesehen>0,'ohne Laterne bleibt die Etage dunkel',
+       '('+laterne.ohneLaterneUngesehen+' Räume unbekannt)');
+
+  // Schrauber: eigene Bomben tun ihm nichts
+  const schrauber=await page.evaluate(()=>{
+    const idx=KB.CHARS.findIndex(c=>c.id==='schrauber');
+    startRun(idx,'SCHR'); KB.G.bossIntro=null;
+    const p=KB.G.player; p.iframes=0; KB.G.roomFresh=0;
+    const vorher=p.red;
+    explode(p.x,p.y,60,0);
+    return {vorher, nachher:p.red, bomben:p.bombs};
+  });
+  note(schrauber.nachher===schrauber.vorher,
+       'dem Schrauber schadet die eigene Bombe nicht',
+       '('+schrauber.vorher+' → '+schrauber.nachher+')');
+  note(schrauber.bomben>=4,'er startet mit vollen Taschen','('+schrauber.bomben+' Bomben)');
+
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 

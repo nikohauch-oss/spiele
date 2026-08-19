@@ -135,7 +135,7 @@ Seeds nach.
 
 **Inhalte.** 61 Items (passiv und aktiv), 52 Gegnertypen mit Champion-Varianten,
 7 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
-4 Charaktere (drei davon freischaltbar).
+9 Charaktere (acht davon freischaltbar).
 
 **Alles ist in Tusche gezeichnet.** Die Welt wird wie mit der Feder gesetzt:
 leicht unrunde Pfade, dunkle Kontur mit schwankender Strichstärke, Schraffur
@@ -181,12 +181,29 @@ alte daneben ab, statt es zu verlieren.
 **Die Figuren** haben Isaac-Proportionen: großer runder Kopf auf kleinem
 Körper, Beine treten im Laufen abwechselnd, die Pupillen folgen der
 Schussrichtung, gelegentlich wird geblinzelt, bei Schaden reißt der Mund auf.
-Die Frisur unterscheidet sie — Lumo trägt eine Kapuze, Flink Stachelhaar,
-Brocken Zotteln mit wippenden Büscheln, Schemen schwebt als Geist mit
-Schleier und Schweif statt Beinen. Gezeichnet werden alle von derselben
-Funktion `zeichneCharakter()`, die auch die Charakterauswahl benutzt; eine
-neue Frisur braucht nur einen Zweig in `zeichneFrisur()` und das Feld
-`frisur` im Charaktereintrag.
+Frisur und Zierrat unterscheiden sie — Lumo trägt eine Kapuze, Flink
+Stachelhaar, Brocken Zotteln mit wippenden Büscheln, Schemen schwebt als
+Geist mit Schleier und Schweif statt Beinen. Gezeichnet werden alle von
+derselben Funktion `zeichneCharakter()`, die auch die Charakterauswahl
+benutzt; eine neue Frisur braucht nur einen Zweig in `zeichneFrisur()` und
+das Feld `frisur` im Charaktereintrag, ein Gesichtsstück einen Zweig in
+`zeichneZier()` und das Feld `zier`.
+
+**Fünf Kellerkinder** kamen dazu, und jedes bringt eine eigene Regel mit —
+nicht bloß andere Zahlen:
+
+| Figur | Eigenheit | Freischaltung |
+|---|---|---|
+| **Der Schrauber** | Blechfaust und Schweißerbrille. Eigene Bomben tun ihm nichts, er startet mit vier davon, fünf Münzen und dem Bombenvogel. | Erreiche Etage 4 |
+| **Die Rosenbraut** | Trägt ein Brett vor der Gesichtshälfte und eine Dornenkrone. **Vor ihr geht jedes Schloss ohne Schlüssel auf** — dafür ist sie zart (2 Herzen) und schlägt hart zu. | Schließe einen Handel mit dem Teufel |
+| **Das Laternenkind** | Kapuze mit Hörnern, grüne Laterne in der Hand. **Kennt jede Etage sofort** (Geheimräume ausgenommen) und schießt durch Wände. | Finde einen Geheimraum |
+| **Das Mooskind** | Moospelz mit leuchtenden Pilzen. Vergiftet mit jedem Schuss und **heilt ein halbes Herz je geräumtem Raum** — nie über die eigenen Container hinaus. | Erlege insgesamt 500 Gegner |
+| **Die Flickenpuppe** | Knopfaugen, Nahtmund, bunte Wollsträhnen. **Steht einmal je Lauf wieder auf**, mit einem halben Herzen und kurzer Unverwundbarkeit. | Stirb zehnmal |
+
+Die Sonderregeln hängen an Fahnen im Charaktereintrag (`tuerkind`, `laterne`,
+`moos`, `flicken`), die beim Start in `p.flags` wandern — genau wie
+Item-Fahnen. Eine neue Figur mit eigener Regel braucht also nur einen Eintrag
+in `CHARS` und eine Stelle im Code, die ihre Fahne abfragt.
 
 **Neun Begleiter** kämpfen mit, jeder auf eigene Art: der *Schattengeselle*
 schießt im Takt mit dir, der *Kreiselgeist* kreist und blockt, der
@@ -276,6 +293,19 @@ sein, sonst lässt sich der Raum nie leerräumen und die Türen gehen nicht auf.
 Testphase 14 prüft beides für jedes Layout durch, im ungünstigsten Fall, in
 dem jedes `r` zum Stein wird.
 
+### Neue Spielfigur
+
+Einen Eintrag in `CHARS` ergänzen. Pflichtfelder: `id`, `name`, `desc`,
+`color` (Haut), `hood` (Kleidung), `frisur`, die Startwerte (`red`, `soul`,
+`speed`, `tps`, `dmg`, `range`, `shot`, `luck`, `coins`, `bombs`, `keys`)
+sowie `unlock` und `unlockText`, wenn sie freigeschaltet werden muss.
+
+Optional: `zier` für ein Gesichts- oder Handstück (`zeichneZier()`), `item`
+für ein Startitem, `pocket` für Pille oder Karte in der Tasche, und `flags`
+für angeborene Fahnen. Eine Fahne wird beim Start in `p.flags` gelegt und
+kann überall abgefragt werden — so hängen `tuerkind`, `laterne`, `moos` und
+`flicken` an genau einer Stelle im Code.
+
 ### Neue Etage
 
 Zwei Einträge: einen in `FLOORS` (Farben des Tilesets, `pool` mit Gegner-IDs,
@@ -317,6 +347,7 @@ Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
 jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
 Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
 der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
+Eigenheiten aller neun Spielfiguren, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate

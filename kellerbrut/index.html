@@ -426,6 +426,40 @@ const CHARS=[
  {id:'schemen',name:'Schemen', desc:'Geist ohne rotes Blut', color:'#c9a8e8',hood:'#6a3aa5',
   frisur:'schleier',haar:'#8a5ec8',
   red:0,soul:['S','S','S','S','S','S'],speed:2.2,tps:2.6,dmg:3.2,range:210,shot:4.2,luck:2,coins:0,bombs:1,keys:1,item:'geistertropfen',active:null,pocket:{kind:'card'},unlock:'win',unlockText:'Gewinne einen Run'},
+
+ /* --- Fünf Kellerkinder ------------------------------------------------
+    Jedes bringt eine eigene Regel mit, nicht bloß andere Zahlen. Die
+    Sonderregeln hängen an Fahnen (flags), die weiter unten ausgewertet
+    werden: tuerkind, laterne, moos, flicken.                            */
+ {id:'schrauber',name:'Der Schrauber',desc:'Blechfaust und volle Taschen',
+  color:'#e0c9a8',hood:'#3f5f86', frisur:'struppig', haar:'#6b4a2a', zier:'brille',
+  red:6,soul:[],speed:1.9,tps:2.2,dmg:3.9,range:190,shot:3.8,luck:0,coins:5,bombs:4,keys:0,
+  item:'bombenvogel',active:null,pocket:null,flags:['bombimmun'],
+  unlock:'floor4',unlockText:'Erreiche Etage 4'},
+
+ {id:'rosenbraut',name:'Die Rosenbraut',desc:'Vor ihr geht jede Tür auf',
+  color:'#e8d8d0',hood:'#d8cec0', frisur:'dornenkrone', haar:'#a8442a', zier:'tuerbrett',
+  red:4,soul:[],speed:2.1,tps:2.3,dmg:4.3,range:195,shot:4.0,luck:0,coins:0,bombs:1,keys:0,
+  item:null,active:null,pocket:null,flags:['tuerkind'],
+  unlock:'teufel',unlockText:'Schließe einen Handel mit dem Teufel'},
+
+ {id:'laternenkind',name:'Das Laternenkind',desc:'Trägt sein eigenes Licht',
+  color:'#cfc8d4',hood:'#171520', frisur:'hornkapuze', haar:'#0f0d16', zier:'laterne',
+  red:4,soul:['S','S'],speed:2.2,tps:2.7,dmg:3.0,range:225,shot:4.3,luck:1,coins:0,bombs:1,keys:1,
+  item:null,active:null,pocket:{kind:'card'},flags:['spectral','laterne'],
+  unlock:'geheim',unlockText:'Finde einen Geheimraum'},
+
+ {id:'mooskind',name:'Das Mooskind',desc:'Wächst nach, vergiftet alles',
+  color:'#d8c8a8',hood:'#4a6a32', frisur:'moospelz', haar:'#3d5a28', zier:'pilze',
+  red:6,soul:[],speed:1.8,tps:2.4,dmg:3.2,range:185,shot:3.9,luck:0,coins:0,bombs:1,keys:0,
+  item:null,active:null,pocket:{kind:'pill'},flags:['poison','moos'],
+  unlock:'kills500',unlockText:'Erlege insgesamt 500 Gegner'},
+
+ {id:'flickenpuppe',name:'Die Flickenpuppe',desc:'Steht noch einmal auf',
+  color:'#e4d8c4',hood:'#6a4a30', frisur:'wollhaar', haar:'#b8503a', zier:'knopfaugen',
+  red:2,soul:['S','S'],speed:2.1,tps:2.7,dmg:3.0,range:200,shot:4.1,luck:2,coins:0,bombs:1,keys:1,
+  item:'kreiselgeist',active:null,pocket:null,flags:['flicken'],
+  unlock:'tode10',unlockText:'Stirb zehnmal'},
 ];
 
 /* --- ETAGEN: Tileset-Farben, Gegnerpool, Bosse, Musik --- */
@@ -1021,6 +1055,7 @@ function enterRoom(key,fromDir){
   saveRoomState();
   G.roomKey=key; G.room=room;
   room.visited=true; room.seen=true;
+  if(room.type==='secret') unlock('geheim');
   for(const d in room.doors){const nb=G.floor.rooms[room.doors[d].to];
     if(room.doors[d].edge.revealed) nb.seen=true;}
   // Entities zurücksetzen
@@ -1114,6 +1149,11 @@ function updateDoorsOpen(silent){
   if(clear&&!room.cleared&&room.type!=='start'){
     room.cleared=true;
     if(G.player.active){G.player.active.charge=Math.min(G.player.active.max,G.player.active.charge+1);}
+    /* Das Mooskind wächst nach: ein halbes Herz je geräumtem Raum, aber nur
+       bis zu den eigenen Containern — geheilt wird nicht über die Grenze. */
+    if(G.player.flags.has('moos')&&G.player.red<G.player.redMax){
+      G.player.red++; Sfx.heart(); addText(G.player.x,G.player.y-18,'+½','#8ac86a');
+    }
     if(!silent) Sfx.doorOpen();
     // kleine Raum-Belohnung
     if(room.type==='normal'&&frand.chance(0.25+G.player.stats.luck*0.03))
@@ -1141,6 +1181,7 @@ function onBossRoomCleared(){
   kammerOeffnen();
   // Freischaltungen
   if(G.depth>=2) unlock('floor3');
+  if(G.depth>=3) unlock('floor4');
   if(G.depth>=4) unlock('floor5');
 }
 
@@ -1215,6 +1256,11 @@ function doorPassable(d){
 function tryUnlockDoor(d){
   const p=G.player, e=d.edge;
   if(!e.locked) return;
+  /* Die Rosenbraut trägt eine Tür im Gesicht — vor ihr geht jedes Schloss
+     ohne Schlüssel auf. Das ist ihre ganze Eigenheit, dafür ist sie zart. */
+  if(p.flags.has('tuerkind')){
+    e.locked=false; Sfx.key(); addText(p.x,p.y-18,'aufgetan','#e8d8d0'); return;
+  }
   if(p.keys<=0){ Sfx.error(); return; }
   // Dietrichfinger spart den Schlüssel manchmal ein
   if(!(p.flags.has('keysaver')&&frand.chance(0.25))) p.keys--;
@@ -1847,6 +1893,7 @@ function touchThings(p,dt){
     if(pd.herzPreis){                        // Teufelshandel: bezahlt wird mit Leben
       if(!herzPreisZahlen(pd.herzPreis)) continue;
       G.deals++;                             // ab jetzt kein Engel mehr
+      unlock('teufel');
       G.shake=Math.max(G.shake,7);
       addText(pd.x,pd.y-20,'Handel besiegelt','#c03a5a');
     }
@@ -2004,10 +2051,21 @@ function hurtPlayer(halves,force){
 }
 function playerDie(){
   const p=G.player;
+  /* Die Flickenpuppe wird einmal je Lauf wieder zusammengenäht. Sie steht
+     mit einem halben Herzen und kurzer Unverwundbarkeit auf, damit der
+     nächste Treffer sie nicht sofort erneut umwirft. */
+  if(p.flags.has('flicken')&&!p.geflickt){
+    p.geflickt=true; p.red=Math.max(1,Math.min(2,p.redMax)); p.iframes=2.4;
+    G.shake=Math.max(G.shake,9); Sfx.heart();
+    schockwelle(p.x,p.y,54,'#e4d8c4',0.7,4);
+    addText(p.x,p.y-20,'wieder zusammengenäht','#e4d8c4');
+    return;
+  }
   p.dead=true;
   burst(p.x,p.y,'#c03a5a',24);
   G.deathTimer=1.2;
   saveData.deaths++; saveSave();
+  if(saveData.deaths>=10) unlock('tode10');
 }
 function addText(x,y,str,color){ G.texts.push({x,y,str,color,t:1.2}); }
 function burst(x,y,color,n){
@@ -2050,6 +2108,14 @@ function schussFarbe(t){
 }
 
 /* Nächste Etage betreten */
+/* Das Laternenkind sieht die ganze Etage, sobald es sie betritt — nur
+   Geheimräume bleiben verborgen, die muss auch es aufsprengen. */
+function laterneLeuchtet(){
+  if(!G.player||!G.player.flags.has('laterne')||!G.floor) return;
+  for(const k in G.floor.rooms)
+    if(G.floor.rooms[k].type!=='secret') G.floor.rooms[k].seen=true;
+}
+
 function nextFloor(){
   Sfx.stairs();
   G.depth++;
@@ -2060,6 +2126,7 @@ function nextFloor(){
   G.floor=genFloor(G.depth);
   Sfx.setPattern(G.floor.data.mus);
   G.banner={title:G.floor.data.name,desc:'Etage '+G.depth,t:2.5};
+  laterneLeuchtet();
   enterRoom(G.floor.startKey,null);
 }
 
@@ -2133,6 +2200,9 @@ function killEnemy(e){
   Sfx.edeath();
   burst(e.x,e.y,e.isBoss?'#c03a5a':'#a05a5a',e.isBoss?26:10);
   G.kills++; G.stats.kills++;
+  saveData.kills++;                        // zählt über alle Läufe hinweg
+  if(saveData.kills>=500) unlock('kills500');
+  if(saveData.kills%25===0) saveSave();    // nicht bei jedem Tod schreiben
   if(e.def.onDeath&&e.def.onDeath.split){
     const [t,n]=e.def.onDeath.split;
     for(let i=0;i<n;i++){
@@ -3917,6 +3987,70 @@ function zeichneFrisur(c,x,ky,schritt){
       ctx.closePath(); ctx.fill();
     }
     ctx.globalAlpha=1;
+  } else if(c.frisur==='struppig'){               // wirrer Schopf mit Strähnen
+    ctx.beginPath(); ctx.ellipse(x,ky-4.6,9.0,5.0,0,0,TAU); ctx.fill();
+    for(let i=-3;i<=3;i++){
+      const bx=x+i*2.6, l=4.5+((i*7)%3)*1.8;
+      ctx.beginPath();
+      ctx.moveTo(bx-1.4,ky-7.4);
+      ctx.quadraticCurveTo(bx+i*1.3,ky-8-l,bx+i*2.1,ky-6.4-l);
+      ctx.quadraticCurveTo(bx+i*0.6,ky-8.6,bx+1.4,ky-7.4);
+      ctx.fill();
+    }
+  } else if(c.frisur==='dornenkrone'){            // Lockenschopf unter Rosenkranz
+    ctx.beginPath(); ctx.ellipse(x,ky-3.6,9.2,5.6,0,0,TAU); ctx.fill();
+    for(const s of [-1,1]){                       // lange Locken seitlich
+      ctx.beginPath();
+      ctx.ellipse(x+s*8.0,ky+2.2+schritt*s*0.7,2.6,5.4,s*0.24,0,TAU); ctx.fill();
+    }
+    ctx.strokeStyle='#3f5a2e'; ctx.lineWidth=1.3; // Dornenranke
+    ctx.beginPath(); ctx.arc(x,ky-4.0,8.6,Math.PI*1.06,Math.PI*1.94); ctx.stroke();
+    for(let i=-2;i<=2;i++){                       // schwarze Rosen
+      const a=Math.PI*1.5+i*0.34;
+      const rx=x+Math.cos(a)*8.6, ry=ky-4.0+Math.sin(a)*8.6;
+      disc(rx,ry,1.9,'#241820'); disc(rx,ry,0.8,'#4a2a3a');
+    }
+  } else if(c.frisur==='hornkapuze'){             // Kapuze mit Hörnern und Fransen
+    ctx.beginPath(); ctx.arc(x,ky-0.6,8.9,Math.PI*1.00,Math.PI*2.00); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x,ky-6.0,8.5,3.8,0,0,TAU); ctx.fill();
+    for(const s of [-1,1]){                       // Hörner
+      ctx.beginPath();
+      ctx.moveTo(x+s*6.2,ky-6.0);
+      ctx.quadraticCurveTo(x+s*13.5,ky-11.5,x+s*11.0,ky-16.5);
+      ctx.quadraticCurveTo(x+s*11.6,ky-10.0,x+s*5.0,ky-7.6);
+      ctx.fill();
+    }
+    ctx.globalAlpha=0.75;                         // tropfende Fransen
+    for(let i=-2;i<=2;i++){
+      const bx=x+i*3.4, l=3.5+((i+2)%3)*2.4;
+      ctx.fillRect(bx-0.8,ky-2.5,1.6,l);
+    }
+    ctx.globalAlpha=1;
+  } else if(c.frisur==='moospelz'){               // Moospolster
+    ctx.beginPath(); ctx.ellipse(x,ky-4.0,9.4,5.6,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#5f8340';
+    for(let i=0;i<9;i++){
+      const a=Math.PI*1.05+i*0.11;
+      disc(x+Math.cos(a)*8.6,ky-4.0+Math.sin(a)*6.0,1.9,'#5f8340');
+    }
+    ctx.fillStyle=haar;
+    for(const s of [-1,1]){                       // Moosbart seitlich
+      ctx.beginPath();
+      ctx.ellipse(x+s*8.2,ky+3.0+schritt*s*0.6,2.4,4.6,s*0.2,0,TAU); ctx.fill();
+    }
+  } else if(c.frisur==='wollhaar'){               // bunte Wollstränge
+    const faerbe=['#b8503a','#c8a03a','#4a8a6a','#5a6ab0','#a04a7a'];
+    ctx.beginPath(); ctx.ellipse(x,ky-4.4,8.8,4.8,0,0,TAU); ctx.fill();
+    for(let i=-3;i<=3;i++){
+      ctx.fillStyle=faerbe[(i+3)%faerbe.length];
+      const bx=x+i*2.6, l=5.0+((i+3)%3)*2.2;
+      ctx.beginPath();
+      ctx.moveTo(bx-1.2,ky-6.6);
+      ctx.quadraticCurveTo(bx+i*1.6,ky-8-l,bx+i*2.4,ky-6.0-l);
+      ctx.quadraticCurveTo(bx+i*0.4,ky-8.4,bx+1.2,ky-6.6);
+      ctx.fill();
+    }
+    ctx.fillStyle=haar;
   } else {                                        // Kapuze
     ctx.beginPath(); ctx.arc(x,ky-0.6,8.7,Math.PI*1.00,Math.PI*2.00); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x,ky-6.0,8.3,3.6,0,0,TAU); ctx.fill();
@@ -3966,7 +4100,7 @@ function zeichneCharakter(c,x,y,z){
 
   // Augen: Pupillen folgen der Schussrichtung
   const px0=clamp(aim.x,-1,1)*1.8, py0=clamp(aim.y,-1,1)*1.5;
-  for(const s of [-1,1]){
+  if(c.zier!=='knopfaugen') for(const s of [-1,1]){
     const ex=x+s*3.5, ey=ky-0.4;
     if(z.blinzelt){ ctx.fillStyle='#2a2028'; ctx.fillRect(ex-2.3, ey-0.4, 4.6, 1.3); }
     else {
@@ -3976,10 +4110,97 @@ function zeichneCharakter(c,x,y,z){
     }
   }
   // Mund: normal ein Strich, bei Schaden aufgerissen
-  if(z.wehklagt){ disc(x, ky+4.8, 2.0, '#2a2028'); }
+  if(c.zier==='knopfaugen'){ /* Nahtmund kommt in zeichneZier */ }
+  else if(z.wehklagt){ disc(x, ky+4.8, 2.0, '#2a2028'); }
   else { ctx.fillStyle='#2a2028'; ctx.fillRect(x-1.7, ky+4.5, 3.4, 1.1); }
 
+  if(c.zier) zeichneZier(c,x,ky,by,z);
   zeichneFrisur(c,x,ky,schritt);
+}
+
+/* Was eine Figur außerdem am Leib trägt. Steht bewusst getrennt von der
+   Frisur: Brille und Türbrett gehören aufs Gesicht, Haare darüber. */
+function zeichneZier(c,x,ky,by,z){
+  if(c.zier==='brille'){                          // dicke Schweißerbrille
+    for(const s of [-1,1]){
+      const ex=x+s*3.6;
+      ctx.strokeStyle='#6e6a62'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.arc(ex,ky-0.4,3.6,0,TAU); ctx.stroke();
+      ctx.save(); ctx.globalAlpha=0.34; disc(ex,ky-0.4,3.2,'#bfe8ff'); ctx.restore();
+      ctx.save(); ctx.globalAlpha=0.6;             // Spiegelung im Glas
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=0.9;
+      ctx.beginPath(); ctx.moveTo(ex-2.2,ky+0.8); ctx.lineTo(ex+0.4,ky-2.4); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.fillStyle='#6e6a62'; ctx.fillRect(x-1.4,ky-1.2,2.8,1.4);
+    // Blechfaust am linken Arm
+    disc(x-6.4,by+1.8,2.7,'#8a8880');
+    ctx.strokeStyle='#5a5850'; ctx.lineWidth=0.9;
+    ctx.beginPath(); ctx.arc(x-6.4,by+1.8,1.5,0,TAU); ctx.stroke();
+  }
+  else if(c.zier==='tuerbrett'){                  // Brett vor der rechten Gesichtshälfte
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x,ky,8.5,0,TAU); ctx.clip();
+    ctx.fillStyle='#7a5a38'; ctx.fillRect(x+0.6,ky-9,9,18);
+    ctx.fillStyle='rgba(0,0,0,0.22)';
+    for(let i=0;i<3;i++) ctx.fillRect(x+2.4+i*2.6,ky-9,0.9,18);
+    ctx.restore();
+    ctx.strokeStyle='#4a3320'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x+0.9,ky-8.2); ctx.lineTo(x+0.9,ky+8.2); ctx.stroke();
+    disc(x+5.4,ky-0.6,1.5,'#1d1410');             // Astloch als Guckloch
+    // das freie Auge glüht violett
+    ctx.save(); tuscheAn=false; ctx.globalAlpha=0.45;
+    disc(x-3.5,ky-0.4,4.0,'#a86ad8'); tuscheAn=true; ctx.restore();
+    disc(x-3.5,ky-0.4,1.7,'#c88aff');
+  }
+  else if(c.zier==='laterne'){                    // grüne Laterne in der Hand
+    const px=x+7.6, py=by+3.2;
+    ctx.save(); tuscheAn=false;
+    ctx.globalAlpha=0.20; disc(px,py,9,'#7affc0');
+    ctx.globalAlpha=0.34; disc(px,py,5,'#7affc0');
+    tuscheAn=true; ctx.restore();
+    ctx.strokeStyle='#8a8272'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(px,py-4.2,2.2,Math.PI,0); ctx.stroke();
+    ctx.fillStyle='#6e6a5e'; ctx.fillRect(px-2.6,py-2.6,5.2,1.2);
+    ctx.fillStyle='#7affc0'; ctx.fillRect(px-2.0,py-1.4,4.0,4.0);
+    ctx.fillStyle='#e8fff0'; ctx.fillRect(px-0.9,py-0.4,1.8,1.8);
+    ctx.fillStyle='#6e6a5e'; ctx.fillRect(px-2.6,py+2.6,5.2,1.2);
+  }
+  else if(c.zier==='pilze'){                      // leuchtende Hütchen im Moos
+    for(const [dx,dy,r] of [[-5.6,-9.4,2.2],[0.4,-11.4,2.7],[5.4,-9.0,2.0]]){
+      ctx.fillStyle='#e8dcc0'; ctx.fillRect(x+dx-0.6,ky+dy,1.2,2.6);
+      ctx.fillStyle='#c8642a';
+      ctx.beginPath(); ctx.ellipse(x+dx,ky+dy,r,r*0.72,0,Math.PI,TAU); ctx.fill();
+      ctx.save(); tuscheAn=false;
+      ctx.globalAlpha=0.26+Math.sin(performance.now()/420+dx)*0.14;
+      disc(x+dx,ky+dy-0.6,r*1.9,'#ffd07a');
+      tuscheAn=true; ctx.restore();
+    }
+  }
+  else if(c.zier==='knopfaugen'){                 // Knöpfe statt Augen, Nähte
+    for(const s of [-1,1]){
+      const ex=x+s*3.5, ey=ky-0.4;
+      disc(ex,ey,2.8,'#e8e2d4'); disc(ex,ey,2.1,'#c9c0ae');
+      ctx.fillStyle='#4a4238';
+      for(const [ox,oy] of [[-0.8,-0.8],[0.8,-0.8],[-0.8,0.8],[0.8,0.8]])
+        ctx.fillRect(ex+ox-0.35,ey+oy-0.35,0.7,0.7);
+      ctx.strokeStyle='#4a4238'; ctx.lineWidth=0.6;
+      ctx.beginPath(); ctx.moveTo(ex-0.8,ey-0.8); ctx.lineTo(ex+0.8,ey+0.8);
+      ctx.moveTo(ex+0.8,ey-0.8); ctx.lineTo(ex-0.8,ey+0.8); ctx.stroke();
+    }
+    ctx.strokeStyle='#6a5a48'; ctx.lineWidth=0.8; // Nahtmund
+    ctx.beginPath(); ctx.moveTo(x-3.2,ky+4.8); ctx.lineTo(x+3.2,ky+4.8); ctx.stroke();
+    for(let i=-2;i<=2;i++){
+      ctx.beginPath(); ctx.moveTo(x+i*1.5,ky+3.7); ctx.lineTo(x+i*1.5,ky+5.9); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(x+2.0,ky-6.4); ctx.lineTo(x+5.4,ky-3.6); ctx.stroke();
+    for(let i=0;i<3;i++){
+      const t=i/2;
+      ctx.beginPath();
+      ctx.moveTo(x+2.0+t*3.4-0.9,ky-6.4+t*2.8-0.9);
+      ctx.lineTo(x+2.0+t*3.4+0.9,ky-6.4+t*2.8+0.9); ctx.stroke();
+    }
+  }
 }
 
 function drawPlayer(p){
@@ -4986,7 +5207,7 @@ function drawBossIntro(){
 /* ==== 11. MENÜS, SCREENS, SAVEGAME, HAUPTSCHLEIFE ==== */
 
 /* --- Savegame (localStorage): Freischaltungen & Statistik --- */
-let saveData={unlocks:[],wins:0,deaths:0,bestFloor:1};
+let saveData={unlocks:[],wins:0,deaths:0,bestFloor:1,kills:0};
 function loadSave(){
   try{ const s=localStorage.getItem('kellerbrut_v1');
     if(s) saveData={...saveData,...JSON.parse(s)}; }catch(e){}
@@ -5024,6 +5245,8 @@ function startRun(charIdx,seedStr){
     fireTimer:0,iframes:0,shield:0,beamCharge:0,beamReady:false,
     aimDir:{x:0,y:1},anim:0,itemGet:null,dead:false,hitFlash:0,stats:{}};
   G.player=p;
+  // Angeborene Fahnen der Figur (Türkind, Laterne, Moos, Flicken …)
+  if(char.flags) for(const f of char.flags) p.flags.add(f);
   // Startitem ohne Animation
   if(char.item){ const it=ITEMS[char.item];
     G.itemsSeen.add(char.item); G.runItems.push(char.item);
@@ -5036,6 +5259,7 @@ function startRun(charIdx,seedStr){
   recomputeStats();
   G.floor=genFloor(1);
   Sfx.setPattern(G.floor.data.mus);
+  laterneLeuchtet();
   enterRoom(G.floor.startKey,null);
   G.banner={title:G.floor.data.name,desc:'Etage 1  ·  Seed '+seed,t:3};
 }
@@ -5217,9 +5441,18 @@ function drawCharSel(){
     }
     ctx.globalAlpha=1;
   }
-  txt('◄ ► wählen · ENTER start',W/2,244,'#8a8276',10);
-  if(menu.typingSeed) txt('Seed: '+menu.seedInput+'_',W/2,270,'#ffd75a',11);
-  else txt(menu.seedInput?('Seed: '+menu.seedInput+'  (S ändern)'):'S — Seed eingeben (gleicher Seed = gleiche Etagen)',W/2,270,'#5a5a66',9);
+  /* Punktleiste: bei neun Figuren sieht man sonst nicht, wie viele es
+     überhaupt gibt und wo man gerade steht. Gesperrte bleiben hohl. */
+  for(let i=0;i<n;i++){
+    const px=W/2-(n-1)*5+i*10, offen=charUnlocked(CHARS[i]);
+    if(i===menu.charIdx) disc(px,232,3,'#e8e0d0');
+    else if(offen) disc(px,232,2,'#6a6a76');
+    else ring(px,232,2,'#3a3a44',1);
+  }
+  txt((menu.charIdx+1)+' / '+n,W/2,244,'#5a5a66',8);
+  txt('◄ ► wählen · ENTER start',W/2,258,'#8a8276',10);
+  if(menu.typingSeed) txt('Seed: '+menu.seedInput+'_',W/2,282,'#ffd75a',11);
+  else txt(menu.seedInput?('Seed: '+menu.seedInput+'  (S ändern)'):'S — Seed eingeben (gleicher Seed = gleiche Etagen)',W/2,282,'#5a5a66',9);
 }
 function drawPause(){
   ctx.fillStyle='rgba(5,5,10,0.93)';ctx.fillRect(0,0,W,H);
