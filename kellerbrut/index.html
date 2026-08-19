@@ -2985,6 +2985,45 @@ function txt(str,x,y,color,size,align){
   ctx.textAlign=align||'center';ctx.textBaseline='middle';
   ctx.fillText(str,x|0,y|0);
 }
+/* Bricht einen Text auf eine Breite um und gibt die Zeilen zurück.
+   Ohne das passt keine Item-Beschreibung in eine Karte von 130 Pixeln. */
+function textZeilen(str,size,breite){
+  ctx.font=size+'px monospace';
+  const worte=str.split(' '), zeilen=[]; let zeile='';
+  for(const w of worte){
+    const probe=zeile?zeile+' '+w:w;
+    if(ctx.measureText(probe).width>breite&&zeile){ zeilen.push(zeile); zeile=w; }
+    else zeile=probe;
+  }
+  if(zeile) zeilen.push(zeile);
+  return zeilen;
+}
+
+/* Kleine Tafel, die sagt, was ein Item tut. Wird am Podest und an
+   liegenden Items eingeblendet, sobald man nahe genug steht — gerade im
+   Laden und in der Teufelskammer will man das VOR dem Zugreifen wissen. */
+function itemTafel(id,x,y,preis,herzPreis){
+  const it=ITEMS[id]; if(!it) return;
+  const bw=142, size=7;
+  const zeilen=textZeilen(it.desc,size,bw-14);
+  const kosten=preis?preis+' Münzen':(herzPreis?(herzPreis===1?'1 Herzcontainer':herzPreis+' Herzcontainer'):null);
+  const bh=17+zeilen.length*9+(kosten?10:0);
+  let bx=clamp(x-bw/2,4,W-bw-4);
+  let by=y-bh-16;
+  if(by<4) by=y+20;                      // unten anschlagen? dann darunter
+  const merk=tuscheAn; tuscheAn=false;
+  ctx.globalAlpha=0.92;
+  ctx.fillStyle='#12101a'; ctx.fillRect(bx,by,bw,bh);
+  ctx.globalAlpha=1;
+  ctx.strokeStyle=itemColor(id); ctx.lineWidth=1;
+  ctx.strokeRect(bx+0.5,by+0.5,bw-1,bh-1);
+  txt(it.name,bx+bw/2,by+9,'#e8e0d0',9);
+  zeilen.forEach((z,i)=>txt(z,bx+bw/2,by+20+i*9,'#a9a294',size));
+  if(kosten) txt(kosten,bx+bw/2,by+22+zeilen.length*9,
+                 herzPreis?'#e0798c':'#ffd75a',7);
+  tuscheAn=merk;
+}
+
 function shadow(x,y,r){ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.ellipse(x|0,y|0,r,r*0.45,0,0,TAU);ctx.fill();}
 
 /* Herz zeichnen (voll/halb/leer; Typ rot/seele/schwarz) */
@@ -3654,6 +3693,15 @@ function raumBildBacken(stand){
   }
 }
 
+/* Item-Tafeln werden erst gesammelt und ganz zuletzt gezeichnet, damit sie
+   nicht von Gegnern, Steinen oder dem Spieler verdeckt werden. */
+let tafelWarteschlange=[], tafelnGezeichnet=0;
+function tafelnZeichnen(){
+  for(const [id,x,y,preis,herz] of tafelWarteschlange) itemTafel(id,x,y,preis,herz);
+  tafelnGezeichnet=tafelWarteschlange.length;   // bleibt nach dem Bild ablesbar
+  tafelWarteschlange.length=0;
+}
+
 function drawRoom(){
   const HS=handschrift(), t=performance.now()/1000;
   const bw=COLS*TILE, bh=ROWS*TILE;
@@ -3734,6 +3782,8 @@ function drawRoom(){
     const bob=Math.sin(performance.now()/300)*2;
     drawItemIcon(pd.itemId,pd.x,pd.y-14+bob,1.2);
     if(pd.price) txt(pd.price+'¢',pd.x,pd.y+16,'#ffd75a',9);
+    // Wer nah genug steht, erfährt vor dem Zugreifen, was das Ding tut
+    if(dist(G.player,pd)<40) tafelWarteschlange.push([pd.itemId,pd.x,pd.y-24,pd.price,pd.herzPreis]);
     else if(pd.herzPreis){                   // Preis in Herzen statt in Münzen
       const p2=G.player;
       const bezahlbar=(p2.redMax-pd.herzPreis*2>=2&&p2.red-pd.herzPreis*2>=1)
@@ -4983,6 +5033,7 @@ function drawPickup(q){
     case 'goldchest': drawChest(q.x,y,'#d4af37','#a8862a');break;
     case 'redchest': drawChest(q.x,y,'#a03a3a','#701a1a');break;
     case 'item': {                       // gefallenes Item, leuchtet auffällig
+      if(dist(G.player,q)<40) tafelWarteschlange.push([q.itemId,q.x,y-16,0,0]);
       const f=itemColor(q.itemId), p=0.55+Math.sin(performance.now()/280)*0.25;
       ctx.save(); ctx.globalAlpha=p*0.4;
       ctx.beginPath(); ctx.arc(q.x,y,13,0,TAU); ctx.fillStyle=f; ctx.fill(); ctx.restore();
@@ -5224,7 +5275,7 @@ function unlock(key){
 function charUnlocked(c){ return !c.unlock||saveData.unlocks.includes(c.unlock); }
 
 /* --- Run starten --- */
-let menu={idx:0,charIdx:0,seedInput:'',typingSeed:false};
+let menu={idx:0,charIdx:0,seedInput:'',typingSeed:false,itemSeite:0};
 function startRun(charIdx,seedStr){
   const char=CHARS[charIdx];
   const seed=seedStr&&seedStr.length?seedStr.toUpperCase():seedToStr((Math.random()*4294967296)>>>0);
@@ -5374,6 +5425,7 @@ function render(){
     }
   }
   drawSporen();     // legt sich über alles, nimmt die Sicht
+  tafelnZeichnen(); // Item-Erklärungen zuoberst, aber noch im Raumbild
   ctx.setTransform(1,0,0,1,0,0);
   raumStimmung();   // Dunst der Etage und Vignette, noch unter dem HUD
   drawHUD();
@@ -5465,10 +5517,33 @@ function drawPause(){
   stats.forEach((st,i)=>{
     txt(st[0],W/2-60,110+i*14,'#6a6a76',9,'right');
     txt(st[1],W/2-46,110+i*14,'#e8e0d0',9,'left');});
-  // Eingesammelte Items
-  txt('Items:',W/2+30,110,'#6a6a76',9,'left');
-  G.runItems.slice(0,24).forEach((id,i)=>{
-    drawItemIcon(id,W/2+40+(i%8)*20,128+Math.floor(i/8)*20,1);});
+  /* Eingesammelte Items als Liste mit Wirkung — Symbole allein sagen einem
+     nach zwanzig Fundstücken nicht mehr, was man eigentlich dabeihat.
+     Geblättert wird mit ◄ ►, damit auch lange Läufe hineinpassen. */
+  const proSeite=7;
+  const habe=[];
+  if(p.active) habe.push({id:p.active.id,marke:'aktiv'});
+  for(const id of p.items) habe.push({id,marke:null});
+  const seiten=Math.max(1,Math.ceil(habe.length/proSeite));
+  menu.itemSeite=clamp(menu.itemSeite||0,0,seiten-1);
+  const von=menu.itemSeite*proSeite;
+  txt('Deine Items ('+habe.length+')',W/2+22,106,'#6a6a76',9,'left');
+  if(!habe.length) txt('— noch nichts gefunden —',W/2+22,124,'#4a4a56',8,'left');
+  habe.slice(von,von+proSeite).forEach((e,i)=>{
+    const y=122+i*17, it=ITEMS[e.id];
+    drawItemIcon(e.id,W/2+30,y,0.8);
+    txt(it.name,W/2+44,y-4,e.marke?'#ffd75a':'#e8e0d0',8,'left');
+    const kurz=textZeilen(it.desc,7,168)[0];
+    txt(kurz,W/2+44,y+5,'#8a8276',7,'left');
+    if(e.marke) txt('[Q]',W/2+240,y-4,'#ffd75a',7,'right');
+  });
+  if(seiten>1) txt('◄ ► Seite '+(menu.itemSeite+1)+'/'+seiten,W/2+22,246,'#6a6a76',8,'left');
+  if(p.pocket){
+    const t=p.pocket.kind==='pill'
+      ? (G.pillsKnown.has(p.pocket.id)?PILLS[p.pocket.id].name:'unbekannte Pille')
+      : CARDS[p.pocket.id].name;
+    txt('In der Tasche: '+t+'  [E]',W/2,H-58,'#8a8276',9);
+  }
   txt('ESC/P weiter · X Run aufgeben',W/2,H-40,'#8a8276',10);
 }
 function drawPostRun(){
@@ -5487,9 +5562,20 @@ function drawPostRun(){
   lines.forEach((l,i)=>{
     txt(l[0],W/2-16,104+i*16,'#6a6a76',10,'right');
     txt(l[1],W/2,104+i*16,'#e8e0d0',10,'left');});
-  txt('Gesammelte Items:',W/2,212,'#6a6a76',9);
+  txt('Gesammelte Items:',W/2,206,'#6a6a76',9);
   G.runItems.slice(0,32).forEach((id,i)=>{
-    drawItemIcon(id,W/2-((Math.min(G.runItems.length,16))*10)+10+(i%16)*20,230+Math.floor(i/16)*22,1);});
+    drawItemIcon(id,W/2-((Math.min(G.runItems.length,16))*10)+10+(i%16)*20,224+Math.floor(i/16)*22,1);});
+  /* Die Namen dazu: nach einem Lauf weiß man sonst nicht mehr, welches
+     Symbol was war. Was nicht mehr hinpasst, wird gezählt statt genannt. */
+  const reihen=Math.min(2,Math.ceil(G.runItems.length/16));
+  const namen=G.runItems.map(id=>ITEMS[id]?ITEMS[id].name:id);
+  const zeilen=textZeilen(namen.join(' · '),7,520);
+  const platz=Math.max(0,Math.floor((316-(224+reihen*22+8))/9));
+  const sichtbar=zeilen.slice(0,Math.max(0,platz-(zeilen.length>platz?1:0)));
+  sichtbar.forEach((z,i)=>txt(z,W/2,224+reihen*22+10+i*9,'#8a8276',7));
+  if(zeilen.length>sichtbar.length)
+    txt('… und '+(namen.length-sichtbar.join(' · ').split(' · ').length)+' weitere',
+        W/2,224+reihen*22+10+sichtbar.length*9,'#6a6a76',7);
   txt('ENTER — zurück ins Menü',W/2,H-28,'#e8e0d0',11);
 }
 
@@ -5518,6 +5604,9 @@ function updateMenu(){
   } else if(G.state==='pause'){
     if(Input.pause()||Input.hit('Escape')) G.state='game';
     if(Input.hit('KeyX')){ G.state='postrun'; G.result='dead'; saveData.deaths++; saveSave(); }
+    // in der Itemliste blättern
+    if(Input.hit('ArrowLeft')||Input.hit('KeyA')){ menu.itemSeite=(menu.itemSeite||0)-1; Sfx.tick(); }
+    if(Input.hit('ArrowRight')||Input.hit('KeyD')){ menu.itemSeite=(menu.itemSeite||0)+1; Sfx.tick(); }
   } else if(G.state==='postrun'){
     if(Input.confirm()){ G.state='menu'; menu.seedInput=''; }
   }
@@ -5552,7 +5641,8 @@ requestAnimationFrame(frame);
 /* Test-Hooks (für automatisierte Smoke-Tests) */
 window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES,
-  HANDSCHRIFTEN, get raumBildStand(){return bildStand;} };
+  HANDSCHRIFTEN, get raumBildStand(){return bildStand;},
+  get tafelnGezeichnet(){return tafelnGezeichnet;} };
 </script>
 </body>
 </html>

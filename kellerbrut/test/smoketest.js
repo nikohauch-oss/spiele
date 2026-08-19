@@ -1204,6 +1204,78 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 17. Item-Erklärungen ---
+if(want(17)){
+console.log('\n[17] Was die Items machen');
+await withPage(async(page,errs)=>{
+  // Jedes Item braucht einen Namen und eine Wirkungsbeschreibung, sonst
+  // steht auf der Tafel nichts Brauchbares.
+  const texte=await page.evaluate(()=>{
+    const maengel=[];
+    for(const id in KB.ITEMS){
+      const it=KB.ITEMS[id];
+      if(!it.name) maengel.push(id+': kein Name');
+      if(!it.desc||it.desc.length<6) maengel.push(id+': keine Wirkungsbeschreibung');
+      if(it.desc&&it.desc.length>52) maengel.push(id+': Beschreibung zu lang ('+it.desc.length+')');
+      // muss in zwei Zeilen der Tafel passen
+      if(it.desc&&textZeilen(it.desc,7,128).length>2) maengel.push(id+': passt nicht auf die Tafel');
+    }
+    return {anzahl:Object.keys(KB.ITEMS).length, maengel};
+  });
+  note(texte.maengel.length===0,'jedes Item sagt in ein bis zwei Zeilen, was es tut',
+       texte.maengel.slice(0,4).join('; '));
+
+  // Die Tafel erscheint nur in der Nähe des Podests.
+  const tafel=await page.evaluate(async()=>{
+    const zaehlen=()=>KB.tafelnGezeichnet;
+    for(let s=0;s<80;s++){
+      startRun(0,'TAF'+s);
+      const f=KB.G.floor;
+      const k=Object.keys(f.rooms).find(k=>f.rooms[k].type==='treasure');
+      if(!k) continue;
+      enterRoom(k,null); KB.G.bossIntro=null;
+      const pd=KB.G.room.pedestals[0]; if(!pd) continue;
+      pd.cd=99;                                   // nicht aufheben
+      const p=KB.G.player;
+      p.x=pd.x+200; p.y=pd.y;                     // weit weg
+      await new Promise(r=>requestAnimationFrame(r));
+      const fern=zaehlen();
+      p.x=pd.x; p.y=pd.y+22;                      // dicht dran
+      await new Promise(r=>requestAnimationFrame(r));
+      const nah=zaehlen();
+      return {fern, nah, gefunden:true};
+    }
+    return {gefunden:false};
+  });
+  note(tafel.gefunden&&tafel.nah>0,'am Podest steht, was das Item bewirkt');
+  note(tafel.gefunden&&tafel.fern===0,'aus der Ferne bleibt die Tafel weg');
+
+  // Pausenliste: zeigt alles, blättert, und man kommt wieder heraus.
+  const pause=await page.evaluate(async()=>{
+    startRun(0,'PLIST'); KB.G.bossIntro=null;
+    const ids=Object.keys(KB.ITEMS).filter(id=>KB.ITEMS[id].type==='passive').slice(0,15);
+    for(const id of ids) acquireItem(id,null);
+    KB.G.player.itemGet=null;
+    KB.G.state='pause';
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const habe=KB.G.player.items.length+(KB.G.player.active?1:0);
+    return {habe, seite:menu.itemSeite, state:KB.G.state};
+  });
+  note(pause.habe===15,'die Pause kennt alle eingesammelten Items','('+pause.habe+')');
+
+  const raus=await page.evaluate(async()=>{
+    // Blättern darf das Fortsetzen nicht blockieren
+    Input.press&&Input.press('ArrowRight');
+    KB.G.state='pause';
+    await new Promise(r=>requestAnimationFrame(r));
+    return KB.G.state;
+  });
+  note(raus==='pause','Blättern verlässt die Pause nicht');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

@@ -214,6 +214,20 @@ den nächsten Gegner, die *Glutmotte* lässt brennende Glut fallen, der
 Geschosse ab, und das *Späherauge* jagt selbstständig Gegner mit
 durchschlagenden Schüssen.
 
+**Was ein Item tut, steht dabei.** An drei Stellen:
+
+- **Am Podest**, sobald man nahe genug steht — Name, Wirkung und Preis, im
+  Laden in Münzen, in der Teufelskammer in Herzcontainern. Gerade dort will
+  man das wissen, *bevor* man zugreift. Dasselbe gilt für Items, die ein
+  Gegner hat fallen lassen.
+- **Im Pausenbildschirm** als Liste mit Namen und Wirkung, sieben je Seite,
+  geblättert mit ◄ ►. Das Aktivitem steht oben und ist mit `[Q]` markiert,
+  die Pille oder Karte in der Tasche darunter. Bei zwanzig Fundstücken sagen
+  einem bloße Symbole nichts mehr.
+- **Im Post-Run-Screen** stehen unter den Symbolen alle Namen des Laufs.
+
+Beim Aufheben zeigt ohnehin ein Banner Namen und Wirkung.
+
 **Item-Wirkungen sind sichtbar.** Elementare Schüsse ziehen ihre Spur — Gift
 qualmt grün, Feuer sprüht Funken, Frost stäubt. Getroffene Gegner zeigen den
 Zustand deutlich: Vergiftete blubbern und färben sich grün, Brennende lodern,
@@ -347,7 +361,8 @@ Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
 jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
 Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
 der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
-Eigenheiten aller neun Spielfiguren, die
+Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
+beschreibung hat, die auch auf die Tafel passt, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate
