@@ -1505,8 +1505,12 @@ await withPage(async(page,errs)=>{
     const erg={};
 
     { // Nabelkind hängt, bis die Schnur reißt
-      const o=bau('nabelkind'); const x0=o.e.x;
-      laufen(o,90); const geschwungen=Math.abs(o.e.x-x0)>20&&o.e.fly;
+      /* Über eine volle Pendelperiode messen, nicht über einen Ausschnitt:
+         startet es zufällig nahe am Umkehrpunkt, bewegt es sich kurzzeitig kaum. */
+      const o=bau('nabelkind'); let min=o.e.x, max=o.e.x;
+      for(let i=0;i<260;i++){ o.p.red=99; updateGame(1/60);
+        min=Math.min(min,o.e.x); max=Math.max(max,o.e.x); }
+      const geschwungen=(max-min)>40&&o.e.fly;
       o.e.hp=o.e.maxHp*0.3; laufen(o,30);
       erg.nabel={geschwungen, gefallen:!!o.e.gefallen&&!o.e.fly};
     }
@@ -1517,20 +1521,30 @@ await withPage(async(page,errs)=>{
       laufen(o,2);
       erg.haeutling={spur, rutscht:!!o.p.aufGlatt};
     }
-    /* Geschosse fliegen weg und verschwinden an der Wand — am Ende zu zählen
-       ergäbe null. Deshalb wird jeder neue Schuss laufend mitgezählt. */
+    /* Geschosse fliegen weg und verschwinden an der Wand. Sie über die Länge
+       der Liste zu zählen geht schief — in einem Tick kann eines entstehen
+       und eines vergehen. Gezählt werden deshalb die Geschoss-Objekte selbst. */
     const schuesseZaehlen=(o,n,je)=>{
-      let sum=0;
-      for(let i=0;i<n;i++){ const a=KB.G.eshots.length; o.p.red=99; updateGame(1/60);
-        if(KB.G.eshots.length>a) sum+=KB.G.eshots.length-a;
+      const gesehen=new Set();
+      for(let i=0;i<n;i++){ o.p.red=99; o.p.iframes=0; updateGame(1/60);
+        for(const sh of KB.G.eshots) gesehen.add(sh);
         if(je) je(); }
-      return sum;
+      return gesehen.size;
     };
-    { const o=bau('vielauge');
-      erg.vielauge={schuesse:schuesseZaehlen(o,300)}; }
-    { const o=bau('zwillingsbalg'); const koepfe=new Set();
-      const sum=schuesseZaehlen(o,300,()=>koepfe.add(o.e.kopf?1:0));
-      erg.zwilling={koepfe:koepfe.size, schuesse:sum}; }
+    /* Schützen bleiben für die Messung stehen und der Spieler hält Abstand:
+       säße der Gegner auf ihm, träfe jedes Geschoss noch im selben Tick und
+       wäre nie zu sehen. */
+    { const o=bau('vielauge',(e,p)=>{ e.spd=0; p.x=tx(2); p.y=ty(5); });
+      erg.vielauge={schuesse:schuesseZaehlen(o,600)}; }
+    { const o=bau('zwillingsbalg',(e,p)=>{ e.spd=0; p.x=tx(2); p.y=ty(5); });
+      /* Jeder Schuss schaltet den Kopf um. Die Wechsel zu zählen misst also
+         genau das Versprechen: er feuert, und immer abwechselnd. */
+      let letzter=o.e.kopf?1:0, wechsel=0;
+      const sum=schuesseZaehlen(o,600,()=>{
+        const jetzt=o.e.kopf?1:0;
+        if(jetzt!==letzter){ wechsel++; letzter=jetzt; }
+      });
+      erg.zwilling={wechsel, schuesse:sum}; }
     { const o=bau('schlundmutter'); laufen(o,300);
       erg.schlundmutter={brut:KB.G.enemies.filter(e=>e.type==='spinnling').length}; }
     { const o=bau('fingerbaum',(e,p)=>{ p.x=e.x; p.y=e.y+50; });
@@ -1541,9 +1555,11 @@ await withPage(async(page,errs)=>{
     { const o=bau('grabhusten',(e,p)=>{ p.x=e.x; p.y=e.y+80; });
       laufen(o,300);
       erg.husten={wolken:KB.G.creeps.filter(c=>c.sporen).length}; }
-    { const o=bau('nagelbraut');
-      for(let i=0;i<10;i++) damageEnemy(o.e,1);
-      erg.nagel={naegel:KB.G.creeps.filter(c=>c.nagel).length}; }
+    { /* Der Wurf entscheidet je Treffer; über dreißig Treffer ist das Ergebnis
+         nicht mehr vom Zufall abhängig. */
+      const o=bau('nagelbraut'); o.e.hp=999;
+      for(let i=0;i<30;i++) damageEnemy(o.e,1);
+      erg.nagel={naegel:KB.G.creeps.filter(c=>c.nagel).length, treffer:30}; }
     { const o=bau('kriechkiefer',(e,p)=>{ p.x=e.x; p.y=e.y+90; });
       let nah=999, fern=0;
       for(let i=0;i<400;i++){ o.p.red=99; o.p.x=tx(6); o.p.y=ty(5); updateGame(1/60);
@@ -1569,16 +1585,17 @@ await withPage(async(page,errs)=>{
        'der Häutling hinterlässt eine Spur, auf der man rutscht',
        '('+haken.haeutling.spur+' Flecken)');
   note(haken.vielauge.schuesse>0,'das Vielauge schießt','('+haken.vielauge.schuesse+' Geschosse)');
-  note(haken.zwilling.koepfe===2&&haken.zwilling.schuesse>0,
-       'der Zwillingsbalg wechselt zwischen beiden Köpfen');
+  note(haken.zwilling.wechsel>=3&&haken.zwilling.schuesse>=3,
+       'der Zwillingsbalg feuert abwechselnd aus beiden Köpfen',
+       '('+haken.zwilling.schuesse+' Schüsse, '+haken.zwilling.wechsel+' Kopfwechsel)');
   note(haken.schlundmutter.brut>0,'die Schlundmutter entlässt Spinnlinge',
        '('+haken.schlundmutter.brut+' Stück)');
   note(haken.finger.gepackt>0,'der Fingerbaum packt zu',
        '(bis zu '+haken.finger.gepackt+' s festgehalten)');
   note(haken.husten.wolken>0,'der Grabhusten wirft einen Sporenkegel',
        '('+haken.husten.wolken+' Wolken)');
-  note(haken.nagel.naegel>0,'die Nagelbraut verliert bei Treffern Nägel',
-       '('+haken.nagel.naegel+' aus 10 Treffern)');
+  note(haken.nagel.naegel>=8,'die Nagelbraut verliert bei Treffern Nägel',
+       '('+haken.nagel.naegel+' aus '+haken.nagel.treffer+' Treffern)');
   note(haken.kiefer.nah<40&&haken.kiefer.fern>90,
        'der Kriechkiefer beißt im Vorbeilauf und dreht wieder ab',
        '(näher als '+haken.kiefer.nah+', weiter als '+haken.kiefer.fern+' px)');
