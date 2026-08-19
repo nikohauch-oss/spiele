@@ -495,27 +495,33 @@ const FLOORS=[
     Füllung, damit sich die Kämpfe nicht zu gleichförmig anfühlen. */
  {name:'Feuchter Keller', bg:'#1a1512',fa:'#2b241d',fb:'#241e18',wall:'#3d2f22',accent:'#5a442f',
   pool:['tropfling','kellerassel','moosbalg',
-        'blobling','huepfer','zuckfliege','talgwicht','zwiebelbalg'],
+        'blobling','huepfer','zuckfliege','talgwicht','zwiebelbalg',
+        'nabelkind','spiegelbalg'],
   bosses:['matschkoenig','kloakenfuerst'],mus:0},
  {name:'Pilzgrotte',      bg:'#121a14',fa:'#1d2b20',fb:'#18241b',wall:'#24402b',accent:'#3a5f42',
   pool:['huetling','sporenschleuder','myzelwurm',
-        'sporling','zuckfliege','rennratte','spinnwirt','sporenwirt'],
+        'sporling','zuckfliege','rennratte','spinnwirt','sporenwirt',
+        'schlundmutter','grabhusten'],
   bosses:['augenwaechter','schlundvater'],mus:1},
  {name:'Knochengang',     bg:'#171717',fa:'#262624',fb:'#201f1e',wall:'#3b3a36',accent:'#5c5a52',
   pool:['klapperer','schaedelroller','rippenwaechter',
-        'knochenwurf','schleicher','glockenmaul','schlundling','kettenhund'],
+        'knochenwurf','schleicher','glockenmaul','schlundling','kettenhund',
+        'kriechkiefer','nagelbraut'],
   bosses:['knochengeneral','gehaengte'],mus:2},
  {name:'Giftschlund',     bg:'#160f1b',fa:'#251a2e',fb:'#1e1526',wall:'#3a2749',accent:'#5b3a74',
   pool:['saeureblase','laugenkriecher','giftspruehler',
-        'pulsqualle','brutmutter','sporenwirt','aschgeist','laternenfisch'],
+        'pulsqualle','brutmutter','sporenwirt','aschgeist','laternenfisch',
+        'vielauge','ohrwurm'],
   bosses:['giftbrut','fleischmade'],mus:3},
  {name:'Blutkammer',      bg:'#1b0e0e',fa:'#2e1717',fb:'#261212',wall:'#4a2020',accent:'#6e2e2e',
   pool:['blutegel','aderngeist','herzklopfer',
-        'stachelkugel','grabgraeber','klingenrad','steinruecken','schimmelherz'],
+        'stachelkugel','grabgraeber','klingenrad','steinruecken','schimmelherz',
+        'haeutling','zwillingsbalg'],
   bosses:['doppelherz','kammermutter'],mus:0},
  {name:'Wurzel des Kellers',bg:'#0d0d12',fa:'#191926',fb:'#14141f',wall:'#26263d',accent:'#3d3d5c',
   pool:['wurzelgreifer','leerling','knotenwaechter',
-        'grabgraeber','stachelkugel','klingenrad','steinruecken','schlundling','glockenmaul'],
+        'grabgraeber','stachelkugel','klingenrad','steinruecken','schlundling','glockenmaul',
+        'fingerbaum','wachslicht'],
   bosses:['kellervater','bittender'],mus:3},
 ];
 
@@ -600,6 +606,24 @@ const ENEMY_TYPES={
  wurzelgreifer:{name:'Wurzelgreifer',hp:20,spd:0,  r:11, ai:'burrow', etage:6},
  leerling:    {name:'Leerling',     hp:14, spd:60, r:10, ai:'ghost',  fly:true, etage:6},
  knotenwaechter:{name:'Knotenwächter',hp:38,spd:30,r:14, ai:'panzer', etage:6},
+
+ /* --- Zwölf neue Kreaturen aus dem Bestiarium -------------------------
+    Jede bringt einen eigenen Haken mit, keiner ist bloß ein anderer
+    Klumpen. Sie hängen als Füllung in den Etagenpools, die drei
+    Kennzeichen-Gegner je Etage bleiben davon unberührt. */
+ nabelkind:   {name:'Nabelkind',    hp:26, spd:0,  r:13, ai:'nabel',   fly:true},
+ haeutling:   {name:'Häutling',     hp:22, spd:96, r:11, ai:'haeutling'},
+ vielauge:    {name:'Vielauge',     hp:34, spd:34, r:14, ai:'vielauge', shotCd:1.6},
+ zwillingsbalg:{name:'Zwillingsbalg',hp:30,spd:52, r:13, ai:'zwilling', shotCd:1.1},
+ schlundmutter:{name:'Schlundmutter',hp:44,spd:26, r:16, ai:'schlundmutter'},
+ fingerbaum:  {name:'Fingerbaum',   hp:38, spd:0,  r:15, ai:'finger'},
+ grabhusten:  {name:'Grabhusten',   hp:28, spd:40, r:12, ai:'husten'},
+ nagelbraut:  {name:'Nagelbraut',   hp:36, spd:44, r:13, ai:'nagel'},
+ kriechkiefer:{name:'Kriechkiefer', hp:24, spd:74, r:11, ai:'kiefer'},
+ wachslicht:  {name:'Wachslicht',   hp:30, spd:36, r:12, ai:'wachs'},
+ ohrwurm:     {name:'Ohrwurm',      hp:40, spd:60, r:14, ai:'ohrwurm'},
+ spiegelbalg: {name:'Spiegelbalg',  hp:32, spd:0,  r:12, ai:'spiegel'},
+ spinnling:   {name:'Spinnling',    hp:5,  spd:88, r:6,  ai:'chase', noChamp:true},
 };
 
 /* Boss-Schema: KI-Muster stecken in updateBoss (Sektion 9).
@@ -1408,9 +1432,14 @@ function updatePlayer(dt){
   // Im Netz bleibt nur ein Drittel Tempo; die Ringwelle des Glockenmauls
   // lässt kurz taumeln, dann greift die Steuerung nur gedämpft.
   p.taumeln=Math.max(0,(p.taumeln||0)-dt);
+  p.gepackt=Math.max(0,(p.gepackt||0)-dt);
   const netz=p.imNetz&&!p.flags.has('flight')?0.34:1;
-  const griff=p.taumeln>0?0.25:1;
-  const fric=Math.pow(0.0001,dt);
+  /* Griff = wie gut die Steuerung greift. Der Fingerbaum nimmt sie ganz,
+     die Ringwelle des Glockenmauls dämpft sie. */
+  const griff=p.gepackt>0?0:(p.taumeln>0?0.25:1);
+  /* Auf der nassen Spur des Häutlings rutscht man: die Reibung greift kaum
+     noch, man trägt seinen Schwung mit. */
+  const fric=Math.pow(p.aufGlatt&&!p.flags.has('flight')?0.24:0.0001,dt);
   p.vx+=(mv.x*s.speed*60*netz-p.vx)*(1-fric)*griff;
   p.vy+=(mv.y*s.speed*60*netz-p.vy)*(1-fric)*griff;
   const mode=p.flags.has('flight')?'fly':'walk';
@@ -1895,11 +1924,12 @@ function groundHazards(p,dt){
   }
   const fh=circleHitsGrid(p.x,p.y,p.r,'fly'); // Feuer ist solide; Berührung prüfen
   if(fh&&fh.cell.t==='fire') hurtPlayer(1);
-  p.imNetz=false; p.inSporen=false;
+  p.imNetz=false; p.inSporen=false; p.aufGlatt=false;
   for(const c of G.creeps){
     if(!c.feindlich||dist(p,c)>=c.r) continue;
     if(c.netz){ p.imNetz=true; continue; }        // bremst, verletzt aber nicht
     if(c.sporen){ p.inSporen=true; continue; }    // nimmt die Sicht
+    if(c.glatt){ p.aufGlatt=true; continue; }     // Häutlingsspur: man rutscht
     if(!p.flags.has('spikeimmun')) hurtPlayer(1);
   }
 }
@@ -2285,6 +2315,15 @@ function bossBarInfo(){
 
 function damageEnemy(e,d,winkel){
   if(e.dead) return;
+  /* Die Nagelbraut ist gespickt: jeder Treffer schlägt ein paar Nägel
+     heraus, die im Raum liegen bleiben und selbst verletzen. Sie zu
+     erlegen macht den Raum also gefährlicher, nicht sicherer. */
+  if(e.ai==='nagel'&&frand.chance(0.55)){
+    const a=frand()*TAU, d0=e.r+8+frand()*14;
+    G.creeps.push({x:e.x+Math.cos(a)*d0,y:e.y+Math.sin(a)*d0,
+                   r:7,t:9,feindlich:true,nagel:true});
+    Sfx.tick();
+  }
   /* Steinrücken: Treffer aus dem vorderen Halbkreis prallen ab. Der Winkel
      ist die Flugrichtung des Geschosses; trifft sie den Panzer frontal,
      zeigt sie ungefähr entgegen der Blickrichtung. */
@@ -2747,6 +2786,160 @@ function updateEnemyAI(e,dt,slow,mode){
 
     /* Steinrücken: dreht sich stetig zum Spieler. Treffer von vorn prallen ab,
        nur die ungeschützte Rückseite nimmt Schaden. */
+    /* --- Nabelkind: pendelt an der Schnur, bis man sie durchtrennt ---- */
+    case 'nabel': {
+      if(e.ankerX===undefined){ e.ankerX=e.x; e.ankerY=RY+8; e.schwung=frand()*TAU; }
+      if(e.hp>e.maxHp*0.5){                       // hängt noch
+        e.schwung+=dt*slow*1.5;
+        e.x=e.ankerX+Math.sin(e.schwung)*74;
+        e.y=e.ankerY+70+Math.cos(e.schwung*2)*10;
+        e.fly=true;
+      } else {                                    // abgerissen: kriecht weiter
+        if(!e.gefallen){ e.gefallen=true; e.fly=false; e.spd=54;
+          burst(e.x,e.y,'#8a3a44',10); Sfx.splash(); }
+        chaseMove(e,dt,slow,mode);
+      }
+      break; }
+
+    /* --- Häutling: rennt und hinterlässt eine nasse, glatte Spur ------ */
+    case 'haeutling': {
+      chaseMove(e,dt,slow,mode,1.0);
+      e.gcd=(e.gcd||0)-dt;
+      if(e.gcd<=0){ e.gcd=0.3;
+        G.creeps.push({x:e.x,y:e.y,r:13,t:4,feindlich:true,glatt:true}); }
+      break; }
+
+    /* --- Vielauge: schießt dorthin, wo gerade die meisten Augen offen
+       sind — für den Spieler heißt das: unvorhersehbare Fächer.        */
+    case 'vielauge': {
+      chaseMove(e,dt,slow,mode,0.6);
+      if(e.cd<=0){
+        e.cd=e.def.shotCd||1.6;
+        const a=ang(e,p);
+        const n=2+frand.int(3);
+        for(let i=0;i<n;i++) fireEshot(e.x,e.y,a+frand.range(-0.7,0.7),120);
+      }
+      break; }
+
+    /* --- Zwillingsbalg: zwei Köpfe, die sich abwechseln, nie gleichzeitig */
+    case 'zwilling': {
+      chaseMove(e,dt,slow,mode,0.7);
+      if(e.cd<=0){
+        e.cd=e.def.shotCd||1.1;
+        e.kopf=e.kopf?0:1;                        // Wechsel — sichtbar am Glühen
+        const a=ang(e,p), seite=(e.kopf?1:-1)*0.28;
+        fireEshot(e.x+(e.kopf?7:-7),e.y-6,a+seite,140);
+      }
+      break; }
+
+    /* --- Schlundmutter: der Bauch klappt auf und entlässt Spinnlinge -- */
+    case 'schlundmutter': {
+      chaseMove(e,dt,slow,mode,0.5);
+      e.bauch=Math.max(0,(e.bauch||0)-dt);
+      if(e.cd<=0){
+        e.cd=frand.range(2.6,3.6); e.bauch=1.0;
+        const wie=G.enemies.filter(x=>x.type==='spinnling').length;
+        if(wie<6) for(let i=0;i<2;i++)
+          spawnEnemy('spinnling',e.x+frand.range(-12,12),e.y+12,null);
+        Sfx.splash();
+      }
+      break; }
+
+    /* --- Fingerbaum: wächst fest, greift zu. Wer gepackt wird, steht --- */
+    case 'finger': {
+      e.greif=Math.max(0,(e.greif||0)-dt);
+      if(e.cd<=0&&dist(e,p)<78){
+        e.cd=3.2; e.greif=0.5;
+        einschlagSetzen(p.x,p.y,26,0.5,0,'#d8c6ac');   // nur Vorwarnung, kein Schaden
+        e.zielX=p.x; e.zielY=p.y;
+      }
+      if(e.greif>0&&e.greif<0.02&&dist(p,{x:e.zielX,y:e.zielY})<30){
+        p.gepackt=2.0; p.vx*=0.2; p.vy*=0.2;
+        addText(p.x,p.y-18,'gepackt!','#d8c6ac'); Sfx.hit();
+      }
+      break; }
+
+    /* --- Grabhusten: wirft einen Kegel aus Sporen vor sich ------------ */
+    case 'husten': {
+      if(e.state===0){
+        chaseMove(e,dt,slow,mode,0.8);
+        if(e.cd<=0&&dist(e,p)<150){ e.state=1; e.t=0; e.hustA=ang(e,p); }
+      } else {
+        if(e.t>0.35){
+          for(let i=-2;i<=2;i++){
+            const a=e.hustA+i*0.22, d=34+Math.abs(i)*6;
+            G.creeps.push({x:e.x+Math.cos(a)*d,y:e.y+Math.sin(a)*d,
+                           r:22,t:3.4,feindlich:true,sporen:true});
+          }
+          Sfx.splash(); e.state=0; e.cd=3.0;
+        }
+      }
+      break; }
+
+    /* --- Nagelbraut: jeder Treffer schlägt Nägel heraus, die liegen
+       bleiben. Das Ausschlagen steckt in damageEnemy.                  */
+    case 'nagel': {
+      chaseMove(e,dt,slow,mode,0.9);
+      break; }
+
+    /* --- Kriechkiefer: beißt im Vorbeilaufen und dreht sofort ab ------ */
+    case 'kiefer': {
+      if(e.state===0){                            // anschleichen
+        chaseMove(e,dt,slow,mode,0.7);
+        if(e.cd<=0&&dist(e,p)<120){
+          e.state=1; e.t=0; const a=ang(e,p);
+          e.vx=Math.cos(a)*260; e.vy=Math.sin(a)*260; Sfx.tick();
+        }
+      } else if(e.state===1){                     // Biss im Vorbeilauf
+        moveEntity(e,e.vx*dt*slow,e.vy*dt*slow,mode);
+        if(e.t>0.42){ e.state=2; e.t=0;
+          const a=ang(e,p)+Math.PI+frand.range(-0.5,0.5);
+          e.vx=Math.cos(a)*170; e.vy=Math.sin(a)*170; }
+      } else {                                    // wegdrehen
+        moveEntity(e,e.vx*dt*slow,e.vy*dt*slow,mode);
+        if(e.t>0.5){ e.state=0; e.cd=frand.range(0.5,1.0); }
+      }
+      break; }
+
+    /* --- Wachslicht: schmilzt im Laufen, die Pfütze brennt ----------- */
+    case 'wachs': {
+      chaseMove(e,dt,slow,mode,0.8);
+      e.gcd=(e.gcd||0)-dt;
+      if(e.gcd<=0){
+        e.gcd=0.55;
+        G.creeps.push({x:e.x,y:e.y,r:11,t:3.0,feindlich:true,glut:true});
+        e.r=Math.max(6,e.r-0.35);                 // wird kleiner, bis nur der Docht bleibt
+        e.hp=Math.max(1,e.hp-0.5);
+      }
+      break; }
+
+    /* --- Ohrwurm: fährt durch die Wand, nur draußen ist er zu treffen - */
+    case 'ohrwurm': {
+      if(e.state===0){                            // in der Wand
+        e.ghosted=true;
+        e.x=lerp(e.x,clamp(p.x,RX+30,RX+COLS*TILE-30),0.9*dt);
+        e.y=lerp(e.y,RY-6,2.2*dt);
+        if(e.cd<=0){ e.state=1; e.t=0; e.cd=frand.range(2.4,3.4); }
+      } else {                                    // herausgeschoben
+        e.ghosted=false;
+        const raus=Math.sin(Math.min(1,e.t/1.6)*Math.PI);
+        e.y=RY-6+raus*96;
+        if(e.cd<=1.8&&e.cd>1.72){
+          const a=ang(e,p);
+          for(const off of [-0.2,0,0.2]) fireEshot(e.x,e.y,a+off,130);
+        }
+        if(e.t>1.6){ e.state=0; e.ghosted=true; }
+      }
+      break; }
+
+    /* --- Spiegelbalg: macht jeden Schritt spiegelverkehrt mit. Man
+       bekommt ihn nur in einer Ecke zu fassen.                        */
+    case 'spiegel': {
+      const mx=RX+COLS*TILE/2, my=RY+ROWS*TILE/2;
+      const zx=mx-(p.x-mx), zy=my-(p.y-my);
+      e.x=lerp(e.x,zx,3.2*dt*slow); e.y=lerp(e.y,zy,3.2*dt*slow);
+      break; }
+
     case 'panzer': {
       if(e.blick===undefined) e.blick=ang(e,p);
       const ziel=ang(e,p);
@@ -3998,6 +4191,20 @@ function drawRoom(){
         ctx.ellipse(c.x,c.y,c.r*rr,c.r*0.6*rr,0,0,TAU); ctx.stroke(); }
       continue;
     }
+    if(c.nagel){                                  // ausgeschlagener Nagel
+      ctx.strokeStyle=`rgba(150,142,128,${a*1.6})`; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(c.x-4,c.y+3); ctx.lineTo(c.x+4,c.y-3); ctx.stroke();
+      ctx.fillStyle=`rgba(200,192,176,${a*1.6})`;
+      ctx.beginPath(); ctx.arc(c.x+4,c.y-3,2,0,TAU); ctx.fill();
+      continue;
+    }
+    if(c.glatt){                                  // nasse Spur des Häutlings
+      ctx.fillStyle=`rgba(150,40,50,${a*0.8})`;
+      ctx.beginPath(); ctx.ellipse(c.x,c.y,c.r,c.r*0.55,0,0,TAU); ctx.fill();
+      ctx.fillStyle=`rgba(230,180,190,${a*0.5})`;
+      ctx.beginPath(); ctx.ellipse(c.x-c.r*0.25,c.y-c.r*0.14,c.r*0.4,c.r*0.2,0,0,TAU); ctx.fill();
+      continue;
+    }
     const unten=c.feindlich?(c.glut?`rgba(190,70,20,${a})`:`rgba(120,60,160,${a})`)
                            :(c.glut?`rgba(210,90,20,${a})`:`rgba(120,200,60,${a})`);
     const oben =c.feindlich?(c.glut?`rgba(255,150,50,${a*0.8})`:`rgba(170,110,210,${a*0.7})`)
@@ -4624,6 +4831,157 @@ function drawEnemy(e){
   const tint=e.champ?e.champ.tint:null;
   const col=c=>flash?'#ffffff':(tint||c);
   switch(T){
+    /* --- Die zwölf Neuen ------------------------------------------- */
+    case 'nabelkind': {
+      if(!e.gefallen){                            // Schnur zur Decke
+        ctx.strokeStyle='#6e2530'; ctx.lineWidth=2.6;
+        ctx.beginPath(); ctx.moveTo(e.ankerX||e.x,RY-10);
+        ctx.quadraticCurveTo((e.ankerX||e.x)+(e.x-(e.ankerX||e.x))*0.4,y-40,e.x,y-e.r);
+        ctx.stroke();
+      }
+      fleisch(e.x,y,e.r,e.r*1.05,0,col('#d9b9a6'),col('#b98f7c'),'#4a2a26');
+      hohlauge(e.x-e.r*0.34,y-e.r*0.1,e.r*0.19,'#ffd07a',0.8);
+      hohlauge(e.x+e.r*0.34,y-e.r*0.16,e.r*0.19,'#ffd07a',0.8);
+      zaehneSpiel(e.x,y+e.r*0.5,e.r*0.8,7,e.r*0.26,true,'#efe4cc');
+      break; }
+    case 'haeutling': {
+      fleisch(e.x,y,e.r*0.85,e.r*1.15,0,col('#c8555c'),col('#8e2b34'),'#3a0e14');
+      ctx.strokeStyle='#5e1219'; ctx.lineWidth=1.2;
+      for(let i=-1;i<=1;i++){ ctx.beginPath();
+        ctx.moveTo(e.x+i*4,y-e.r*0.8); ctx.lineTo(e.x+i*4.6,y+e.r*0.8); ctx.stroke(); }
+      disc(e.x,y-e.r*1.05,e.r*0.68,col('#a33c44'));
+      hohlauge(e.x-e.r*0.28,y-e.r*1.1,e.r*0.17,'#ff8a6a',0.9);
+      hohlauge(e.x+e.r*0.28,y-e.r*1.1,e.r*0.17,'#ff8a6a',0.9);
+      break; }
+    case 'vielauge': {
+      fleisch(e.x,y,e.r,e.r*1.06,0,col('#9a8ea8'),col('#6a5d7c'),'#241c30');
+      for(let i=0;i<9;i++){
+        const a=i*2.399, d=Math.sqrt(i/9)*e.r*0.72;
+        const ax=e.x+Math.cos(a)*d, ay=y+Math.sin(a)*d*0.95;
+        const auf=(Math.sin(performance.now()/700+i*1.7)+1)/2;
+        if(auf>0.28){
+          disc(ax,ay,e.r*0.2,'#efe8d8');
+          disc(ax+Math.cos(performance.now()/900+i)*1.3,
+               ay+Math.sin(performance.now()/900+i)*1.3,e.r*0.09,'#1a1420');
+        } else { ctx.strokeStyle='#3a2f46'; ctx.lineWidth=1.6;
+          ctx.beginPath(); ctx.moveTo(ax-e.r*0.18,ay); ctx.lineTo(ax+e.r*0.18,ay); ctx.stroke(); }
+      }
+      break; }
+    case 'zwillingsbalg': {
+      fleisch(e.x,y+e.r*0.3,e.r*0.95,e.r*0.82,0,col('#b9a98e'),col('#8a7a60'),'#332a1e');
+      for(const [vz,gl] of [[-1,'#8affa0'],[1,'#ff8a8a']]){
+        const aktiv=(vz<0)===!e.kopf;
+        fleisch(e.x+vz*e.r*0.46,y-e.r*0.5,e.r*0.46,e.r*0.5,0,
+                col('#c8b89c'),col('#98886c'),'#3a3122');
+        hohlauge(e.x+vz*e.r*0.72,y-e.r*0.6,e.r*0.15,gl,aktiv?1:0.3);
+        hohlauge(e.x+vz*e.r*0.28,y-e.r*0.56,e.r*0.15,gl,aktiv?1:0.3);
+        zaehneSpiel(e.x+vz*e.r*0.46,y-e.r*0.2,e.r*0.44,5,e.r*0.16,true,'#efe4cc');
+      }
+      break; }
+    case 'schlundmutter': {
+      fleisch(e.x,y,e.r*1.1,e.r*0.9,0,col('#a89a72'),col('#786a48'),'#2a2414');
+      const auf=e.bauch||0;
+      if(auf>0.05) ellipse(e.x,y+e.r*0.15,e.r*0.6*auf+3,e.r*0.45*auf+2,0,'#170d10');
+      zaehneSpiel(e.x,y-e.r*0.45,e.r*1.25,11,e.r*0.22,true,'#e8dcc0');
+      zaehneSpiel(e.x,y+e.r*0.7,e.r*1.25,11,e.r*0.22,false,'#e8dcc0');
+      hohlauge(e.x-e.r*0.6,y-e.r*0.55,e.r*0.17,'#ffb060',0.9);
+      hohlauge(e.x+e.r*0.6,y-e.r*0.55,e.r*0.17,'#ffb060',0.9);
+      break; }
+    case 'fingerbaum': {
+      ellipse(e.x,y+e.r*0.9,e.r*1.1,e.r*0.32,0,'#3a2f22');
+      fleisch(e.x,y+e.r*0.3,e.r*0.42,e.r*0.75,0,col('#c2ae92'),col('#8f7c60'),'#332a1c');
+      const gr=Math.max(0,Math.sin((1-(e.greif||0)/0.5)*Math.PI));
+      ctx.strokeStyle=col('#a89076'); ctx.lineWidth=e.r*0.2; ctx.lineCap='round';
+      for(let i=0;i<5;i++){
+        const a=-Math.PI/2+(i-2)*0.4+gr*0.4*(i%2?1:-1), l=e.r*1.5;
+        ctx.beginPath(); ctx.moveTo(e.x,y-e.r*0.1);
+        ctx.lineTo(e.x+Math.cos(a)*l,y-e.r*0.1+Math.sin(a)*l); ctx.stroke();
+        disc(e.x+Math.cos(a)*l,y-e.r*0.1+Math.sin(a)*l,e.r*0.15,col('#d8c6ac'));
+      }
+      ctx.lineCap='butt';
+      break; }
+    case 'grabhusten': {
+      fleisch(e.x-e.r*0.15,y+e.r*0.3,e.r*0.95,e.r*0.85,0.2,
+              col('#8e8878'),col('#5e594c'),'#221f18');
+      fleisch(e.x-e.r*0.35,y-e.r*0.55,e.r*0.5,e.r*0.44,0.3,
+              col('#a49a86'),col('#6e6656'),'#221f18');
+      hohlauge(e.x-e.r*0.55,y-e.r*0.6,e.r*0.17,'#b0ff8a',0.75);
+      zaehneSpiel(e.x-e.r*0.28,y-e.r*0.28,e.r*0.5,5,e.r*0.18,true,'#d8cdb4');
+      break; }
+    case 'nagelbraut': {
+      fleisch(e.x,y+e.r*0.2,e.r*0.8,e.r*1.1,0,col('#cfc6b4'),col('#9a917e'),'#332e26');
+      ctx.save(); ctx.globalAlpha=0.72;                 // Schleier
+      vieleck([[e.x-e.r*0.85,y-e.r*0.45],[e.x+e.r*0.85,y-e.r*0.45],
+               [e.x+e.r*1.05,y+e.r*1.2],[e.x-e.r*1.05,y+e.r*1.2]],col('#ded5c0'));
+      ctx.restore();
+      for(let i=0;i<7;i++){                              // Nägel
+        const a=rausch(i*17+Math.floor(e.x))*TAU, d=e.r*(0.5+rausch(i*5)*0.5);
+        const nx=e.x+Math.cos(a)*d, ny=y+e.r*0.2+Math.sin(a)*d*0.9;
+        ctx.strokeStyle='#6a6156'; ctx.lineWidth=1.8;
+        ctx.beginPath(); ctx.moveTo(nx,ny);
+        ctx.lineTo(nx+Math.cos(a)*5,ny+Math.sin(a)*5); ctx.stroke();
+      }
+      hohlauge(e.x-e.r*0.28,y-e.r*0.12,e.r*0.18,'#e8e0ff',0.8);
+      hohlauge(e.x+e.r*0.28,y-e.r*0.12,e.r*0.18,'#e8e0ff',0.8);
+      break; }
+    case 'kriechkiefer': {
+      const k=formSchluessel();
+      handZug([[e.x-e.r*1.3,y-e.r*0.5],[e.x+e.r*1.3,y-e.r*0.5],
+               [e.x+e.r,y+e.r*0.6],[e.x-e.r,y+e.r*0.6]],k);
+      ctx.fillStyle=col('#cfc6ae'); ctx.fill();
+      handZug([[e.x-e.r*1.3,y-e.r*0.5],[e.x+e.r*1.3,y-e.r*0.5],
+               [e.x+e.r,y+e.r*0.6],[e.x-e.r,y+e.r*0.6]],k+0.9);
+      tusche(1.8,KONTUR,k);
+      for(let i=0;i<6;i++){
+        const zx=e.x-e.r+i*e.r*0.4, l=e.r*0.5+Math.sin(performance.now()/90+i)*e.r*0.16;
+        vieleck([[zx-e.r*0.11,y+e.r*0.55],[zx+e.r*0.11,y+e.r*0.55],[zx,y+e.r*0.55+l]],'#efe4cc');
+      }
+      hohlauge(e.x-e.r*0.45,y-e.r*0.18,e.r*0.16,'#ff6a5a',0.85);
+      hohlauge(e.x+e.r*0.45,y-e.r*0.18,e.r*0.16,'#ff6a5a',0.85);
+      break; }
+    case 'wachslicht': {
+      const fl=Math.sin(performance.now()/110)*2;
+      fleisch(e.x,y+e.r*0.25,e.r*0.8,e.r*1.05,0,col('#f4e9c4'),col('#cdbc8e'),'#5a4c2a');
+      disc(e.x,y-e.r*0.75,e.r*0.6,col('#e8dcb0'));
+      hohlauge(e.x-e.r*0.25,y-e.r*0.8,e.r*0.16,'#ffb03a',0.9);
+      hohlauge(e.x+e.r*0.25,y-e.r*0.8,e.r*0.16,'#ffb03a',0.9);
+      ctx.strokeStyle='#3a2f1a'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(e.x,y-e.r*1.3); ctx.lineTo(e.x,y-e.r*1.65); ctx.stroke();
+      ctx.save(); tuscheAn=false; ctx.globalAlpha=0.28;
+      disc(e.x,y-e.r*1.9,e.r*1.1,'#ffb03a'); tuscheAn=true; ctx.restore();
+      ellipse(e.x,y-e.r*1.9+fl*0.2,e.r*0.22,e.r*0.42,0,'#e8862a');
+      ellipse(e.x,y-e.r*2.0+fl*0.3,e.r*0.11,e.r*0.22,0,'#ffe08a');
+      break; }
+    case 'ohrwurm': {
+      for(let i=4;i>=1;i--){                        // Segmente hinter dem Kopf
+        const sy=y-i*e.r*0.62;
+        if(sy<RY-10) continue;
+        fleisch(e.x+Math.sin(performance.now()/300+i)*3,sy,
+                e.r*0.72-i*0.05*e.r,e.r*0.5,0,col('#b09a72'),col('#7e6a48'),'#2a2214');
+      }
+      fleisch(e.x,y,e.r,e.r*0.85,0,col('#c2ac82'),col('#8e7a54'),'#2a2214');
+      zaehneSpiel(e.x,y+e.r*0.4,e.r*1.25,7,e.r*0.36,true,'#efe4cc');
+      zaehneSpiel(e.x,y-e.r*0.4,e.r*1.25,7,e.r*0.36,false,'#efe4cc');
+      hohlauge(e.x-e.r*0.4,y-e.r*0.08,e.r*0.16,'#ffd07a',0.9);
+      hohlauge(e.x+e.r*0.4,y-e.r*0.08,e.r*0.16,'#ffd07a',0.9);
+      break; }
+    case 'spiegelbalg': {
+      ctx.save(); ctx.globalAlpha=0.85;
+      fleisch(e.x,y+e.r*0.25,e.r*0.78,e.r*0.95,0,col('#cfd6e4'),col('#96a0b8'),'#2a3040');
+      disc(e.x,y-e.r*0.8,e.r*0.72,col('#b6c0d4'));
+      hohlauge(e.x-e.r*0.3,y-e.r*0.85,e.r*0.18,'#ffffff',0.5);
+      hohlauge(e.x+e.r*0.3,y-e.r*0.85,e.r*0.18,'#ffffff',0.5);
+      ctx.restore();
+      break; }
+    case 'spinnling': {
+      disc(e.x,y,e.r,col('#c8b070'));
+      ctx.strokeStyle='#7a6640'; ctx.lineWidth=1;
+      for(let i=0;i<6;i++){ const a=i*TAU/6+performance.now()/400;
+        ctx.beginPath(); ctx.moveTo(e.x,y);
+        ctx.lineTo(e.x+Math.cos(a)*e.r*1.7,y+Math.sin(a)*e.r*1.5); ctx.stroke(); }
+      disc(e.x-e.r*0.3,y-e.r*0.2,1,'#111'); disc(e.x+e.r*0.3,y-e.r*0.2,1,'#111');
+      break; }
+
     case 'blobling': case 'miniblob':
       disc(e.x,y,e.r,col('#7a9a3f'));disc(e.x,y-2,e.r*0.7,col('#94b455'));
       disc(e.x-e.r*0.35,y-2,1.5,'#111');disc(e.x+e.r*0.35,y-2,1.5,'#111');break;

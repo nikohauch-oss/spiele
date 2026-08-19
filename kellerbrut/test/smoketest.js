@@ -1475,6 +1475,125 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 20. Die zwölf neuen Kreaturen ---
+if(want(20)){
+console.log('\n[20] Neue Kreaturen');
+await withPage(async(page,errs)=>{
+  const neu=['nabelkind','haeutling','vielauge','zwillingsbalg','schlundmutter','fingerbaum',
+             'grabhusten','nagelbraut','kriechkiefer','wachslicht','ohrwurm','spiegelbalg'];
+  const da=await page.evaluate((neu)=>{
+    const fehlt=neu.filter(id=>!KB.ENEMY_TYPES[id]);
+    const ohnePool=neu.filter(id=>!KB.FLOORS.some(f=>f.pool.includes(id)));
+    return {fehlt, ohnePool, gesamt:Object.keys(KB.ENEMY_TYPES).length};
+  },neu);
+  note(da.fehlt.length===0,'alle zwölf stehen in der Tabelle',da.fehlt.join(' '));
+  note(da.ohnePool.length===0,'jede taucht auf mindestens einer Etage auf',da.ohnePool.join(' '));
+
+  const haken=await page.evaluate(()=>{
+    const bau=(id,vorbereiten)=>{
+      startRun(0,'K'+id); KB.G.bossIntro=null;
+      const p=KB.G.player; p.redMax=99;p.red=99; p.iframes=0;
+      KB.G.enemies.length=0; KB.G.creeps.length=0; KB.G.eshots.length=0;
+      KB.G.roomFresh=0;
+      for(const z of KB.G.room.grid) z.fill(null);
+      const e=spawnEnemy(id,tx(6),ty(2),null);
+      if(vorbereiten) vorbereiten(e,p);
+      return {e,p};
+    };
+    const laufen=(o,n)=>{ for(let i=0;i<n;i++){ o.p.red=99; o.p.iframes=0; updateGame(1/60); } };
+    const erg={};
+
+    { // Nabelkind hängt, bis die Schnur reißt
+      const o=bau('nabelkind'); const x0=o.e.x;
+      laufen(o,90); const geschwungen=Math.abs(o.e.x-x0)>20&&o.e.fly;
+      o.e.hp=o.e.maxHp*0.3; laufen(o,30);
+      erg.nabel={geschwungen, gefallen:!!o.e.gefallen&&!o.e.fly};
+    }
+    { // Häutling: Spur, auf der man rutscht
+      const o=bau('haeutling'); laufen(o,60);
+      const spur=KB.G.creeps.filter(c=>c.glatt).length;
+      o.p.x=KB.G.creeps.find(c=>c.glatt).x; o.p.y=KB.G.creeps.find(c=>c.glatt).y;
+      laufen(o,2);
+      erg.haeutling={spur, rutscht:!!o.p.aufGlatt};
+    }
+    /* Geschosse fliegen weg und verschwinden an der Wand — am Ende zu zählen
+       ergäbe null. Deshalb wird jeder neue Schuss laufend mitgezählt. */
+    const schuesseZaehlen=(o,n,je)=>{
+      let sum=0;
+      for(let i=0;i<n;i++){ const a=KB.G.eshots.length; o.p.red=99; updateGame(1/60);
+        if(KB.G.eshots.length>a) sum+=KB.G.eshots.length-a;
+        if(je) je(); }
+      return sum;
+    };
+    { const o=bau('vielauge');
+      erg.vielauge={schuesse:schuesseZaehlen(o,300)}; }
+    { const o=bau('zwillingsbalg'); const koepfe=new Set();
+      const sum=schuesseZaehlen(o,300,()=>koepfe.add(o.e.kopf?1:0));
+      erg.zwilling={koepfe:koepfe.size, schuesse:sum}; }
+    { const o=bau('schlundmutter'); laufen(o,300);
+      erg.schlundmutter={brut:KB.G.enemies.filter(e=>e.type==='spinnling').length}; }
+    { const o=bau('fingerbaum',(e,p)=>{ p.x=e.x; p.y=e.y+50; });
+      let gepackt=0;
+      for(let i=0;i<300;i++){ o.p.red=99; o.p.x=o.e.x; o.p.y=o.e.y+50; updateGame(1/60);
+        gepackt=Math.max(gepackt,o.p.gepackt||0); }
+      erg.finger={gepackt:+gepackt.toFixed(1)}; }
+    { const o=bau('grabhusten',(e,p)=>{ p.x=e.x; p.y=e.y+80; });
+      laufen(o,300);
+      erg.husten={wolken:KB.G.creeps.filter(c=>c.sporen).length}; }
+    { const o=bau('nagelbraut');
+      for(let i=0;i<10;i++) damageEnemy(o.e,1);
+      erg.nagel={naegel:KB.G.creeps.filter(c=>c.nagel).length}; }
+    { const o=bau('kriechkiefer',(e,p)=>{ p.x=e.x; p.y=e.y+90; });
+      let nah=999, fern=0;
+      for(let i=0;i<400;i++){ o.p.red=99; o.p.x=tx(6); o.p.y=ty(5); updateGame(1/60);
+        const d=Math.hypot(o.e.x-o.p.x,o.e.y-o.p.y); nah=Math.min(nah,d); fern=Math.max(fern,d); }
+      erg.kiefer={nah:Math.round(nah), fern:Math.round(fern)}; }
+    { const o=bau('wachslicht'); const r0=o.e.r; laufen(o,300);
+      erg.wachs={geschrumpft:r0-o.e.r, glut:KB.G.creeps.filter(c=>c.glut).length}; }
+    { const o=bau('ohrwurm'); let drin=0, draussen=0;
+      for(let i=0;i<600;i++){ o.p.red=99; updateGame(1/60);
+        if(o.e.ghosted) drin++; else draussen++; }
+      erg.ohrwurm={drin, draussen}; }
+    { const o=bau('spiegelbalg'); o.p.x=tx(3); o.p.y=ty(2);
+      laufen(o,120);
+      const mx=RX+COLS*TILE/2, my=RY+ROWS*TILE/2;
+      erg.spiegel={abstand:Math.round(Math.hypot(o.e.x-(mx-(o.p.x-mx)),
+                                                 o.e.y-(my-(o.p.y-my))))}; }
+    return erg;
+  });
+
+  note(haken.nabel.geschwungen&&haken.nabel.gefallen,
+       'das Nabelkind pendelt und fällt bei halber Kraft herunter');
+  note(haken.haeutling.spur>0&&haken.haeutling.rutscht,
+       'der Häutling hinterlässt eine Spur, auf der man rutscht',
+       '('+haken.haeutling.spur+' Flecken)');
+  note(haken.vielauge.schuesse>0,'das Vielauge schießt','('+haken.vielauge.schuesse+' Geschosse)');
+  note(haken.zwilling.koepfe===2&&haken.zwilling.schuesse>0,
+       'der Zwillingsbalg wechselt zwischen beiden Köpfen');
+  note(haken.schlundmutter.brut>0,'die Schlundmutter entlässt Spinnlinge',
+       '('+haken.schlundmutter.brut+' Stück)');
+  note(haken.finger.gepackt>0,'der Fingerbaum packt zu',
+       '(bis zu '+haken.finger.gepackt+' s festgehalten)');
+  note(haken.husten.wolken>0,'der Grabhusten wirft einen Sporenkegel',
+       '('+haken.husten.wolken+' Wolken)');
+  note(haken.nagel.naegel>0,'die Nagelbraut verliert bei Treffern Nägel',
+       '('+haken.nagel.naegel+' aus 10 Treffern)');
+  note(haken.kiefer.nah<40&&haken.kiefer.fern>90,
+       'der Kriechkiefer beißt im Vorbeilauf und dreht wieder ab',
+       '(näher als '+haken.kiefer.nah+', weiter als '+haken.kiefer.fern+' px)');
+  note(haken.wachs.geschrumpft>0&&haken.wachs.glut>0,
+       'das Wachslicht schmilzt und lässt Brandflecken liegen',
+       '(Radius −'+haken.wachs.geschrumpft.toFixed(1)+')');
+  note(haken.ohrwurm.drin>0&&haken.ohrwurm.draussen>0,
+       'der Ohrwurm ist mal in der Wand, mal draußen',
+       '('+haken.ohrwurm.drin+' drin, '+haken.ohrwurm.draussen+' draußen)');
+  note(haken.spiegel.abstand<12,'der Spiegelbalg steht spiegelverkehrt zum Spieler',
+       '('+haken.spiegel.abstand+' px daneben)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

@@ -142,7 +142,7 @@ Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
 ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
 Seeds nach.
 
-**Inhalte.** 61 Items (passiv und aktiv), 52 Gegnertypen mit Champion-Varianten,
+**Inhalte.** 61 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
 12 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 9 Charaktere (acht davon freischaltbar).
 
@@ -180,6 +180,22 @@ Viertel des Raumes; ohne Vorwarnung wäre ihm nicht auszuweichen. Deshalb
 zieht sich erst ein Ring auf der Stelle zusammen, dann schlägt es ein
 (`einschlagSetzen()`). Getroffen wird, wer dann noch drinsteht — auch
 Gegner. Wer klug steht, lässt den Boss seine eigene Brut zerschlagen.
+
+**Zwölf neue Kreaturen aus dem Bestiarium.** Das *Nabelkind* pendelt an einer
+Schnur von der Decke, bis man sie durchtrennt — dann fällt es und kriecht
+weiter. Der *Häutling* rennt ohne Haut und hinterlässt eine nasse Spur, auf
+der man ins Rutschen kommt. Das *Vielauge* schießt unvorhersehbare Fächer,
+der *Zwillingsbalg* wechselt zwischen zwei streitenden Köpfen und schießt nie
+mit beiden zugleich. Die *Schlundmutter* klappt ihren Bauch auf und entlässt
+Spinnlinge. Der *Fingerbaum* wächst fest und packt zu — wer erwischt wird,
+steht zwei Sekunden still. Der *Grabhusten* wirft einen Sporenkegel, der die
+Sicht nimmt. Die *Nagelbraut* verliert bei jedem Treffer Nägel, die liegen
+bleiben und selbst verletzen: sie zu erlegen macht den Raum gefährlicher.
+Der *Kriechkiefer* beißt im Vorbeilauf und dreht sofort wieder ab. Das
+*Wachslicht* schmilzt im Laufen, wird kleiner und lässt Brandflecken zurück.
+Der *Ohrwurm* fährt durch die Wand und ist nur zu treffen, solange er
+heraussieht. Der *Spiegelbalg* macht jeden Schritt spiegelverkehrt mit — zu
+fassen bekommt man ihn nur in einer Ecke.
 
 **Zwölf Kreaturen mit eigenem Haken.** Der *Talgwicht* wird gefährlicher,
 wenn man ihn trifft: Erlischt seine Flamme, rennt er blind und doppelt so
@@ -411,7 +427,8 @@ der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
 Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
 beschreibung hat, die auch auf die Tafel passt, die echte Bildauflösung, den
 Bosslohn und die Zwölf-Herzen-Grenze, die Größe aller zwölf Bosse samt ihren
-Kennzeichen-Angriffen und der angekündigte Einschlag, die
+Kennzeichen-Angriffen und der angekündigte Einschlag, der Haken jeder der
+zwölf neuen Kreaturen, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate
