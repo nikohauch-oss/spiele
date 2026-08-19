@@ -1684,6 +1684,141 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 22. Zwischenstand und Menü ---
+if(want(22)){
+console.log('\n[22] Durchlauf speichern, Menü');
+await withPage(async(page,errs)=>{
+  const speichern=await page.evaluate(()=>{
+    laufVerwerfen();
+    startRun(1,'SPEICHER'); KB.G.bossIntro=null;
+    const p=KB.G.player;
+    // einen Zustand herstellen, den es zu retten lohnt
+    KB.G.depth=3; KB.G.floor=genFloor(3);
+    enterRoom(KB.G.floor.startKey,null); KB.G.bossIntro=null;
+    acquireItem('glutkern',null); acquireItem('windsohlen',null);
+    p.itemGet=null; p.coins=17; p.bombs=4; p.keys=2;
+    p.redMax=10; p.red=5; p.soul=['S','S'];
+    KB.G.kills=42; KB.G.time=123.4; KB.G.deals=1; KB.G.floorHit=true;
+    // Raum verändern: Stein weg, Tür auf, Raum geräumt
+    KB.G.room.grid[2][2]={t:'rock'};
+    KB.G.room.grid[2][3]=null;
+    KB.G.room.cleared=true;
+    const tuer=Object.values(KB.G.room.doors)[0];
+    tuer.edge.locked=false; tuer.edge.revealed=true;
+    // ein zweiter Raum, damit enterRoom das Speichern auslöst
+    const nachbar=Object.values(KB.G.room.doors)[0].to;
+    enterRoom(nachbar,null); KB.G.bossIntro=null;
+    laufSpeichern();
+    return {vorhanden:laufVorhanden(),
+            zustand:{tiefe:KB.G.depth,seed:KB.G.seedStr,raum:KB.G.roomKey,
+              items:[...p.items],coins:p.coins,bombs:p.bombs,keys:p.keys,
+              red:p.red,redMax:p.redMax,soul:p.soul.length,
+              kills:KB.G.kills,deals:KB.G.deals,treffer:KB.G.floorHit,
+              charIdx:KB.G.charIdx,
+              dmg:+p.stats.dmg.toFixed(2)}};
+  });
+  note(speichern.vorhanden,'ein laufender Durchlauf wird gespeichert');
+
+  const zurueck=await page.evaluate(()=>{
+    // Alles vergessen und nur aus dem Zwischenstand wiederherstellen
+    KB.G={state:'menu',floor:null};
+    const ok=laufFortsetzen();
+    const p=KB.G.player;
+    return {ok, tiefe:KB.G.depth, seed:KB.G.seedStr, raum:KB.G.roomKey,
+            items:[...p.items], coins:p.coins, bombs:p.bombs, keys:p.keys,
+            red:p.red, redMax:p.redMax, soul:p.soul.length,
+            kills:KB.G.kills, deals:KB.G.deals, treffer:KB.G.floorHit,
+            charIdx:KB.G.charIdx, dmg:+p.stats.dmg.toFixed(2),
+            begleiter:KB.G.familiars.length};
+  });
+  const a=speichern.zustand;
+  note(zurueck.ok&&zurueck.tiefe===a.tiefe&&zurueck.seed===a.seed&&zurueck.charIdx===a.charIdx,
+       'Etage, Seed und Figur kommen zurück',
+       '(Etage '+zurueck.tiefe+', '+zurueck.seed+')');
+  note(zurueck.items.join()===a.items.join()&&zurueck.dmg===a.dmg,
+       'die Items und ihre Wirkung sind wieder da',
+       '('+zurueck.items.length+' Items, Schaden '+zurueck.dmg+')');
+  note(zurueck.coins===a.coins&&zurueck.bombs===a.bombs&&zurueck.keys===a.keys
+       &&zurueck.red===a.red&&zurueck.redMax===a.redMax&&zurueck.soul===a.soul,
+       'Leben, Münzen, Bomben und Schlüssel stimmen');
+  note(zurueck.kills===a.kills&&zurueck.deals===a.deals&&zurueck.treffer===a.treffer,
+       'auch Zählerstände und Etagenzustand kommen mit');
+
+  // Der veränderte Raum muss genau so wieder dastehen.
+  const welt=await page.evaluate(()=>{
+    const f=KB.G.floor;
+    const k=f.startKey, r=f.rooms[k];
+    return {stein:!!(r.grid[2][2]&&r.grid[2][2].t==='rock'),
+            frei:r.grid[2][3]===null, geraeumt:!!r.cleared,
+            tuerOffen:!Object.values(r.doors)[0].edge.locked};
+  });
+  note(welt.stein&&welt.frei&&welt.geraeumt&&welt.tuerOffen,
+       'die Etage steht wieder genau so da wie beim Verlassen');
+
+  // Tod, Sieg, Aufgeben und ein neuer Lauf löschen den Zwischenstand.
+  const geloescht=await page.evaluate(()=>{
+    const proben={};
+    laufVerwerfen(); startRun(0,'X1'); enterRoom(KB.G.floor.startKey,null);
+    laufSpeichern(); const vorTod=laufVorhanden();
+    KB.G.player.soul.length=0; KB.G.player.red=1;
+    hurtPlayer(9,true);
+    proben.tod={vorher:vorTod, nachher:laufVorhanden()};
+
+    startRun(0,'X2'); enterRoom(KB.G.floor.startKey,null); laufSpeichern();
+    const vorSieg=laufVorhanden(); winRun();
+    proben.sieg={vorher:vorSieg, nachher:laufVorhanden()};
+
+    startRun(0,'X3'); enterRoom(KB.G.floor.startKey,null); laufSpeichern();
+    const vorNeu=laufVorhanden(); startRun(0,'X4');
+    proben.neu={vorher:vorNeu, nachher:laufVorhanden()};
+    return proben;
+  });
+  note(geloescht.tod.vorher&&!geloescht.tod.nachher,'der Tod löscht den Zwischenstand');
+  note(geloescht.sieg.vorher&&!geloescht.sieg.nachher,'ein Sieg ebenso');
+  note(geloescht.neu.vorher&&!geloescht.neu.nachher,'ein neuer Abstieg ebenso');
+
+  // Menü, Statistik und Einstellungen
+  const menue=await page.evaluate(()=>{
+    laufVerwerfen();
+    const ohne=menuEintraege().map(e=>e.id);
+    startRun(0,'M1'); enterRoom(KB.G.floor.startKey,null); laufSpeichern();
+    const mit=menuEintraege().map(e=>e.id);
+    return {ohne, mit};
+  });
+  note(!menue.ohne.includes('weiter'),'ohne Zwischenstand gibt es kein Weiterspielen');
+  note(menue.mit[0]==='weiter','mit Zwischenstand steht es ganz oben');
+
+  const opt=await page.evaluate(async()=>{
+    KB.saveData.ton=5; KB.saveData.musik=5; KB.saveData.wackeln=true;
+    KB.G.state='optionen'; menu.optIdx=0;
+    const vorher=KB.saveData.ton;
+    // dreimal lauter
+    for(let i=0;i<3;i++){ Input.press('ArrowRight'); updateMenu(); Input.clear(); }
+    const lauter=KB.saveData.ton;
+    menu.optIdx=2; Input.press('ArrowRight'); updateMenu(); Input.clear();
+    const wackeln=KB.saveData.wackeln;
+    // Grenzen halten
+    menu.optIdx=0;
+    for(let i=0;i<20;i++){ Input.press('ArrowRight'); updateMenu(); Input.clear(); }
+    const oben=KB.saveData.ton;
+    for(let i=0;i<30;i++){ Input.press('ArrowLeft'); updateMenu(); Input.clear(); }
+    const unten=KB.saveData.ton;
+    // wird das auch gespeichert?
+    const roh=JSON.parse(localStorage.getItem('kellerbrut_v1')||'{}');
+    return {vorher,lauter,wackeln,oben,unten,gespeichert:roh.ton};
+  });
+  note(opt.lauter===opt.vorher+3,'die Lautstärke lässt sich einstellen',
+       '('+opt.vorher+' → '+opt.lauter+')');
+  note(opt.wackeln===false,'das Bildschirmwackeln lässt sich abschalten');
+  note(opt.oben===10&&opt.unten===0,'die Regler bleiben zwischen 0 und 10',
+       '(max '+opt.oben+', min '+opt.unten+')');
+  note(opt.gespeichert===0,'Einstellungen landen sofort im Spielstand');
+
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

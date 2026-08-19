@@ -319,6 +319,22 @@ oder das rote Aufwallen des *Berserkerkelchs*.
 dir, deine eigenen (aus Schüssen mit der *Giftdrüse*) sind grün und vergiften
 Gegner, die hineinlaufen.
 
+**Der Durchlauf überlebt das Schließen des Tabs.** Bei jedem Raumwechsel
+landet ein Zwischenstand in `localStorage`; im Menü steht dann
+**Weiterspielen** ganz oben, mit Figur, Etage und Seed. Gespeichert wird
+nicht die ganze Welt, sondern nur, was sich nicht aus dem Seed ergibt: die
+Etage wird beim Laden neu erzeugt — sie ist deterministisch — und bekommt
+danach den Unterschied aufgesetzt: welche Räume geräumt sind, welche Steine
+weg sind, welche Türen offen stehen, was noch herumliegt. Tod, Sieg und ein
+neuer Abstieg löschen den Stand; aufgeben mit `X` ebenfalls.
+
+**Menü, Statistik, Einstellungen.** Das Hauptmenü hat jetzt Einträge statt
+nur ENTER. Die Statistikseite zeigt begonnene Läufe, Siege, Tode, beste
+Etage und erlegte Gegner über alle Läufe, dazu alle neun Figuren mit ihrer
+Freischaltbedingung — grün, sobald sie offen ist. Unter Einstellungen lassen
+sich Ton und Musik getrennt in zehn Stufen regeln und das Bildschirmwackeln
+abschalten; alles wird sofort gespeichert.
+
 **Progression.** Permadeath. Der Schwierigkeitsgrad steigt pro Etage (mehr
 Lebenspunkte, mehr Gegner, häufiger Champions). Nach dem Run gibt es einen
 Auswertungsbildschirm mit Statistik und allen gefundenen Items. Freischaltungen
@@ -444,7 +460,9 @@ Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
 beschreibung hat, die auch auf die Tafel passt, die echte Bildauflösung, den
 Bosslohn und die Zwölf-Herzen-Grenze, die Größe aller zwölf Bosse samt ihren
 Kennzeichen-Angriffen und der angekündigte Einschlag, der Haken jeder der
-zwölf neuen Kreaturen, die Vollständigkeit und Streuung der zwölf Kammern, die
+zwölf neuen Kreaturen, die Vollständigkeit und Streuung der zwölf Kammern, das Speichern und
+Fortsetzen eines Durchlaufs samt veränderter Etage, die Menüeinträge und die
+Einstellungsregler, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate

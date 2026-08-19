@@ -153,6 +153,13 @@ const Sfx=(()=>{
   }
   const S={
     init, toggleMute(){muted=!muted; return muted;}, get muted(){return muted;},
+    /* Lautstärke in Zehnteln, damit sie sich mit den Pfeiltasten einstellen
+       und als ganze Zahl im Spielstand ablegen lässt. */
+    setzeLautstaerke(ton,musik){
+      if(!ac) return;
+      if(ton!==undefined)   master.gain.value=clamp(ton,0,10)/10*0.7;
+      if(musik!==undefined) musGain.gain.value=clamp(musik,0,10)/10*0.32;
+    },
     shoot(){tone('square',720,320,0.07,0.12);},
     laser(){tone('sawtooth',1200,180,0.18,0.2);},
     beam(){tone('sawtooth',90,70,0.12,0.22);},
@@ -216,7 +223,9 @@ const Input=(()=>{
   const down={}, pressed={};
   let typing=null; // Seed-Eingabe-Modus
   addEventListener('keydown',e=>{
-    Sfx.init();
+    // Der Browser erlaubt Audio erst nach einer Eingabe. Danach müssen die
+    // gespeicherten Lautstärken einmal nachgezogen werden.
+    Sfx.init(); if(typeof einstellungenAnwenden==='function') einstellungenAnwenden();
     if(typing){ typing(e); e.preventDefault(); return; }
     if(!down[e.code]) pressed[e.code]=true;
     down[e.code]=true;
@@ -259,6 +268,9 @@ const Input=(()=>{
       const l=Math.hypot(x,y); return {x:x/l,y:y/l};
     },
     hit(code){ if(pressed[code]){pressed[code]=false; return true;} return false; },
+    /* Nur für die automatischen Tests: einen Tastendruck vortäuschen, ohne
+       ein echtes Tastaturereignis zu brauchen. */
+    press(code){ pressed[code]=true; },
     peek(code){ return !!pressed[code]; },
     clear(){ for(const k in pressed) pressed[k]=false; },
     bomb(){ return this.hit('Space')||padHit(0); },
@@ -1112,6 +1124,7 @@ function enterRoom(key,fromDir){
   // fromDir = Richtung der Tür, durch die wir REINkommen (Seite des neuen Raums)
   const room=G.floor.rooms[key];
   saveRoomState();
+  if(G.roomKey) laufSpeichern();      // Zwischenstand bei jedem Raumwechsel
   G.roomKey=key; G.room=room;
   room.visited=true; room.seen=true;
   if(room.type==='secret') unlock('geheim');
@@ -2464,7 +2477,7 @@ function playerDie(){
   p.dead=true;
   burst(p.x,p.y,'#c03a5a',24);
   G.deathTimer=1.2;
-  saveData.deaths++; saveSave();
+  saveData.deaths++; laufVerwerfen(); saveSave();
   if(saveData.deaths>=10) unlock('tode10');
 }
 function addText(x,y,str,color){ G.texts.push({x,y,str,color,t:1.2}); }
@@ -6305,11 +6318,13 @@ function drawBossIntro(){
 /* ==== 11. MENÜS, SCREENS, SAVEGAME, HAUPTSCHLEIFE ==== */
 
 /* --- Savegame (localStorage): Freischaltungen & Statistik --- */
-let saveData={unlocks:[],wins:0,deaths:0,bestFloor:1,kills:0};
+let saveData={unlocks:[],wins:0,deaths:0,bestFloor:1,kills:0,laeufe:0,
+              ton:5,musik:5,wackeln:true,lauf:null};
 function loadSave(){
   try{ const s=localStorage.getItem('kellerbrut_v1');
     if(s) saveData={...saveData,...JSON.parse(s)}; }catch(e){}
 }
+function einstellungenAnwenden(){ Sfx.setzeLautstaerke(saveData.ton,saveData.musik); }
 function saveSave(){
   try{ localStorage.setItem('kellerbrut_v1',JSON.stringify(saveData)); }catch(e){}
 }
@@ -6320,6 +6335,114 @@ function unlock(key){
   if(c&&G.state==='game') G.banner={title:'Freigeschaltet: '+c.name,desc:c.desc,t:3};
 }
 function charUnlocked(c){ return !c.unlock||saveData.unlocks.includes(c.unlock); }
+
+/* --- ZWISCHENSTAND -------------------------------------------------------
+   Ein Durchlauf soll das Schließen des Tabs überleben. Gespeichert wird
+   nicht die ganze Welt, sondern nur, was sich nicht aus dem Seed ergibt:
+   die Etage wird beim Laden neu erzeugt (sie ist deterministisch) und
+   bekommt danach den Unterschied aufgesetzt — welche Räume geräumt sind,
+   welche Steine weg sind, was noch herumliegt. Das ist ein Bruchteil der
+   Datenmenge und übersteht auch eine spätere Änderung an der Raumform.  */
+function laufSpeichern(){
+  if(!G||G.state!=='game'||!G.player||G.player.dead){ return; }
+  const p=G.player;
+  const raeume={};
+  for(const k in G.floor.rooms){
+    const r=G.floor.rooms[k];
+    const felder=[];
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+      const z=r.grid[y][x];
+      felder.push(z?[y,x,z.t,z.hp||0,z.red?1:0]:null);
+    }
+    raeume[k]={v:r.visited?1:0,s:r.seen?1:0,c:r.cleared?1:0,t:r.trapdoor?1:0,
+      typ:r.type, kam:r.kammerId||null, opf:r.sacrificeCount||0,
+      gitter:felder.filter(Boolean),
+      drops:r.drops.map(q=>({x:q.x,y:q.y,type:q.type,price:q.price,
+        pillId:q.pillId,cardId:q.cardId,itemId:q.itemId,garantiert:q.garantiert})),
+      podeste:r.pedestals.map(q=>({x:q.x,y:q.y,itemId:q.itemId,price:q.price,
+        herzPreis:q.herzPreis,taken:q.taken?1:0})),
+      automaten:r.machines.map(m=>({x:m.x,y:m.y,kind:m.kind,broken:m.broken?1:0}))};
+  }
+  const tueren={};
+  for(const ek in G.floor.doors){
+    const e=G.floor.doors[ek];
+    tueren[ek]={k:e.kind,l:e.locked?1:0,r:e.revealed?1:0};
+  }
+  saveData.lauf={
+    fassung:1, seed:G.seedStr, tiefe:G.depth, charIdx:G.charIdx, roomKey:G.roomKey,
+    zeit:G.time, kills:G.kills, stats:G.stats, treffer:G.floorHit?1:0, deals:G.deals,
+    runItems:G.runItems, gesehen:[...G.itemsSeen], pillen:[...G.pillsKnown],
+    spieler:{red:p.red,redMax:p.redMax,soul:p.soul,coins:p.coins,bombs:p.bombs,
+      keys:p.keys,items:p.items,active:p.active,pocket:p.pocket,
+      permDmg:p.permDmg,permSpeed:p.permSpeed,permRange:p.permRange,
+      geflickt:p.geflickt?1:0},
+    raeume, tueren};
+  saveSave();
+}
+function laufVerwerfen(){ saveData.lauf=null; saveSave(); }
+function laufVorhanden(){ const l=saveData.lauf; return !!(l&&l.fassung===1&&CHARS[l.charIdx]); }
+
+function laufFortsetzen(){
+  const l=saveData.lauf;
+  if(!laufVorhanden()) return false;
+  startRun(l.charIdx,l.seed);              // legt Spieler und Etage 1 an
+  saveData.laeufe--;                       // Fortsetzen ist kein neuer Lauf
+  G.depth=l.tiefe;
+  G.floor=genFloor(G.depth);               // aus dem Seed exakt dieselbe Etage
+  G.time=l.zeit||0; G.kills=l.kills||0;
+  if(l.stats) G.stats={...G.stats,...l.stats};
+  G.floorHit=!!l.treffer; G.deals=l.deals||0;
+  G.runItems=l.runItems||[];
+  G.itemsSeen=new Set(l.gesehen||[]);
+  G.pillsKnown=new Set(l.pillen||[]);
+  // Unterschied auf die frisch erzeugte Etage legen
+  for(const k in l.raeume){
+    const r=G.floor.rooms[k], d=l.raeume[k];
+    if(!r) continue;
+    r.visited=!!d.v; r.seen=!!d.s; r.cleared=!!d.c; r.trapdoor=!!d.t;
+    if(d.typ) r.type=d.typ;
+    if(d.kam) r.kammerId=d.kam;
+    r.sacrificeCount=d.opf||0;
+    for(let y=0;y<ROWS;y++) r.grid[y].fill(null);
+    for(const f of d.gitter){
+      const zelle={t:f[2]}; if(f[3]) zelle.hp=f[3]; if(f[4]) zelle.red=true;
+      r.grid[f[0]][f[1]]=zelle;
+    }
+    r.drops=d.drops||[];
+    r.pedestals=(d.podeste||[]).map(q=>({...q,taken:!!q.taken,cd:0}));
+    r.machines=(d.automaten||[]).map(m=>({...m,broken:!!m.broken,cd:0}));
+    if(r.cleared) r.spawns=[];             // geräumt bleibt geräumt
+  }
+  for(const ek in l.tueren){
+    const e=G.floor.doors[ek], d=l.tueren[ek];
+    if(!e) continue;
+    e.kind=d.k; e.locked=!!d.l; e.revealed=!!d.r;
+  }
+  // Spieler zurückspielen
+  const p=G.player, sp=l.spieler;
+  p.red=sp.red; p.redMax=sp.redMax; p.soul=sp.soul||[];
+  p.coins=sp.coins; p.bombs=sp.bombs; p.keys=sp.keys;
+  p.items=[]; p.flags=new Set(); p.familiars=[];
+  G.familiars=[];
+  p.permDmg=sp.permDmg||0; p.permSpeed=sp.permSpeed||0; p.permRange=sp.permRange||0;
+  p.geflickt=!!sp.geflickt;
+  const char=CHARS[l.charIdx];
+  if(char.flags) for(const f of char.flags) p.flags.add(f);
+  for(const id of sp.items||[]){            // Items ohne Aufhebe-Anzeige neu setzen
+    const it=ITEMS[id]; if(!it) continue;
+    p.items.push(id);
+    if(it.flags) for(const f of it.flags) p.flags.add(f);
+  }
+  spawnFamiliars();                         // Begleiter aus den Items neu aufstellen
+  p.active=sp.active||null; p.pocket=sp.pocket||null;
+  p.itemGet=null;
+  recomputeStats();
+  Sfx.setPattern(G.floor.data.mus);
+  laterneLeuchtet();
+  enterRoom(G.floor.rooms[l.roomKey]?l.roomKey:G.floor.startKey,null);
+  G.banner={title:'Weiter im '+G.floor.data.name,desc:'Etage '+G.depth,t:2.4};
+  return true;
+}
 
 /* --- Run starten --- */
 let menu={idx:0,charIdx:0,seedInput:'',typingSeed:false,itemSeite:0};
@@ -6355,6 +6478,7 @@ function startRun(charIdx,seedStr){
   if(char.pocket) p.pocket={kind:char.pocket.kind,
     id:char.pocket.kind==='pill'?frand.int(PILLS.length):frand.int(CARDS.length)};
   recomputeStats();
+  saveData.laeufe=(saveData.laeufe||0)+1; laufVerwerfen();
   G.floor=genFloor(1);
   Sfx.setPattern(G.floor.data.mus);
   laterneLeuchtet();
@@ -6363,7 +6487,7 @@ function startRun(charIdx,seedStr){
 }
 function winRun(){
   G.state='postrun'; G.result='win';
-  saveData.wins++; saveSave(); unlock('win');
+  saveData.wins++; laufVerwerfen(); saveSave(); unlock('win');
   Sfx.item();
 }
 
@@ -6436,9 +6560,12 @@ function render(){
   ctx.fillRect(0,0,W,H);
   if(!G||!G.state||G.state==='menu'){ drawMenu(); return; }
   if(G.state==='charsel'){ drawCharSel(); return; }
+  if(G.state==='statistik'){ drawStatistik(); return; }
+  if(G.state==='optionen'){ drawOptionen(); return; }
   if(G.state==='postrun'){ drawPostRun(); return; }
   // Spielwelt (auch als Hintergrund für Pause)
-  if(G.shake>0.5) ctx.translate(frand.range(-G.shake,G.shake)*0.5,frand.range(-G.shake,G.shake)*0.5);
+  if(G.shake>0.5&&saveData.wackeln!==false)
+    ctx.translate(frand.range(-G.shake,G.shake)*0.5,frand.range(-G.shake,G.shake)*0.5);
   drawRoom();
   for(const q of G.pickups) drawPickup(q);
   for(const b of G.bombs) drawBombEnt(b);
@@ -6491,21 +6618,99 @@ function render(){
 }
 
 /* --- Menü-Screens --- */
+/* Einträge des Hauptmenüs. "Weiterspielen" erscheint nur, wenn wirklich ein
+   Zwischenstand da ist — ein toter Eintrag wäre schlimmer als keiner. */
+function menuEintraege(){
+  const e=[];
+  if(laufVorhanden()){
+    const l=saveData.lauf;
+    e.push({id:'weiter',text:'Weiterspielen',
+            zusatz:CHARS[l.charIdx].name+' · Etage '+l.tiefe+' · Seed '+l.seed});
+  }
+  e.push({id:'neu',text:'Neuer Abstieg'});
+  e.push({id:'statistik',text:'Statistik & Freischaltungen'});
+  e.push({id:'optionen',text:'Einstellungen'});
+  return e;
+}
+
 function drawMenu(){
   ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
   // Titelgrafik: tropfender Schriftzug
-  txt('K E L L E R B R U T',W/2,70,'#c03a5a',30);
-  txt('K E L L E R B R U T',W/2+1,71,'rgba(255,255,255,0.15)',30);
+  txt('K E L L E R B R U T',W/2,58,'#c03a5a',30);
+  txt('K E L L E R B R U T',W/2+1,59,'rgba(255,255,255,0.15)',30);
   for(let i=0;i<5;i++){ const x=W/2-90+i*45, len=8+((i*37)%14);
-    rrect(x,84,3,len,'#c03a5a'); disc(x+1.5,84+len,2,'#c03a5a'); }
-  txt('Ein Roguelite über das, was unter dem Haus wohnt',W/2,116,'#8a8276',10);
-  txt('ENTER — Abstieg beginnen',W/2,170,'#e8e0d0',13);
-  txt('WASD bewegen · Pfeile schießen · SPACE Bombe · E Item · Q Pille/Karte',W/2,200,'#6a6a76',9);
-  txt('P Pause · M Musik · N Ton · Gamepad wird unterstützt',W/2,214,'#6a6a76',9);
-  txt(`Siege: ${saveData.wins}   Tode: ${saveData.deaths}   Beste Etage: ${saveData.bestFloor}`,W/2,258,'#8a8276',9);
-  const locked=CHARS.filter(c=>!charUnlocked(c)).length;
-  if(locked) txt(locked+' Charakter(e) noch nicht freigeschaltet',W/2,274,'#5a5a66',8);
-  txt('v1.0 — komplett eigene Grafiken & Items',W/2,H-12,'#3a3a42',7);
+    rrect(x,72,3,len,'#c03a5a'); disc(x+1.5,72+len,2,'#c03a5a'); }
+  txt('Ein Roguelite über das, was unter dem Haus wohnt',W/2,104,'#8a8276',10);
+
+  const eintraege=menuEintraege();
+  menu.idx=clamp(menu.idx,0,eintraege.length-1);
+  eintraege.forEach((e,i)=>{
+    const y=142+i*26, sel=i===menu.idx;
+    if(sel){ rrect(W/2-118,y-11,236,22,'#1a1a24');
+      ctx.strokeStyle='#8a7a5a'; ctx.strokeRect(W/2-118.5,y-11.5,237,23); }
+    txt(e.text,W/2,y-(e.zusatz?3:0),sel?'#e8e0d0':'#6a6a76',12);
+    if(e.zusatz) txt(e.zusatz,W/2,y+8,sel?'#8a8276':'#4a4a56',7);
+  });
+  txt('▲▼ wählen · ENTER bestätigen',W/2,142+eintraege.length*26+8,'#5a5a66',9);
+  txt('WASD bewegen · Pfeile schießen · SPACE Bombe · E Item · Q Pille/Karte',W/2,H-42,'#4a4a56',8);
+  txt('P Pause · M Musik · N Ton · Gamepad wird unterstützt',W/2,H-30,'#4a4a56',8);
+  txt('v1.1 — komplett eigene Grafiken & Items',W/2,H-12,'#3a3a42',7);
+}
+
+/* --- Statistik und Freischaltungen --- */
+function drawStatistik(){
+  ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
+  txt('STATISTIK',W/2,34,'#e8e0d0',16);
+  const zeilen=[
+    ['Läufe begonnen',(saveData.laeufe||0)+''],
+    ['Siege',saveData.wins+''],
+    ['Tode',saveData.deaths+''],
+    ['Beste Etage',saveData.bestFloor+''],
+    ['Gegner insgesamt',(saveData.kills||0)+''],
+  ];
+  zeilen.forEach((z,i)=>{
+    txt(z[0],W/2-16,64+i*15,'#6a6a76',9,'right');
+    txt(z[1],W/2,64+i*15,'#e8e0d0',9,'left');
+  });
+  txt('FIGUREN',W/2,156,'#8a8276',10);
+  CHARS.forEach((c,i)=>{
+    const y=176+i*15, offen=charUnlocked(c);
+    txt(c.name,W/2-16,y,offen?'#e8e0d0':'#4a4a56',9,'right');
+    txt(offen?'freigeschaltet':(c.unlockText||''),W/2,y,offen?'#5ad75a':'#6a6a76',8,'left');
+  });
+  txt('ESC — zurück',W/2,H-16,'#8a8276',10);
+}
+
+/* --- Einstellungen --- */
+function optionenListe(){
+  return [
+    {id:'ton',   text:'Lautstärke Ton',   wert:()=>saveData.ton},
+    {id:'musik', text:'Lautstärke Musik', wert:()=>saveData.musik},
+    {id:'wackeln',text:'Bildschirmwackeln',schalter:true},
+  ];
+}
+function drawOptionen(){
+  ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
+  txt('EINSTELLUNGEN',W/2,44,'#e8e0d0',16);
+  const liste=optionenListe();
+  menu.optIdx=clamp(menu.optIdx||0,0,liste.length-1);
+  liste.forEach((o,i)=>{
+    const y=96+i*34, sel=i===menu.optIdx;
+    txt(o.text,W/2-24,y,sel?'#e8e0d0':'#6a6a76',11,'right');
+    if(o.schalter){
+      txt(saveData.wackeln!==false?'an':'aus',W/2+16,y,
+          sel?'#ffd75a':'#8a8276',11,'left');
+    } else {
+      const v=o.wert();
+      for(let n=0;n<10;n++){
+        const bx=W/2+16+n*11;
+        rrect(bx,y-6,8,12,n<v?(sel?'#ffd75a':'#8a8276'):'#2a2a34');
+      }
+      txt(v+'',W/2+142,y,sel?'#ffd75a':'#8a8276',10,'left');
+    }
+  });
+  txt('▲▼ wählen · ◄► ändern · ESC zurück',W/2,H-30,'#8a8276',10);
+  txt('Alles wird sofort gespeichert.',W/2,H-16,'#4a4a56',8);
 }
 function drawCharSel(){
   ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
@@ -6631,7 +6836,31 @@ function drawPostRun(){
 /* --- Menü-Steuerung --- */
 function updateMenu(){
   if(G.state==='menu'){
-    if(Input.confirm()){ G.state='charsel'; Sfx.pickup(); }
+    const eintraege=menuEintraege();
+    if(Input.hit('ArrowUp')||Input.hit('KeyW')){ menu.idx=(menu.idx+eintraege.length-1)%eintraege.length; Sfx.tick(); }
+    if(Input.hit('ArrowDown')||Input.hit('KeyS')){ menu.idx=(menu.idx+1)%eintraege.length; Sfx.tick(); }
+    if(Input.confirm()){
+      const wahl=eintraege[clamp(menu.idx,0,eintraege.length-1)];
+      if(wahl.id==='weiter'){ if(laufFortsetzen()) Sfx.doorOpen(); else Sfx.error(); }
+      else if(wahl.id==='neu'){ G.state='charsel'; Sfx.pickup(); }
+      else if(wahl.id==='statistik'){ G.state='statistik'; Sfx.pickup(); }
+      else { G.state='optionen'; menu.optIdx=0; Sfx.pickup(); }
+    }
+  } else if(G.state==='statistik'){
+    if(Input.hit('Escape')||Input.confirm()){ G.state='menu'; Sfx.tick(); }
+  } else if(G.state==='optionen'){
+    const liste=optionenListe();
+    if(Input.hit('ArrowUp')||Input.hit('KeyW')){ menu.optIdx=(menu.optIdx+liste.length-1)%liste.length; Sfx.tick(); }
+    if(Input.hit('ArrowDown')||Input.hit('KeyS')){ menu.optIdx=(menu.optIdx+1)%liste.length; Sfx.tick(); }
+    const o=liste[clamp(menu.optIdx||0,0,liste.length-1)];
+    const links=Input.hit('ArrowLeft')||Input.hit('KeyA');
+    const rechts=Input.hit('ArrowRight')||Input.hit('KeyD');
+    if(links||rechts){
+      if(o.schalter) saveData.wackeln=!(saveData.wackeln!==false);
+      else saveData[o.id]=clamp((saveData[o.id]||0)+(rechts?1:-1),0,10);
+      einstellungenAnwenden(); saveSave(); Sfx.tick();
+    }
+    if(Input.hit('Escape')){ G.state='menu'; Sfx.tick(); }
   } else if(G.state==='charsel'){
     if(menu.typingSeed) return;
     if(Input.hit('ArrowLeft')||Input.hit('KeyA')){ menu.charIdx=(menu.charIdx+CHARS.length-1)%CHARS.length; Sfx.tick(); }
@@ -6652,7 +6881,8 @@ function updateMenu(){
     if(Input.hit('Escape')) G.state='menu';
   } else if(G.state==='pause'){
     if(Input.pause()||Input.hit('Escape')) G.state='game';
-    if(Input.hit('KeyX')){ G.state='postrun'; G.result='dead'; saveData.deaths++; saveSave(); }
+    if(Input.hit('KeyX')){ G.state='postrun'; G.result='dead';
+      saveData.deaths++; laufVerwerfen(); saveSave(); }
     // in der Itemliste blättern
     if(Input.hit('ArrowLeft')||Input.hit('KeyA')){ menu.itemSeite=(menu.itemSeite||0)-1; Sfx.tick(); }
     if(Input.hit('ArrowRight')||Input.hit('KeyD')){ menu.itemSeite=(menu.itemSeite||0)+1; Sfx.tick(); }
@@ -6690,13 +6920,16 @@ function frame(now){
 
 /* --- Boot --- */
 loadSave();
+einstellungenAnwenden();
 G={state:'menu',floor:null};
 requestAnimationFrame(frame);
 
 /* Test-Hooks (für automatisierte Smoke-Tests) */
 window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES,
-  HANDSCHRIFTEN, MAX_HERZEN, KAMMERN, get raumBildStand(){return bildStand;},
+  HANDSCHRIFTEN, MAX_HERZEN, KAMMERN, laufSpeichern, laufFortsetzen,
+  laufVerwerfen, laufVorhanden, get saveData(){return saveData;},
+  get raumBildStand(){return bildStand;},
   get tafelnGezeichnet(){return tafelnGezeichnet;} };
 </script>
 </body>
