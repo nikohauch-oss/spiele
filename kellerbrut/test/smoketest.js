@@ -806,6 +806,7 @@ await withPage(async(page,errs)=>{
           if(t.edge.kind!=='schatz'||t.edge.locked) continue;
           if(f.rooms[t.to].type!=='treasure') continue;
           enterRoom(k,null);
+          KB.G.bossIntro=null;          // sonst friert der Bossraum die Eingabe ein
           KB.G.enemies.length=0; KB.G.room.cleared=true;
           for(const zeile of KB.G.room.grid) zeile.fill(null);
           const p=KB.G.player; p.keys=0; p.red=99; p.redMax=99;
@@ -814,9 +815,13 @@ await withPage(async(page,errs)=>{
             const a=Math.atan2(dp.y-p.y,dp.x-p.x);
             p.vx=Math.cos(a)*200; p.vy=Math.sin(a)*200; updateGame(1/60);
           }
-          for(let i=0;i<40;i++) updateGame(1/60);
+          p.vx=0; p.vy=0;
+          for(let i=0;i<40;i++){ p.vx=0; p.vy=0; updateGame(1/60); }
           versuche++;
-          if(KB.G.room.type==='treasure'&&p.keys===0) geschafft++;
+          /* Der Spieler startet ohne Schlüssel — kommt er drin an, war die Tür
+             wirklich offen. Sein Schlüsselstand danach sagt nichts aus: im
+             Schatzraum kann der garantierte Schlüssel der Etage liegen. */
+          if(KB.G.room.type==='treasure') geschafft++;
           fertig=true; break;
         }
       }
@@ -833,11 +838,12 @@ await withPage(async(page,errs)=>{
     startRun(0,'ABWURF');
     const p=KB.G.player; p.red=99; p.redMax=99;
     KB.G.enemies.length=0;
-    const vorher=p.items.length;
+    const habe=()=>p.items.length+(p.active?1:0);
+    const vorher=habe();
     spawnItemAbwurf(p.x+26,p.y);
     const lag=KB.G.pickups.filter(q=>q.type==='item').length;
     for(let i=0;i<180;i++){ p.vx=60; p.vy=0; updateGame(1/60); }
-    return {lag, dazu:p.items.length-vorher,
+    return {lag, dazu:habe()-vorher,
             liegtNoch:KB.G.pickups.filter(q=>q.type==='item'&&!q.dead).length};
   });
   note(einsammeln.lag===1,'abgeworfenes Item liegt am Boden');
@@ -947,6 +953,128 @@ await withPage(async(page,errs)=>{
   });
   note(backen.stein===false&&backen.vorher!==backen.nachher&&backen.nachher!=='',
        'gesprengter Stein verschwindet auch aus dem vorgebackenen Bild');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
+
+// --- 15. Teufels- und Engelsraum ---
+if(want(15)){
+console.log('\n[15] Teufels- und Engelsraum');
+await withPage(async(page,errs)=>{
+  // Die Kammer hängt allein am Bossraum und bleibt bis dahin unsichtbar.
+  const bau=await page.evaluate(()=>{
+    let etagen=0, mitKammer=0, falscherNachbar=0, sichtbar=0, aufKarte=0, schluesselDrin=0;
+    for(let s=0;s<40;s++){
+      startRun(0,'K'+s);
+      for(let d=1;d<=6;d++){
+        const f=KB.G.floor; etagen++;
+        const keys=Object.keys(f.rooms).filter(k=>f.rooms[k].type==='devil');
+        if(keys.length===1){
+          mitKammer++;
+          const r0=f.rooms[keys[0]], tueren=Object.values(r0.doors);
+          if(tueren.length!==1||f.rooms[tueren[0].to].type!=='boss') falscherNachbar++;
+          if(tueren[0].edge.revealed) sichtbar++;
+          if(r0.seen) aufKarte++;
+          if(r0.drops.some(q=>q.garantiert)) schluesselDrin++;
+        }
+        if(d<6) nextFloor();
+      }
+    }
+    return {etagen,mitKammer,falscherNachbar,sichtbar,aufKarte,schluesselDrin};
+  });
+  note(bau.mitKammer>bau.etagen*0.9,'fast jede Etage hat eine Kammer hinter dem Boss',
+       '('+bau.mitKammer+' von '+bau.etagen+')');
+  note(bau.falscherNachbar===0,'die Kammer grenzt nur an den Bossraum');
+  note(bau.sichtbar===0&&bau.aufKarte===0,'vor dem Bosskampf ist sie weder sichtbar noch auf der Karte');
+  note(bau.schluesselDrin===0,'kein garantierter Schlüssel landet in der Kammer');
+
+  // Ohne Treffer immer, mit Treffer nur manchmal.
+  const quote=await page.evaluate(()=>{
+    const messen=(getroffen)=>{
+      let auf=0, ges=0;
+      for(let s=0;s<200&&ges<120;s++){
+        startRun(0,'Q'+(getroffen?'T':'H')+s);
+        const f=KB.G.floor;
+        if(!Object.values(f.rooms).some(r=>r.type==='devil')) continue;
+        enterRoom(f.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+        KB.G.floorHit=getroffen; KB.G.deals=0;
+        onBossRoomCleared(); ges++;
+        const kammer=Object.values(f.rooms).find(r=>r.type==='devil'||r.type==='angel');
+        const tuer=Object.values(KB.G.room.doors).find(t=>f.rooms[t.to]===kammer);
+        if(tuer&&tuer.edge.revealed) auf++;
+      }
+      return {auf,ges};
+    };
+    return {heil:messen(false), getroffen:messen(true)};
+  });
+  note(quote.heil.auf===quote.heil.ges,'ohne einen Treffer öffnet sich die Kammer immer',
+       '('+quote.heil.auf+'/'+quote.heil.ges+')');
+  note(quote.getroffen.auf>0&&quote.getroffen.auf<quote.getroffen.ges*0.5,
+       'mit Treffern öffnet sie sich nur manchmal',
+       '('+quote.getroffen.auf+'/'+quote.getroffen.ges+')');
+
+  // Der Handel: Herzen statt Münzen, danach kein Engel mehr.
+  const handel=await page.evaluate(()=>{
+    const kammerBetreten=(art,vorbereiten)=>{
+      for(let s=0;s<300;s++){
+        startRun(0,art[0].toUpperCase()+s);
+        const f=KB.G.floor;
+        if(!Object.values(f.rooms).some(r=>r.type==='devil')) continue;
+        enterRoom(f.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+        KB.G.floorHit=false; KB.G.deals=art==='angel'?0:1;
+        onBossRoomCleared();
+        const kammer=Object.values(f.rooms).find(r=>r.type==='devil'||r.type==='angel');
+        if(!kammer||kammer.type!==art) continue;
+        const key=Object.keys(f.rooms).find(k=>f.rooms[k]===kammer);
+        enterRoom(key,null); KB.G.bossIntro=null;
+        if(vorbereiten) vorbereiten(KB.G.player);
+        const pd=KB.G.room.pedestals[0];
+        KB.G.player.x=pd.x; KB.G.player.y=pd.y; pd.cd=0;
+        const vorMax=KB.G.player.redMax, vorItems=KB.G.player.items.length;
+        const vorDeals=KB.G.deals;
+        for(let i=0;i<10;i++) updateGame(1/60);
+        return {podeste:KB.G.room.pedestals.length, herzPreis:!!pd.herzPreis,
+                genommen:!!pd.taken, vorMax, nachMax:KB.G.player.redMax,
+                dealsDazu:KB.G.deals-vorDeals,
+                itemDazu:KB.G.player.items.length-vorItems,
+                tot:KB.G.player.dead};
+      }
+      return null;
+    };
+    return {teufel:kammerBetreten('devil'),
+            engel:kammerBetreten('angel'),
+            arm:kammerBetreten('devil',p=>{p.redMax=2;p.red=2;p.soul.length=0;})};
+  });
+  note(handel.teufel&&handel.teufel.podeste===2&&handel.teufel.herzPreis,
+       'der Teufel bietet zwei Items gegen Herzen an');
+  note(handel.teufel&&handel.teufel.genommen&&handel.teufel.nachMax===handel.teufel.vorMax-2
+       &&handel.teufel.dealsDazu===1,
+       'ein Handel kostet genau einen Herzcontainer',
+       handel.teufel?'('+handel.teufel.vorMax+' → '+handel.teufel.nachMax+' Hälften)':'');
+  note(handel.engel&&handel.engel.podeste===1&&!handel.engel.herzPreis
+       &&handel.engel.genommen&&handel.engel.itemDazu===1,
+       'der Engel gibt sein Item umsonst');
+  note(handel.arm&&!handel.arm.genommen&&!handel.arm.tot&&handel.arm.dealsDazu===0,
+       'wer nicht zahlen kann, stirbt nicht daran — das Angebot bleibt stehen');
+
+  const engelDanach=await page.evaluate(()=>{
+    let engel=0, ges=0;
+    for(let s=0;s<120&&ges<60;s++){
+      startRun(0,'N'+s);
+      const f=KB.G.floor;
+      if(!Object.values(f.rooms).some(r=>r.type==='devil')) continue;
+      enterRoom(f.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+      KB.G.floorHit=false; KB.G.deals=1;          // schon gehandelt
+      onBossRoomCleared(); ges++;
+      const k=Object.values(f.rooms).find(r=>r.type==='devil'||r.type==='angel');
+      if(k&&k.type==='angel') engel++;
+    }
+    return {engel,ges};
+  });
+  note(engelDanach.engel===0&&engelDanach.ges>20,
+       'nach dem ersten Handel zeigt sich kein Engel mehr',
+       '('+engelDanach.engel+' von '+engelDanach.ges+')');
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 

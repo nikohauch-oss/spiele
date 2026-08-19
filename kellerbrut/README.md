@@ -58,6 +58,28 @@ im Shop 5 Münzen, und es gibt sie über die Pille *Schlüsselglück* (+2) und d
 *Dietrichfinger* (+3, spart Schlüssel manchmal ganz ein). Die Karte
 *Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
 
+**Teufels- und Engelsraum.** Hinter jedem Bossraum liegt eine Kammer, die
+erst der erlegte Boss aufschließt. Wer die Etage **ohne einen einzigen
+Treffer** übersteht, bekommt sie sicher — sonst entscheidet der Zufall
+(etwa jedes vierte Mal). Vorher ist sie weder sichtbar noch auf der Karte.
+
+Der **Teufel** legt zwei Items aus, bezahlt wird nicht mit Münzen, sondern
+mit einem **Herzcontainer** je Item; wer keinen entbehren kann, zahlt
+ersatzweise mit drei Seelen- oder schwarzen Herzen. Reicht beides nicht,
+bleibt das Angebot einfach stehen — daran stirbt niemand. Seine Ware ist roh
+stärker: *Blutpakt*, *Hornhaut*, *Schlangenzunge*, *Pechschwinge*,
+*Schwarze Galle*.
+
+Der **Engel** schenkt: ein Item umsonst und zwei Seelenherzen. Dafür zeigt er
+sich nur, solange man noch **keinen Handel mit dem Teufel** geschlossen hat.
+Wer einmal mit Herzen bezahlt hat, sieht ihn den ganzen Durchlauf nicht
+wieder — das ist die eigentliche Entscheidung eines Runs. Seine Ware schützt
+statt zu wüten: *Federkleid*, *Taufwasser*, *Richtstrahl*, *Schutzfeder*.
+
+Man erkennt die Türen sofort: die Teufelstür ist blutrot mit zwei Hörnern und
+einem glühenden Auge im Sturz, die Engelstür hell mit Flügeln und
+Heiligenschein. Auf der Automap stehen dafür kleine Hörner und ein Ring.
+
 **Zwanzig benannte Grundrisse.** Jeder Normalraum kommt aus einem von zwanzig
 Plänen mit eigenem Einfall: der *Kreuzgang* teilt den Raum in vier Viertel, die
 *Säulenhalle* schluckt jeden weiten Schuss, die *Brücke* lässt nur einen
@@ -111,7 +133,7 @@ Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
 ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
 Seeds nach.
 
-**Inhalte.** 52 Items (passiv und aktiv), 52 Gegnertypen mit Champion-Varianten,
+**Inhalte.** 61 Items (passiv und aktiv), 52 Gegnertypen mit Champion-Varianten,
 7 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 4 Charaktere (drei davon freischaltbar).
 
@@ -294,7 +316,8 @@ samt Phasenwechsel, jedes Item unter Dauerfeuer, alle Pillen und Karten, das
 Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
 jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
 Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
-der Item-Abwurf der Gegner, die Spielbarkeit aller zwanzig Grundrisse, die
+der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
+Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate
 unter Last. Die Zahlen zieht der Test aus den

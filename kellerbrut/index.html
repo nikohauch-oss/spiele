@@ -261,13 +261,13 @@ defItem({id:'zornauge',name:'Zornauge',desc:'Schaden + Feuerrate hoch',type:'pas
 defItem({id:'windsohlen',name:'Windläufer-Sohlen',desc:'Tempo hoch!',type:'passive',pool:['treasure','boss','shop'],mod:s=>{s.speed+=0.5;}});
 defItem({id:'fernrohr',name:'Fernrohr',desc:'Reichweite + Schussgeschw. hoch',type:'passive',pool:['treasure','shop'],mod:s=>{s.range+=60;s.shot+=0.6;}});
 defItem({id:'kolibri',name:'Kolibriherz',desc:'Feuerrate hoch!',type:'passive',pool:['treasure','boss'],mod:s=>{s.tps+=0.7;}});
-defItem({id:'blei',name:'Bleitropfen',desc:'Wuchtiger, aber langsamer Schuss',type:'passive',pool:['treasure'],mod:s=>{s.dmg+=2;s.shot-=0.8;}});
-defItem({id:'vierblatt',name:'Vierblatt',desc:'Glück hoch!',type:'passive',pool:['treasure','secret'],mod:s=>{s.luck+=2;}});
-defItem({id:'sternfrucht',name:'Sternfrucht',desc:'Alles ein bisschen besser',type:'passive',pool:['treasure','boss'],mod:s=>{s.dmg+=0.5;s.tps+=0.2;s.speed+=0.15;s.range+=20;s.luck+=1;}});
+defItem({id:'blei',name:'Bleitropfen',desc:'Wuchtiger, aber langsamer Schuss',type:'passive',pool:['treasure','devil'],mod:s=>{s.dmg+=2;s.shot-=0.8;}});
+defItem({id:'vierblatt',name:'Vierblatt',desc:'Glück hoch!',type:'passive',pool:['treasure','secret','angel'],mod:s=>{s.luck+=2;}});
+defItem({id:'sternfrucht',name:'Sternfrucht',desc:'Alles ein bisschen besser',type:'passive',pool:['treasure','boss','angel'],mod:s=>{s.dmg+=0.5;s.tps+=0.2;s.speed+=0.15;s.range+=20;s.luck+=1;}});
 defItem({id:'herzwurz',name:'Herzwurz',desc:'+1 Herzcontainer, volle Heilung',type:'passive',pool:['boss'],pickup:p=>{p.redMax+=2;p.red=p.redMax;}});
 defItem({id:'eisenherz',name:'Eisenherz',desc:'+2 Herzcontainer',type:'passive',pool:['boss','shop'],pickup:p=>{p.redMax+=4;p.red+=2;}});
-defItem({id:'seelenlicht',name:'Seelenlicht',desc:'+2 Seelenherzen',type:'passive',pool:['treasure','shop','secret'],pickup:p=>{p.soul.push('S','S','S','S');}});
-defItem({id:'nachtdorn',name:'Nachtdorn',desc:'+2 schwarze Herzen',type:'passive',pool:['curse','secret'],pickup:p=>{p.soul.push('B','B','B','B');}});
+defItem({id:'seelenlicht',name:'Seelenlicht',desc:'+2 Seelenherzen',type:'passive',pool:['treasure','shop','secret','angel'],pickup:p=>{p.soul.push('S','S','S','S');}});
+defItem({id:'nachtdorn',name:'Nachtdorn',desc:'+2 schwarze Herzen',type:'passive',pool:['curse','secret','devil'],pickup:p=>{p.soul.push('B','B','B','B');}});
 defItem({id:'adlerblick',name:'Adlerblick',desc:'Reichweite stark hoch',type:'passive',pool:['treasure'],mod:s=>{s.range+=90;s.tps+=0.2;}});
 
 /* --- Schuss-Modifikatoren (stapeln & kombinieren sich) --- */
@@ -304,7 +304,7 @@ defItem({id:'sprengmeister',name:'Sprengmeister',desc:'+5 Bomben, immun gegen ei
 defItem({id:'stachelstiefel',name:'Stachelstiefel',desc:'Immun gegen Stacheln & Pfützen',type:'passive',pool:['shop','treasure'],flags:['spikeimmun']});
 defItem({id:'mottenfluegel',name:'Mottenflügel',desc:'Du kannst fliegen!',type:'passive',pool:['treasure','secret'],flags:['flight']});
 defItem({id:'gierkralle',name:'Gierkralle',desc:'+5 Münzen, Gegner geizen weniger',type:'passive',pool:['shop'],flags:['greed'],pickup:p=>{p.coins+=5;}});
-defItem({id:'dornenhaut',name:'Dornenhaut',desc:'Berührung verletzt Gegner',type:'passive',pool:['curse','treasure'],flags:['thorns']});
+defItem({id:'dornenhaut',name:'Dornenhaut',desc:'Berührung verletzt Gegner',type:'passive',pool:['curse','treasure','devil'],flags:['thorns']});
 defItem({id:'blutlinse',name:'Blutlinse',desc:'Chance auf kritische Treffer',type:'passive',pool:['treasure','curse'],flags:['crit']});
 
 /* --- Aktive Items (E; Aufladung: 1 Balken pro geschafftem Raum) --- */
@@ -356,7 +356,34 @@ defItem({id:'schutzschale',name:'Schutzschale',desc:'5 Sekunden unverwundbar',ty
     Sfx.active();return true;}});
 
 /* Item-Pools werden aus den Tabellen aufgebaut */
-const POOLS={treasure:[],boss:[],shop:[],curse:[],secret:[]};
+/* --- Teufels- und Engelsware ---------------------------------------------
+   Der Teufel gibt roh mehr Kraft, nimmt dafür Leben. Der Engel gibt
+   weniger Wucht, dafür Schutz und Herzen. Beide Töpfe sind bewusst klein
+   und knallig — man sieht sie pro Durchlauf höchstens ein paar Mal. */
+/* Kein zusätzlicher Herzpreis: der steckt schon im Handel selbst. Ein Item,
+   das beim Aufheben nochmal Leben nimmt, wäre im Teufelsraum doppelt bezahlt. */
+defItem({id:'blutpakt',name:'Blutpakt',desc:'Schaden stark hoch, kurze Reichweite',
+  type:'passive',pool:['devil'],mod:s=>{s.dmg+=3;s.range-=45;}});
+defItem({id:'hornhaut',name:'Hornhaut',desc:'Berührung verletzt, Schüsse stoßen weg',
+  type:'passive',pool:['devil'],flags:['thorns','heavyknock'],mod:s=>{s.dmg+=0.5;}});
+defItem({id:'schlangenzunge',name:'Schlangenzunge',desc:'Giftige Tränen, mehr Schaden',
+  type:'passive',pool:['devil'],flags:['poison'],mod:s=>{s.dmg+=1;}});
+defItem({id:'pechschwinge',name:'Pechschwinge',desc:'Flug und Durchschlag, träger Schuss',
+  type:'passive',pool:['devil'],flags:['flight','pierce'],mod:s=>{s.tps-=0.25;}});
+defItem({id:'schwarzegalle',name:'Schwarze Galle',desc:'+3 schwarze Herzen, Schaden hoch',
+  type:'passive',pool:['devil','curse'],mod:s=>{s.dmg+=0.8;},
+  pickup:p=>{p.soul.push('B','B','B','B','B','B');}});
+defItem({id:'federkleid',name:'Federkleid',desc:'Flug und Tempo hoch',
+  type:'passive',pool:['angel'],flags:['flight'],mod:s=>{s.speed+=0.35;}});
+defItem({id:'taufwasser',name:'Taufwasser',desc:'+2 Seelenherzen, Feuerrate hoch',
+  type:'passive',pool:['angel'],mod:s=>{s.tps+=0.45;},
+  pickup:p=>{p.soul.push('S','S','S','S');}});
+defItem({id:'richtstrahl',name:'Richtstrahl',desc:'Deine Tränen werden zum Strahl',
+  type:'passive',pool:['angel'],flags:['beam'],mod:s=>{s.dmg+=0.6;}});
+defItem({id:'schutzfeder',name:'Schutzfeder',desc:'Begleiter, der Geschosse abfängt',
+  type:'passive',pool:['angel'],famil:'panzer',mod:s=>{s.luck+=1;}});
+
+const POOLS={treasure:[],boss:[],shop:[],curse:[],secret:[],devil:[],angel:[]};
 for(const id in ITEMS) for(const pl of ITEMS[id].pool) POOLS[pl].push(id);
 
 /* --- PILLEN: Name erst nach erstem Schlucken bekannt --- */
@@ -778,17 +805,42 @@ function genFloor(depth){
   if(rng.chance(0.6)){const k=deadends.shift(); if(k) types[k]='curse';}
   if(rng.chance(0.4)){const k=deadends.shift(); if(k) types[k]='sacrifice';}
   if(depth>=2&&rng.chance(0.4)){const k=deadends.shift(); if(k) types[k]='arcade';}
+  /* Teufelskammer: hängt als Sackgasse am Bossraum und wird immer mitgebaut,
+     damit der Platz garantiert frei ist. Ob sie sich öffnet, entscheidet erst
+     der Bosskampf — bis dahin ist ihre Tür unsichtbar. Sie darf nur den
+     Bossraum berühren, sonst entstünde eine Abkürzung um den Boss herum. */
+  if(bossK){
+    const [bx,by]=bossK.split(',').map(Number), richtungen=['u','d','l','r'];
+    const start=rng.int(4);
+    for(let i=0;i<4;i++){
+      const d=richtungen[(start+i)%4];
+      const nx=bx+DIRS[d][0], ny=by+DIRS[d][1], nk=roomKey(nx,ny);
+      if(Math.abs(nx)>5||Math.abs(ny)>4||cells[nk]) continue;
+      let n=0; for(const dd in DIRS) if(cells[roomKey(nx+DIRS[dd][0],ny+DIRS[dd][1])]) n++;
+      if(n!==1) continue;
+      cells[nk]=true; list.push(nk); types[nk]='devil'; distMap[nk]=99;
+      break;
+    }
+  }
+
   // Geheimraum: leere Zelle mit möglichst vielen Raum-Nachbarn
   let best=null,bestN=0;
   for(let x=-5;x<=5;x++)for(let y=-4;y<=4;y++){
     const k=roomKey(x,y); if(cells[k]) continue;
     let n=0,touchesBoss=false;
     for(const d in DIRS){const nk=roomKey(x+DIRS[d][0],y+DIRS[d][1]);
-      if(cells[nk]){n++; if(types[nk]==='boss')touchesBoss=true;}}
+      /* Weder Bossraum noch Teufelskammer dürfen einen Geheimgang bekommen:
+         der wäre eine Abkürzung an genau dem Kampf vorbei, der beide
+         überhaupt erst freischaltet. */
+      if(cells[nk]){n++; if(types[nk]==='boss'||types[nk]==='devil')touchesBoss=true;}}
     if(n>=2&&!touchesBoss&&n>bestN){bestN=n;best=k;}}
-  if(!best){ // Fallback: irgendeine Zelle mit 1 Nachbarn
+  if(!best){ // Fallback: irgendeine Zelle mit 1 Nachbarn, aber nicht am Boss
     for(let x=-5;x<=5&&!best;x++)for(let y=-4;y<=4&&!best;y++){
-      const k=roomKey(x,y); if(!cells[k]&&nbCount(x,y)>=1&&types[roomKey(x,y)]!=='boss')best=k;}}
+      const k=roomKey(x,y); if(cells[k]||nbCount(x,y)<1) continue;
+      let verboten=false;
+      for(const d in DIRS){const nk=roomKey(x+DIRS[d][0],y+DIRS[d][1]);
+        if(cells[nk]&&(types[nk]==='boss'||types[nk]==='devil')) verboten=true;}
+      if(!verboten) best=k;}}
   if(best){cells[best]=true;list.push(best);types[best]='secret';distMap[best]=99;}
 
   // Räume bauen
@@ -811,6 +863,9 @@ function genFloor(depth){
         const a=types[k]||'normal', b=types[nk]||'normal';
         let kind='normal', locked=false;
         if(a==='secret'||b==='secret'){kind='secret';}
+        /* Die Kammer hinter dem Boss: Art und Sichtbarkeit entscheiden sich
+           erst, wenn der Boss fällt (siehe kammerOeffnen). */
+        else if(a==='devil'||b==='devil'){kind='devil';}
         else if(a==='boss'||b==='boss'){kind='boss';}
         /* Shop und Schatzraum bekommen eigene Türarten, damit man sie von
            außen auseinanderhält. Schatzräume sind nur zu etwa der Hälfte
@@ -819,7 +874,7 @@ function genFloor(depth){
         else if(a==='shop'||b==='shop'){kind='shop';locked=true;}
         else if(a==='treasure'||b==='treasure'){kind='schatz';locked=rng.chance(0.55);}
         else if(a==='curse'||b==='curse'){kind='curse';}
-        doors[ek]={kind,locked,revealed:kind!=='secret'};
+        doors[ek]={kind,locked,revealed:kind!=='secret'&&kind!=='devil'};
       }
       room.doors[d]={to:nk,edge:doors[ek]};
     }
@@ -842,6 +897,7 @@ function platziereSchluessel(floor,rng){
     for(const d in floor.rooms[k].doors){
       const tuer=floor.rooms[k].doors[d];
       if(tuer.edge.locked||tuer.edge.kind==='secret') continue;
+      if(!tuer.edge.revealed) continue;      // verborgene Kammer zählt nicht
       if(!erreichbar.has(tuer.to)){ erreichbar.add(tuer.to); q.push(tuer.to); }
     }
   }
@@ -880,7 +936,8 @@ function buildRoom(gx,gy,type,depth,rng){
     grid:Array.from({length:ROWS},()=>Array(COLS).fill(null)),
     spawns:[],drops:[],pedestals:[],machines:[],trapdoor:false,bossId:null,
     sacrificeCount:0};
-  const clearedByDefault=['start','treasure','shop','secret','curse','sacrifice','arcade'];
+  const clearedByDefault=['start','treasure','shop','secret','curse','sacrifice',
+                          'arcade','devil','angel'];
   if(clearedByDefault.includes(type)) room.cleared=true;
 
   let tmpl=null;
@@ -965,7 +1022,7 @@ function enterRoom(key,fromDir){
   G.roomKey=key; G.room=room;
   room.visited=true; room.seen=true;
   for(const d in room.doors){const nb=G.floor.rooms[room.doors[d].to];
-    if(nb.type!=='secret'||room.doors[d].edge.revealed) nb.seen=true;}
+    if(room.doors[d].edge.revealed) nb.seen=true;}
   // Entities zurücksetzen
   G.tears=[];G.eshots=[];G.enemies=[];G.bombs=[];G.pickups=[];G.fx=[];
   G.beams=[];G.creeps=[];G.texts=[];G.lasers=[];
@@ -1081,14 +1138,76 @@ function onBossRoomCleared(){
   room.pedestals.push({x:tx(4),y:ty(3),itemId:pickFromPool('boss')});
   room.trapdoor=true;
   Sfx.item();
+  kammerOeffnen();
   // Freischaltungen
   if(G.depth>=2) unlock('floor3');
   if(G.depth>=4) unlock('floor5');
 }
 
+/* --- TEUFELS- UND ENGELSRAUM --------------------------------------------
+   Hinter jedem Bossraum liegt eine Kammer, die erst der erlegte Boss
+   aufschließt. Wer die Etage ohne einen einzigen Treffer übersteht, bekommt
+   sie sicher; sonst entscheidet der Zufall. Damit lohnt sich vorsichtiges
+   Spielen, ohne dass man je ganz leer ausgeht.
+
+   Der Engel zeigt sich nur, solange man noch keinen Handel mit dem Teufel
+   geschlossen hat. Wer einmal mit Herzen bezahlt hat, sieht ihn nie wieder —
+   das ist die eigentliche Entscheidung des Durchlaufs.                     */
+function kammerOeffnen(){
+  const room=G.room;
+  let tuer=null, ziel=null;
+  for(const d in room.doors){
+    const nb=G.floor.rooms[room.doors[d].to];
+    if(nb.type==='devil'||nb.type==='angel'){ tuer=room.doors[d]; ziel=nb; }
+  }
+  if(!tuer||tuer.edge.revealed) return;
+  if(!frand.chance(G.floorHit?0.25:1)) return;
+
+  const engel=G.deals===0&&frand.chance(0.4);
+  ziel.type=engel?'angel':'devil';
+  tuer.edge.kind=ziel.type;
+  tuer.edge.revealed=true;
+  ziel.seen=true;
+  kammerFuellen(ziel,engel);
+  raumBildNeu();                 // die neue Tür gehört ins vorgebackene Bild
+  G.shake=Math.max(G.shake,9);
+  Sfx.doorOpen();
+  G.banner={title:engel?'Ein Lichtschein':'Ein Riss im Boden',
+            desc:engel?'Nebenan wartet etwas Gütiges':'Nebenan wartet etwas Hungriges',
+            t:2.8};
+}
+
+function kammerFuellen(room,engel){
+  room.pedestals.length=0; room.drops.length=0;
+  if(engel){
+    // Der Engel schenkt: ein Item umsonst, dazu Seelenherzen.
+    room.pedestals.push({x:tx(6),y:ty(2),itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(4),y:ty(4),type:'soulheart'});
+    room.drops.push({x:tx(8),y:ty(4),type:'soulheart'});
+  } else {
+    // Der Teufel handelt: zwei Angebote, bezahlt wird mit Leben statt Münzen.
+    room.pedestals.push({x:tx(4),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
+    room.pedestals.push({x:tx(8),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
+    if(frand.chance(0.5)) room.drops.push({x:tx(6),y:ty(5),type:'blackheart'});
+  }
+}
+
+/* Ein Teufelshandel kostet einen ganzen roten Herzcontainer. Wer keinen
+   entbehren kann, zahlt ersatzweise mit drei Seelen- oder schwarzen Herzen.
+   Reicht beides nicht, bleibt das Angebot einfach stehen — daran sterben
+   soll niemand. */
+function herzPreisZahlen(container){
+  const p=G.player, kosten=container*2;      // Herzen zählen in Hälften
+  if(p.redMax-kosten>=2&&p.red-kosten>=1){
+    p.redMax-=kosten; p.red-=kosten; Sfx.hurt(); return true;
+  }
+  if(p.soul.length>=3){ p.soul.splice(-3,3); Sfx.hurt(); return true; }
+  return false;
+}
+
 function doorPassable(d){
   const e=d.edge;
-  if(e.kind==='secret'&&!e.revealed) return false;
+  if(!e.revealed) return false;          // Geheimgang oder verborgene Kammer
   if(e.locked) return false;
   return G.room.cleared||roomIsClear();
 }
@@ -1106,7 +1225,7 @@ function openAllDoors(){
   const room=G.room;
   for(const d in room.doors){const e=room.doors[d].edge;
     e.locked=false; if(e.kind==='secret'){e.revealed=true;}
-    const nb=G.floor.rooms[room.doors[d].to]; nb.seen=true;}
+    if(e.revealed) G.floor.rooms[room.doors[d].to].seen=true;}
   Sfx.doorOpen();
 }
 
@@ -1725,6 +1844,12 @@ function touchThings(p,dt){
     if(pd.cd>0){ pd.cd-=dt; continue; }
     if(dist(p,pd)>p.r+11) continue;
     if(pd.price&&p.coins<pd.price) continue;
+    if(pd.herzPreis){                        // Teufelshandel: bezahlt wird mit Leben
+      if(!herzPreisZahlen(pd.herzPreis)) continue;
+      G.deals++;                             // ab jetzt kein Engel mehr
+      G.shake=Math.max(G.shake,7);
+      addText(pd.x,pd.y-20,'Handel besiegelt','#c03a5a');
+    }
     if(pd.price){p.coins-=pd.price;}
     pd.taken=true; acquireItem(pd.itemId,pd);
   }
@@ -1873,6 +1998,7 @@ function hurtPlayer(halves,force){
   p.iframes=1.1; p.hitFlash=0.3;
   G.shake=Math.max(G.shake,5); Sfx.hurt();
   G.stats.dmgTaken++;
+  G.floorHit=true;                 // kostet die Kammer hinter dem Boss
   if(p.red<=0&&p.soul.length===0){ playerDie(); }
   return true;
 }
@@ -1929,6 +2055,7 @@ function nextFloor(){
   G.depth++;
   saveData.bestFloor=Math.max(saveData.bestFloor,G.depth); saveSave();
   if(G.depth>FLOORS.length){ winRun(); return; }
+  G.floorHit=false;                // neue Etage, neue Chance auf die Kammer
   G.room=null;
   G.floor=genFloor(G.depth);
   Sfx.setPattern(G.floor.data.mus);
@@ -3354,6 +3481,8 @@ function raumBildBacken(stand){
   if(room.type==='treasure'){ ctx.fillStyle='rgba(212,175,55,0.05)'; ctx.fillRect(RX,RY,bw,bh); }
   if(room.type==='curse')   { ctx.fillStyle='rgba(160,30,30,0.08)';  ctx.fillRect(RX,RY,bw,bh); }
   if(room.type==='secret')  { ctx.fillStyle='rgba(120,80,200,0.06)'; ctx.fillRect(RX,RY,bw,bh); }
+  if(room.type==='devil')   { ctx.fillStyle='rgba(160,20,30,0.16)';  ctx.fillRect(RX,RY,bw,bh); }
+  if(room.type==='angel')   { ctx.fillStyle='rgba(240,235,205,0.10)';ctx.fillRect(RX,RY,bw,bh); }
 
   // Deckenlampe: heller zur Mitte, dunkel zu den Rändern
   let gr=ctx.createRadialGradient(RX+bw*0.5,RY+bh*0.34,0,RX+bw*0.5,RY+bh*0.5,bw*0.62);
@@ -3535,6 +3664,15 @@ function drawRoom(){
     const bob=Math.sin(performance.now()/300)*2;
     drawItemIcon(pd.itemId,pd.x,pd.y-14+bob,1.2);
     if(pd.price) txt(pd.price+'¢',pd.x,pd.y+16,'#ffd75a',9);
+    else if(pd.herzPreis){                   // Preis in Herzen statt in Münzen
+      const p2=G.player;
+      const bezahlbar=(p2.redMax-pd.herzPreis*2>=2&&p2.red-pd.herzPreis*2>=1)
+                      ||p2.soul.length>=3;
+      tuscheAn=false;
+      for(let i=0;i<pd.herzPreis;i++)
+        drawHeart(pd.x-pd.herzPreis*5+i*10+5,pd.y+18,bezahlbar?'full':'empty','red');
+      tuscheAn=true;
+    }
   }
   // Automaten
   for(const m of G.room.machines){
@@ -3580,6 +3718,10 @@ function doorStyle(kind){
                            blatt:'#b08d33',blattTief:'#7a6021'};
     case 'shop':   return {rahmen:'#7a5230',hell:'#c98a4a',dunkel:'#452c17',
                            blatt:'#9a6a3c',blattTief:'#6a4726'};
+    case 'devil':  return {rahmen:'#521018',hell:'#9a2030',dunkel:'#2a070c',
+                           blatt:'#3a0c12',blattTief:'#1e0508',schein:true};
+    case 'angel':  return {rahmen:'#8a8270',hell:'#efe8d0',dunkel:'#544e40',
+                           blatt:'#d8d0b8',blattTief:'#a09880'};
     case 'curse':  return {rahmen:'#5a2424',hell:'#833636',dunkel:'#331313',
                            blatt:'#6a2a2a',blattTief:'#431a1a',schein:'#c03a5a'};
     case 'secret': return {rahmen:'#4a4a52',hell:'#65656f',dunkel:'#2b2b31',
@@ -3608,7 +3750,7 @@ function polyRing(aussen,innen,color){
 
 function drawDoor(d,door){
   const e=door.edge;
-  if(e.kind==='secret'&&!e.revealed) return; // steckt unsichtbar in der Wand
+  if(!e.revealed) return;   // Geheimgang oder verborgene Kammer: noch nicht da
   const dp=doorXY(d), st=doorStyle(e.kind);
   const a=clamp(door.anim===undefined?(doorPassable(door)?1:0):door.anim,0,1);
 
@@ -3696,6 +3838,30 @@ function drawDoor(d,door){
     ctx.font='bold 6px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText('¢',0,-9.4);
     for(const nx of [-18,18]) disc(nx,-12,1.5,'#d8a86a');
+  } else if(e.kind==='devil'){                // zwei Hörner über dem Sturz
+    ctx.fillStyle='#c8384c';
+    for(const vz of [-1,1]){
+      ctx.beginPath();
+      ctx.moveTo(vz*4,-6.5);
+      ctx.quadraticCurveTo(vz*9,-9,vz*11,-13.5);
+      ctx.quadraticCurveTo(vz*7.5,-9.5,vz*5.5,-6.5);
+      ctx.closePath(); ctx.fill();
+    }
+    disc(0,-8.5,2.4,'#2a070c');               // Auge dazwischen
+    disc(0,-8.5,1.1,'#ff5a5a');
+    for(const nx of [-18,18]) disc(nx,-12,1.6,'#7a1a24');
+  } else if(e.kind==='angel'){                // Heiligenschein und Federn
+    for(const vz of [-1,1]){                  // angedeutete Flügel im Sturz
+      ctx.fillStyle='#f2ecd8'; ctx.beginPath();
+      ctx.moveTo(vz*7,-7);
+      ctx.quadraticCurveTo(vz*15,-12,vz*20,-11.5);
+      ctx.quadraticCurveTo(vz*14,-8,vz*8,-5.5);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle='#ffe8a0'; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.ellipse(0,-10,6.5,2.4,0,0,TAU); ctx.stroke();
+    ctx.save(); ctx.globalAlpha=0.5;
+    ctx.beginPath(); ctx.ellipse(0,-10,9,3.6,0,0,TAU); ctx.stroke(); ctx.restore();
   } else if(e.kind==='curse'){                // Zähne, die in die Öffnung ragen
     ctx.fillStyle='#b0b0b8';
     for(let i=-2;i<=2;i++){ const x=i*7;
@@ -4785,6 +4951,19 @@ function drawMinimap(){
     if(r.type==='sacrifice'){icon='†';icol='#555';}
     if(r.type==='arcade'){icon='★';icol='#5a5ac0';}
     if(icon) txt(icon,x+cw/2-0.5,y+ch/2,icol,7);
+    /* Teufel und Engel bekommen kleine Zeichnungen statt Schriftzeichen:
+       Hörner und Heiligenschein sind auf neun Pixeln besser zu erkennen als
+       irgendein Sonderzeichen, und sie hängen an keiner Schriftart. */
+    if(r.type==='devil'){
+      ctx.fillStyle='#c03a5a'; ctx.beginPath();
+      ctx.moveTo(x+2,y+ch-2);    ctx.lineTo(x+3,y+2);      ctx.lineTo(x+4.5,y+ch-2);
+      ctx.moveTo(x+cw-3,y+ch-2); ctx.lineTo(x+cw-4,y+2);   ctx.lineTo(x+cw-5.5,y+ch-2);
+      ctx.fill();
+    }
+    if(r.type==='angel'){
+      ctx.strokeStyle='#ffe8a0'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.ellipse(x+cw/2-0.5,y+ch/2,2.6,1.4,0,0,TAU); ctx.stroke();
+    }
   }
   ctx.globalAlpha=1;
 }
@@ -4835,6 +5014,7 @@ function startRun(charIdx,seedStr){
     tears:[],eshots:[],enemies:[],bombs:[],pickups:[],fx:[],beams:[],
     lasers:[],creeps:[],familiars:[],texts:[],
     deathTimer:0,roomFresh:0,bossName:'',room:null,roomKey:null,
+    floorHit:false,deals:0,        // heil durch die Etage? schon gehandelt?
     floorRooms:()=>G.floor.rooms};
   const p={char,x:0,y:0,vx:0,vy:0,r:9,
     red:char.red,redMax:char.red,soul:[...char.soul],
