@@ -101,6 +101,15 @@ Fleisch: Adern unter dem Boden, Schleifspuren, und der ganze Raum schlägt wie
 ein Herz. In der *Wurzel des Kellers* brechen Wurzeln durch den Boden und
 blasse Lichter treiben durch die Dunkelheit.
 
+**Scharfes Bild.** Gerechnet und gezeichnet wird in 640×360, aber die
+Leinwand bekommt so viele echte Bildpunkte, wie der Bildschirm an dieser
+Stelle hergibt (`leinwandAnpassen()`, Faktor `SKALA`, bis zu vierfach). Auf
+Full HD entsteht dadurch ein 1280×720- statt eines hochskalierten
+640×360-Bildes — nichts wird mehr weichgezogen. Die Grundtransformation des
+Kontexts trägt den Faktor, im ganzen Spielcode wird weiterhin in 640×360
+gerechnet. Ändert sich die Fenstergröße, wird der vorgebackene
+Raumhintergrund verworfen und in der neuen Auflösung neu gezeichnet.
+
 **Licht und Tiefe.** Das Licht kommt von oben links: eine Deckenlampe hellt die
 Raummitte auf, die Wände werfen Schatten auf den Boden (oben am tiefsten, unten
 am flachsten), jedes Hindernis wirft einen Schlagschatten, Löcher bekommen
@@ -160,6 +169,19 @@ kleinen, schnellen Kern. Der *Laternenfisch* zieht dich heran, bis seine
 Lampe erlischt. Der *Kettenhund* bewacht einen festen Kreis. Das
 *Schimmelherz* heilt alle anderen und schlägt schneller, je weniger noch
 stehen. Der *Steinrücken* ist von vorn immun und muss umlaufen werden.
+
+**Jeder Boss lohnt sich.** Neben dem Item auf dem Podest lässt jeder Boss
+etwas Dauerhaftes liegen: entweder einen **Herzcontainer** (ein Herz mehr,
+dazu volle Heilung) oder einen **Schadensbonus**, der den ganzen Lauf über
+bleibt. Welches von beidem, entscheidet der Zufall zur Hälfte. Ein Bosskampf
+ist damit immer spürbar wert, auch wenn das Podest-Item nicht zum Aufbau
+passt.
+
+**Zwölf Herzen sind die Grenze.** Mehr rote Container gibt es nicht — weder
+über Bosslohn noch über *Herzwurz* oder *Eisenherz*. Wer schon bei zwölf
+steht, bekommt vom Boss statt des Containers den Schadensbonus, damit die
+Belohnung nicht verpufft. Seelen- und schwarze Herzen zählen nicht mit, die
+kommen oben drauf.
 
 **Kothaufen** sind mehr als Deko: Wer einen aufbricht, findet manchmal Beute —
 manchmal krabbelt aber auch ein **Kotkrabbler** heraus, und die Chance darauf
@@ -362,7 +384,8 @@ jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
 Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
 der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
 Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
-beschreibung hat, die auch auf die Tafel passt, die
+beschreibung hat, die auch auf die Tafel passt, die echte Bildauflösung, den
+Bosslohn und die Zwölf-Herzen-Grenze, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate

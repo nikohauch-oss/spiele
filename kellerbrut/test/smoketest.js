@@ -932,7 +932,9 @@ await withPage(async(page,errs)=>{
       raumBildNeu();
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const c=document.querySelector('canvas');
-      const d=c.getContext('2d').getImageData(60,50,520,280).data;
+      // getImageData rechnet in echten Bildpunkten, das Spiel in 640x360
+      const S=c.width/640;
+      const d=c.getContext('2d').getImageData(60*S,50*S,520*S,280*S).data;
       let h=0; for(let i=0;i<d.length;i+=97) h=(h*31+d[i])>>>0;   // grober Fingerabdruck
       sig.push(h);
     }
@@ -1272,6 +1274,92 @@ await withPage(async(page,errs)=>{
     return KB.G.state;
   });
   note(raus==='pause','Blättern verlässt die Pause nicht');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
+
+// --- 18. Auflösung, Bosslohn und Herzobergrenze ---
+if(want(18)){
+console.log('\n[18] Bild, Bosslohn, Herzgrenze');
+await withPage(async(page,errs)=>{
+  // Die Leinwand muss echte Bildpunkte haben, nicht 640x360 hochskaliert.
+  const bild=await page.evaluate(()=>{
+    const c=document.querySelector('canvas');
+    return {skala:SKALA, breite:c.width, hoehe:c.height,
+            css:Math.round(c.getBoundingClientRect().width),
+            geglaettet:c.getContext('2d').imageSmoothingEnabled};
+  });
+  note(bild.skala>=2&&bild.breite===640*bild.skala&&bild.hoehe===360*bild.skala,
+       'die Leinwand rechnet in echten Bildpunkten',
+       '('+bild.breite+'×'+bild.hoehe+', Skala '+bild.skala+' bei '+bild.css+' px Anzeige)');
+  note(bild.breite>=bild.css,'kein Hochskalieren mehr','('+bild.breite+' ≥ '+bild.css+')');
+
+  // Jeder Boss lässt etwas Dauerhaftes liegen.
+  const lohn=await page.evaluate(()=>{
+    let container=0, schaden=0, ohne=0;
+    for(let s=0;s<40;s++){
+      startRun(0,'L'+s);
+      const f=KB.G.floor;
+      enterRoom(f.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+      KB.G.pickups.length=0;
+      onBossRoomCleared();
+      const q=KB.G.pickups.find(q=>q.type==='container'||q.type==='schadenshoch');
+      if(!q) ohne++;
+      else if(q.type==='container') container++; else schaden++;
+    }
+    return {container,schaden,ohne};
+  });
+  note(lohn.ohne===0,'jeder Boss lässt eine dauerhafte Belohnung liegen');
+  note(lohn.container>0&&lohn.schaden>0,'mal Herzcontainer, mal Schaden',
+       '('+lohn.container+' Container, '+lohn.schaden+' Schaden)');
+
+  // Beides muss beim Einsammeln wirken.
+  const wirkung=await page.evaluate(()=>{
+    const holen=(typ)=>{
+      startRun(0,'W'+typ); KB.G.bossIntro=null;
+      const p=KB.G.player; p.red=2;
+      const vor={max:p.redMax, dmg:p.stats.dmg};
+      KB.G.pickups.length=0;
+      spawnPickup(p.x,p.y,typ);
+      KB.G.pickups[0].cd=0;
+      for(let i=0;i<20;i++) updateGame(1/60);
+      return {vorMax:vor.max, nachMax:p.redMax, vorDmg:+vor.dmg.toFixed(2),
+              nachDmg:+p.stats.dmg.toFixed(2), red:p.red};
+    };
+    return {container:holen('container'), schaden:holen('schadenshoch')};
+  });
+  note(wirkung.container.nachMax===wirkung.container.vorMax+2
+       &&wirkung.container.red===wirkung.container.nachMax,
+       'der Herzcontainer gibt ein Herz dazu und heilt voll',
+       '('+wirkung.container.vorMax+' → '+wirkung.container.nachMax+' Hälften)');
+  note(wirkung.schaden.nachDmg>wirkung.schaden.vorDmg,
+       'der Schadenslohn wirkt dauerhaft',
+       '('+wirkung.schaden.vorDmg+' → '+wirkung.schaden.nachDmg+')');
+
+  // Zwölf Herzen sind Schluss — egal über welchen Weg.
+  const grenze=await page.evaluate(()=>{
+    startRun(0,'GRENZE'); KB.G.bossIntro=null;
+    const p=KB.G.player;
+    for(let i=0;i<40;i++) containerDazu(2,'voll');       // stumpf hochziehen
+    const nachContainern=p.redMax;
+    acquireItem('eisenherz',null); acquireItem('herzwurz',null);
+    const nachItems=p.redMax;
+    // bei voller Brust wird der Bosslohn zu Kraft
+    p.itemGet=null;          // sonst blockiert die Item-Anzeige die Eingabe
+    const vorDmg=p.stats.dmg;
+    KB.G.pickups.length=0;
+    spawnPickup(p.x,p.y,'container'); KB.G.pickups[0].cd=0;
+    for(let i=0;i<20;i++) updateGame(1/60);
+    return {max:KB.MAX_HERZEN, nachContainern, nachItems, redMax:p.redMax,
+            dmgVor:+vorDmg.toFixed(2), dmgNach:+p.stats.dmg.toFixed(2)};
+  });
+  note(grenze.nachContainern===grenze.max*2,'bei zwölf Herzen ist Schluss',
+       '('+grenze.nachContainern/2+' Herzen)');
+  note(grenze.nachItems===grenze.max*2,'auch Herzwurz und Eisenherz gehen nicht darüber');
+  note(grenze.dmgNach>grenze.dmgVor,
+       'ein Container an der Grenze wird zu Kraft statt zu verfallen',
+       '('+grenze.dmgVor+' → '+grenze.dmgNach+')');
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 

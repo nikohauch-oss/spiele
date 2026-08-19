@@ -7,7 +7,11 @@
 <style>
   html,body{margin:0;padding:0;background:#0a0a0f;height:100%;overflow:hidden}
   #wrap{display:flex;align-items:center;justify-content:center;height:100vh}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;
+  /* Kein image-rendering:pixelated mehr: gezeichnet wird nicht in Pixeln,
+     sondern in Pfaden. Die Leinwand bekommt stattdessen so viele echte
+     Bildpunkte wie der Bildschirm hergibt (siehe leinwandAnpassen), damit
+     nichts hochskaliert und dadurch weich wird. */
+  canvas{background:#000;display:block;
          width:min(100vw,calc(100vh*16/9));height:min(100vh,calc(100vw*9/16))}
 </style>
 </head>
@@ -55,8 +59,30 @@ const cv=document.getElementById('cv');
    Variablen — sie brauchen den Kontext nicht als Parameter. */
 let ctx=cv.getContext('2d');
 const HAUPTCTX=ctx;
+
+/* --- Auflösung ------------------------------------------------------------
+   Gerechnet und gezeichnet wird immer in 640x360. Die Leinwand selbst hat
+   aber so viele echte Bildpunkte, wie der Bildschirm an dieser Stelle
+   darstellen kann — sonst würde ein 640x360-Bild auf Full HD dreifach
+   hochskaliert und alles sähe verwaschen aus. SKALA ist der Faktor dazwischen;
+   die Grundtransformation des Kontexts trägt ihn, damit im ganzen Spiel
+   weiterhin in 640x360 gerechnet werden kann.                              */
+let SKALA=1;
+function leinwandAnpassen(){
+  const kasten=cv.getBoundingClientRect();
+  const breite=kasten.width||W;
+  const neu=clamp(Math.ceil(breite/W*(window.devicePixelRatio||1)),1,4);
+  if(neu===SKALA&&cv.width===W*neu) return false;
+  SKALA=neu;
+  cv.width=W*SKALA; cv.height=H*SKALA;   // setzt den Kontext zurück
+  ctx=HAUPTCTX;
+  ctx.imageSmoothingEnabled=false;
+  return true;                            // Aufrufer muss den Vorrat verwerfen
+}
+function grundTransform(){ ctx.setTransform(SKALA,0,0,SKALA,0,0); }
 ctx.imageSmoothingEnabled=false;
 
+const MAX_HERZEN=12;              // mehr rote Herzcontainer gibt es nicht
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
 const lerp=(a,b,t)=>a+(b-a)*t;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -264,8 +290,8 @@ defItem({id:'kolibri',name:'Kolibriherz',desc:'Feuerrate hoch!',type:'passive',p
 defItem({id:'blei',name:'Bleitropfen',desc:'Wuchtiger, aber langsamer Schuss',type:'passive',pool:['treasure','devil'],mod:s=>{s.dmg+=2;s.shot-=0.8;}});
 defItem({id:'vierblatt',name:'Vierblatt',desc:'Glück hoch!',type:'passive',pool:['treasure','secret','angel'],mod:s=>{s.luck+=2;}});
 defItem({id:'sternfrucht',name:'Sternfrucht',desc:'Alles ein bisschen besser',type:'passive',pool:['treasure','boss','angel'],mod:s=>{s.dmg+=0.5;s.tps+=0.2;s.speed+=0.15;s.range+=20;s.luck+=1;}});
-defItem({id:'herzwurz',name:'Herzwurz',desc:'+1 Herzcontainer, volle Heilung',type:'passive',pool:['boss'],pickup:p=>{p.redMax+=2;p.red=p.redMax;}});
-defItem({id:'eisenherz',name:'Eisenherz',desc:'+2 Herzcontainer',type:'passive',pool:['boss','shop'],pickup:p=>{p.redMax+=4;p.red+=2;}});
+defItem({id:'herzwurz',name:'Herzwurz',desc:'+1 Herzcontainer, volle Heilung',type:'passive',pool:['boss'],pickup:p=>{containerDazu(2,'voll');}});
+defItem({id:'eisenherz',name:'Eisenherz',desc:'+2 Herzcontainer',type:'passive',pool:['boss','shop'],pickup:p=>{containerDazu(4,2);}});
 defItem({id:'seelenlicht',name:'Seelenlicht',desc:'+2 Seelenherzen',type:'passive',pool:['treasure','shop','secret','angel'],pickup:p=>{p.soul.push('S','S','S','S');}});
 defItem({id:'nachtdorn',name:'Nachtdorn',desc:'+2 schwarze Herzen',type:'passive',pool:['curse','secret','devil'],pickup:p=>{p.soul.push('B','B','B','B');}});
 defItem({id:'adlerblick',name:'Adlerblick',desc:'Reichweite stark hoch',type:'passive',pool:['treasure'],mod:s=>{s.range+=90;s.tps+=0.2;}});
@@ -1176,6 +1202,17 @@ function randomDrop(){
 function onBossRoomCleared(){
   const room=G.room;
   room.pedestals.push({x:tx(4),y:ty(3),itemId:pickFromPool('boss')});
+  /* Jeder Boss lässt außerdem etwas Dauerhaftes liegen: entweder eine
+     Herzerweiterung oder mehr Schaden. Damit ist ein Bosskampf immer
+     spürbar wert, auch wenn das Item vom Podest nicht zum Aufbau passt.
+     Wer schon bei zwölf Herzen ist, bekommt statt des Containers Kraft —
+     ausgerechnet dort soll die Belohnung nicht verpuffen. */
+  const p=G.player;
+  const voll=p.redMax>=MAX_HERZEN*2;
+  const lohn=(voll||frand.chance(0.5))?'schadenshoch':'container';
+  /* Nicht auf Feld 8|3 — dort liegt die Falltür, man würde beim Aufheben
+     hindurchfallen. Feld 6|4 ist in allen Boss-Grundrissen frei. */
+  spawnPickup(tx(6),ty(4),lohn);
   room.trapdoor=true;
   Sfx.item();
   kammerOeffnen();
@@ -1912,6 +1949,19 @@ function touchThings(p,dt){
     nextFloor();
   }
 }
+/* Herzcontainer dazugeben. Gibt zurück, wie viele halbe Container wirklich
+   Platz hatten — bei zwölf Herzen ist Schluss, der Rest verfällt. Alles, was
+   redMax erhöht, muss durch diese Tür. */
+function containerDazu(halbe,heilen){
+  const p=G.player, grenze=MAX_HERZEN*2;
+  const platz=Math.max(0,grenze-p.redMax);
+  const dazu=Math.min(halbe,platz);
+  p.redMax+=dazu;
+  if(heilen==='voll') p.red=p.redMax;
+  else p.red=Math.min(p.redMax,p.red+(heilen===undefined?dazu:heilen));
+  return dazu;
+}
+
 function collectPickup(q){
   const p=G.player;
   switch(q.type){
@@ -1932,6 +1982,20 @@ function collectPickup(q){
       openChest(q,'gold'); return; }
     case 'redchest': openChest(q,'red'); return;
     case 'item': q.dead=true; acquireItem(q.itemId,null); return;
+    case 'container': {                       // Herzerweiterung vom Boss
+      const dazu=containerDazu(2,'voll');
+      if(dazu){ addText(p.x,p.y-20,'+1 Herzcontainer','#d43a4a'); Sfx.heart(); }
+      else {                                  // schon bei zwölf Herzen? dann Kraft
+        p.permDmg+=0.8; recomputeStats();
+        addText(p.x,p.y-20,'Herz voll — dafür Kraft','#e8862a'); Sfx.item();
+      }
+      schockwelle(p.x,p.y,46,'#d43a4a',0.6,3);
+      break; }
+    case 'schadenshoch':                      // dauerhafter Schadensbonus
+      p.permDmg+=0.8; recomputeStats();
+      addText(p.x,p.y-20,'Schaden dauerhaft hoch','#e8862a');
+      schockwelle(p.x,p.y,46,'#e8862a',0.6,3); Sfx.item();
+      break;
   }
   q.dead=true;
 }
@@ -3556,16 +3620,17 @@ function raumBildNeu(){ gitterStand++; }   // nach jeder Gitteränderung rufen
 function raumBildBacken(stand){
   const F=G.floor.data, HS=handschrift(), room=G.room;
   const bw=COLS*TILE, bh=ROWS*TILE, rand=26;
-  if(!bodenBild){
-    bodenBild=document.createElement('canvas');  bodenBild.width=W;  bodenBild.height=H;
-    aufbauBild=document.createElement('canvas'); aufbauBild.width=W; aufbauBild.height=H;
+  if(!bodenBild||bodenBild.width!==W*SKALA){
+    bodenBild=document.createElement('canvas');
+    aufbauBild=document.createElement('canvas');
+    for(const b of [bodenBild,aufbauBild]){ b.width=W*SKALA; b.height=H*SKALA; }
   }
   const echterCtx=ctx, zaehlerVorher=formZaehler;
   try{
 
   /* ---- Lage 1: alles, was flach am Boden liegt ---- */
   ctx=bodenBild.getContext('2d');
-  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  ctx.setTransform(SKALA,0,0,SKALA,0,0); ctx.clearRect(0,0,W,H);
   ctx.imageSmoothingEnabled=false;
   flaecheBeginnen(); tuscheAn=false;
 
@@ -3636,7 +3701,7 @@ function raumBildBacken(stand){
 
   /* ---- Lage 2: was über den Pfützen steht ---- */
   ctx=aufbauBild.getContext('2d');
-  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  ctx.setTransform(SKALA,0,0,SKALA,0,0); ctx.clearRect(0,0,W,H);
   ctx.imageSmoothingEnabled=false;
   flaecheBeginnen(); tuscheAn=true;
 
@@ -3708,7 +3773,7 @@ function drawRoom(){
   const stand=G.seedNum+'|'+G.depth+'|'+G.roomKey+'|'+gitterStand;
   if(bildStand!==stand) raumBildBacken(stand);
 
-  ctx.drawImage(bodenBild,0,0);
+  ctx.drawImage(bodenBild,0,0,W,H);
 
   // Feuerstellen leuchten den Boden aus — flackert, bleibt also lebendig
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
@@ -3751,7 +3816,7 @@ function drawRoom(){
   tuscheAn=true;
 
   // Steine, Stacheln, Wucherungen und die Wände in einem Zug
-  ctx.drawImage(aufbauBild,0,0);
+  ctx.drawImage(aufbauBild,0,0,W,H);
 
   // Feuer selbst: züngelt, muss also jedes Bild neu
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
@@ -5021,6 +5086,29 @@ function drawPickup(q){
       ctx.strokeStyle='#8a6a2a';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(q.x+2,y-5);ctx.quadraticCurveTo(q.x+6,y-9,q.x+4,y-11);ctx.stroke();break;
     case 'key': rrect(q.x-1.5,y-6,3,10,'#ffd75a');disc(q.x,y-6,3.5,'#ffd75a');disc(q.x,y-6,1.5,'#3a2a0a');
       rrect(q.x+1,y+1,3,2,'#ffd75a');rrect(q.x+1,y+4,4,2,'#ffd75a');break;
+    case 'container': {                       // Herzerweiterung: pochendes Herz im Ring
+      const puls=1+Math.pow(Math.max(0,Math.sin(performance.now()/380)),6)*0.22;
+      ctx.save(); tuscheAn=false; ctx.globalAlpha=0.28;
+      disc(q.x,y,13*puls,'#d43a4a'); tuscheAn=true; ctx.restore();
+      ring(q.x,y,10,'#f0d98a',1.4);
+      for(let i=0;i<4;i++){ const a=performance.now()/900+i*TAU/4;
+        disc(q.x+Math.cos(a)*10,y+Math.sin(a)*10,1.5,'#f0d98a'); }
+      ctx.save(); ctx.translate(q.x,y); ctx.scale(puls,puls);
+      drawHeart(0,0,'full','red'); ctx.restore();
+      break; }
+    case 'schadenshoch': {                    // Schaden hoch: glühende Faust
+      const heb=Math.sin(performance.now()/300)*1.2;
+      ctx.save(); tuscheAn=false; ctx.globalAlpha=0.3;
+      disc(q.x,y+heb,12,'#e8862a'); tuscheAn=true; ctx.restore();
+      disc(q.x,y+2+heb,5.4,'#c8682a');
+      disc(q.x-1.4,y+0.6+heb,3.6,'#e8a05a');
+      for(let i=-1;i<=1;i++)                  // Knöchel
+        disc(q.x+i*2.6,y-2.4+heb,1.7,'#e8a05a');
+      ctx.strokeStyle='#ffd07a'; ctx.lineWidth=1.4;   // Aufwärtspfeil
+      ctx.beginPath(); ctx.moveTo(q.x,y-12+heb); ctx.lineTo(q.x,y-6+heb);
+      ctx.moveTo(q.x-2.6,y-9.4+heb); ctx.lineTo(q.x,y-12.4+heb);
+      ctx.lineTo(q.x+2.6,y-9.4+heb); ctx.stroke();
+      break; }
     case 'heart': ctx.save();ctx.translate(q.x,y);drawHeart(0,0,'full','red');ctx.restore();break;
     case 'halfheart': ctx.save();ctx.translate(q.x,y);ctx.scale(0.7,0.7);drawHeart(0,0,'half','red');ctx.restore();break;
     case 'soulheart': ctx.save();ctx.translate(q.x,y);drawHeart(0,0,'full','soul');ctx.restore();break;
@@ -5380,7 +5468,7 @@ function updateGame(dt){
 
 /* --- Rendering-Verteiler --- */
 function render(){
-  ctx.setTransform(1,0,0,1,0,0);
+  grundTransform();
   // Zittertakt und Formzähler für den Tuschestil zurücksetzen
   BOIL=Math.floor(performance.now()/143);
   flaecheBeginnen(); tuscheAn=true;
@@ -5426,7 +5514,7 @@ function render(){
   }
   drawSporen();     // legt sich über alles, nimmt die Sicht
   tafelnZeichnen(); // Item-Erklärungen zuoberst, aber noch im Raumbild
-  ctx.setTransform(1,0,0,1,0,0);
+  grundTransform();
   raumStimmung();   // Dunst der Etage und Vignette, noch unter dem HUD
   drawHUD();
   if(G.bossIntro) drawBossIntro();
@@ -5612,6 +5700,12 @@ function updateMenu(){
   }
 }
 
+/* Auflösung beim Start festlegen und bei Fenstergrößenänderung nachziehen.
+   Ändert sich SKALA, sind die vorgebackenen Raumbilder in der falschen
+   Auflösung — sie werden deshalb verworfen. */
+leinwandAnpassen();
+window.addEventListener('resize',()=>{ if(leinwandAnpassen()) raumBildNeu(); });
+
 /* --- Hauptschleife: fester 60-Hz-Timestep --- */
 const DT=1/60;
 let acc=0, last=performance.now();
@@ -5641,7 +5735,7 @@ requestAnimationFrame(frame);
 /* Test-Hooks (für automatisierte Smoke-Tests) */
 window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES,
-  HANDSCHRIFTEN, get raumBildStand(){return bildStand;},
+  HANDSCHRIFTEN, MAX_HERZEN, get raumBildStand(){return bildStand;},
   get tafelnGezeichnet(){return tafelnGezeichnet;} };
 </script>
 </body>
