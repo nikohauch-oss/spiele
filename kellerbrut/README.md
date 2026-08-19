@@ -80,6 +80,22 @@ Man erkennt die Türen sofort: die Teufelstür ist blutrot mit zwei Hörnern und
 einem glühenden Auge im Sturz, die Engelstür hell mit Flügeln und
 Heiligenschein. Auf der Automap stehen dafür kleine Hörner und ein Ring.
 
+**Zwölf Möblierungen** sorgen dafür, dass die Kammer nicht jedes Mal derselbe
+leere Raum ist. Beim Teufel: *Der Handelstisch* (Steintisch im Kreidekreis
+zwischen zwei Kohlebecken), *Das Schlachthaus* (Fleischerhaken an Ketten,
+Blutrinnen, Abfluss), *Der Pferch* (Ring angeketteter Schädel), *Die Waage*
+(die Ware liegt auf den Schalen), *Der Schlund* (Maul im Boden, die Ware auf
+zwei Simsen darüber), *Die Nagelkapelle* (Kerzen brennen verkehrt herum über
+einem blutigen Altar). Beim Engel: *Der Lichtschacht*, *Die Federkammer*,
+*Der Brunnen*, *Der Chor* (sechs gesichtslose Sänger an der Wand), *Die
+Waschung* (knöchelhoch klares Wasser, als einzige Kammer mit drei
+Seelenherzen) und *Das Auge im Licht*, das genau einmal blinzelt.
+
+Jede Möblierung stellt ihre Podeste selbst hin — auf den Tisch, an die Haken,
+auf die Simse. Die gewählte Kammer merkt sich der Raum (`room.kammerId`),
+beim Wiederbetreten steht dieselbe da. Eine neue braucht nur einen weiteren
+Eintrag in `KAMMERN` mit `bauen()` und `zeichnen()`.
+
 **Zwanzig benannte Grundrisse.** Jeder Normalraum kommt aus einem von zwanzig
 Plänen mit eigenem Einfall: der *Kreuzgang* teilt den Raum in vier Viertel, die
 *Säulenhalle* schluckt jeden weiten Schuss, die *Brücke* lässt nur einen
@@ -428,7 +444,7 @@ Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
 beschreibung hat, die auch auf die Tafel passt, die echte Bildauflösung, den
 Bosslohn und die Zwölf-Herzen-Grenze, die Größe aller zwölf Bosse samt ihren
 Kennzeichen-Angriffen und der angekündigte Einschlag, der Haken jeder der
-zwölf neuen Kreaturen, die
+zwölf neuen Kreaturen, die Vollständigkeit und Streuung der zwölf Kammern, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate

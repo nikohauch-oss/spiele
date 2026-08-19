@@ -1594,6 +1594,96 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 21. Die zwölf Kammern ---
+if(want(21)){
+console.log('\n[21] Kammern hinter dem Boss');
+await withPage(async(page,errs)=>{
+  const bau=await page.evaluate(()=>{
+    const probleme=[];
+    const pruefen=(k,seite)=>{
+      startRun(0,'KAM'+k.id); KB.G.bossIntro=null;
+      const f=KB.G.floor;
+      const key=Object.keys(f.rooms).find(x=>f.rooms[x].type==='devil');
+      if(!key){ probleme.push(k.id+': keine Kammer auf der Etage'); return; }
+      const raum=f.rooms[key];
+      raum.pedestals.length=0; raum.drops.length=0;
+      raum.kammerId=k.id; k.bauen(raum);
+      const soll=seite==='teufel'?2:1;
+      if(raum.pedestals.length!==soll)
+        probleme.push(k.id+': '+raum.pedestals.length+' Podeste statt '+soll);
+      for(const pd of raum.pedestals){
+        if(seite==='teufel'&&!pd.herzPreis) probleme.push(k.id+': Podest ohne Herzpreis');
+        if(seite==='engel'&&pd.herzPreis)   probleme.push(k.id+': Engel verlangt Herzen');
+        if(!KB.ITEMS[pd.itemId])            probleme.push(k.id+': Item gibt es nicht');
+        // muss innerhalb des Spielfelds und erreichbar liegen
+        if(pd.x<RX+10||pd.x>RX+COLS*TILE-10||pd.y<RY+10||pd.y>RY+ROWS*TILE-10)
+          probleme.push(k.id+': Podest liegt außerhalb ('+Math.round(pd.x)+'|'+Math.round(pd.y)+')');
+      }
+      if(seite==='engel'&&raum.drops.filter(q=>q.type==='soulheart').length<2)
+        probleme.push(k.id+': zu wenig Seelenherzen');
+      for(const q of raum.drops)
+        if(q.x<RX+10||q.x>RX+COLS*TILE-10||q.y<RY+10||q.y>RY+ROWS*TILE-10)
+          probleme.push(k.id+': Herz liegt außerhalb');
+    };
+    KB.KAMMERN.teufel.forEach(k=>pruefen(k,'teufel'));
+    KB.KAMMERN.engel.forEach(k=>pruefen(k,'engel'));
+    const ids=KB.KAMMERN.teufel.concat(KB.KAMMERN.engel).map(k=>k.id);
+    if(new Set(ids).size!==ids.length) probleme.push('doppelte Kammer-Kennung');
+    return {teufel:KB.KAMMERN.teufel.length, engel:KB.KAMMERN.engel.length, probleme};
+  });
+  note(bau.teufel===6&&bau.engel===6,'sechs Teufels- und sechs Engelskammern',
+       '('+bau.teufel+' + '+bau.engel+')');
+  note(bau.probleme.length===0,'jede Kammer stellt ihre Ware richtig hin',
+       bau.probleme.slice(0,4).join('; '));
+
+  // Über viele Läufe müssen wirklich verschiedene Kammern kommen.
+  const streuung=await page.evaluate(()=>{
+    const gesehen={teufel:new Set(),engel:new Set()};
+    for(let s=0;s<160;s++){
+      startRun(0,'S'+s);
+      const f=KB.G.floor;
+      if(!Object.values(f.rooms).some(r=>r.type==='devil')) continue;
+      enterRoom(f.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+      KB.G.floorHit=false; KB.G.deals=s%2;      // mal Engel möglich, mal nicht
+      onBossRoomCleared();
+      const k=Object.values(f.rooms).find(r=>r.type==='devil'||r.type==='angel');
+      if(k&&k.kammerId) gesehen[k.type==='angel'?'engel':'teufel'].add(k.kammerId);
+    }
+    return {teufel:gesehen.teufel.size, engel:gesehen.engel.size};
+  });
+  note(streuung.teufel>=5,'die Teufelskammer sieht nicht jedes Mal gleich aus',
+       '('+streuung.teufel+' von 6 gesehen)');
+  note(streuung.engel>=4,'auch die Engelskammer wechselt',
+       '('+streuung.engel+' von 6 gesehen)');
+
+  // Die Möblierung bleibt beim Wiederbetreten dieselbe und zeichnet fehlerfrei.
+  const bleibt=await page.evaluate(async()=>{
+    for(let s=0;s<80;s++){
+      startRun(0,'B'+s);
+      const f=KB.G.floor;
+      if(!Object.values(f.rooms).some(r=>r.type==='devil')) continue;
+      enterRoom(f.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+      KB.G.floorHit=false; KB.G.deals=1;
+      onBossRoomCleared();
+      const k=Object.values(f.rooms).find(r=>r.type==='devil'||r.type==='angel');
+      if(!k||!k.kammerId) continue;
+      const key=Object.keys(f.rooms).find(x=>f.rooms[x]===k);
+      const zuerst=k.kammerId;
+      enterRoom(key,null); KB.G.bossIntro=null;
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const gemalt=!!kammerBild();
+      enterRoom(f.bossKey,null); enterRoom(key,null);
+      return {gleich:k.kammerId===zuerst, gemalt};
+    }
+    return null;
+  });
+  note(bleibt&&bleibt.gleich,'beim Wiederbetreten steht dieselbe Kammer');
+  note(bleibt&&bleibt.gemalt,'ihre Einrichtung wird auch gezeichnet');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

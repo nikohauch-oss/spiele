@@ -1288,19 +1288,316 @@ function kammerOeffnen(){
             t:2.8};
 }
 
-function kammerFuellen(room,engel){
-  room.pedestals.length=0; room.drops.length=0;
-  if(engel){
-    // Der Engel schenkt: ein Item umsonst, dazu Seelenherzen.
-    room.pedestals.push({x:tx(6),y:ty(2),itemId:pickFromPool('angel')});
-    room.drops.push({x:tx(4),y:ty(4),type:'soulheart'});
-    room.drops.push({x:tx(8),y:ty(4),type:'soulheart'});
-  } else {
-    // Der Teufel handelt: zwei Angebote, bezahlt wird mit Leben statt Münzen.
+/* --- ZWÖLF KAMMERN -------------------------------------------------------
+   Die Kammer hinter dem Boss ist nicht jedes Mal derselbe leere Raum: sechs
+   Möblierungen für den Teufel, sechs für den Engel. Jede sagt schon von der
+   Tür aus, worauf man sich einlässt.
+
+   bauen(room)  stellt Podeste und Herzen so hin, dass sie zur Möblierung
+                passen — auf den Tisch, an die Haken, auf die Simse.
+   zeichnen(t)  malt die Einrichtung; wird in drawRoom über den Boden gelegt,
+                noch unter Pfützen, Hindernissen und Figuren.
+   Eine neue Kammer braucht nur einen weiteren Eintrag hier.              */
+const KAMMERN={
+ teufel:[
+ {id:'handelstisch',name:'Der Handelstisch',
+  bauen(room){
+    room.pedestals.push({x:tx(4),y:ty(3)-6,itemId:pickFromPool('devil'),herzPreis:1});
+    room.pedestals.push({x:tx(8),y:ty(3)-6,itemId:pickFromPool('devil'),herzPreis:1});
+  },
+  zeichnen(t){
+    ctx.save(); ctx.globalAlpha=0.45; ctx.strokeStyle='#e8dcc0'; ctx.lineWidth=1.6;
+    for(const r of [1,0.9]){ ctx.beginPath();
+      ctx.ellipse(tx(6),ty(3)+10,132*r,78*r,0,0,TAU); ctx.stroke(); }
+    for(let i=0;i<9;i++){ const a=i/9*TAU;
+      ctx.beginPath();
+      ctx.moveTo(tx(6)+Math.cos(a)*119,ty(3)+10+Math.sin(a)*70);
+      ctx.lineTo(tx(6)+Math.cos(a)*132,ty(3)+10+Math.sin(a)*78); ctx.stroke(); }
+    ctx.restore();
+    vieleck([[tx(6)-90,ty(3)-4],[tx(6)+90,ty(3)-4],[tx(6)+80,ty(3)+22],[tx(6)-80,ty(3)+22]],'#4a3a34');
+    vieleck([[tx(6)-86,ty(3)-12],[tx(6)+86,ty(3)-12],[tx(6)+84,ty(3)-2],[tx(6)-84,ty(3)-2]],'#6a544a');
+    for(const cx of [tx(2),tx(10)]){                    // Kohlebecken
+      const fl=Math.sin(t*7+cx)*2;
+      ctx.save(); tuscheAn=false; ctx.globalAlpha=0.3;
+      disc(cx,ty(3),40,'#ff7a3a'); tuscheAn=true; ctx.restore();
+      vieleck([[cx-17,ty(3)+13],[cx+17,ty(3)+13],[cx+11,ty(3)-7],[cx-11,ty(3)-7]],'#3a2a24');
+      ellipse(cx,ty(3)-10+fl*0.4,12,6,0,'#c8442a');
+      ellipse(cx,ty(3)-16+fl,7,10,0,'#e8862a');
+      ellipse(cx,ty(3)-21+fl,3.5,5,0,'#ffd07a');
+    }
+  }},
+ {id:'schlachthaus',name:'Das Schlachthaus',
+  bauen(room){
     room.pedestals.push({x:tx(4),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
     room.pedestals.push({x:tx(8),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
-    if(frand.chance(0.5)) room.drops.push({x:tx(6),y:ty(5),type:'blackheart'});
-  }
+  },
+  zeichnen(t){
+    ctx.save(); ctx.strokeStyle='#1d0a0c'; ctx.lineWidth=8; ctx.lineCap='round';
+    for(let i=0;i<5;i++){ ctx.beginPath();
+      ctx.moveTo(RX+32+i*54,RY+6); ctx.lineTo(tx(6)-4,ty(5)+18); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(RX+COLS*TILE-32-i*54,RY+6); ctx.lineTo(tx(6)+4,ty(5)+18); ctx.stroke(); }
+    ctx.globalAlpha=0.35; ctx.strokeStyle='#7a2a2e'; ctx.lineWidth=2.6;
+    for(let i=0;i<5;i++){ ctx.beginPath();
+      ctx.moveTo(RX+32+i*54,RY+6); ctx.lineTo(tx(6)-4,ty(5)+18); ctx.stroke(); }
+    ctx.restore();
+    disc(tx(6),ty(5)+18,15,'#160608');
+    for(const cx of [tx(4),tx(8)]){                     // Ketten mit Haken
+      const sw=Math.sin(t*1.2+cx*0.1)*4;
+      ctx.strokeStyle='#8a8272'; ctx.lineWidth=2.6;
+      ctx.beginPath(); ctx.moveTo(cx,RY-4);
+      ctx.quadraticCurveTo(cx+sw*0.4,ty(1),cx+sw,ty(2)-4); ctx.stroke();
+      ctx.strokeStyle='#b8ae9c'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(cx+sw,ty(2)-4);
+      ctx.quadraticCurveTo(cx+sw+8,ty(2)+6,cx+sw-2,ty(2)+12); ctx.stroke();
+    }
+    ctx.save(); ctx.globalAlpha=0.4;
+    for(let i=0;i<7;i++){
+      const x=tx(1)+rausch(i*13)*COLS*TILE*0.82, y=ty(1)+rausch(i*7)*ROWS*TILE*0.55;
+      ellipse(x,y,8+rausch(i)*8,5,rausch(i*3)*3,'#5a0e14');
+    }
+    ctx.restore();
+  }},
+ {id:'pferch',name:'Der Pferch',
+  bauen(room){
+    room.pedestals.push({x:tx(4),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
+    room.pedestals.push({x:tx(8),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
+  },
+  zeichnen(t){
+    for(let i=0;i<12;i++){
+      const a=i/12*TAU, x=tx(6)+Math.cos(a)*136, y=ty(3)+10+Math.sin(a)*80;
+      ctx.strokeStyle='#5a5248'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x,y);
+      ctx.lineTo(x+Math.cos(a)*24,y+Math.sin(a)*18); ctx.stroke();
+      disc(x,y,10,'#cfc6ae');
+      hohlauge(x-4,y-1,3,'#ff7a4a',0.7); hohlauge(x+4,y-1,3,'#ff7a4a',0.7);
+      ctx.fillStyle='#2a2622'; ctx.fillRect(x-2,y+5,4,3);
+    }
+    for(const cx of [tx(4),tx(8)])                      // Baumstümpfe
+      vieleck([[cx-18,ty(3)+16],[cx+18,ty(3)+16],[cx+14,ty(3)-4],[cx-14,ty(3)-4]],'#4a3a26');
+  }},
+ {id:'waage',name:'Die Waage',
+  bauen(room){
+    // auf die beiden Waagschalen, nicht daneben
+    room.pedestals.push({x:tx(6)-110,y:ty(1)+26,itemId:pickFromPool('devil'),herzPreis:1});
+    room.pedestals.push({x:tx(6)+110,y:ty(1)+26,itemId:pickFromPool('devil'),herzPreis:1});
+  },
+  zeichnen(t){
+    const kipp=Math.sin(t*0.9)*0.07;
+    ctx.strokeStyle='#6a6156'; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(tx(6),ty(5)+18); ctx.lineTo(tx(6),ty(1)-10); ctx.stroke();
+    ellipse(tx(6),ty(5)+20,26,10,0,'#3a352c');
+    ctx.save(); ctx.translate(tx(6),ty(1)-8); ctx.rotate(kipp);
+    ctx.strokeStyle='#8a8272'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(-110,0); ctx.lineTo(110,0); ctx.stroke();
+    ctx.lineWidth=2;
+    for(const vz of [-1,1]){
+      ctx.beginPath(); ctx.moveTo(vz*110,0); ctx.lineTo(vz*96,30); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(vz*110,0); ctx.lineTo(vz*124,30); ctx.stroke();
+      ellipse(vz*110,32,28,9,0,'#6a6156');
+    }
+    ctx.restore();
+  }},
+ {id:'schlund',name:'Der Schlund',
+  bauen(room){
+    room.pedestals.push({x:tx(3),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
+    room.pedestals.push({x:tx(9),y:ty(3),itemId:pickFromPool('devil'),herzPreis:1});
+  },
+  zeichnen(t){
+    ellipse(tx(6),ty(3)+10,140,76,0,'#0a0305');
+    ctx.save(); ctx.beginPath(); ctx.ellipse(tx(6),ty(3)+10,140,76,0,0,TAU); ctx.clip();
+    const zl=58+Math.sin(t*1.1)*32;
+    ctx.strokeStyle='#a03a48'; ctx.lineWidth=14; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(tx(6),ty(3)+62);
+    ctx.quadraticCurveTo(tx(6)+Math.sin(t*1.4)*34,ty(3)+62-zl*0.6,
+                         tx(6)+Math.sin(t*1.4)*54,ty(3)+62-zl); ctx.stroke();
+    ctx.lineCap='butt';
+    disc(tx(6)+Math.sin(t*1.4)*54,ty(3)+62-zl,11,'#c85a66');
+    zaehneSpiel(tx(6),ty(3)-62,270,15,26,true,'#e8dcc0');
+    zaehneSpiel(tx(6),ty(3)+80,250,13,24,false,'#e8dcc0');
+    ctx.restore();
+    for(const cx of [tx(3),tx(9)])                      // Simse über dem Loch
+      vieleck([[cx-26,ty(3)+8],[cx+26,ty(3)+8],[cx+22,ty(3)+24],[cx-22,ty(3)+24]],'#4a4038');
+  }},
+ {id:'nagelkapelle',name:'Die Nagelkapelle',
+  bauen(room){
+    room.pedestals.push({x:tx(4),y:ty(3)+2,itemId:pickFromPool('devil'),herzPreis:1});
+    room.pedestals.push({x:tx(8),y:ty(3)+2,itemId:pickFromPool('devil'),herzPreis:1});
+  },
+  zeichnen(t){
+    vieleck([[tx(6)-70,RY+4],[tx(6)+70,RY+4],[tx(6)+54,ty(1)+18],[tx(6)-54,ty(1)+18]],'#2a1c1e');
+    for(let i=0;i<9;i++){ const x=tx(6)-62+i*16;
+      ctx.strokeStyle='#8a7a70'; ctx.lineWidth=2.6;
+      ctx.beginPath(); ctx.moveTo(x,RY+8); ctx.lineTo(x,ty(1)+14); ctx.stroke();
+      disc(x,RY+8,3,'#b8ae9c'); }
+    for(const cx of [tx(3),tx(9)]){                     // verkehrte Kerzen
+      ctx.strokeStyle='#e8dcc0'; ctx.lineWidth=8;
+      ctx.beginPath(); ctx.moveTo(cx,ty(1)+6); ctx.lineTo(cx,ty(3)+8); ctx.stroke();
+      const fl=Math.sin(t*8+cx)*2;
+      ctx.save(); tuscheAn=false; ctx.globalAlpha=0.26;
+      disc(cx,ty(3)+20,26,'#ffb03a'); tuscheAn=true; ctx.restore();
+      ellipse(cx,ty(3)+20+fl*0.4,6,11,0,'#e8862a');
+      ellipse(cx,ty(3)+24+fl*0.5,3,6,0,'#ffe08a');
+    }
+    vieleck([[tx(6)-74,ty(3)+8],[tx(6)+74,ty(3)+8],[tx(6)+64,ty(3)+32],[tx(6)-64,ty(3)+32]],'#3a2a2c');
+    vieleck([[tx(6)-70,ty(3)],[tx(6)+70,ty(3)],[tx(6)+68,ty(3)+10],[tx(6)-68,ty(3)+10]],'#5a4448');
+    ctx.save(); ctx.globalAlpha=0.45;
+    ellipse(tx(6)-24,ty(3)+18,18,7,0.3,'#5a0e14');
+    ellipse(tx(6)+30,ty(3)+22,13,6,-0.2,'#5a0e14'); ctx.restore();
+  }}],
+ engel:[
+ {id:'lichtschacht',name:'Der Lichtschacht',
+  bauen(room){
+    room.pedestals.push({x:tx(6),y:ty(2)+6,itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(4),y:ty(4),type:'soulheart'});
+    room.drops.push({x:tx(8),y:ty(4),type:'soulheart'});
+  },
+  zeichnen(t){
+    ctx.save(); tuscheAn=false;
+    const gr=ctx.createLinearGradient(tx(6),RY,tx(6),RY+ROWS*TILE);
+    gr.addColorStop(0,'rgba(255,246,214,0.30)'); gr.addColorStop(1,'rgba(255,246,214,0)');
+    ctx.fillStyle=gr; ctx.beginPath();
+    ctx.moveTo(tx(6)-36,RY); ctx.lineTo(tx(6)+36,RY);
+    ctx.lineTo(tx(6)+86,RY+ROWS*TILE); ctx.lineTo(tx(6)-86,RY+ROWS*TILE); ctx.fill();
+    ctx.globalAlpha=0.4; disc(tx(6),ty(4)+12,74,'#fff6d6');
+    for(let i=0;i<16;i++){
+      const ph=((t*0.14+i*0.0625)%1);
+      ctx.globalAlpha=0.5*(1-ph);
+      disc(tx(6)+(rausch(i*17)-0.5)*86*(0.4+ph),RY+ph*ROWS*TILE,1.4,'#fff6d6');
+    }
+    tuscheAn=true; ctx.restore();
+  }},
+ {id:'federkammer',name:'Die Federkammer',
+  bauen(room){
+    room.pedestals.push({x:tx(6),y:ty(3)+6,itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(3),y:ty(4),type:'soulheart'});
+    room.drops.push({x:tx(9),y:ty(4),type:'soulheart'});
+  },
+  zeichnen(t){
+    for(let i=0;i<24;i++){
+      const ph=((t*0.08+rausch(i*23))%1);
+      const x=RX+rausch(i*7)*COLS*TILE+Math.sin(t*0.6+i)*12, y=RY+ph*ROWS*TILE;
+      ctx.save(); ctx.globalAlpha=0.5+Math.sin(t+i)*0.25;
+      ctx.translate(x,y); ctx.rotate(Math.sin(t*0.7+i)*0.5);
+      ellipse(0,0,3,8,0,'#efe8d4');
+      ctx.restore();
+    }
+    for(const [ex,ey] of [[RX+26,RY+26],[RX+COLS*TILE-26,RY+26],
+                          [RX+26,RY+ROWS*TILE-26],[RX+COLS*TILE-26,RY+ROWS*TILE-26]]){
+      ctx.save(); ctx.globalAlpha=0.5;
+      for(let i=0;i<5;i++) ellipse(ex+(rausch(i*3)-0.5)*28,ey+(rausch(i*9)-0.5)*20,8,3.4,rausch(i)*3,'#efe8d4');
+      ctx.restore();
+    }
+    vieleck([[tx(6)-30,ty(3)+14],[tx(6)+30,ty(3)+14],[tx(6)+23,ty(3)+28],[tx(6)-23,ty(3)+28]],'#6a6252');
+  }},
+ {id:'brunnen',name:'Der Brunnen',
+  bauen(room){
+    room.pedestals.push({x:tx(6),y:ty(2)+4,itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(2),y:ty(3),type:'soulheart'});
+    room.drops.push({x:tx(10),y:ty(3),type:'soulheart'});
+  },
+  zeichnen(t){
+    ellipse(tx(6),ty(3)+10,88,52,0,'#6a6252');
+    ellipse(tx(6),ty(3)+10,76,43,0,'#1a2630');
+    ctx.save(); ctx.beginPath(); ctx.ellipse(tx(6),ty(3)+10,76,43,0,0,TAU); ctx.clip();
+    for(let i=0;i<4;i++){
+      const rr=((t*0.35+i*0.25)%1);
+      ctx.save(); ctx.globalAlpha=(1-rr)*0.55; ctx.strokeStyle='#bcd8e8'; ctx.lineWidth=1.8;
+      ctx.beginPath(); ctx.ellipse(tx(6),ty(3)+10,rr*74,rr*41,0,0,TAU); ctx.stroke(); ctx.restore();
+    }
+    ctx.restore();
+    for(let i=0;i<10;i++){ const a=i/10*TAU;
+      ellipse(tx(6)+Math.cos(a)*86,ty(3)+10+Math.sin(a)*50,11,7,a,'#8a8272'); }
+  }},
+ {id:'chor',name:'Der Chor',
+  bauen(room){
+    room.pedestals.push({x:tx(6),y:ty(4)+4,itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(3),y:ty(3),type:'soulheart'});
+    room.drops.push({x:tx(9),y:ty(3),type:'soulheart'});
+  },
+  zeichnen(t){
+    for(let i=0;i<6;i++){
+      const x=tx(1.4)+i*(COLS*TILE/6.4), atem=Math.sin(t*1.1+i*0.7)*2;
+      ctx.save(); ctx.globalAlpha=0.3; ellipse(x,ty(1)+30,18,6,0,'#000'); ctx.restore();
+      vieleck([[x-18,ty(1)+28],[x+18,ty(1)+28],[x+11,ty(0)+2+atem],[x-11,ty(0)+2+atem]],'#cfc6ae');
+      disc(x,ty(0)-8+atem,13,'#ded5bc');
+      ctx.save(); ctx.globalAlpha=0.6; ellipse(x,ty(0)-5+atem,6,9,0,'#a89e88'); ctx.restore();
+      ctx.save(); ctx.globalAlpha=0.34+Math.sin(t*2+i)*0.2; tuscheAn=false;
+      for(let n=0;n<3;n++) disc(x+(n-1)*9,ty(1)+2-Math.sin(t*1.4+i+n)*8,1.8,'#fff6d6');
+      tuscheAn=true; ctx.restore();
+    }
+    vieleck([[tx(6)-34,ty(4)+12],[tx(6)+34,ty(4)+12],[tx(6)+27,ty(4)+27],[tx(6)-27,ty(4)+27]],'#6a6252');
+  }},
+ {id:'waschung',name:'Die Waschung',
+  bauen(room){
+    // Die einzige Kammer mit drei Seelenherzen — das klare Wasser ist ihre Gabe.
+    room.pedestals.push({x:tx(6),y:ty(3)+4,itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(3),y:ty(4),type:'soulheart'});
+    room.drops.push({x:tx(9),y:ty(4),type:'soulheart'});
+    room.drops.push({x:tx(6),y:ty(5)+6,type:'soulheart'});
+  },
+  zeichnen(t){
+    ctx.save(); tuscheAn=false;
+    ctx.globalAlpha=0.34; ctx.fillStyle='#8ab4c8';
+    ctx.fillRect(RX,RY,COLS*TILE,ROWS*TILE);
+    ctx.globalAlpha=0.4; ctx.strokeStyle='#cfe4ee'; ctx.lineWidth=1.4;
+    for(let i=0;i<9;i++){
+      const y=RY+22+i*30;
+      ctx.beginPath();
+      for(let x=RX;x<=RX+COLS*TILE;x+=16) ctx.lineTo(x,y+Math.sin(x*0.05+t*1.1+i)*3.4);
+      ctx.stroke();
+    }
+    tuscheAn=true; ctx.restore();
+    ellipse(tx(6),ty(3)+14,40,21,0,'#8a8272');
+    ellipse(tx(6),ty(3)+8,33,16,0,'#a89e88');
+    for(let i=0;i<5;i++){
+      const rr=((t*0.4+i*0.2)%1);
+      ctx.save(); ctx.globalAlpha=(1-rr)*0.4; ctx.strokeStyle='#e8f4fa'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.ellipse(tx(6),ty(3)+14,40+rr*54,21+rr*28,0,0,TAU); ctx.stroke(); ctx.restore();
+    }
+  }},
+ {id:'auge',name:'Das Auge im Licht',
+  bauen(room){
+    room.pedestals.push({x:tx(6),y:ty(4)+4,itemId:pickFromPool('angel')});
+    room.drops.push({x:tx(3),y:ty(4),type:'soulheart'});
+    room.drops.push({x:tx(9),y:ty(4),type:'soulheart'});
+  },
+  zeichnen(t){
+    const zu=Math.pow(Math.max(0,Math.sin(t*0.55)),14);
+    ctx.save(); tuscheAn=false; ctx.globalAlpha=0.24;
+    disc(tx(6),ty(1)+2,102,'#fff6d6'); tuscheAn=true; ctx.restore();
+    ellipse(tx(6),ty(1)+2,88,48*(1-zu)+2,0,'#efe8d4');
+    if(zu<0.85){
+      ctx.save(); ctx.beginPath();
+      ctx.ellipse(tx(6),ty(1)+2,88,48*(1-zu)+2,0,0,TAU); ctx.clip();
+      disc(tx(6),ty(1)+2,31,'#8aa8c8');
+      disc(tx(6),ty(1)+2,14,'#14181e');
+      ctx.save(); ctx.globalAlpha=0.65; disc(tx(6)-9,ty(1)-8,5,'#ffffff'); ctx.restore();
+      ctx.restore();
+    }
+    ctx.strokeStyle='#fff6d6'; ctx.lineWidth=2.4;
+    for(let i=0;i<13;i++){ const a=i/13*TAU;
+      ctx.save(); ctx.globalAlpha=0.3+Math.sin(t*1.3+i)*0.16;
+      ctx.beginPath();
+      ctx.moveTo(tx(6)+Math.cos(a)*96,ty(1)+2+Math.sin(a)*56);
+      ctx.lineTo(tx(6)+Math.cos(a)*114,ty(1)+2+Math.sin(a)*67); ctx.stroke(); ctx.restore(); }
+    vieleck([[tx(6)-32,ty(4)+12],[tx(6)+32,ty(4)+12],[tx(6)+25,ty(4)+27],[tx(6)-25,ty(4)+27]],'#6a6252');
+  }}],
+};
+
+function kammerFuellen(room,engel){
+  room.pedestals.length=0; room.drops.length=0;
+  const liste=engel?KAMMERN.engel:KAMMERN.teufel;
+  const kammer=frand.pick(liste);
+  room.kammerId=kammer.id;               // bleibt beim Wiederbetreten dieselbe
+  kammer.bauen(room);
+  if(!engel&&frand.chance(0.5)) room.drops.push({x:tx(6),y:ty(5),type:'blackheart'});
+}
+/* Möblierung der aktuellen Kammer, oder null in jedem anderen Raum. */
+function kammerBild(){
+  const r=G.room;
+  if(!r||!r.kammerId) return null;
+  return KAMMERN.teufel.concat(KAMMERN.engel).find(k=>k.id===r.kammerId)||null;
 }
 
 /* Ein Teufelshandel kostet einen ganzen roten Herzcontainer. Wer keinen
@@ -4162,6 +4459,11 @@ function drawRoom(){
 
   ctx.drawImage(bodenBild,0,0,W,H);
 
+  // Möblierung der Teufels- oder Engelskammer, direkt auf dem Boden
+  const kammer=kammerBild();
+  if(kammer){ ctx.save(); ctx.beginPath();
+    ctx.rect(RX,RY,bw,bh); ctx.clip(); kammer.zeichnen(t); ctx.restore(); }
+
   // Feuerstellen leuchten den Boden aus — flackert, bleibt also lebendig
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
     const z=G.room.grid[r][c]; if(!z||z.t!=='fire') continue;
@@ -6394,7 +6696,7 @@ requestAnimationFrame(frame);
 /* Test-Hooks (für automatisierte Smoke-Tests) */
 window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES,
-  HANDSCHRIFTEN, MAX_HERZEN, get raumBildStand(){return bildStand;},
+  HANDSCHRIFTEN, MAX_HERZEN, KAMMERN, get raumBildStand(){return bildStand;},
   get tafelnGezeichnet(){return tafelnGezeichnet;} };
 </script>
 </body>
