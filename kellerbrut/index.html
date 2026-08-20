@@ -336,6 +336,108 @@ defItem({id:'glutmotte',name:'Glutmotte',desc:'Lässt brennende Glut fallen',typ
 defItem({id:'panzerling',name:'Panzerling',desc:'Stellt sich schützend vor dich',type:'passive',pool:['shop','treasure'],famil:'panzer'});
 defItem({id:'spaeherauge',name:'Späherauge',desc:'Jagt Gegner und durchbohrt sie',type:'passive',pool:['treasure','secret'],famil:'spaeher'});
 
+/* --- BEGLEITER (10) ------------------------------------------------------
+   Zehn Mitläufer, jeder mit einer eigenen Aufgabe: Nahkampf, Fernkampf,
+   Schutz, Nachschub. Das Feld `famil` nennt nur die Art — was sie tut,
+   steht in updateFamiliars(), wie sie aussieht in drawFamiliar().        */
+defItem({id:'messerfliege',name:'Messerfliege',desc:'Stürzt sich auf Gegner und schneidet',
+  type:'passive',pool:['treasure','curse'],famil:'messerfliege',
+  icon:(c)=>{ ctx.fillStyle='#7fb6d8';                 // Flügel zuerst, dahinter
+    ctx.beginPath(); ctx.ellipse(-4.2,-1.6,3,1.7,-0.6,0,TAU); ctx.fill(); symUmriss(0.8);
+    ctx.beginPath(); ctx.ellipse( 4.2,-1.6,3,1.7, 0.6,0,TAU); ctx.fill(); symUmriss(0.8);
+    symKlinge('#e4ecf4','#b08040'); }});
+defItem({id:'feuerschaedel',name:'Feuerschädel',desc:'Spuckt Feuerbälle, die brennen lassen',
+  type:'passive',pool:['treasure','devil'],famil:'feuerschaedel',
+  icon:(c)=>{ ctx.save(); ctx.globalAlpha=0.85; ctx.translate(0,-1.2); ctx.scale(0.9,0.9);
+    symFlamme('#e05a1a','#ffc04a'); ctx.restore();
+    ctx.save(); ctx.translate(0,1.4); ctx.scale(0.78,0.78); symSchaedel('#efe4cc'); ctx.restore(); }});
+defItem({id:'engelsfluegel',name:'Engelsflügel',desc:'Fängt je Raum einen Treffer ab',
+  type:'passive',pool:['angel','treasure'],famil:'engelsfluegel',
+  icon:(c)=>{ for(const vz of [-1,1]){                // zwei große Schwingen
+      ctx.beginPath(); ctx.moveTo(vz*0.8,-3.4);
+      ctx.quadraticCurveTo(vz*7.4,-4.6,vz*6.4,1.4);
+      ctx.quadraticCurveTo(vz*5.4,5.6,vz*1.4,5.4);
+      ctx.quadraticCurveTo(vz*2.6,1.2,vz*0.8,-3.4);
+      ctx.closePath(); ctx.fillStyle='#f8f4e8'; ctx.fill(); symUmriss();
+      ctx.strokeStyle='#b8b0a0'; ctx.lineWidth=0.7;   // Federkanten
+      for(let i=1;i<=2;i++){ ctx.beginPath();
+        ctx.moveTo(vz*(1.2+i*0.5),-1.4+i*1.9);
+        ctx.quadraticCurveTo(vz*(4.4+i*0.4),0.4+i*1.6,vz*(3.2+i*0.6),3.2+i*0.8);
+        ctx.stroke(); } }
+    ctx.beginPath(); ctx.ellipse(0,-5.4,3,1.2,0,0,TAU);   // Heiligenschein
+    ctx.strokeStyle='#e8c020'; ctx.lineWidth=1.6; ctx.stroke(); }});
+defItem({id:'schattenorb',name:'Schattenorb',desc:'Schießt jeden deiner Schüsse mit',
+  type:'passive',pool:['treasure','secret'],famil:'schattenorb',
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0.4,5.6,0,TAU);
+    ctx.fillStyle='#2a2438'; ctx.fill(); symUmriss();
+    ctx.save(); ctx.globalAlpha=0.55; ctx.beginPath(); ctx.arc(-1.6,-1.4,2.4,0,TAU);
+    ctx.fillStyle='#8a7ac8'; ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(-1.4,-1.6,0.9,0,TAU); ctx.fillStyle='#e0d8ff'; ctx.fill(); }});
+defItem({id:'stichling',name:'Stichling',desc:'Rammt den nächsten Gegner',
+  type:'passive',pool:['treasure','shop'],famil:'stichling',
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0.4,4.2,0,TAU);
+    ctx.fillStyle='#8a9a5a'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#dfe4c8';                       // Stachelkranz
+    for(let i=0;i<8;i++){ const a=i*TAU/8;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*3.6+Math.cos(a+1.6)*1.3,0.4+Math.sin(a)*3.6+Math.sin(a+1.6)*1.3);
+      ctx.lineTo(Math.cos(a)*6.6,0.4+Math.sin(a)*6.6);
+      ctx.lineTo(Math.cos(a)*3.6-Math.cos(a+1.6)*1.3,0.4-Math.sin(a+1.6)*1.3+Math.sin(a)*3.6);
+      ctx.closePath(); ctx.fill(); symUmriss(0.8); }
+    ctx.beginPath(); ctx.arc(-1.3,-0.8,0.8,0,TAU); ctx.fillStyle='#161018'; ctx.fill();
+    ctx.beginPath(); ctx.arc( 1.3,-0.8,0.8,0,TAU); ctx.fill(); }});
+defItem({id:'augapfel',name:'Augapfel',desc:'Schießt mit deinen Tränen mit',
+  type:'passive',pool:['treasure','shop'],famil:'augapfel',
+  icon:(c)=>{ ctx.save(); ctx.scale(1.05,1.05); symAuge('#c85a5a','#6a9ac0'); ctx.restore();
+    ctx.strokeStyle='#a03a4a'; ctx.lineWidth=0.9;   // Sehnerv hinten
+    ctx.beginPath(); ctx.moveTo(4.4,2.4); ctx.quadraticCurveTo(6.4,4.4,4.4,5.8); ctx.stroke(); }});
+defItem({id:'bombenfreund',name:'Bombenfreund',desc:'Legt regelmäßig eigene Bomben',
+  type:'passive',pool:['treasure','shop'],famil:'bombenfreund',
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,1.4,4.8,0,TAU);
+    ctx.fillStyle='#2e2a30'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#4a4450'; ctx.fillRect(-1.4,-4.4,2.8,1.8);   // Zünderkragen
+    ctx.beginPath(); ctx.rect(-1.4,-4.4,2.8,1.8); symUmriss(0.8);
+    ctx.strokeStyle='#a08050'; ctx.lineWidth=1.1;               // Lunte
+    ctx.beginPath(); ctx.moveTo(0.4,-4.4); ctx.quadraticCurveTo(3,-6,2.2,-6.6); ctx.stroke();
+    ctx.beginPath(); ctx.arc(2.2,-6.6,1.1,0,TAU); ctx.fillStyle='#ffb84a'; ctx.fill();
+    ctx.save(); ctx.globalAlpha=0.3; ctx.beginPath(); ctx.arc(-1.6,-0.2,1.6,0,TAU);
+    ctx.fillStyle='#ffffff'; ctx.fill(); ctx.restore(); }});
+defItem({id:'kreuzbot',name:'Kreuzbot',desc:'Feuert Salven in alle vier Richtungen',
+  type:'passive',pool:['treasure','secret'],famil:'kreuzbot',
+  icon:(c)=>{ ctx.beginPath();                                 // Kreuz mit Mündungen
+    const a=1.7,b=5.2;
+    ctx.moveTo(-a,-b); ctx.lineTo(a,-b); ctx.lineTo(a,-a); ctx.lineTo(b,-a);
+    ctx.lineTo(b,a); ctx.lineTo(a,a); ctx.lineTo(a,b); ctx.lineTo(-a,b);
+    ctx.lineTo(-a,a); ctx.lineTo(-b,a); ctx.lineTo(-b,-a); ctx.lineTo(-a,-a);
+    ctx.closePath(); ctx.fillStyle='#9aa8b4'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#3a4650';                                   // vier Läufe
+    for(let i=0;i<4;i++){ const w=i*Math.PI/2;
+      ctx.beginPath(); ctx.arc(Math.cos(w)*4.2,Math.sin(w)*4.2,1.2,0,TAU); ctx.fill(); }
+    ctx.beginPath(); ctx.arc(0,0,2.1,0,TAU); ctx.fillStyle='#ff7a4a'; ctx.fill(); symUmriss(0.8);
+    ctx.beginPath(); ctx.arc(-0.6,-0.7,0.7,0,TAU); ctx.fillStyle='#ffe08a'; ctx.fill(); }});
+defItem({id:'klingenring',name:'Klingenring',desc:'Drei Klingen kreisen und blocken',
+  type:'passive',pool:['treasure','shop'],famil:'klingenring',
+  icon:(c)=>{ ctx.save(); ctx.translate(0,-0.6);
+    ctx.fillStyle='#e4ecf4';                       // erst die drei Klingen …
+    for(let i=0;i<3;i++){ const a=-1.57+i*TAU/3;
+      ctx.save(); ctx.translate(Math.cos(a)*3.2,Math.sin(a)*3.2); ctx.rotate(a+1.57);
+      ctx.beginPath(); ctx.moveTo(0,-2.8); ctx.lineTo(1.6,1.2); ctx.lineTo(-1.6,1.2);
+      ctx.closePath(); ctx.fill(); symUmriss(0.9); ctx.restore(); }
+    symRing('#4a4a56',3.2,1.8);                    // … dann der Ring darüber,
+    ctx.restore(); }});                            // der sie sichtbar trennt
+defItem({id:'seelenvogel',name:'Seelenvogel',desc:'Sammelt Seelen und heilt dich davon',
+  type:'passive',pool:['angel','treasure'],famil:'seelenvogel',
+  icon:(c)=>{ for(const vz of [-1,1]){              // Flügel dunkler als der Körper
+      ctx.beginPath(); ctx.moveTo(vz*1.6,-1.4);
+      ctx.quadraticCurveTo(vz*7,-4.2,vz*7.2,0.4);
+      ctx.quadraticCurveTo(vz*5,2.4,vz*1.6,2);
+      ctx.closePath(); ctx.fillStyle='#5a92c0'; ctx.fill(); symUmriss(0.9); }
+    ctx.beginPath(); ctx.ellipse(0,0.4,2.8,4.2,0,0,TAU);
+    ctx.fillStyle='#eef7ff'; ctx.fill(); symUmriss();
+    ctx.beginPath(); ctx.moveTo(1.2,-3.2); ctx.lineTo(4.6,-4.4); ctx.lineTo(1.4,-5.4);
+    ctx.closePath(); ctx.fillStyle='#ffc020'; ctx.fill(); symUmriss(0.8);
+    ctx.beginPath(); ctx.arc(-0.4,-3,0.9,0,TAU); ctx.fillStyle='#161018'; ctx.fill(); }});
+
 /* --- Nützliches --- */
 defItem({id:'dietrich',name:'Dietrichfinger',desc:'+3 Schlüssel, Türen klemmen nie',type:'passive',pool:['shop','secret'],flags:['keysaver'],pickup:p=>{p.keys+=3;}});
 defItem({id:'sprengmeister',name:'Sprengmeister',desc:'+5 Bomben, immun gegen eigene',type:'passive',pool:['shop','treasure'],flags:['bombimmun'],pickup:p=>{p.bombs+=5;}});
@@ -2036,6 +2138,13 @@ function fireShot(aim){
     if(f.has('laser')) fireLaser(base,1.5,fam);
     else spawnTear(fam.x,fam.y-4,base,{...s,dmg:1.5},f,true);
   }
+  /* Schattenorb gibt jeden Schuss mit: gleiche Richtung, gleiche
+     Sonderwirkungen, halbe Wucht. */
+  for(const fam of G.familiars) if(fam.kind==='schattenorb'){
+    fam.blitzT=0.12;
+    if(f.has('laser')) fireLaser(base,s.dmg*0.5,fam);
+    else spawnTear(fam.x,fam.y-4,base,{...s,dmg:s.dmg*0.5},f,true);
+  }
 }
 function spawnTear(x,y,a,s,f,fromFam){
   const p=G.player;
@@ -2364,14 +2473,184 @@ function updateFamiliars(dt){
         f.x=lerp(f.x,p.x-16,3*dt); f.y=lerp(f.y,p.y-20,3*dt);
       }
     }
+
+    /* ---- Die zehn Begleiter ------------------------------------------ */
+
+    /* Messerfliege: schwirrt beim Spieler, stürzt sich in kurzen Sätzen auf
+       den nächsten Gegner und schneidet im Vorbeiflug. Zwischen den Sätzen
+       kehrt sie zurück, damit sie nicht im Raum feststeckt. */
+    if(f.kind==='messerfliege'){
+      f.cd-=dt; f.sturz=Math.max(0,(f.sturz||0)-dt);
+      const ziel=naechsterGegner(f,170);
+      if(f.sturz>0&&f.zielA!==undefined){
+        f.x+=Math.cos(f.zielA)*230*dt; f.y+=Math.sin(f.zielA)*230*dt;
+        f.winkel=f.zielA;
+      } else if(ziel&&f.cd<=0){
+        f.zielA=ang(f,ziel); f.sturz=0.42; f.cd=1.0; Sfx.shoot();
+      } else {
+        const zx=p.x-18-f.chain*4, zy=p.y-24;
+        f.x=lerp(f.x,zx+Math.cos(performance.now()/260+f.chain)*7,4*dt);
+        f.y=lerp(f.y,zy+Math.sin(performance.now()/210+f.chain)*5,4*dt);
+      }
+      f.schnittT=Math.max(0,(f.schnittT||0)-dt);
+      for(const e of G.enemies){
+        if(dist(f,e)<e.r+8&&f.schnittT<=0){
+          f.schnittT=0.28; damageEnemy(e,f.sturz>0?5:2.5);
+          funken(e.x,e.y,f.zielA||0,'#e8f0ff',5,0.9); Sfx.hit();
+        }
+      }
+    }
+
+    /* Feuerschädel: hängt hinter dem Spieler und spuckt Feuerbälle. Die
+       Bälle setzen in Brand — Schaden über Zeit statt harter Treffer. */
+    if(f.kind==='feuerschaedel'){
+      f.x=lerp(f.x,p.x-22,3.5*dt); f.y=lerp(f.y,p.y-20,3.5*dt);
+      f.fireT-=dt; f.spuck=Math.max(0,(f.spuck||0)-dt);
+      const ziel=naechsterGegner(f,260);
+      if(ziel&&f.fireT<=0){
+        f.fireT=1.8; f.spuck=0.3;
+        const t=spawnTear(f.x,f.y,ang(f,ziel),{...p.stats,dmg:3,range:230,shot:5},new Set(),true);
+        t.burn=true; Sfx.shoot();
+        for(let i=0;i<3;i++) schweber(f.x,f.y,'#ff9a3a',-frand.range(10,30),0.3);
+      }
+    }
+
+    /* Engelsflügel: hält sich über dem Kopf und fängt je Raum genau einen
+       Treffer ab. Verbraucht sind sie erst beim nächsten Raum wieder da —
+       spawnFamiliars() stellt bei jedem Betreten neu auf. */
+    if(f.kind==='engelsfluegel'){
+      f.x=lerp(f.x,p.x,9*dt); f.y=lerp(f.y,p.y-26,9*dt);
+      if(f.frei===undefined) f.frei=true;
+    }
+
+    /* Schattenorb: schwebt seitlich mit. Geschossen wird nicht hier,
+       sondern in fireShot() — er gibt jeden Schuss des Spielers ab. */
+    if(f.kind==='schattenorb'){
+      f.angle+=1.1*dt;
+      f.x=lerp(f.x,p.x+20+Math.cos(f.angle)*6,5*dt);
+      f.y=lerp(f.y,p.y-18+Math.sin(f.angle*1.4)*4,5*dt);
+    }
+
+    /* Stichling: rollt sich zusammen, rammt den nächsten Gegner und prallt
+       danach zurück zum Spieler. Reiner Nahkämpfer, dafür kräftig. */
+    if(f.kind==='stichling'){
+      f.cd-=dt; f.roll=(f.roll||0)+dt*(f.rammt>0?18:5);
+      f.rammt=Math.max(0,(f.rammt||0)-dt);
+      if(f.rammt>0){
+        f.x+=Math.cos(f.rammA)*260*dt; f.y+=Math.sin(f.rammA)*260*dt;
+        for(const e of G.enemies){
+          if(dist(f,e)<e.r+9&&!f.getroffen){
+            f.getroffen=true; damageEnemy(e,7); f.rammt=0;
+            const a=ang(f,e); e.kx=(e.kx||0)+Math.cos(a)*180; e.ky=(e.ky||0)+Math.sin(a)*180;
+            burst(e.x,e.y,'#dfe4c8',8); G.shake=Math.max(G.shake,3); Sfx.hit();
+          }
+        }
+      } else {
+        const ziel=naechsterGegner(f,150);
+        if(ziel&&f.cd<=0){ f.rammA=ang(f,ziel); f.rammt=0.45; f.cd=1.5; f.getroffen=false; }
+        else { f.x=lerp(f.x,p.x-14,4.5*dt); f.y=lerp(f.y,p.y+12,4.5*dt); }
+      }
+    }
+
+    /* Augapfel: schwebt mit und schießt mit deinen eigenen Werten, nur
+       schwächer — er erbt also Reichweite, Tempo und Sonderwirkungen. */
+    if(f.kind==='augapfel'){
+      f.x=lerp(f.x,p.x+16,4*dt); f.y=lerp(f.y,p.y-22,4*dt);
+      f.fireT-=dt;
+      const ziel=naechsterGegner(f,280);
+      if(ziel&&f.fireT<=0){
+        f.fireT=Math.max(0.35,1/Math.max(0.5,p.stats.tps*0.6));
+        f.blickA=ang(f,ziel);
+        spawnTear(f.x,f.y,f.blickA,{...p.stats,dmg:p.stats.dmg*0.55},p.flags,true);
+        Sfx.shoot();
+      }
+      if(ziel) f.blickA=ang(f,ziel);
+    }
+
+    /* Bombenfreund: trottet hinterher und legt alle paar Sekunden eine
+       eigene Bombe. Sie tut dem Spieler nichts — sonst wäre der Begleiter
+       eine Strafe statt einer Hilfe. */
+    if(f.kind==='bombenfreund'){
+      const zx=p.x-p.vx*0.1-16, zy=p.y-p.vy*0.1+14;
+      if(dist(f,{x:zx,y:zy})>20){ f.x=lerp(f.x,zx,4*dt); f.y=lerp(f.y,zy,4*dt); }
+      f.cd-=dt;
+      if(f.cd<=0&&G.enemies.length){
+        f.cd=4.5;
+        G.bombs.push({x:f.x,y:f.y+4,t:1.6,r:10,freundlich:true});
+        Sfx.bombset();
+      }
+    }
+
+    /* Kreuzbot: bleibt beim Spieler und feuert in Salven nach oben, unten,
+       links und rechts. Deckt also Gänge ab, zielt aber nie. */
+    if(f.kind==='kreuzbot'){
+      f.x=lerp(f.x,p.x-2,3.5*dt); f.y=lerp(f.y,p.y+16,3.5*dt);
+      f.dreh=(f.dreh||0)+dt*1.2;
+      f.fireT-=dt;
+      if(f.fireT<=0&&G.enemies.length){
+        f.fireT=2.2;
+        for(let i=0;i<4;i++){
+          const a=f.dreh+i*Math.PI/2;
+          spawnTear(f.x,f.y,a,{...p.stats,dmg:2.5,range:200,shot:5},new Set(),true);
+        }
+        Sfx.shoot();
+      }
+    }
+
+    /* Klingenring: drei Klingen auf einer gemeinsamen Kreisbahn. Sie
+       schneiden alles, was sie streifen, und schlagen Geschosse weg. */
+    if(f.kind==='klingenring'){
+      f.angle+=2.6*dt;
+      f.x=p.x; f.y=p.y;
+      f.trefferT=f.trefferT||{};
+      for(let i=0;i<3;i++){
+        const a=f.angle+i*TAU/3;
+        const kx=p.x+Math.cos(a)*38, ky=p.y+Math.sin(a)*38;
+        for(const sh of G.eshots){ if(!sh.arc&&Math.hypot(sh.x-kx,sh.y-ky)<10) sh.dead=true; }
+        for(const e of G.enemies){
+          if(Math.hypot(e.x-kx,e.y-ky)<e.r+7){
+            const k=e.id||(e.id=++KLINGEN_ID);
+            if(!(f.trefferT[k]>0)){
+              f.trefferT[k]=0.4; damageEnemy(e,3.5);
+              funken(kx,ky,a+1.57,'#e8f0ff',4,0.9); Sfx.hit();
+            }
+          }
+        }
+      }
+      for(const k in f.trefferT) f.trefferT[k]=Math.max(0,f.trefferT[k]-dt);
+    }
+
+    /* Seelenvogel: flattert über dem Spieler und sammelt die Seelen der
+       Erlegten. Alle acht Seelen gibt er ein halbes Herz zurück; der
+       Zähler steht in G.seelen, killEnemy() füllt ihn. */
+    if(f.kind==='seelenvogel'){
+      f.x=lerp(f.x,p.x+Math.cos(performance.now()/500)*16,3.5*dt);
+      f.y=lerp(f.y,p.y-30+Math.sin(performance.now()/380)*4,3.5*dt);
+      if((G.seelen||0)>=8){
+        G.seelen-=8;
+        if(heileSpieler(1)>0){
+          addText(p.x,p.y-30,'Seele','#bfe0f4');
+          schockwelle(f.x,f.y,26,'#bfe0f4',0.4,3); Sfx.heart();
+        }
+      }
+    }
   }
+}
+let KLINGEN_ID=0;   // laufende Nummer, damit der Klingenring Treffer merken kann
+
+/* Nächster Gegner innerhalb von `weite` — die Begleiter brauchen das
+   ständig, deshalb einmal zentral. */
+function naechsterGegner(von,weite){
+  let ziel=null,bd=weite||1e9;
+  for(const e of G.enemies){ const d=dist(von,e); if(d<bd){bd=d;ziel=e;} }
+  return ziel;
 }
 
 /* --- Bomben & Explosionen --- */
 function updateBombs(dt){
   for(const b of G.bombs){
     b.t-=dt;
-    if(b.t<=0){ b.dead=true; explode(b.x,b.y,62,24,true); }
+    if(b.t<=0){ b.dead=true; explode(b.x,b.y,62,24,!b.freundlich); }
   }
   G.bombs=G.bombs.filter(b=>!b.dead);
 }
@@ -2654,6 +2933,19 @@ function hurtPlayer(halves,force){
   const p=G.player;
   if(p.dead) return false;
   if(!force&&(p.iframes>0||p.shield>0||G.roomFresh>0)) return false;
+  /* Engelsflügel: der erste Treffer je Raum verpufft in einem Federstoß.
+     Der Begleiter wird bei jedem Raumwechsel neu aufgestellt, die Feder
+     also auch. */
+  if(!force){
+    const fl=G.familiars.find(f=>f.kind==='engelsfluegel'&&f.frei!==false);
+    if(fl){
+      fl.frei=false; fl.blitzT=0.5; p.iframes=1.2;
+      schockwelle(p.x,p.y-6,44,'#fdf6e0',0.5,4); Sfx.heart();
+      addText(p.x,p.y-26,'abgefangen','#fdf6e0');
+      for(let i=0;i<8;i++) schweber(p.x+frand.range(-10,10),p.y-8,'#fdf6e0',-frand.range(10,30),0.7);
+      return false;
+    }
+  }
   p.vollschild=false;                     // Doppelherz-Schild ist verbraucht
   if(p.flags.has('blutpumpe')){ p.blutung=3.2; p.blutT=1.4; }
   // Seelen-/schwarze Herzen zuerst
@@ -2890,6 +3182,8 @@ function killEnemy(e){
   Sfx.edeath();
   burst(e.x,e.y,e.isBoss?'#c03a5a':'#a05a5a',e.isBoss?26:10);
   G.kills++; G.stats.kills++;
+  /* Seelenvogel: jeder Erlegte lässt eine Seele zurück. */
+  if(G.familiars.some(f=>f.kind==='seelenvogel')) G.seelen=(G.seelen||0)+1;
   /* Seelenschlitzer: ein Kill kann kurz rasend machen. */
   if(G.player.flags.has('rausch')&&frand.chance(0.18+G.player.stats.luck*0.02)){
     G.player.rausch=Math.max(G.player.rausch||0,4);
@@ -5445,6 +5739,160 @@ function drawFamiliar(f){
     ctx.beginPath(); ctx.moveTo(f.x-5,f.y-3+fl); ctx.lineTo(f.x-10,f.y-6-w+fl);
     ctx.moveTo(f.x+5,f.y-3+fl); ctx.lineTo(f.x+10,f.y-6-w+fl); ctx.stroke();
   }
+
+  /* ---- Die zehn Begleiter ---------------------------------------------- */
+
+  if(f.kind==='messerfliege'){                  // Klinge mit Insektenflügeln
+    const w=Math.sin(performance.now()/40)*2.6;
+    const a=(f.sturz>0?f.zielA||0:Math.sin(performance.now()/300)*0.3)+Math.PI/2;
+    ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(a);
+    ctx.fillStyle='rgba(215,235,255,0.5)';
+    ctx.beginPath(); ctx.ellipse(-5,-1-w*0.3,4.5,2.2,-0.6,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 5,-1+w*0.3,4.5,2.2, 0.6,0,TAU); ctx.fill();
+    ctx.fillStyle=f.sturz>0?'#ffffff':'#cfd8e2';        // Klinge
+    ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(2.2,-1); ctx.lineTo(0,3);
+    ctx.lineTo(-2.2,-1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#4a3a2a'; ctx.fillRect(-1.4,2.6,2.8,3.4);
+    ctx.restore();
+    if(f.sturz>0){ ctx.strokeStyle='rgba(230,245,255,0.5)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(f.x,f.y);
+      ctx.lineTo(f.x-Math.cos(f.zielA||0)*16,f.y-Math.sin(f.zielA||0)*16); ctx.stroke(); }
+  }
+  if(f.kind==='feuerschaedel'){                 // brennender Schädel
+    const fl=Math.sin(performance.now()/280)*1.6;
+    const y=f.y+fl;
+    for(let i=0;i<4;i++){                        // Flammenkranz
+      const a=-2.4+i*0.55+Math.sin(performance.now()/120+i)*0.2;
+      const h=6+Math.sin(performance.now()/90+i*2)*2;
+      ctx.fillStyle=i%2?'#ff9a3a':'#ffd07a';
+      ctx.beginPath(); ctx.moveTo(f.x+Math.cos(a)*5,y+Math.sin(a)*5-1);
+      ctx.lineTo(f.x+Math.cos(a)*h,y+Math.sin(a)*h-3);
+      ctx.lineTo(f.x+Math.cos(a+0.4)*5,y+Math.sin(a+0.4)*5-1);
+      ctx.closePath(); ctx.fill();
+    }
+    disc(f.x,y,6,'#efe4cc'); disc(f.x,y+4,3.4,'#e0d4bc');
+    disc(f.x-2.2,y-1,1.6,'#2a1408'); disc(f.x+2.2,y-1,1.6,'#2a1408');
+    if(f.spuck>0){ disc(f.x-2.2,y-1,1.6,'#ffb84a'); disc(f.x+2.2,y-1,1.6,'#ffb84a'); }
+    ctx.fillStyle='#2a1408'; ctx.fillRect(f.x-0.6,y+1.6,1.2,1.6);
+  }
+  if(f.kind==='engelsfluegel'){                 // Federpaar über dem Kopf
+    const fl=Math.sin(performance.now()/340)*1.4;
+    const w=Math.sin(performance.now()/220)*2.4;
+    const y=f.y+fl, hell=f.blitzT>0;
+    ctx.globalAlpha=f.frei===false?0.4:1;
+    ctx.fillStyle=hell?'#ffffff':'#f4f0e4';
+    for(const vz of [-1,1]){
+      ctx.beginPath(); ctx.moveTo(f.x+vz*1.5,y);
+      ctx.quadraticCurveTo(f.x+vz*9,y-6-w,f.x+vz*12,y+1-w*0.5);
+      ctx.quadraticCurveTo(f.x+vz*7,y+3,f.x+vz*1.5,y+2.5);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle=hell?'#ffffff':'#e8c85a'; ctx.lineWidth=1.4;   // Heiligenschein
+    ctx.beginPath(); ctx.ellipse(f.x,y-6,4.4,1.6,0,0,TAU); ctx.stroke();
+    ctx.globalAlpha=1;
+    f.blitzT=Math.max(0,(f.blitzT||0)-1/60);
+  }
+  if(f.kind==='schattenorb'){                   // dunkle Kugel mit Kernglut
+    const puls=1+Math.sin(performance.now()/240)*0.08;
+    ctx.globalAlpha=0.35; disc(f.x,f.y,9*puls,'#4a3a72'); ctx.globalAlpha=1;
+    disc(f.x,f.y,6*puls,'#241e34');
+    disc(f.x-1.6,f.y-1.8,2.2,f.blitzT>0?'#efe8ff':'#6a5a9a');
+    disc(f.x-1.4,f.y-2,0.9,'#efe8ff');
+    f.blitzT=Math.max(0,(f.blitzT||0)-1/60);
+  }
+  if(f.kind==='stichling'){                     // Stachelkugel, rollt beim Rammen
+    const r=f.rammt>0?7:6;
+    ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.roll||0);
+    ctx.fillStyle='#dfe4c8';
+    for(let i=0;i<8;i++){ const a=i*TAU/8;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a-0.28)*r*0.8,Math.sin(a-0.28)*r*0.8);
+      ctx.lineTo(Math.cos(a)*(r+4),Math.sin(a)*(r+4));
+      ctx.lineTo(Math.cos(a+0.28)*r*0.8,Math.sin(a+0.28)*r*0.8);
+      ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    disc(f.x,f.y,r,f.rammt>0?'#a8bc6a':'#8a9a5a');
+    disc(f.x-1.8,f.y-1.4,1.1,'#161018'); disc(f.x+1.8,f.y-1.4,1.1,'#161018');
+  }
+  if(f.kind==='augapfel'){                      // fleischiges Auge am Sehnerv
+    const fl=Math.sin(performance.now()/260)*1.3;
+    const y=f.y+fl, a=f.blickA||0;
+    ctx.strokeStyle='#a03a4a'; ctx.lineWidth=2.2;          // Sehnerv
+    ctx.beginPath(); ctx.moveTo(f.x,y+3);
+    ctx.quadraticCurveTo(f.x+3,y+9,f.x-1,y+11); ctx.stroke();
+    disc(f.x,y,6.5,'#efe8d8');
+    ctx.strokeStyle='#c85a5a'; ctx.lineWidth=0.8;          // Äderchen
+    for(let i=0;i<3;i++){ const b=1.4+i*1.9;
+      ctx.beginPath(); ctx.moveTo(f.x+Math.cos(b)*2.5,y+Math.sin(b)*2.5);
+      ctx.lineTo(f.x+Math.cos(b)*6,y+Math.sin(b)*6); ctx.stroke(); }
+    disc(f.x+Math.cos(a)*2,y+Math.sin(a)*2,3.2,'#6a9ac0');
+    disc(f.x+Math.cos(a)*2.6,y+Math.sin(a)*2.6,1.6,'#111');
+  }
+  if(f.kind==='bombenfreund'){                  // kleiner Bombenleger
+    const wack=Math.sin(performance.now()/160)*0.12;
+    ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(wack);
+    disc(0,0,7,'#2e2a30'); disc(-1.8,-2.2,2.2,'#4a4450');
+    ctx.fillStyle='#4a4450'; ctx.fillRect(-2,-8.4,4,2.4);   // Zünderkragen
+    ctx.strokeStyle='#a08050'; ctx.lineWidth=1.4;           // Lunte
+    ctx.beginPath(); ctx.moveTo(0.6,-8.4); ctx.quadraticCurveTo(4,-11,2.6,-12); ctx.stroke();
+    const gl=f.cd<1.2?1.6+Math.sin(performance.now()/50)*0.8:1.2;
+    disc(2.6,-12,gl,f.cd<1.2?'#ffe08a':'#ffb84a');
+    disc(-2.4,1.4,1.2,'#efe4cc'); disc(2.4,1.4,1.2,'#efe4cc');
+    disc(-2.4,1.6,0.6,'#161018'); disc(2.4,1.6,0.6,'#161018');
+    ctx.restore();
+  }
+  if(f.kind==='kreuzbot'){                       // Kreuz aus Blech mit Läufen
+    ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.dreh||0);
+    ctx.fillStyle='#7a8a96';
+    ctx.fillRect(-9,-2.6,18,5.2); ctx.fillRect(-2.6,-9,5.2,18);
+    ctx.fillStyle='#5a6a76';                     // Mündungen
+    for(let i=0;i<4;i++){ const a=i*Math.PI/2;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*8.5,Math.sin(a)*8.5,2.2,0,TAU); ctx.fill(); }
+    ctx.restore();
+    disc(f.x,f.y,3.4,'#8a9aa6');
+    disc(f.x,f.y,2,f.fireT<0.3?'#ffe08a':'#ff7a4a');
+  }
+  if(f.kind==='klingenring'){                    // drei Klingen auf der Bahn
+    ctx.strokeStyle='rgba(200,220,240,0.18)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(f.x,f.y,38,0,TAU); ctx.stroke();
+    for(let i=0;i<3;i++){
+      const a=(f.angle||0)+i*TAU/3;
+      const kx=f.x+Math.cos(a)*38, ky=f.y+Math.sin(a)*38;
+      ctx.save(); ctx.translate(kx,ky); ctx.rotate(a+Math.PI/2);
+      ctx.fillStyle='rgba(220,235,250,0.25)';    // Schleppe
+      ctx.beginPath(); ctx.moveTo(-1.5,0); ctx.lineTo(-9,5); ctx.lineTo(1.5,2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#d8dfe8';
+      ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(2.6,1.6); ctx.lineTo(-2.6,1.6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#5a4632'; ctx.fillRect(-2,1.6,4,2.2);
+      ctx.restore();
+    }
+  }
+  if(f.kind==='seelenvogel'){                    // Vogel mit Seelenperlen
+    const w=Math.sin(performance.now()/110)*3.4;
+    ctx.globalAlpha=0.9;
+    ctx.fillStyle='#bfe0f4';
+    for(const vz of [-1,1]){
+      ctx.beginPath(); ctx.moveTo(f.x+vz*2,f.y-1);
+      ctx.quadraticCurveTo(f.x+vz*9,f.y-4-w,f.x+vz*11,f.y+2-w*0.4);
+      ctx.quadraticCurveTo(f.x+vz*6,f.y+3,f.x+vz*2,f.y+2);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#e8f4ff';
+    ctx.beginPath(); ctx.ellipse(f.x,f.y,4,5,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#ffc84a';                      // Schnabel
+    ctx.beginPath(); ctx.moveTo(f.x+1,f.y-4); ctx.lineTo(f.x+4.4,f.y-6);
+    ctx.lineTo(f.x+1.4,f.y-6.4); ctx.closePath(); ctx.fill();
+    disc(f.x+0.6,f.y-3.4,1,'#161018');
+    const n=Math.min(8,G.seelen||0);              // gesammelte Seelen als Perlen
+    for(let i=0;i<n;i++){
+      const a=-1.57+i*TAU/8+performance.now()/900;
+      ctx.globalAlpha=0.75;
+      disc(f.x+Math.cos(a)*11,f.y+Math.sin(a)*11,1.6,'#bfe0f4');
+      ctx.globalAlpha=1;
+    }
+  }
 }
 
 /* Gestapelte Wülste mit Spitze — Grundform für Kotkrabbler, Kotspritzer
@@ -6795,6 +7243,7 @@ function startRun(charIdx,seedStr){
     tears:[],eshots:[],enemies:[],bombs:[],pickups:[],fx:[],beams:[],
     lasers:[],creeps:[],familiars:[],texts:[],einschlaege:[],
     deathTimer:0,roomFresh:0,bossName:'',room:null,roomKey:null,
+    seelen:0,                      // Vorrat des Seelenvogels
     floorHit:false,deals:0,        // heil durch die Etage? schon gehandelt?
     floorRooms:()=>G.floor.rooms};
   const p={char,x:0,y:0,vx:0,vy:0,r:9,

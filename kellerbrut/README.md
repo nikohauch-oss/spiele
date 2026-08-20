@@ -158,7 +158,7 @@ Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
 ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
 Seeds nach.
 
-**Inhalte.** 81 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
+**Inhalte.** 91 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
 12 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 9 Charaktere (acht davon freischaltbar).
 
@@ -311,6 +311,20 @@ einen zweiten, schwächeren Schuss hinterher, das *Glutauge* zündet, der
 vergiftet, das *Donnerherz* lässt jeden achten Treffer einen Blitz rufen, die
 *Chaos-Matrix* würfelt den Schaden jedes Mal neu, und der *Seelenschlitzer*
 macht nach einem Kill kurz rasend.
+
+**Zehn neue Begleiter.** Jeder hat eine klare Aufgabe, keiner ist bloß ein
+zweiter Schuss. Im Nahkampf: die *Messerfliege* schwirrt mit und stürzt sich
+in kurzen Sätzen auf den nächsten Gegner, der *Stichling* rollt sich zusammen
+und rammt, der *Klingenring* lässt drei Klingen auf einer Bahn um dich
+kreisen, die alles schneiden und Geschosse wegschlagen. Im Fernkampf: der
+*Feuerschädel* spuckt Feuerbälle, die in Brand setzen, der *Augapfel* schießt
+mit deinen eigenen Werten mit (er erbt also Reichweite, Tempo und
+Sonderwirkungen), der *Kreuzbot* feuert Vierersalven in alle Himmelsrichtungen,
+und der *Schattenorb* gibt jeden deiner Schüsse mit halber Wucht ab. Dazu drei,
+die nicht schießen: die *Engelsflügel* fangen je Raum genau einen Treffer ab,
+der *Bombenfreund* legt regelmäßig eigene Bomben (die dir nichts tun), und der
+*Seelenvogel* sammelt die Seelen der Erlegten und gibt für je acht ein halbes
+Herz zurück.
 
 **Jedes Item hat sein eigenes Symbol.** Kein zufälliges Emblem mehr: Herzen,
 Klingen, Schädel, Augen, Flammen, Kristalle, Blitze, Flaschen, Ringe und
@@ -494,7 +508,7 @@ Einstellungsregler, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, die Wirkung aller zwanzig Herz- und
-Schadensitems einzeln nachgerechnet, das Zeichnen sämtlicher Sprites sowie die Bildrate
+Schadensitems einzeln nachgerechnet, der Dienst jedes der zehn Begleiter, das Zeichnen sämtlicher Sprites sowie die Bildrate
 unter Last. Die Zahlen zieht der Test aus den
 Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
 

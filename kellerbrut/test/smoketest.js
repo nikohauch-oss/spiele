@@ -2004,6 +2004,180 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+if(want(24)){
+console.log('\n[24] Die zehn Begleiter');
+await withPage(async(page,errs)=>{
+  const neu=['messerfliege','feuerschaedel','engelsfluegel','schattenorb','stichling',
+             'augapfel','bombenfreund','kreuzbot','klingenring','seelenvogel'];
+  const da=await page.evaluate((neu)=>{
+    const fehlt=neu.filter(id=>!KB.ITEMS[id]);
+    const ohneSymbol=neu.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].icon);
+    const ohneFam=neu.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].famil);
+    const ohnePool=neu.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].pool.length);
+    const arten=neu.map(id=>KB.ITEMS[id]&&KB.ITEMS[id].famil);
+    const doppelt=arten.filter((f,i)=>arten.indexOf(f)!==i);   // jede Art nur einmal
+    return {fehlt,ohneSymbol,ohneFam,ohnePool,doppelt,gesamt:Object.keys(KB.ITEMS).length};
+  },neu);
+  note(da.fehlt.length===0,'alle zehn sind da',da.fehlt.join(' '));
+  note(da.ohneSymbol.length===0,'jeder hat ein eigenes, gezeichnetes Symbol',da.ohneSymbol.join(' '));
+  note(da.ohneFam.length===0,'jeder stellt wirklich einen Begleiter auf',da.ohneFam.join(' '));
+  note(da.ohnePool.length===0,'jeder liegt in mindestens einem Topf',da.ohnePool.join(' '));
+  note(da.doppelt.length===0,'keine zwei Items teilen sich eine Begleiterart',da.doppelt.join(' '));
+  console.log('    Items im Spiel: '+da.gesamt);
+
+  const w=await page.evaluate(()=>{
+    /* Aufbau: leerer Raum, ein Item, ein Übungsgegner mit viel Leben.
+       Der Spieler bewegt sich nicht — gemessen wird nur der Begleiter. */
+    const bau=(ids,mitGegner)=>{
+      startRun(0,'BG'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.iframes=0; KB.G.roomFresh=0; p.itemGet=null;
+      KB.G.enemies.length=0; KB.G.eshots.length=0; KB.G.creeps.length=0;
+      KB.G.tears.length=0; KB.G.bombs.length=0;
+      for(const z of KB.G.room.grid) z.fill(null);
+      for(const id of ids) acquireItem(id,null);
+      p.itemGet=null; recomputeStats(); spawnFamiliars();
+      let g=null;
+      if(mitGegner!==false){ g=spawnEnemy('blobling',tx(9),ty(3),null);
+        g.hp=g.maxHp=1e6; g.spd=0; }
+      return {p,g};
+    };
+    const lauf=(n)=>{ for(let i=0;i<n;i++) updateGame(1/60); };
+    const e={};
+
+    /* Jede Art muss beim Aufheben wirklich erscheinen. */
+    e.erscheint={};
+    for(const id of ['messerfliege','feuerschaedel','engelsfluegel','schattenorb',
+                     'stichling','augapfel','bombenfreund','kreuzbot',
+                     'klingenring','seelenvogel']){
+      bau([id]);
+      e.erscheint[id]=KB.G.familiars.length===1
+        &&KB.G.familiars[0].kind===KB.ITEMS[id].famil;
+    }
+
+    /* Messerfliege, Stichling, Klingenring machen Nahkampfschaden. */
+    for(const [id,ticks] of [['messerfliege',180],['stichling',240],['klingenring',180]]){
+      const {g}=bau([id]);
+      g.x=KB.G.player.x+34; g.y=KB.G.player.y;      // in Reichweite halten
+      const vor=g.hp;
+      for(let i=0;i<ticks;i++){ g.x=KB.G.player.x+34; g.y=KB.G.player.y; updateGame(1/60); }
+      e[id]={schaden:vor-g.hp};
+    }
+
+    /* Feuerschädel, Augapfel, Kreuzbot schießen. */
+    for(const [id,ticks] of [['feuerschaedel',200],['augapfel',200],['kreuzbot',220]]){
+      const {g}=bau([id]);
+      let schuesse=0, brennend=0;
+      const gesehen=new Set();
+      for(let i=0;i<ticks;i++){
+        updateGame(1/60);
+        for(const t of KB.G.tears){ if(t.fam&&!gesehen.has(t)){ gesehen.add(t); schuesse++;
+          if(t.burn) brennend++; } }
+      }
+      e[id]={schuesse,brennend};
+    }
+
+    /* Schattenorb feuert mit, sobald der Spieler feuert. */
+    { bau(['schattenorb']);
+      const vor=KB.G.tears.length;
+      fireShot({x:1,y:0});
+      e.schattenorb={neu:KB.G.tears.length-vor,
+                     vomBegleiter:KB.G.tears.filter(t=>t.fam).length}; }
+
+    /* Engelsflügel fängt genau einen Treffer je Raum ab. */
+    { const {p}=bau(['engelsfluegel']);
+      p.red=6; p.iframes=0;
+      const erster=hurtPlayer(2);
+      p.iframes=0;
+      const zweiter=hurtPlayer(2);
+      const nachErstem=p.red;
+      /* Raumwechsel stellt die Feder neu auf. */
+      spawnFamiliars(); p.iframes=0;
+      const dritter=hurtPlayer(2);
+      e.engelsfluegel={erster,zweiter,dritter,red:nachErstem}; }
+
+    /* Bombenfreund legt Bomben, die dem Spieler nichts tun. */
+    { const {p}=bau(['bombenfreund']);
+      p.red=p.redMax; const vorLeben=p.red;
+      let gelegt=0; const gesehen=new Set();
+      for(let i=0;i<420;i++){ updateGame(1/60);
+        for(const b of KB.G.bombs) if(!gesehen.has(b)){ gesehen.add(b); gelegt++; } }
+      e.bombenfreund={gelegt,verlust:vorLeben-p.red,
+                      freundlich:[...gesehen].every(b=>b.freundlich)}; }
+
+    /* Seelenvogel sammelt Seelen und heilt daraus. */
+    { const {p}=bau(['seelenvogel']);
+      p.redMax=12; p.red=4; KB.G.seelen=0;
+      for(let i=0;i<8;i++){ const g=spawnEnemy('tropfling',tx(6),ty(3),null); killEnemy(g); }
+      const gesammelt=KB.G.seelen;
+      KB.G.enemies.length=0;
+      lauf(20);
+      e.seelenvogel={gesammelt,geheilt:p.red-4,rest:KB.G.seelen}; }
+
+    /* Ohne den Vogel darf kein Seelenzähler mitlaufen. */
+    { bau([]); KB.G.seelen=0;
+      const g=spawnEnemy('tropfling',tx(6),ty(3),null); killEnemy(g);
+      e.ohneVogel={seelen:KB.G.seelen}; }
+
+    /* Alle zehn gleichzeitig, unter Dauerfeuer — nichts darf werfen. */
+    { const {g}=bau(['messerfliege','feuerschaedel','engelsfluegel','schattenorb',
+                     'stichling','augapfel','bombenfreund','kreuzbot',
+                     'klingenring','seelenvogel']);
+      const p=KB.G.player;
+      for(let i=0;i<420;i++){
+        if(i%6===0) fireShot({x:Math.cos(i*0.3),y:Math.sin(i*0.3)});
+        if(i%90===0&&KB.G.enemies.length<4){
+          const z=spawnEnemy('tropfling',tx(4+i%6),ty(2),null); z.hp=z.maxHp=1e5; }
+        updateGame(1/60);
+      }
+      e.zusammen={begleiter:KB.G.familiars.length,lebt:!p.dead}; }
+
+    /* Gezeichnet werden müssen sie auch — alle Arten einmal durch. */
+    { bau(['messerfliege','feuerschaedel','engelsfluegel','schattenorb','stichling',
+           'augapfel','bombenfreund','kreuzbot','klingenring','seelenvogel']);
+      for(let i=0;i<12;i++) { updateGame(1/60); render(); }
+      e.gezeichnet=KB.G.familiars.length; }
+
+    return e;
+  });
+
+  const fehlend=Object.keys(w.erscheint).filter(k=>!w.erscheint[k]);
+  note(fehlend.length===0,'jeder Begleiter erscheint beim Aufheben',fehlend.join(' '));
+  note(w.messerfliege.schaden>0,'Messerfliege schneidet im Vorbeiflug',
+       '('+w.messerfliege.schaden.toFixed(1)+' Schaden)');
+  note(w.stichling.schaden>0,'Stichling rammt',
+       '('+w.stichling.schaden.toFixed(1)+' Schaden)');
+  note(w.klingenring.schaden>0,'Klingenring schneidet auf der Bahn',
+       '('+w.klingenring.schaden.toFixed(1)+' Schaden)');
+  note(w.feuerschaedel.schuesse>0&&w.feuerschaedel.brennend===w.feuerschaedel.schuesse,
+       'Feuerschädel spuckt nur brennende Bälle',
+       '('+w.feuerschaedel.brennend+' von '+w.feuerschaedel.schuesse+')');
+  note(w.augapfel.schuesse>0,'Augapfel schießt mit',
+       '('+w.augapfel.schuesse+' Schüsse)');
+  note(w.kreuzbot.schuesse>0&&w.kreuzbot.schuesse%4===0,
+       'Kreuzbot feuert in Vierersalven',
+       '('+w.kreuzbot.schuesse+' Schüsse)');
+  note(w.schattenorb.neu===2&&w.schattenorb.vomBegleiter===1,
+       'Schattenorb gibt jeden Schuss mit',
+       '('+w.schattenorb.neu+' Tränen, davon '+w.schattenorb.vomBegleiter+' vom Orb)');
+  note(w.engelsfluegel.erster===false&&w.engelsfluegel.zweiter===true
+       &&w.engelsfluegel.dritter===false,
+       'Engelsflügel fängt genau einen Treffer je Raum ab');
+  note(w.bombenfreund.gelegt>0&&w.bombenfreund.freundlich&&w.bombenfreund.verlust===0,
+       'Bombenfreund legt Bomben, die dir nichts tun',
+       '('+w.bombenfreund.gelegt+' Bomben, '+w.bombenfreund.verlust+' Schaden)');
+  note(w.seelenvogel.gesammelt===8&&w.seelenvogel.geheilt>0&&w.seelenvogel.rest===0,
+       'Seelenvogel heilt aus acht Seelen',
+       '(8 gesammelt → '+w.seelenvogel.geheilt+' halbes Herz)');
+  note(w.ohneVogel.seelen===0,'ohne Vogel sammelt niemand Seelen');
+  note(w.zusammen.begleiter===10&&w.zusammen.lebt,
+       'alle zehn laufen gleichzeitig ohne Ausfall',
+       '('+w.zusammen.begleiter+' Begleiter)');
+  note(w.gezeichnet===10,'alle zehn werden gezeichnet');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');
