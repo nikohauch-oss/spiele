@@ -2694,6 +2694,118 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+if(want(27)){
+console.log('\n[27] Geld: Münzfund und Ladenpreise');
+await withPage(async(page,errs)=>{
+
+  /* Der garantierte Münzfund liegt erreichbar und nur, wo er hingehört. */
+  const fund=await page.evaluate(()=>{
+    let mitFund=0, gesamt=0, unerreichbar=0, falscherRaum=0;
+    const jeTiefe=[0,0,0,0,0,0], zaehlTiefe=[0,0,0,0,0,0];
+    for(let s=0;s<60;s++){
+      startRun(0,'MZ'+s);
+      for(let d=1;d<=6;d++){
+        const f=genFloor(d); gesamt++; zaehlTiefe[d-1]++;
+        /* Ohne Schlüssel und ohne Bombe erreichbare Räume bestimmen. */
+        const erreichbar=new Set([f.startKey]), q=[f.startKey];
+        while(q.length){ const k=q.shift();
+          for(const dd in f.rooms[k].doors){ const t=f.rooms[k].doors[dd];
+            if(t.edge.locked||t.edge.kind==='secret'||!t.edge.revealed) continue;
+            if(!erreichbar.has(t.to)){ erreichbar.add(t.to); q.push(t.to); } } }
+        let hat=false;
+        for(const k in f.rooms){
+          const r=f.rooms[k];
+          const mz=r.drops.filter(x=>x.muenzfund);
+          if(!mz.length) continue;
+          hat=true;
+          if(!erreichbar.has(k)) unerreichbar++;
+          if(r.type!=='normal'&&r.type!=='start') falscherRaum++;
+          /* Immer genau ein Fünferstück, dazu höchstens eine Münze. */
+          if(mz.filter(x=>x.type==='bigcoin').length!==1
+             ||mz.filter(x=>x.type==='coin').length>1) falscherRaum++;
+        }
+        if(hat){ mitFund++; jeTiefe[d-1]++; }
+      }
+    }
+    /* Derselbe Seed muss dieselben Funde ergeben. */
+    startRun(0,'MZGL'); const a=[];
+    for(let d=1;d<=6;d++) a.push(Object.values(genFloor(d).rooms)
+      .flatMap(r=>r.drops.filter(x=>x.muenzfund)).map(x=>x.type+'@'+x.x+','+x.y).join('|'));
+    startRun(0,'MZGL'); const b=[];
+    for(let d=1;d<=6;d++) b.push(Object.values(genFloor(d).rooms)
+      .flatMap(r=>r.drops.filter(x=>x.muenzfund)).map(x=>x.type+'@'+x.x+','+x.y).join('|'));
+    return {mitFund,gesamt,unerreichbar,falscherRaum,
+            anteil:jeTiefe.map((n,i)=>n/zaehlTiefe[i]),
+            gleich:a.join(';')===b.join(';')};
+  });
+  note(fund.unerreichbar===0,'der Münzfund liegt nie hinter Schloss oder Wand',
+       '('+fund.unerreichbar+' Fälle)');
+  note(fund.falscherRaum===0,'immer ein Fünferstück, höchstens eine Münze dazu, nur in normalen Räumen',
+       '('+fund.falscherRaum+' Fälle)');
+  note(fund.anteil[0]===1&&fund.anteil[1]===1,'Etage 1 und 2 haben ihn immer',
+       '('+(fund.anteil[0]*100).toFixed(0)+' % / '+(fund.anteil[1]*100).toFixed(0)+' %)');
+  note(fund.anteil.slice(2).every(a=>a>0.2&&a<0.75),
+       'tiefer liegt er nur auf etwa jeder zweiten Etage',
+       '('+fund.anteil.slice(2).map(a=>(a*100).toFixed(0)+' %').join(' ')+')');
+  note(fund.gleich,'derselbe Seed ergibt denselben Münzfund');
+
+  /* Wie viel Geld über einen Durchlauf zusammenkommt. Alles wird erlegt und
+     aufgebrochen — das ist die Obergrenze, echte Läufe liegen darunter. */
+  const geld=await page.evaluate(()=>{
+    const laeufe=[];
+    for(let s=0;s<25;s++){
+      startRun(0,'GK'+s); KB.G.bossIntro=null;
+      const p=KB.G.player; p.itemGet=null; p.iframes=1e9; p.bombs=999;
+      const proEtage=[];
+      for(let d=1;d<=6;d++){
+        const vor=p.coins;
+        if(d>1){ KB.G.depth=d; KB.G.floor=genFloor(d); }
+        for(const k in KB.G.floor.rooms){
+          const t=KB.G.floor.rooms[k].type;
+          if(t==='devil'||t==='angel') continue;
+          enterRoom(k,null); KB.G.bossIntro=null; p.itemGet=null;
+          for(let i=0;i<3;i++){
+            for(const g of [...KB.G.enemies]) killEnemy(g);
+            KB.G.enemies=KB.G.enemies.filter(g=>!g.dead);
+            updateGame(1/60);
+          }
+          for(let rr=0;rr<7;rr++) for(let cc=0;cc<13;cc++){
+            const z=KB.G.room.grid[rr][cc];
+            if(z&&(z.t==='rock'||z.t==='poop')) explode(tx(cc),ty(rr),20,0,false);
+          }
+          for(let i=0;i<40;i++){
+            const q=KB.G.pickups.find(x=>!x.dead&&!x.price&&!x.wahl);
+            if(!q) break;
+            p.x=q.x; p.y=q.y; q.cd=0;
+            for(let j=0;j<4;j++) updateGame(1/60);
+            if(KB.G.pickups.includes(q)&&!q.dead) q.dead=true;
+          }
+          p.itemGet=null;
+        }
+        proEtage.push(p.coins-vor);
+      }
+      laeufe.push({gesamt:p.coins,proEtage});
+    }
+    const mit=a=>a.reduce((x,v)=>x+v,0)/a.length;
+    return {gesamt:mit(laeufe.map(l=>l.gesamt)),
+            etage1:mit(laeufe.map(l=>l.proEtage[0])),
+            etage2:mit(laeufe.map(l=>l.proEtage[1])),
+            schlechtester:Math.min(...laeufe.map(l=>l.proEtage[0]))};
+  });
+  /* Der Artikel auf dem Ladenpodest kostet 15, die Kleinware 3 bis 8.
+     Auf Etage 1 muss zumindest die Kleinware drin sein, sonst steht man
+     vor einem Laden, den man nicht benutzen kann. */
+  note(geld.etage1>=9,'auf Etage 1 reicht es sicher für Ladenkleinware',
+       '(Ø '+geld.etage1.toFixed(1)+' Münzen, schlechtester Lauf '+geld.schlechtester+')');
+  note(geld.etage1+geld.etage2>=20,'nach zwei Etagen ist das Podest-Item bezahlbar',
+       '(Ø '+(geld.etage1+geld.etage2).toFixed(1)+' von 15 nötigen)');
+  note(geld.gesamt>85&&geld.gesamt<150,'die Wirtschaft bleibt im Rahmen',
+       '(Ø '+geld.gesamt.toFixed(1)+' Münzen je Durchlauf)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

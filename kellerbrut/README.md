@@ -48,6 +48,19 @@ außerdem nur auf Feldern, die zu Fuß mit dem Raumrand verbunden sind, also nie
 in einer von Steinen umschlossenen Nische. Dazu kommen die üblichen
 Zufallsfunde.
 
+**Geld ist knapp, aber nicht zu knapp.** Jede Etage 1 und 2 legt einen
+garantierten Münzfund aus — ein Fünferstück, manchmal mit einer einzelnen
+Münze daneben —, ab Etage 3 nur noch etwa jede zweite. Er liegt nach denselben
+Regeln wie die garantierten Schlüssel: nur in Räumen, die man ohne Schlüssel
+und ohne Bombe erreicht. Dazu fällt aus Gegnern, Steinen und Kothaufen etwas
+öfter Geld, und jeder zwölfte Münzfund ist ein Fünferstück statt einer
+einzelnen Münze (Glück erhöht beides). Vorher kamen auf Etage 1 im Schnitt
+gut fünf Münzen zusammen — der Artikel auf dem Ladenpodest kostet fünfzehn,
+man stand also regelmäßig vor einem Laden, den man nicht benutzen konnte.
+Jetzt sind es rund zwölf auf Etage 1 und etwa hundertzehn über einen ganzen
+Durchlauf. Der Smoke-Test rechnet beides nach, damit die Wirtschaft nicht
+unbemerkt kippt.
+
 **Schatzräume und Shops.** Shoptüren sind immer verschlossen. Schatzräume
 dagegen nur etwa zur Hälfte — die anderen stehen offen, damit man nie ganz
 ohne Item dasteht, bloß weil kein Schlüssel gefallen ist. Vor einer
@@ -565,7 +578,9 @@ Fortsetzen eines Durchlaufs samt veränderter Etage, die Menüeinträge und die
 Einstellungsregler, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
-wirklich anders aussieht, jeder der fünf Etagenflüche einzeln in seiner Wirkung, die drei Wellen des
+wirklich anders aussieht, die Reichweite und Streuung des garantierten Münzfunds samt dem Geld, das
+über einen Durchlauf zusammenkommt,
+jeder der fünf Etagenflüche einzeln in seiner Wirkung, die drei Wellen des
 Herausforderungsraums samt Lohn und die Einmalwahl der Bibliothek,
 die Wirkung aller zwanzig Herz- und
 Schadensitems einzeln nachgerechnet, der Dienst jedes der zehn Begleiter,

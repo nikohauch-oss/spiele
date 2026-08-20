@@ -1568,6 +1568,7 @@ function genFloor(depth){
   const floor={depth,rooms,doors,startKey:'0,0',bossKey:bossK,fluch,
                data:FLOORS[Math.min(depth-1,FLOORS.length-1)]};
   platziereSchluessel(floor,rng);
+  platziereMuenzen(floor,rng);
   return floor;
 }
 
@@ -1576,7 +1577,7 @@ function genFloor(depth){
    OHNE Bombe erreicht — sonst bräuchte man einen Schlüssel, um an den
    Schlüssel zu kommen. Verschlossene und geheime Türen bleiben bei der
    Erreichbarkeitssuche deshalb außen vor. */
-function platziereSchluessel(floor,rng){
+function ohneSchluesselErreichbar(floor){
   const erreichbar=new Set([floor.startKey]), q=[floor.startKey];
   while(q.length){
     const k=q.shift();
@@ -1587,6 +1588,11 @@ function platziereSchluessel(floor,rng){
       if(!erreichbar.has(tuer.to)){ erreichbar.add(tuer.to); q.push(tuer.to); }
     }
   }
+  return erreichbar;
+}
+
+function platziereSchluessel(floor,rng){
+  const erreichbar=ohneSchluesselErreichbar(floor);
   // Normale Räume bevorzugen; der Bossraum scheidet aus, dort nützt der
   // Schlüssel nichts mehr. Notfalls landet er im Startraum.
   let kandidaten=[...erreichbar].filter(k=>floor.rooms[k].type==='normal');
@@ -1601,6 +1607,31 @@ function platziereSchluessel(floor,rng){
     // garantiert:true kennzeichnet die Etagen-Schlüssel gegenüber Shop-Ware
     // und Zufallsbeute — der Smoke-Test prüft gezielt diese hier.
     room.drops.push({x:platz.x,y:platz.y,type:'key',garantiert:true});
+  }
+}
+
+/* Garantierter Münzfund: eine Handvoll Geld je Etage, damit man vor dem
+   Laden nicht mit leeren Taschen steht. Ohne ihn kommen auf Etage 1 im
+   Schnitt fünf Münzen zusammen — der Artikel auf dem Podest kostet fünfzehn.
+   Wie die Schlüssel liegt er nur in Räumen, die man ohne Schlüssel und ohne
+   Bombe erreicht, und nie im Bossraum. */
+function platziereMuenzen(floor,rng){
+  /* Nicht auf jeder Etage. Die ersten beiden bekommen ihn immer — dort ist
+     die Not am größten —, danach etwa jede zweite. */
+  if(floor.depth>2&&!rng.chance(0.45)) return;
+  const erreichbar=ohneSchluesselErreichbar(floor);
+  let kandidaten=[...erreichbar].filter(k=>floor.rooms[k].type==='normal');
+  if(!kandidaten.length) kandidaten=[...erreichbar].filter(k=>floor.rooms[k].type==='start');
+  if(!kandidaten.length) return;
+  const room=floor.rooms[rng.pick(kandidaten)];
+  const platz=freierBodenplatz(room,rng);
+  room.drops.push({x:platz.x,y:platz.y,type:'bigcoin',muenzfund:true});
+  /* Manchmal noch eine einzelne Münze daneben — ein Häufchen liest sich
+     freundlicher als eine einzelne große Münze. */
+  const dazu=rng.int(2);
+  for(let i=0;i<dazu;i++){
+    const q=freierBodenplatz(room,rng);
+    room.drops.push({x:q.x,y:q.y,type:'coin',muenzfund:true});
   }
 }
 
@@ -1815,7 +1846,7 @@ function saveRoomState(){
   // sonst wird eine abgelegte Pille beim Wiederbetreten zu einer anderen.
   room.drops=G.pickups.filter(q=>!q.dead).map(q=>({x:q.x,y:q.y,type:q.type,
     price:q.price,pillId:q.pillId,cardId:q.cardId,itemId:q.itemId,
-    garantiert:q.garantiert,wahl:q.wahl}));
+    garantiert:q.garantiert,muenzfund:q.muenzfund,wahl:q.wahl}));
 }
 
 /* Solange die Arena läuft, gilt der Raum nicht als geschafft — die Türen
@@ -1921,7 +1952,10 @@ function updateDoorsOpen(silent){
 function randomDrop(){
   const l=G.player.stats.luck*0.01;
   const r=frand();
-  if(r<0.3+l+(G.player.flags.has('muenzbeutel')?0.25:0)) return 'coin';
+  /* Geld fällt etwas öfter, und jeder achte Fund ist ein Fünferstück —
+     so lohnt sich der Weg zum Laden wieder. */
+  if(r<0.32+l+(G.player.flags.has('muenzbeutel')?0.25:0))
+    return frand.chance(0.08+G.player.stats.luck*0.012)?'bigcoin':'coin';
   if(r<0.5) return 'heart';
   if(r<0.65) return 'bomb';
   if(r<0.8) return 'key';
