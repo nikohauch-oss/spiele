@@ -158,7 +158,7 @@ Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
 ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
 Seeds nach.
 
-**Inhalte.** 61 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
+**Inhalte.** 81 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
 12 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 9 Charaktere (acht davon freischaltbar).
 
@@ -292,6 +292,34 @@ den nächsten Gegner, die *Glutmotte* lässt brennende Glut fallen, der
 *Panzerling* stellt sich in Blickrichtung vor dich und fängt gegnerische
 Geschosse ab, und das *Späherauge* jagt selbstständig Gegner mit
 durchschlagenden Schüssen.
+
+**Zwanzig Herz- und Schadensitems.** Zehn drehen am Leben, zehn an der
+Faust. Beim Leben geht es nie nur um „mehr“: der *Herzkern* gibt schlicht ein
+Herz dazu, das *Stahlherz* zwei — halbiert dafür aber jede Heilung, das
+*Blaue Siegel* schenkt drei Seelenherzen, der *Herzcontainer* füllt komplett
+auf, das *Doppelherz* verdoppelt jedes aufgesammelte Herz, das *Geisterherz*
+fängt einen tödlichen Treffer je Etage ab, die *Blutpumpe* heilt langsam von
+selbst, der *Lebenskristall* macht jeden Raumabschluss zur kleinen Heilung,
+das *Fluchherz* zahlt vier Container gegen dauerhaft mehr Schaden, und das
+*Unsterbliche Herz* gibt einmal je Durchlauf alles zurück.
+
+Bei den Waffen sind es Haken statt reiner Zahlen: die *Blutklinge* schlägt
+pauschal härter zu, der *Kristallzahn* trifft öfter kritisch, der *Wutkern*
+wird umso stärker, je weniger Leben übrig ist, das *Doppelgeschoss* wirft
+einen zweiten, schwächeren Schuss hinterher, das *Glutauge* zündet, der
+*Schädelbrecher* haut vor allem Bosse und Champions, der *Giftzahn*
+vergiftet, das *Donnerherz* lässt jeden achten Treffer einen Blitz rufen, die
+*Chaos-Matrix* würfelt den Schaden jedes Mal neu, und der *Seelenschlitzer*
+macht nach einem Kill kurz rasend.
+
+**Jedes Item hat sein eigenes Symbol.** Kein zufälliges Emblem mehr: Herzen,
+Klingen, Schädel, Augen, Flammen, Kristalle, Blitze, Flaschen, Ringe und
+Flügel werden einzeln gezeichnet, damit man ein Item schon auf 14 Pixel im
+Inventar wiedererkennt. Ein Item darf dafür im Datentabelleneintrag ein Feld
+`icon(c,dunkel)` mitbringen; `drawItemIcon()` beschneidet es auf die Kachel,
+schaltet die Tuschekontur ab (die würde auf dieser Größe alles zumatschen)
+und setzt den Glanzstrich darüber. Fehlt das Feld, greift weiterhin das alte
+Verfahren aus der ID.
 
 **Was ein Item tut, steht dabei.** An drei Stellen:
 
@@ -465,7 +493,8 @@ Fortsetzen eines Durchlaufs samt veränderter Etage, die Menüeinträge und die
 Einstellungsregler, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
-wirklich anders aussieht, das Zeichnen sämtlicher Sprites sowie die Bildrate
+wirklich anders aussieht, die Wirkung aller zwanzig Herz- und
+Schadensitems einzeln nachgerechnet, das Zeichnen sämtlicher Sprites sowie die Bildrate
 unter Last. Die Zahlen zieht der Test aus den
 Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
 

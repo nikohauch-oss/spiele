@@ -1836,6 +1836,174 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+// --- 23. Herz- und Schaden-Items ---
+if(want(23)){
+console.log('\n[23] Herz- und Schaden-Items');
+await withPage(async(page,errs)=>{
+  const neu=['herzkern','stahlherz','blauessiegel','herzcontainer','doppelherz',
+             'geisterherz','blutpumpe','lebenskristall','fluchherz','unsterblichesherz',
+             'blutklinge','kristallzahn','wutkern','doppelgeschoss','glutauge',
+             'schaedelbrecher','giftzahn','donnerherz','chaosmatrix','seelenschlitzer'];
+  const da=await page.evaluate((neu)=>{
+    const fehlt=neu.filter(id=>!KB.ITEMS[id]);
+    const ohneSymbol=neu.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].icon);
+    const ohnePool=neu.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].pool.length);
+    return {fehlt,ohneSymbol,ohnePool,gesamt:Object.keys(KB.ITEMS).length};
+  },neu);
+  note(da.fehlt.length===0,'alle zwanzig sind da',da.fehlt.join(' '));
+  note(da.ohneSymbol.length===0,'jedes hat ein eigenes, gezeichnetes Symbol',da.ohneSymbol.join(' '));
+  note(da.ohnePool.length===0,'jedes liegt in mindestens einem Topf',da.ohnePool.join(' '));
+
+  const w=await page.evaluate(()=>{
+    const bau=(ids,vor)=>{
+      startRun(0,'IT'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.iframes=0; KB.G.roomFresh=0;
+      KB.G.enemies.length=0; KB.G.eshots.length=0; KB.G.creeps.length=0;
+      for(const z of KB.G.room.grid) z.fill(null);
+      if(vor) vor(p);
+      for(const id of ids) acquireItem(id,null);
+      p.itemGet=null; recomputeStats();
+      return p;
+    };
+    const e={};
+    { const p0=bau([]); const vorMax=p0.redMax;
+      const p=bau(['herzkern']); e.herzkern={vor:vorMax,nach:p.redMax}; }
+    { const p=bau(['stahlherz'],pp=>{pp.red=2;});
+      const vor=p.red; const dazu=heileSpieler(4);
+      e.stahlherz={dazu, halb:p.flags.has('halbheilung')}; }
+    { const p=bau([]); const vorSoul=p.soul.length;
+      const q=bau(['blauessiegel']); e.siegel={vor:vorSoul,nach:q.soul.length}; }
+    { const p=bau(['herzcontainer'],pp=>{pp.red=1;});
+      e.container={red:p.red,max:p.redMax,voll:p.red===p.redMax}; }
+    { const p=bau(['doppelherz']); p.red=p.redMax;
+      for(let i=0;i<3;i++) updateGame(1/60);
+      e.doppelherz={schild:p.shield>0}; }
+    { const p=bau(['geisterherz']); p.soul=['S','S','S','S','S','S','S','S'];
+      let explosionen=0;
+      for(let i=0;i<40;i++){ const vorFx=KB.G.fx.length; p.iframes=0;
+        if(p.soul.length<2) p.soul.push('S','S');
+        hurtPlayer(1,true);
+        if(KB.G.fx.length>vorFx+6) explosionen++; }
+      e.geisterherz={explosionen}; }
+    { const p=bau(['blutpumpe']); p.redMax=20;p.red=20; p.iframes=0;
+      hurtPlayer(1,true);
+      const nachTreffer=p.red;
+      for(let i=0;i<200;i++){ p.iframes=0; updateGame(1/60); }
+      e.blutpumpe={blutung:p.flags.has('blutpumpe'),nachTreffer,ende:p.red}; }
+    { const p=bau(['lebenskristall']); p.redMax=20; p.red=3;
+      KB.G.room.kristallGenutzt=false;
+      for(let i=0;i<20;i++) updateGame(1/60);
+      const ersteHilfe=p.red;
+      p.red=3;
+      for(let i=0;i<20;i++) updateGame(1/60);
+      e.kristall={ersteHilfe,zweite:p.red}; }
+    { const p=bau(['fluchherz']); p.soul=['S','S','S','S'];
+      const vor=p.soul.length;
+      enterRoom(KB.G.floor.bossKey,null); KB.G.enemies.length=0; KB.G.bossIntro=null;
+      onBossRoomCleared();
+      e.fluchherz={vor,nach:p.soul.length}; }
+    { const p=bau(['unsterblichesherz']); p.soul.length=0; p.red=1;
+      hurtPlayer(9,true);
+      const ersterTod={tot:p.dead,red:p.red};
+      p.iframes=0; p.soul.length=0; p.red=Math.max(1,p.red);
+      hurtPlayer(9,true);
+      e.unsterblich={ersterTod,zweiterTot:p.dead}; }
+    { const a=bau([]).stats.dmg, b=bau(['blutklinge']).stats.dmg;
+      e.blutklinge={ohne:+a.toFixed(2),mit:+b.toFixed(2),faktor:+(b/a).toFixed(2)}; }
+    { const p=bau(['kristallzahn']);
+      e.kristallzahn={pierce:p.flags.has('pierce'),dmg:+p.stats.dmg.toFixed(2)}; }
+    /* Wut, Elitebonus, Chaos: der Aufschlag entsteht erst beim Treffer, also
+       wird der zugefügte Schaden gemessen, nicht der Statuswert. */
+    const treffer=(ids,vor,bossartig)=>{
+      const p=bau(ids,vor);
+      const e2=spawnEnemy(bossartig?'blobling':'blobling',tx(6),ty(3),
+                          bossartig?{tint:'#ff5a5a',hpMul:9}:null);
+      e2.hp=e2.maxHp=9999;
+      const vorHp=e2.hp;
+      hitEnemyWithMods(e2,10,0,true);
+      return vorHp-e2.hp;
+    };
+    e.wut={voll:treffer(['wutkern'],pp=>{pp.redMax=20;pp.red=20;}),
+           fast:treffer(['wutkern'],pp=>{pp.redMax=20;pp.red=1;})};
+    e.elite={normal:treffer(['schaedelbrecher']),
+             champ:treffer(['schaedelbrecher'],null,true)};
+    { const werte=[]; for(let i=0;i<40;i++) werte.push(treffer(['chaosmatrix']));
+      e.chaos={min:Math.min(...werte),max:Math.max(...werte)}; }
+    { const p=bau(['doppelgeschoss']);
+      KB.G.tears.length=0; fireShot({x:0,y:1});
+      const q=bau([]); KB.G.tears.length=0; fireShot({x:0,y:1});
+      const einzeln=KB.G.tears.length, einzelSchaden=KB.G.tears[0].dmg;
+      const p2=bau(['doppelgeschoss']);
+      KB.G.tears.length=0; fireShot({x:0,y:1});
+      e.doppelgeschoss={einzeln,mehr:KB.G.tears.length,
+        schadenVor:+einzelSchaden.toFixed(2),schadenNach:+KB.G.tears[0].dmg.toFixed(2)}; }
+    { const p=bau(['glutauge']);
+      const g=spawnEnemy('blobling',tx(6),ty(3),null); g.hp=g.maxHp=9999;
+      hitEnemyWithMods(g,5,0,true);
+      e.glutauge={brennt:g.burn>0,dmg:+p.stats.dmg.toFixed(2)}; }
+    { const p=bau(['giftzahn']);
+      const g=spawnEnemy('blobling',tx(6),ty(3),null); g.hp=g.maxHp=9999;
+      hitEnemyWithMods(g,5,0,true);
+      e.giftzahn={vergiftet:g.poison>0}; }
+    { const p=bau(['donnerherz']);
+      const g=spawnEnemy('blobling',tx(6),ty(3),null); g.hp=g.maxHp=99999;
+      const z=spawnEnemy('blobling',tx(9),ty(3),null); z.hp=z.maxHp=99999;
+      let blitze=0;
+      for(let i=0;i<16;i++){ const vor=z.hp+g.hp; hitEnemyWithMods(g,5,0,true);
+        if(z.hp+g.hp<vor-5.5) blitze++; }
+      e.donner={blitze}; }
+    { const p=bau(['seelenschlitzer']);
+      let rausch=0;
+      for(let i=0;i<60;i++){ const g=spawnEnemy('tropfling',tx(6),ty(3),null);
+        killEnemy(g); if(p.rausch>0){ rausch++; p.rausch=0; } }
+      e.seelenschlitzer={rausch}; }
+    return e;
+  });
+
+  note(w.herzkern.nach===w.herzkern.vor+2,'Herzkern gibt ein ganzes Herz dazu',
+       '('+w.herzkern.vor+' → '+w.herzkern.nach+' Hälften)');
+  note(w.stahlherz.halb&&w.stahlherz.dazu===2,'Stahlherz halbiert die Heilung',
+       '(4 Hälften angeboten → '+w.stahlherz.dazu+' angekommen)');
+  note(w.siegel.nach===w.siegel.vor+4,'Blaues Siegel gibt zwei blaue Herzen');
+  note(w.container.voll,'Herzcontainer heilt sofort voll auf',
+       '('+w.container.red+'/'+w.container.max+')');
+  note(w.doppelherz.schild,'Doppelherz gibt bei vollem Leben ein Schild');
+  note(w.geisterherz.explosionen>0,'Geisterherz zerplatzt beim Verlust',
+       '('+w.geisterherz.explosionen+' von 40)');
+  note(w.blutpumpe.ende<w.blutpumpe.nachTreffer,'Blutpumpe blutet nach',
+       '(nach Treffer '+w.blutpumpe.nachTreffer+' → '+w.blutpumpe.ende+')');
+  note(w.kristall.ersteHilfe>3&&w.kristall.zweite===3,
+       'Lebenskristall hilft genau einmal je Raum',
+       '(3 → '+w.kristall.ersteHilfe+', beim zweiten Mal '+w.kristall.zweite+')');
+  note(w.fluchherz.nach===w.fluchherz.vor-2,'Fluchherz kostet je Boss ein blaues Herz',
+       '('+w.fluchherz.vor+' → '+w.fluchherz.nach+' Hälften)');
+  note(w.unsterblich.ersterTod.tot===false&&w.unsterblich.zweiterTot===true,
+       'Unsterbliches Herz trägt genau einmal');
+  note(Math.abs(w.blutklinge.faktor-1.2)<0.02,'Blutklinge gibt +20 % Schaden',
+       '(Faktor '+w.blutklinge.faktor+')');
+  note(w.kristallzahn.pierce,'Kristallzahn lässt Schüsse durchbohren');
+  note(w.wut.fast>w.wut.voll*1.3,'Wutkern schlägt bei wenig Leben härter zu',
+       '(voll '+w.wut.voll.toFixed(1)+' → fast tot '+w.wut.fast.toFixed(1)+')');
+  note(w.elite.champ>w.elite.normal*1.3,'Schädelbrecher trifft Champions härter',
+       '('+w.elite.normal.toFixed(1)+' → '+w.elite.champ.toFixed(1)+')');
+  note(w.chaos.max>w.chaos.min*1.5,'Chaos-Matrix schwankt wirklich',
+       '('+w.chaos.min.toFixed(1)+' bis '+w.chaos.max.toFixed(1)+')');
+  note(w.doppelgeschoss.mehr===w.doppelgeschoss.einzeln+1
+       &&w.doppelgeschoss.schadenNach<w.doppelgeschoss.schadenVor,
+       'Doppelgeschoss: ein Schuss mehr, jeder schwächer',
+       '('+w.doppelgeschoss.einzeln+' → '+w.doppelgeschoss.mehr+' Schüsse, Schaden '
+       +w.doppelgeschoss.schadenVor+' → '+w.doppelgeschoss.schadenNach+')');
+  note(w.glutauge.brennt,'Glutauge setzt in Brand');
+  note(w.giftzahn.vergiftet,'Giftzahn vergiftet');
+  note(w.donner.blitze>0,'Donnerherz schlägt in Abständen ein',
+       '('+w.donner.blitze+' Blitze aus 16 Treffern)');
+  note(w.seelenschlitzer.rausch>0,'Seelenschlitzer macht bei Kills rasend',
+       '('+w.seelenschlitzer.rausch+' aus 60 Kills)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

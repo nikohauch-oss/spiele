@@ -394,6 +394,147 @@ defItem({id:'schutzschale',name:'Schutzschale',desc:'5 Sekunden unverwundbar',ty
     Sfx.active();return true;}});
 
 /* Item-Pools werden aus den Tabellen aufgebaut */
+/* --- HERZ-ITEMS (10) -----------------------------------------------------
+   Alles, was Leben gibt oder Leben kostet. Die Herzobergrenze von zwölf
+   gilt auch hier: containerDazu() ist die einzige Tür, durch die redMax
+   wächst.                                                                */
+defItem({id:'herzkern',name:'Herzkern',desc:'+1 dauerhaftes rotes Herz',
+  type:'passive',pool:['boss','treasure'],pickup:p=>{containerDazu(2,2);},
+  icon:(c)=>{ symHerz('#c8283a',5.2); }});
+defItem({id:'stahlherz',name:'Stahlherz',desc:'+1 Herz, Heilung wirkt nur halb',
+  type:'passive',pool:['boss','shop'],flags:['halbheilung'],
+  pickup:p=>{containerDazu(2,2);},
+  icon:(c)=>{ symHerz('#8a8e96',5.2);
+    ctx.strokeStyle='#3a3e46'; ctx.lineWidth=1.1;
+    ctx.beginPath(); ctx.moveTo(-0.4,-4.6); ctx.lineTo(0.8,-1); ctx.lineTo(-0.6,1.4);
+    ctx.lineTo(0.6,4.6); ctx.stroke(); }});
+defItem({id:'blauessiegel',name:'Blaues Siegel',desc:'+2 blaue Herzen',
+  type:'passive',pool:['treasure','secret'],pickup:p=>{p.soul.push('S','S','S','S');},
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0.4,6,0,TAU);
+    ctx.fillStyle='#2a4a8a'; ctx.fill(); symUmriss();
+    symHerz('#8ab4e8',3.4,0,0.2); }});
+defItem({id:'herzcontainer',name:'Herzcontainer',desc:'+1 Herzcontainer, volle Heilung',
+  type:'passive',pool:['boss','treasure'],pickup:p=>{containerDazu(2,'voll');},
+  icon:(c)=>{ ctx.fillStyle='#9aa0aa'; ctx.fillRect(-3.4,-5.8,6.8,1.6);
+    ctx.beginPath(); ctx.rect(-3.4,-5.8,6.8,1.6); symUmriss(0.9);
+    ctx.beginPath(); ctx.rect(-4.2,-4.2,8.4,9.4);
+    ctx.fillStyle='rgba(190,215,232,0.32)'; ctx.fill(); symUmriss();
+    symHerz('#c8283a',3.6,0,0.8);
+    ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#ffffff';
+    ctx.fillRect(-3.2,-3.4,1.1,7.6); ctx.restore(); }});
+defItem({id:'doppelherz',name:'Doppelherz',desc:'+1 Herz. Bei vollem Leben ein Schild',
+  type:'passive',pool:['boss','treasure'],flags:['vollschild'],
+  pickup:p=>{containerDazu(2,2);},
+  icon:(c)=>{ symHerz('#8a2a36',4.6,-1.6,0.6); symHerz('#e04a5a',4.6,1.8,-0.4); }});
+defItem({id:'geisterherz',name:'Geisterherz',desc:'+1 blaues Herz, das beim Verlust zerplatzt',
+  type:'passive',pool:['curse','secret'],flags:['geisterherz'],
+  pickup:p=>{p.soul.push('S','S');},
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,-0.6,4.4,Math.PI,0);
+    ctx.lineTo(4.4,3.4); ctx.lineTo(2.2,2); ctx.lineTo(0,3.6);
+    ctx.lineTo(-2.2,2); ctx.lineTo(-4.4,3.4); ctx.closePath();
+    ctx.fillStyle='#9ad4f0'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#1a2a3a';
+    ctx.beginPath(); ctx.arc(-1.7,-0.8,1.2,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(1.7,-0.8,1.2,0,TAU); ctx.fill(); }});
+defItem({id:'blutpumpe',name:'Blutpumpe',desc:'+1 Herz, aber Treffer bluten nach',
+  type:'passive',pool:['curse','devil'],flags:['blutpumpe'],
+  pickup:p=>{containerDazu(2,2);},
+  icon:(c)=>{ ctx.fillStyle='#e8e0d0'; ctx.fillRect(-3.4,-5.6,6.8,1.6);   // Aufhängung
+    ctx.beginPath(); ctx.rect(-3.4,-5.6,6.8,1.6); symUmriss(0.9);
+    ctx.beginPath();                                                     // Beutel
+    ctx.moveTo(-3.2,-4); ctx.lineTo(3.2,-4); ctx.lineTo(2.4,3.4);
+    ctx.quadraticCurveTo(0,5.2,-2.4,3.4); ctx.closePath();
+    ctx.fillStyle='#b81c2e'; ctx.fill(); symUmriss();
+    ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle='#ffffff';
+    ctx.fillRect(-2.4,-3.2,1.1,5.4); ctx.restore();
+    ctx.strokeStyle='#7a1220'; ctx.lineWidth=1.3;                        // Schlauch
+    ctx.beginPath(); ctx.moveTo(0,4.6); ctx.lineTo(0,6.2); ctx.stroke();
+    symTropfen('#e03a4a',0,7,1.1); }});
+defItem({id:'lebenskristall',name:'Lebenskristall',desc:'+1 Herz. In Not einmal je Raum ein halbes',
+  type:'passive',pool:['treasure','angel'],flags:['lebenskristall'],
+  pickup:p=>{containerDazu(2,2);},
+  icon:(c)=>{ symKristall('#3ac87a','#c8ffd8');
+    symHerz('#e8fff0',1.9,0,0.6); }});
+defItem({id:'fluchherz',name:'Fluchherz',desc:'+1 Herz, doch jeder Boss nimmt ein blaues',
+  type:'passive',pool:['curse','devil'],flags:['fluchherz'],
+  pickup:p=>{containerDazu(2,2);},
+  icon:(c)=>{ symHerz('#7a3ac8',5.2);
+    ctx.fillStyle='#2a1040';                    // zwei Hörner
+    ctx.beginPath(); ctx.moveTo(-3.6,-3.4); ctx.lineTo(-5.6,-6.4); ctx.lineTo(-2.2,-4.8); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(3.6,-3.4); ctx.lineTo(5.6,-6.4); ctx.lineTo(2.2,-4.8); ctx.fill(); }});
+defItem({id:'unsterblichesherz',name:'Unsterbliches Herz',desc:'+1 Herz. Einmal je Lauf überlebst du',
+  type:'passive',pool:['angel','boss'],flags:['unsterblich'],
+  pickup:p=>{containerDazu(2,'voll');},
+  icon:(c)=>{ symFluegel(-1,'#f0e8d4',-3.4,0.4); symFluegel(1,'#f0e8d4',3.4,0.4);
+    symHerz('#e8b830',4.4,0,0.6);
+    ctx.strokeStyle='#ffe08a'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.ellipse(0,-5.4,3,1.2,0,0,TAU); ctx.stroke(); }});
+
+/* --- SCHADEN-ITEMS (10) --------------------------------------------------
+   Prozentuale Aufschläge sammeln sich in s.dmgMul; alles, was erst beim
+   Treffer entscheidet (Wut, Chaos, Elitebonus), sitzt in hitEnemyWithMods. */
+defItem({id:'blutklinge',name:'Blutklinge',desc:'+20 % Schaden',
+  type:'passive',pool:['treasure','shop'],mod:s=>{s.dmgMul*=1.2;},
+  icon:(c)=>{ symKlinge('#d8d2c4');
+    ctx.fillStyle='#b01828';
+    ctx.beginPath(); ctx.moveTo(0,-6.5); ctx.lineTo(2.2,-1); ctx.lineTo(0,-1.6); ctx.fill();
+    symTropfen('#b01828',3.4,4.6,1.4); }});
+defItem({id:'kristallzahn',name:'Kristallzahn',desc:'+15 % Schaden, Schüsse durchbohren',
+  type:'passive',pool:['treasure'],flags:['pierce'],mod:s=>{s.dmgMul*=1.15;},
+  icon:(c)=>{ symKristall('#7ac8f0','#e8faff'); }});
+defItem({id:'wutkern',name:'Wutkern',desc:'Je weniger Leben, desto mehr Schaden',
+  type:'passive',pool:['devil','curse'],flags:['wut'],
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0.4,5,0,TAU);
+    ctx.fillStyle='#c8283a'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#2a0a12';                    // wütende Brauen und Maul
+    ctx.beginPath(); ctx.moveTo(-3.4,-2.2); ctx.lineTo(-0.8,-0.8); ctx.lineTo(-3.4,-0.2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(3.4,-2.2); ctx.lineTo(0.8,-0.8); ctx.lineTo(3.4,-0.2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-2.4,2.2); ctx.lineTo(2.4,2.2); ctx.lineTo(0,4.2); ctx.fill(); }});
+defItem({id:'doppelgeschoss',name:'Doppelgeschoss',desc:'Ein Schuss mehr, jeder schwächer',
+  type:'passive',pool:['treasure','shop'],flags:['doppelgeschoss'],
+  icon:(c)=>{ ctx.save(); ctx.translate(-2,-1.4); ctx.scale(0.72,0.72); symAuge('#c8283a','#c8283a'); ctx.restore();
+    ctx.save(); ctx.translate(2.2,1.8); ctx.scale(0.72,0.72); symAuge('#c8283a','#c8283a'); ctx.restore(); }});
+defItem({id:'glutauge',name:'Glutauge',desc:'+10 % Schaden, Treffer entzünden',
+  type:'passive',pool:['treasure','boss'],flags:['burn'],mod:s=>{s.dmgMul*=1.1;},
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0,6,0,TAU);
+    ctx.fillStyle='#e8862a'; ctx.fill(); symUmriss();
+    ctx.beginPath(); ctx.ellipse(0,0,2.2,4.2,0,0,TAU);
+    ctx.fillStyle='#2a0e08'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,0,0.9,2.6,0,0,TAU);
+    ctx.fillStyle='#ffd07a'; ctx.fill(); }});
+defItem({id:'schaedelbrecher',name:'Schädelbrecher',desc:'+35 % Schaden gegen Champions und Bosse',
+  type:'passive',pool:['boss','devil'],flags:['elitebrecher'],
+  icon:(c)=>{ symSchaedel('#d8d2c0');
+    ctx.strokeStyle='#a01828'; ctx.lineWidth=1.1;
+    ctx.beginPath(); ctx.moveTo(-2.6,-4.2); ctx.lineTo(-0.6,-2.4); ctx.lineTo(-2,-1); ctx.stroke(); }});
+defItem({id:'giftzahn',name:'Giftzahn',desc:'+10 % Schaden, Treffer vergiften',
+  type:'passive',pool:['treasure','curse'],flags:['poison'],mod:s=>{s.dmgMul*=1.1;},
+  icon:(c)=>{ ctx.beginPath();
+    ctx.moveTo(-2.6,-5.4); ctx.lineTo(2.6,-5.4); ctx.lineTo(0.8,4.6);
+    ctx.lineTo(-0.8,4.6); ctx.closePath();
+    ctx.fillStyle='#e8e2cc'; ctx.fill(); symUmriss();
+    symTropfen('#6ac82a',2.6,5.4,1.6); }});
+defItem({id:'donnerherz',name:'Donnerherz',desc:'+15 % Schaden. Jeder achte Treffer blitzt',
+  type:'passive',pool:['treasure','boss'],flags:['donner'],mod:s=>{s.dmgMul*=1.15;},
+  icon:(c)=>{ symHerz('#3a7ac8',5.2); symBlitz('#ffd75a'); }});
+defItem({id:'chaosmatrix',name:'Chaos-Matrix',desc:'Schaden schwankt von 70 % bis 160 %',
+  type:'passive',pool:['secret','curse'],flags:['chaos'],
+  icon:(c)=>{ ctx.fillStyle='#8a4ad8'; ctx.fillRect(-4.6,-4.6,9.2,9.2);
+    ctx.beginPath(); ctx.rect(-4.6,-4.6,9.2,9.2); symUmriss();
+    ctx.fillStyle='#f0e0ff';
+    for(const [ax,ay] of [[-2.4,-2.4],[2.4,-2.4],[0,0],[-2.4,2.4],[2.4,2.4]]){
+      ctx.beginPath(); ctx.arc(ax,ay,0.95,0,TAU); ctx.fill(); } }});
+defItem({id:'seelenschlitzer',name:'Seelenschlitzer',desc:'+25 % Schaden. Ein Kill kann rasend machen',
+  type:'passive',pool:['devil','boss'],flags:['rausch'],mod:s=>{s.dmgMul*=1.25;},
+  icon:(c)=>{ ctx.beginPath();                     // Sichel
+    ctx.moveTo(-4.6,5.4); ctx.quadraticCurveTo(-5.4,-4,4.6,-5.6);
+    ctx.quadraticCurveTo(-0.6,-1.6,-2.2,5.4); ctx.closePath();
+    ctx.fillStyle='#d8d2c4'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#a01828';
+    ctx.beginPath(); ctx.moveTo(4.6,-5.6); ctx.quadraticCurveTo(1.4,-3.4,0.6,-2.2);
+    ctx.quadraticCurveTo(2.6,-4.6,4.6,-5.6); ctx.fill();
+    ctx.fillStyle='#5a4632'; ctx.fillRect(-4.4,4.6,3,2.4); }});
+
 /* --- Teufels- und Engelsware ---------------------------------------------
    Der Teufel gibt roh mehr Kraft, nimmt dafür Leben. Der Engel gibt
    weniger Wucht, dafür Schutz und Herzen. Beide Töpfe sind bewusst klein
@@ -1247,6 +1388,12 @@ function randomDrop(){
 
 function onBossRoomCleared(){
   const room=G.room;
+  /* Fluchherz: der Boss nimmt sich ein blaues Herz als Wegzoll. */
+  if(G.player.flags.has('fluchherz')&&G.player.soul.length){
+    G.player.soul.pop(); G.player.soul.pop();
+    addText(G.player.x,G.player.y-22,'Der Fluch nimmt sich eins','#7a3ac8');
+    burst(G.player.x,G.player.y,'#7a3ac8',12);
+  }
   room.pedestals.push({x:tx(4),y:ty(3),itemId:pickFromPool('boss')});
   /* Jeder Boss lässt außerdem etwas Dauerhaftes liegen: entweder eine
      Herzerweiterung oder mehr Schaden. Damit ist ein Bosskampf immer
@@ -1683,10 +1830,13 @@ function recomputeStats(){
   const p=G.player; if(!p) return;
   const c=p.char;
   const s={speed:c.speed+p.permSpeed, tps:c.tps, dmg:c.dmg+p.permDmg+p.roomDmgBonus,
-           range:c.range+p.permRange, shot:c.shot, luck:c.luck, tpsMul:1};
+           range:c.range+p.permRange, shot:c.shot, luck:c.luck, tpsMul:1, dmgMul:1};
   for(const id of p.items){const it=ITEMS[id]; if(it.mod) it.mod(s);}
   s.tps=clamp(s.tps,0.6,7)*s.tpsMul;
-  s.dmg=Math.max(0.5,s.dmg);
+  /* dmgMul sammelt die prozentualen Aufschläge. Additive Boni zuerst, dann
+     die Prozente — sonst würde ein früh gefundenes Prozent-Item später
+     gefundene Punkte mit vervielfachen. */
+  s.dmg=Math.max(0.5,s.dmg*s.dmgMul);
   s.speed=clamp(s.speed,0.8,3.6);
   s.shot=clamp(s.shot,2,7.5);
   s.range=clamp(s.range,80,420);
@@ -1743,6 +1893,28 @@ function updatePlayer(dt){
   // lässt kurz taumeln, dann greift die Steuerung nur gedämpft.
   p.taumeln=Math.max(0,(p.taumeln||0)-dt);
   p.gepackt=Math.max(0,(p.gepackt||0)-dt);
+  p.rausch=Math.max(0,(p.rausch||0)-dt);
+  /* Doppelherz: wer unversehrt ist, trägt ein Schild vor sich her. Es geht
+     beim ersten Treffer und wächst nach, sobald man wieder voll ist. */
+  if(p.flags.has('vollschild')&&p.red>=p.redMax&&!p.vollschild){
+    p.vollschild=true; p.shield=Math.max(p.shield,0.1);
+  }
+  /* Blutpumpe: ein Treffer blutet ein paar Sekunden nach. */
+  if(p.blutung>0){
+    p.blutung-=dt;
+    p.blutT=(p.blutT||0)-dt;
+    if(p.blutT<=0){ p.blutT=1.4;
+      burst(p.x,p.y,'#a01828',4);
+      hurtPlayer(1,true);
+    }
+  }
+  /* Lebenskristall: in Not einmal je Raum ein halbes Herz zurück. */
+  if(p.flags.has('lebenskristall')&&!G.room.kristallGenutzt
+     &&p.red>0&&p.red<=p.redMax*0.25){
+    G.room.kristallGenutzt=true;
+    if(heileSpieler(1)){ Sfx.heart(); addText(p.x,p.y-20,'+½','#3ac87a');
+      schockwelle(p.x,p.y,34,'#3ac87a',0.5,3); }
+  }
   const netz=p.imNetz&&!p.flags.has('flight')?0.34:1;
   /* Griff = wie gut die Steuerung greift. Der Fingerbaum nimmt sie ganz,
      die Ringwelle des Glockenmauls dämpft sie. */
@@ -1844,11 +2016,19 @@ function fireShot(aim){
   let angles=[0];
   if(f.has('quad')) angles=[-0.28,-0.1,0.1,0.28];
   else if(f.has('triple')) angles=[-0.22,0,0.22];
+  /* Doppelgeschoss hängt einen weiteren Lauf an und schwächt dafür alle:
+     mehr Deckung im Raum, weniger Wucht je Treffer. */
+  let schwaeche=1;
+  if(f.has('doppelgeschoss')){
+    angles=angles.concat([angles[angles.length-1]+0.19]);
+    schwaeche=0.7;
+  }
+  const s2=schwaeche===1?s:{...s,dmg:s.dmg*schwaeche};
   const base=Math.atan2(aim.y,aim.x);
   for(const off of angles){
     const a=base+off;
-    if(f.has('laser')){ fireLaser(a,s.dmg); continue; }
-    spawnTear(p.x,p.y-4,a,s,f,false);
+    if(f.has('laser')){ fireLaser(a,s2.dmg); continue; }
+    spawnTear(p.x,p.y-4,a,s2,f,false);
   }
   if(!f.has('laser')) Sfx.shoot(); else Sfx.laser();
   // Schatten-Familiar schießt mit
@@ -1934,6 +2114,27 @@ function updateBeams(dt){
 function hitEnemyWithMods(e,dmg,a,isTear){
   const p=G.player,f=p.flags;
   let d=dmg;
+  /* Was erst beim Treffer feststeht: Wut hängt am aktuellen Leben, der
+     Elitebonus am getroffenen Gegner, Chaos und Rausch am Zufall. */
+  if(f.has('wut')&&p.redMax>0)
+    d*=1+0.5*(1-clamp(p.red/p.redMax,0,1));
+  if(f.has('elitebrecher')&&(e.isBoss||e.champ)) d*=1.35;
+  if(f.has('chaos')) d*=frand.range(0.7,1.6);
+  if(p.rausch>0) d*=2;
+  if(f.has('donner')){
+    p.donnerZaehler=(p.donnerZaehler||0)+1;
+    if(p.donnerZaehler>=8){
+      p.donnerZaehler=0;
+      const ziele=G.enemies.filter(x=>!x.dead);
+      if(ziele.length){
+        const z=frand.pick(ziele);
+        damageEnemy(z,Math.max(4,p.stats.dmg*1.5));
+        blitz(z.x,z.y,z.r+14,'#ffe07a',0.25);
+        schockwelle(z.x,z.y,z.r+22,'#ffd75a',0.3,3);
+        addText(z.x,z.y-16,'Blitz!','#ffd75a'); Sfx.laser();
+      }
+    }
+  }
   if(f.has('crit')&&frand.chance(0.1+p.stats.luck*0.02)){
     d*=3; addText(e.x,e.y-14,'KRIT!','#ffd75a');
     blitz(e.x,e.y,e.r+8,'#ffe07a',0.2); schockwelle(e.x,e.y,e.r+18,'#ffd75a',0.28,2.5);
@@ -2301,6 +2502,14 @@ function touchThings(p,dt){
 /* Herzcontainer dazugeben. Gibt zurück, wie viele halbe Container wirklich
    Platz hatten — bei zwölf Herzen ist Schluss, der Rest verfällt. Alles, was
    redMax erhöht, muss durch diese Tür. */
+/* Heilung an einer Stelle bündeln, damit das Stahlherz überall greift. */
+function heileSpieler(halbe){
+  const p=G.player;
+  const wirkung=p.flags.has('halbheilung')?Math.max(1,Math.round(halbe*0.5)):halbe;
+  const vorher=p.red;
+  p.red=Math.min(p.redMax,p.red+wirkung);
+  return p.red-vorher;
+}
 function containerDazu(halbe,heilen){
   const p=G.player, grenze=MAX_HERZEN*2;
   const platz=Math.max(0,grenze-p.redMax);
@@ -2318,8 +2527,8 @@ function collectPickup(q){
     case 'bigcoin': p.coins+=5; Sfx.coin(); break;
     case 'bomb': p.bombs++; Sfx.pickup(); break;
     case 'key': p.keys++; Sfx.key(); break;
-    case 'heart': if(p.red>=p.redMax) return; p.red=Math.min(p.redMax,p.red+2); Sfx.heart(); break;
-    case 'halfheart': if(p.red>=p.redMax) return; p.red=Math.min(p.redMax,p.red+1); Sfx.heart(); break;
+    case 'heart': if(p.red>=p.redMax) return; heileSpieler(2); Sfx.heart(); break;
+    case 'halfheart': if(p.red>=p.redMax) return; heileSpieler(1); Sfx.heart(); break;
     case 'soulheart': p.soul.push('S','S'); Sfx.heart(); break;
     case 'blackheart': p.soul.push('B','B'); Sfx.heart(); break;
     case 'pill': givePocket('pill',q.pillId); break;
@@ -2445,6 +2654,8 @@ function hurtPlayer(halves,force){
   const p=G.player;
   if(p.dead) return false;
   if(!force&&(p.iframes>0||p.shield>0||G.roomFresh>0)) return false;
+  p.vollschild=false;                     // Doppelherz-Schild ist verbraucht
+  if(p.flags.has('blutpumpe')){ p.blutung=3.2; p.blutT=1.4; }
   // Seelen-/schwarze Herzen zuerst
   for(let i=0;i<halves;i++){
     if(p.soul.length){
@@ -2452,6 +2663,11 @@ function hurtPlayer(halves,force){
       if(h==='B'){ // schwarzes Herz: Rache!
         G.enemies.forEach(e=>damageEnemy(e,40));
         G.shake=8; burst(p.x,p.y,'#6a3aa5',16);
+      }
+      /* Geisterherz: jedes verlorene blaue Herz kann zerplatzen. */
+      if(p.flags.has('geisterherz')&&frand.chance(0.5)){
+        explode(p.x,p.y,64,0);
+        addText(p.x,p.y-20,'zerplatzt','#9ad4f0');
       }
     } else p.red--;
   }
@@ -2467,6 +2683,15 @@ function playerDie(){
   /* Die Flickenpuppe wird einmal je Lauf wieder zusammengenäht. Sie steht
      mit einem halben Herzen und kurzer Unverwundbarkeit auf, damit der
      nächste Treffer sie nicht sofort erneut umwirft. */
+  /* Unsterbliches Herz: einmal je Lauf bleibt man mit einem halben Herzen
+     stehen. Wirkt vor der Flickenpuppe, damit sich beides nicht aufhebt. */
+  if(p.flags.has('unsterblich')&&!p.unsterblichGenutzt){
+    p.unsterblichGenutzt=true; p.red=1; p.iframes=2.4;
+    G.shake=Math.max(G.shake,9); Sfx.heart();
+    schockwelle(p.x,p.y,60,'#e8b830',0.7,4);
+    addText(p.x,p.y-22,'noch nicht','#e8b830');
+    return;
+  }
   if(p.flags.has('flicken')&&!p.geflickt){
     p.geflickt=true; p.red=Math.max(1,Math.min(2,p.redMax)); p.iframes=2.4;
     G.shake=Math.max(G.shake,9); Sfx.heart();
@@ -2665,6 +2890,12 @@ function killEnemy(e){
   Sfx.edeath();
   burst(e.x,e.y,e.isBoss?'#c03a5a':'#a05a5a',e.isBoss?26:10);
   G.kills++; G.stats.kills++;
+  /* Seelenschlitzer: ein Kill kann kurz rasend machen. */
+  if(G.player.flags.has('rausch')&&frand.chance(0.18+G.player.stats.luck*0.02)){
+    G.player.rausch=Math.max(G.player.rausch||0,4);
+    addText(G.player.x,G.player.y-22,'Rausch!','#c8283a');
+    schockwelle(G.player.x,G.player.y,40,'#c8283a',0.4,3);
+  }
   saveData.kills++;                        // zählt über alle Läufe hinweg
   if(saveData.kills>=500) unlock('kills500');
   if(saveData.kills%25===0) saveSave();    // nicht bei jedem Tod schreiben
@@ -3817,6 +4048,99 @@ function itemHash(id){let h=2166136261;
   return h>>>0;}
 function itemColor(id){return `hsl(${itemHash(id)%360},62%,58%)`;}
 const EMBLEME=8; // Anzahl der Emblemformen
+/* --- SYMBOLBAUKASTEN ------------------------------------------------------
+   Die Symbole müssen auf 14 Pixeln lesbar bleiben: kräftige Silhouette,
+   dunkle Kontur, höchstens zwei Innendetails. Alles zeichnet um (0,0) in
+   einem Feld von etwa ±6 Einheiten; drawItemIcon skaliert es hoch.        */
+function symUmriss(breite){ ctx.strokeStyle='#120e12'; ctx.lineWidth=breite||1.1; ctx.stroke(); }
+function symHerzPfad(x,y,r){
+  ctx.beginPath();
+  ctx.moveTo(x,y+r*0.95);
+  ctx.bezierCurveTo(x-r*1.5,y-r*0.25,x-r*0.95,y-r*1.3,x,y-r*0.45);
+  ctx.bezierCurveTo(x+r*0.95,y-r*1.3,x+r*1.5,y-r*0.25,x,y+r*0.95);
+}
+function symHerz(f,r,x,y){ symHerzPfad(x||0,y||0,r||5); ctx.fillStyle=f; ctx.fill(); symUmriss(); }
+function symKlinge(f,griff){
+  ctx.beginPath();                                   // Klinge
+  ctx.moveTo(0,-6.5); ctx.lineTo(2.2,-1); ctx.lineTo(1.2,3); ctx.lineTo(-1.2,3);
+  ctx.lineTo(-2.2,-1); ctx.closePath();
+  ctx.fillStyle=f; ctx.fill(); symUmriss();
+  ctx.fillStyle=griff||'#5a4632';                    // Parierstange und Griff
+  ctx.fillRect(-4,2.6,8,1.6); symUmriss(0.9);
+  ctx.fillRect(-1.1,4.2,2.2,2.6);
+  ctx.beginPath(); ctx.rect(-1.1,4.2,2.2,2.6); symUmriss(0.9);
+}
+function symSchaedel(f){
+  ctx.beginPath(); ctx.ellipse(0,-1,4.6,4.2,0,0,TAU); ctx.fillStyle=f; ctx.fill(); symUmriss();
+  ctx.beginPath(); ctx.rect(-2.4,2.6,4.8,2.6); ctx.fillStyle=f; ctx.fill(); symUmriss(0.9);
+  ctx.fillStyle='#161018';
+  ctx.beginPath(); ctx.ellipse(-1.9,-1.2,1.5,1.7,0,0,TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 1.9,-1.2,1.5,1.7,0,0,TAU); ctx.fill();
+  ctx.fillRect(-0.5,1.2,1,1.4);
+}
+function symAuge(f,iris){
+  ctx.beginPath(); ctx.ellipse(0,0,6,4.2,0,0,TAU); ctx.fillStyle='#efe8d8'; ctx.fill(); symUmriss();
+  ctx.beginPath(); ctx.arc(0,0,2.6,0,TAU); ctx.fillStyle=iris||f; ctx.fill();
+  ctx.beginPath(); ctx.arc(0,0,1.2,0,TAU); ctx.fillStyle='#161018'; ctx.fill();
+  ctx.beginPath(); ctx.arc(-1,-1.2,0.7,0,TAU); ctx.fillStyle='#ffffff'; ctx.fill();
+}
+function symFlamme(f,hell){
+  ctx.beginPath();
+  ctx.moveTo(0,6); ctx.quadraticCurveTo(-4.6,2,-2.4,-2);
+  ctx.quadraticCurveTo(-1.6,-5.6,0,-6.6);
+  ctx.quadraticCurveTo(1.6,-5.6,2.4,-2);
+  ctx.quadraticCurveTo(4.6,2,0,6);
+  ctx.fillStyle=f; ctx.fill(); symUmriss();
+  ctx.beginPath();
+  ctx.moveTo(0,4.4); ctx.quadraticCurveTo(-2.2,1.4,-1,-1);
+  ctx.quadraticCurveTo(0,-3.4,1,-1); ctx.quadraticCurveTo(2.2,1.4,0,4.4);
+  ctx.fillStyle=hell||'#ffe08a'; ctx.fill();
+}
+function symKristall(f,hell){
+  ctx.beginPath();
+  ctx.moveTo(0,-6.6); ctx.lineTo(3.6,-1.4); ctx.lineTo(1.8,6); ctx.lineTo(-1.8,6);
+  ctx.lineTo(-3.6,-1.4); ctx.closePath();
+  ctx.fillStyle=f; ctx.fill(); symUmriss();
+  ctx.beginPath();
+  ctx.moveTo(0,-6.6); ctx.lineTo(-3.6,-1.4); ctx.lineTo(-0.6,6); ctx.lineTo(0,-1);
+  ctx.closePath(); ctx.fillStyle=hell||'#ffffff'; ctx.globalAlpha=0.5; ctx.fill(); ctx.globalAlpha=1;
+}
+function symBlitz(f){
+  ctx.beginPath();
+  ctx.moveTo(1.6,-6.6); ctx.lineTo(-3.4,0.4); ctx.lineTo(-0.4,0.4);
+  ctx.lineTo(-1.6,6.6); ctx.lineTo(3.6,-0.8); ctx.lineTo(0.6,-0.8); ctx.closePath();
+  ctx.fillStyle=f; ctx.fill(); symUmriss();
+}
+function symTropfen(f,x,y,r){
+  ctx.beginPath();
+  ctx.moveTo(x||0,(y||0)-(r||4)*1.5);
+  ctx.quadraticCurveTo((x||0)+(r||4),(y||0),(x||0),(y||0)+(r||4));
+  ctx.quadraticCurveTo((x||0)-(r||4),(y||0),(x||0),(y||0)-(r||4)*1.5);
+  ctx.fillStyle=f; ctx.fill(); symUmriss(0.9);
+}
+function symGlas(f,inhalt){
+  ctx.fillStyle='#8a8e96'; ctx.fillRect(-1.6,-6.4,3.2,1.6);      // Deckel
+  ctx.beginPath(); ctx.rect(-1.6,-6.4,3.2,1.6); symUmriss(0.9);
+  ctx.beginPath(); ctx.rect(-3.6,-4.8,7.2,10.4);
+  ctx.fillStyle=f||'rgba(210,230,240,0.35)'; ctx.fill(); symUmriss();
+  if(inhalt){ ctx.save(); ctx.beginPath(); ctx.rect(-3.6,-4.8,7.2,10.4); ctx.clip();
+    inhalt(); ctx.restore(); }
+  ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle='#ffffff';
+  ctx.fillRect(-2.8,-4,1,8.6); ctx.restore();
+}
+function symRing(f,r,breite){
+  ctx.beginPath(); ctx.arc(0,0,r||5,0,TAU);
+  ctx.strokeStyle=f; ctx.lineWidth=breite||2.2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,0,r||5,0,TAU); symUmriss(0.8);
+}
+function symFluegel(vz,f,x,y){
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.quadraticCurveTo(x+vz*5,y-3.6,x+vz*7.6,y-0.6);
+  ctx.quadraticCurveTo(x+vz*4.6,y+1.2,x,y+1.4);
+  ctx.closePath(); ctx.fillStyle=f; ctx.fill(); symUmriss(0.9);
+}
+
 function drawItemIcon(id,x,y,s){
   s=s||1;
   const h=itemHash(id), c=itemColor(id);
@@ -3827,6 +4151,21 @@ function drawItemIcon(id,x,y,s){
   rrect(x-6*s,y-6*s,12*s,2*s,`hsl(${h%360},55%,44%)`);
   // Emblem
   ctx.save(); ctx.translate(x,y+0.5*s); ctx.scale(s,s);
+  const eigen=ITEMS[id]&&ITEMS[id].icon;
+  if(eigen){                       // eigenes, erkennbares Symbol
+    const merk=tuscheAn; tuscheAn=false;   // Tuschekontur wäre auf 14 px Matsch
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    /* Auf die Kachel beschneiden und leicht verkleinern: die Symbole sind
+       großzügig gezeichnet, sonst stünden Flügel und Schläuche über den
+       Rahmen hinaus. */
+    ctx.beginPath(); ctx.rect(-6.4,-6.9,12.8,12.8); ctx.clip();
+    ctx.scale(0.86,0.86);
+    eigen(c,dunkel);
+    tuscheAn=merk; ctx.restore();
+    ctx.save(); ctx.globalAlpha=0.35; ctx.fillStyle='#ffffff';
+    ctx.fillRect(x-6*s,y-6*s,12*s,1.2*s); ctx.restore();
+    return;
+  }
   ctx.fillStyle=c;
   const form=(h>>>11)%EMBLEME; // eigener Bitbereich, sonst häufen sich Formen
   if(form===0){ ctx.beginPath();ctx.arc(0,0,4,0,TAU);ctx.fill(); }
