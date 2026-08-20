@@ -158,7 +158,7 @@ Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
 ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
 Seeds nach.
 
-**Inhalte.** 91 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
+**Inhalte.** 111 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
 12 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
 9 Charaktere (acht davon freischaltbar).
 
@@ -325,6 +325,30 @@ die nicht schießen: die *Engelsflügel* fangen je Raum genau einen Treffer ab,
 der *Bombenfreund* legt regelmäßig eigene Bomben (die dir nichts tun), und der
 *Seelenvogel* sammelt die Seelen der Erlegten und gibt für je acht ein halbes
 Herz zurück.
+
+**Zehn Fundstücke fürs Drumherum.** Sie drehen nicht am Schaden, sondern am
+Rest: der *Glücksklee* gibt drei Glück und damit überall bessere Beute, die
+*Schatzkarte* legt jede Etage offen (Geheimräume ausgenommen — die soll man
+selbst finden), die *Zeituhr* bremst alle Gegner dauerhaft um ein Viertel, der
+*Münzbeutel* bringt zehn Münzen und lässt Gegner öfter Geld fallen, das
+*Schlüsselherz* gibt zwei Schlüssel und lässt geräumte Räume weitere liegen,
+der *Würfel* würfelt beim Betreten die Fundstücke im Raum neu und der
+*Reroll-Stein* dasselbe mit den Items auf den Podesten. Drei kosten etwas: der
+*Opferkelch* verwandelt jedes verlorene halbe Herz in dauerhaften Schaden, der
+*Teleportstein* blitzt dich alle sechs Sekunden aus einem Treffer heraus statt
+ihn einzustecken, und der *Dämonenpakt* gibt zwei Schaden für einen
+Herzcontainer.
+
+**Zehn neue Aktivitems.** Vom Vorrat bis zur Notbremse: *Bombenbeutel* (+5
+Bomben), *Heiltrank* (zwei Herzen), *Schild* (acht Sekunden unverwundbar),
+*Wuttrank* (zehn Sekunden doppelter Schaden), *Zeitstopp* (fünf Sekunden steht
+alles still, Geschosse eingeschlossen), *Unsichtbarkeit* (acht Sekunden irren
+die Gegner umher und schießen nicht mehr), *Blutopfer* (ein halbes Herz gegen
+schweren Flächenschaden), *Sprungfeder* (Satz nach vorn, wirft alles um und
+macht kurz unverwundbar), *Magnet* (holt alle Fundstücke im Raum heran) und die
+*Beschwörung* (drei Kampfgeister, die vierzehn Sekunden lang selbstständig
+jagen). Jedes gibt nur dann `true` zurück, wenn es wirklich gewirkt hat — eine
+Ladung verpufft also nie ins Leere.
 
 **Jedes Item hat sein eigenes Symbol.** Kein zufälliges Emblem mehr: Herzen,
 Klingen, Schädel, Augen, Flammen, Kristalle, Blitze, Flaschen, Ringe und
@@ -508,7 +532,9 @@ Einstellungsregler, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
 wirklich anders aussieht, die Wirkung aller zwanzig Herz- und
-Schadensitems einzeln nachgerechnet, der Dienst jedes der zehn Begleiter, das Zeichnen sämtlicher Sprites sowie die Bildrate
+Schadensitems einzeln nachgerechnet, der Dienst jedes der zehn Begleiter,
+Wirkung und Verweigerung jedes der zwanzig neuen passiven und aktiven
+Fundstücke, das Zeichnen sämtlicher Sprites sowie die Bildrate
 unter Last. Die Zahlen zieht der Test aus den
 Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
 

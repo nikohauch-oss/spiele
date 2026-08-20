@@ -438,6 +438,311 @@ defItem({id:'seelenvogel',name:'Seelenvogel',desc:'Sammelt Seelen und heilt dich
     ctx.closePath(); ctx.fillStyle='#ffc020'; ctx.fill(); symUmriss(0.8);
     ctx.beginPath(); ctx.arc(-0.4,-3,0.9,0,TAU); ctx.fillStyle='#161018'; ctx.fill(); }});
 
+/* --- PASSIVES & SONSTIGES (10) -------------------------------------------
+   Zehn Fundstücke, die nicht am Schaden drehen, sondern am Drumherum:
+   Beute, Karte, Tempo der Gegner, Schlüssel, Handel.                     */
+defItem({id:'gluecksklee',name:'Glücksklee',desc:'Glück hoch — überall bessere Beute',
+  type:'passive',pool:['treasure','angel','secret'],mod:s=>{s.luck+=3;},
+  icon:(c)=>{ ctx.fillStyle='#4a9a3a';                    // vier Blätter
+    for(let i=0;i<4;i++){ const a=i*TAU/4+0.79;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a)*2.9,Math.sin(a)*2.9-0.6,2.7,2.3,a,0,TAU);
+      ctx.fill(); symUmriss(0.9); }
+    ctx.strokeStyle='#2e6a24'; ctx.lineWidth=1.4;         // Stiel
+    ctx.beginPath(); ctx.moveTo(0,1.6); ctx.quadraticCurveTo(1.6,4.4,0.4,6.4); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,-0.6,1,0,TAU); ctx.fillStyle='#8ad06a'; ctx.fill(); }});
+defItem({id:'schatzkarte',name:'Schatzkarte',desc:'Zeigt die ganze Etage auf der Karte',
+  type:'passive',pool:['shop','treasure','secret'],flags:['karte'],
+  pickup:p=>{etageAufdecken();},
+  icon:(c)=>{ ctx.fillStyle='#e0cfa0';                    // Pergament mit Knick
+    ctx.beginPath(); ctx.moveTo(-5.4,-4.8); ctx.lineTo(5.4,-5.4); ctx.lineTo(5,5.2);
+    ctx.lineTo(-5,5.6); ctx.closePath(); ctx.fill(); symUmriss();
+    ctx.strokeStyle='#a08a58'; ctx.lineWidth=0.8;         // Falze
+    ctx.beginPath(); ctx.moveTo(-1.8,-5.1); ctx.lineTo(-1.6,5.4);
+    ctx.moveTo(1.8,-5.2); ctx.lineTo(1.9,5.3); ctx.stroke();
+    ctx.strokeStyle='#a0402a'; ctx.lineWidth=0.9;         // gestrichelter Weg
+    ctx.setLineDash([1.4,1.2]);
+    ctx.beginPath(); ctx.moveTo(-3.4,3.4); ctx.quadraticCurveTo(0,0.4,2.6,-2.4); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle='#a0202a'; ctx.lineWidth=1.6;         // das Kreuz
+    ctx.beginPath(); ctx.moveTo(1.4,-3.6); ctx.lineTo(3.8,-1.2);
+    ctx.moveTo(3.8,-3.6); ctx.lineTo(1.4,-1.2); ctx.stroke(); }});
+defItem({id:'zeituhr',name:'Zeituhr',desc:'Alle Gegner bleiben dauerhaft langsamer',
+  type:'passive',pool:['treasure','shop'],flags:['zeituhr'],
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0.4,5.6,0,TAU);
+    ctx.fillStyle='#c8b060'; ctx.fill(); symUmriss();
+    ctx.beginPath(); ctx.arc(0,0.4,4.2,0,TAU); ctx.fillStyle='#f4ecd0'; ctx.fill();
+    ctx.fillStyle='#8a7440';                              // Stundenpunkte
+    for(let i=0;i<4;i++){ const a=i*TAU/4;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*3.2,0.4+Math.sin(a)*3.2,0.6,0,TAU); ctx.fill(); }
+    ctx.strokeStyle='#2a2018'; ctx.lineWidth=1.2; ctx.lineCap='round';   // Zeiger
+    ctx.beginPath(); ctx.moveTo(0,0.4); ctx.lineTo(0,-2.6);
+    ctx.moveTo(0,0.4); ctx.lineTo(2.4,1.4); ctx.stroke();
+    ctx.fillStyle='#c8b060'; ctx.fillRect(-1.2,-6.8,2.4,1.4);            // Krone
+    ctx.beginPath(); ctx.rect(-1.2,-6.8,2.4,1.4); symUmriss(0.8); }});
+defItem({id:'muenzbeutel',name:'Münzbeutel',desc:'+10 Münzen, Gegner lassen öfter Geld fallen',
+  type:'passive',pool:['shop','treasure'],flags:['muenzbeutel'],pickup:p=>{p.coins+=10;},
+  icon:(c)=>{ ctx.fillStyle='#8a6438';                    // gerüschter Hals oben
+    ctx.beginPath(); ctx.moveTo(-2.6,-6.2); ctx.lineTo(2.6,-6.2);
+    ctx.lineTo(1.8,-3.2); ctx.lineTo(-1.8,-3.2); ctx.closePath();
+    ctx.fill(); symUmriss(0.9);
+    ctx.beginPath();                                       // runder, praller Beutel
+    ctx.moveTo(-1.8,-3.2); ctx.quadraticCurveTo(-6.4,-1.4,-5.4,2.6);
+    ctx.quadraticCurveTo(-4.4,6.4,0,6.4); ctx.quadraticCurveTo(4.4,6.4,5.4,2.6);
+    ctx.quadraticCurveTo(6.4,-1.4,1.8,-3.2); ctx.closePath();
+    ctx.fillStyle='#b08a50'; ctx.fill(); symUmriss();
+    ctx.strokeStyle='#6a4c24'; ctx.lineWidth=1.4;          // Schnur um den Hals
+    ctx.beginPath(); ctx.moveTo(-2.4,-3.4); ctx.lineTo(2.4,-3.4); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0.4,2,2.6,0,TAU);             // Münze davor
+    ctx.fillStyle='#f0c040'; ctx.fill(); symUmriss(0.9);
+    ctx.fillStyle='#9a6c18'; ctx.fillRect(-0.2,0.4,1.2,3.2);
+    ctx.save(); ctx.globalAlpha=0.25; ctx.fillStyle='#ffffff';
+    ctx.beginPath(); ctx.ellipse(-3,0.4,1.2,2.2,-0.3,0,TAU); ctx.fill(); ctx.restore(); }});
+defItem({id:'schluesselherz',name:'Schlüsselherz',desc:'+2 Schlüssel, geschaffte Räume geben welche',
+  type:'passive',pool:['shop','secret','treasure'],flags:['schluesselherz'],
+  pickup:p=>{p.keys+=2;},
+  icon:(c)=>{ symHerz('#e8c030',5.2,0,-0.6);              // Herz mit Bartschlüssel
+    ctx.fillStyle='#8a6a10'; ctx.fillRect(-0.9,-0.6,1.8,6.4);
+    ctx.beginPath(); ctx.rect(-0.9,-0.6,1.8,6.4); symUmriss(0.8);
+    ctx.fillRect(0.9,4,2.2,1.2); ctx.fillRect(0.9,1.8,1.8,1.2);
+    ctx.beginPath(); ctx.arc(0,-1.4,1.6,0,TAU); ctx.fillStyle='#7a5c0c'; ctx.fill(); }});
+defItem({id:'wuerfel',name:'Würfel',desc:'Jeder neue Raum würfelt seine Beute neu',
+  type:'passive',pool:['treasure','curse'],flags:['wuerfel'],
+  icon:(c)=>{ ctx.beginPath();                            // Würfel in Aufsicht
+    ctx.moveTo(0,-6); ctx.lineTo(5.6,-2.8); ctx.lineTo(5.6,3.4);
+    ctx.lineTo(0,6.6); ctx.lineTo(-5.6,3.4); ctx.lineTo(-5.6,-2.8); ctx.closePath();
+    ctx.fillStyle='#d8d2c4'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#b0a898';                              // rechte Seitenfläche
+    ctx.beginPath(); ctx.moveTo(0,0.4); ctx.lineTo(5.6,-2.8); ctx.lineTo(5.6,3.4);
+    ctx.lineTo(0,6.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#8a8478';                              // linke Seitenfläche
+    ctx.beginPath(); ctx.moveTo(0,0.4); ctx.lineTo(-5.6,-2.8); ctx.lineTo(-5.6,3.4);
+    ctx.lineTo(0,6.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#2a2620';                              // Augen oben
+    for(const [ax,ay] of [[0,-3.4],[-2.2,-1.6],[2.2,-1.6]]){
+      ctx.beginPath(); ctx.arc(ax,ay,0.8,0,TAU); ctx.fill(); }
+    ctx.beginPath(); ctx.arc(2.8,1.6,0.8,0,TAU); ctx.fillStyle='#3a3428'; ctx.fill();
+    ctx.beginPath(); ctx.arc(-2.8,1.6,0.8,0,TAU); ctx.fill(); }});
+defItem({id:'opferkelch',name:'Opferkelch',desc:'Jedes verlorene halbe Herz gibt Schaden dazu',
+  type:'passive',pool:['devil','curse'],flags:['opferkelch'],
+  icon:(c)=>{ ctx.beginPath();                            // Kelchschale
+    ctx.moveTo(-4.4,-4.2); ctx.lineTo(4.4,-4.2);
+    ctx.quadraticCurveTo(3.8,1.6,0,2.2); ctx.quadraticCurveTo(-3.8,1.6,-4.4,-4.2);
+    ctx.closePath(); ctx.fillStyle='#b8a038'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#a8203a';                              // Blut darin
+    ctx.beginPath(); ctx.ellipse(0,-3.8,4.2,1.2,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#b8a038'; ctx.fillRect(-1,2,2,3);      // Schaft
+    ctx.beginPath(); ctx.ellipse(0,5.4,3.4,1.3,0,0,TAU); ctx.fill(); symUmriss(0.9);
+    symTropfen('#a8203a',0,-0.6,1.5); }});
+defItem({id:'teleportstein',name:'Teleportstein',desc:'Blitzt dich alle 6 s aus einem Treffer heraus',
+  type:'passive',pool:['treasure','secret'],flags:['teleportstein'],
+  icon:(c)=>{ ctx.beginPath();                            // kantiger Stein
+    ctx.moveTo(-1.6,-6.2); ctx.lineTo(3.8,-3.4); ctx.lineTo(5,2.4);
+    ctx.lineTo(1,6.2); ctx.lineTo(-4,4); ctx.lineTo(-5,-2); ctx.closePath();
+    ctx.fillStyle='#5a4a7a'; ctx.fill(); symUmriss();
+    ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#b8a8e8';
+    ctx.beginPath(); ctx.moveTo(-1.6,-6.2); ctx.lineTo(-5,-2);
+    ctx.lineTo(-1.4,0.4); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(0.4,0.2); ctx.scale(0.62,0.62);
+    symBlitz('#e8dcff'); ctx.restore(); }});
+defItem({id:'daemonenpakt',name:'Dämonenpakt',desc:'+2 Schaden, kostet einen Herzcontainer',
+  type:'passive',pool:['devil','curse'],flags:['pakt'],
+  pickup:p=>{ if(p.redMax>2){ p.redMax-=2; p.red=Math.min(p.red,p.redMax); } },
+  mod:s=>{s.dmg+=2;},
+  icon:(c)=>{ ctx.beginPath();                            // gehörnter Siegelkopf
+    ctx.arc(0,1,4.4,0,TAU); ctx.fillStyle='#7a2030'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#4a1018';                              // Hörner
+    for(const vz of [-1,1]){ ctx.beginPath();
+      ctx.moveTo(vz*2.6,-2.4); ctx.quadraticCurveTo(vz*6.4,-5.2,vz*4.6,-6.4);
+      ctx.quadraticCurveTo(vz*4.4,-3.8,vz*1.6,-1.4); ctx.closePath();
+      ctx.fill(); symUmriss(0.8); }
+    ctx.fillStyle='#ffc040';                              // glühende Augen
+    ctx.beginPath(); ctx.moveTo(-3,0.2); ctx.lineTo(-0.8,0.8); ctx.lineTo(-2.8,1.6); ctx.fill();
+    ctx.beginPath(); ctx.moveTo( 3,0.2); ctx.lineTo( 0.8,0.8); ctx.lineTo( 2.8,1.6); ctx.fill();
+    ctx.strokeStyle='#2a0a10'; ctx.lineWidth=0.9;         // Maul
+    ctx.beginPath(); ctx.moveTo(-2,3.6); ctx.lineTo(2,3.6); ctx.stroke(); }});
+defItem({id:'rerollstein',name:'Reroll-Stein',desc:'Würfelt Podest-Items beim Betreten neu',
+  type:'passive',pool:['treasure','shop'],flags:['reroll'],
+  icon:(c)=>{ symRing('#8ab4e8',4.2,1.8);                 // Kreispfeil um ein Podest
+    ctx.fillStyle='#8ab4e8';
+    ctx.beginPath(); ctx.moveTo(4.6,-3.4); ctx.lineTo(6.4,0.4); ctx.lineTo(2.4,-0.4);
+    ctx.closePath(); ctx.fill(); symUmriss(0.8);
+    ctx.beginPath(); ctx.arc(0,0.2,2,0,TAU); ctx.fillStyle='#f0e0a0'; ctx.fill(); symUmriss(0.8); }});
+
+/* --- AKTIV-ITEMS (10) -----------------------------------------------------
+   Alle geben true zurück, wenn sie wirklich gewirkt haben — nur dann wird
+   die Ladung verbraucht.                                                  */
+defItem({id:'bombenbeutel',name:'Bombenbeutel',desc:'+5 Bomben auf einen Schlag',
+  type:'active',pool:['shop','treasure'],charge:4,
+  use:p=>{ p.bombs+=5; Sfx.pickup();
+    for(let i=0;i<10;i++) schweber(p.x+frand.range(-14,14),p.y+6,'#4a4450',-frand.range(30,70),0.7);
+    addText(p.x,p.y-24,'+5 Bomben','#d8d0c0'); return true; },
+  icon:(c)=>{ ctx.fillStyle='#2e2a30';                    // eine Bombe schaut hinten heraus
+    ctx.beginPath(); ctx.arc(2.6,-2.8,2.8,0,TAU); ctx.fill(); symUmriss(0.9);
+    ctx.strokeStyle='#c09050'; ctx.lineWidth=1.1;
+    ctx.beginPath(); ctx.moveTo(3.4,-5.4); ctx.quadraticCurveTo(5,-7,4,-7.6); ctx.stroke();
+    ctx.beginPath();                                       // schräg stehender Sack
+    ctx.moveTo(-5,-1.4); ctx.quadraticCurveTo(-6,4.4,-3,6.4);
+    ctx.lineTo(2.6,6.4); ctx.quadraticCurveTo(5,4,3.6,-1.4); ctx.closePath();
+    ctx.fillStyle='#9a7a52'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#6a5236';                               // zugeschnürter Hals
+    ctx.beginPath(); ctx.ellipse(-0.7,-1.6,4.6,1.5,-0.05,0,TAU); ctx.fill(); symUmriss(0.9);
+    ctx.strokeStyle='#4a3a24'; ctx.lineWidth=0.8;          // Falten im Stoff
+    ctx.beginPath(); ctx.moveTo(-2.6,0.4); ctx.lineTo(-2.2,5.6);
+    ctx.moveTo(0.6,0.4); ctx.lineTo(0.8,5.8); ctx.stroke();
+    ctx.fillStyle='#2e2a30';                               // eine Bombe kullert davor
+    ctx.beginPath(); ctx.arc(-3.6,4.4,2.4,0,TAU); ctx.fill(); symUmriss(0.9);
+    ctx.fillStyle='rgba(255,255,255,0.28)';
+    ctx.beginPath(); ctx.arc(-4.4,3.6,0.8,0,TAU); ctx.fill(); }});
+defItem({id:'heiltrank',name:'Heiltrank',desc:'Heilt zwei rote Herzen',
+  type:'active',pool:['shop','treasure'],charge:4,
+  use:p=>{ if(p.red>=p.redMax) return false;
+    if(heileSpieler(4)<=0) return false;
+    schockwelle(p.x,p.y,40,'#ff6a8a',0.45,3);
+    for(let i=0;i<12;i++) schweber(p.x+frand.range(-10,10),p.y+6,'#ff8aa8',-frand.range(30,70),0.8);
+    Sfx.heart(); return true; },
+  icon:(c)=>{ symGlas('rgba(230,240,248,0.3)',()=>{
+      ctx.fillStyle='#d82a4a'; ctx.fillRect(-3.6,-1.4,7.2,7); });
+    symHerz('#ff8aa8',1.9,0,1.6); }});
+defItem({id:'schild',name:'Schild',desc:'Acht Sekunden unverwundbar',
+  type:'active',pool:['shop','treasure','angel'],charge:6,
+  use:p=>{ p.shield=Math.max(p.shield,8);
+    schockwelle(p.x,p.y,52,'#8ad0ff',0.5,4); Sfx.active();
+    addText(p.x,p.y-24,'Schild','#8ad0ff'); return true; },
+  icon:(c)=>{ ctx.beginPath();                            // Wappenschild
+    ctx.moveTo(0,-6); ctx.lineTo(5,-4.2); ctx.lineTo(4.4,1.6);
+    ctx.quadraticCurveTo(3.2,5.4,0,6.6); ctx.quadraticCurveTo(-3.2,5.4,-4.4,1.6);
+    ctx.lineTo(-5,-4.2); ctx.closePath();
+    ctx.fillStyle='#7aa8d0'; ctx.fill(); symUmriss();
+    ctx.fillStyle='#d8ecff';                              // Lichtseite
+    ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(-5,-4.2); ctx.lineTo(-4.4,1.6);
+    ctx.quadraticCurveTo(-3.2,5.4,0,6.6); ctx.closePath();
+    ctx.globalAlpha=0.45; ctx.fill(); ctx.globalAlpha=1;
+    ctx.strokeStyle='#2a4a6a'; ctx.lineWidth=1.2;         // Beschlagkreuz
+    ctx.beginPath(); ctx.moveTo(0,-4.4); ctx.lineTo(0,4.4);
+    ctx.moveTo(-3.8,-1); ctx.lineTo(3.8,-1); ctx.stroke(); }});
+defItem({id:'wuttrank',name:'Wuttrank',desc:'Zehn Sekunden doppelter Schaden',
+  type:'active',pool:['curse','treasure','shop'],charge:6,
+  use:p=>{ p.rausch=Math.max(p.rausch||0,10);
+    schockwelle(p.x,p.y,48,'#c8283a',0.5,4); G.shake=5; Sfx.active();
+    addText(p.x,p.y-24,'WUT!','#ff5a6a'); return true; },
+  icon:(c)=>{ symGlas('rgba(230,240,248,0.3)',()=>{
+      ctx.fillStyle='#a8182a'; ctx.fillRect(-3.6,-2.4,7.2,8); });
+    ctx.save(); ctx.translate(0,1.6); ctx.scale(0.5,0.5);
+    symSchaedel('#ffd0a0'); ctx.restore(); }});
+defItem({id:'zeitstopp',name:'Zeitstopp',desc:'Fünf Sekunden steht alles still',
+  type:'active',pool:['treasure','secret'],charge:6,
+  use:p=>{ if(!G.enemies.length&&!G.eshots.length) return false;
+    G.zeitstopp=Math.max(G.zeitstopp||0,5);
+    for(let i=0;i<3;i++) schockwelle(p.x,p.y,90+i*60,'#bfe8ff',0.55+i*0.1,3);
+    blitz(p.x,p.y,30,'#dff4ff',0.3); Sfx.active();
+    addText(p.x,p.y-26,'Stillstand','#bfe8ff'); return true; },
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,0.4,5.6,0,TAU);
+    ctx.fillStyle='#9fd8ff'; ctx.fill(); symUmriss();
+    ctx.beginPath(); ctx.arc(0,0.4,4.2,0,TAU); ctx.fillStyle='#f0faff'; ctx.fill();
+    ctx.fillStyle='#2a4a6a';                              // Pausezeichen statt Zeiger
+    ctx.fillRect(-2.3,-2,1.7,4.8); ctx.fillRect(0.6,-2,1.7,4.8);
+    ctx.beginPath(); ctx.rect(-2.3,-2,1.7,4.8); symUmriss(0.7);
+    ctx.beginPath(); ctx.rect(0.6,-2,1.7,4.8); symUmriss(0.7); }});
+defItem({id:'unsichtbarkeit',name:'Unsichtbarkeit',desc:'Acht Sekunden sieht dich niemand',
+  type:'active',pool:['treasure','secret'],charge:5,
+  use:p=>{ p.unsichtbar=Math.max(p.unsichtbar||0,8);
+    for(let i=0;i<16;i++) schweber(p.x+frand.range(-12,12),p.y+frand.range(-8,8),
+      '#a8b8c8',-frand.range(20,50),0.8);
+    Sfx.active(); addText(p.x,p.y-24,'verschwunden','#a8b8c8'); return true; },
+  icon:(c)=>{ ctx.save(); ctx.globalAlpha=0.4;            // halb durchsichtige Gestalt
+    ctx.beginPath(); ctx.arc(0,-1.6,3.6,0,TAU); ctx.fillStyle='#c8d8e8'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-3.4,-0.4); ctx.quadraticCurveTo(-3.8,5,-2.6,6.2);
+    ctx.quadraticCurveTo(-1.2,4.8,0,6.2); ctx.quadraticCurveTo(1.2,4.8,2.6,6.2);
+    ctx.quadraticCurveTo(3.8,5,3.4,-0.4); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.strokeStyle='#8aa0b8'; ctx.lineWidth=1;           // gestrichelter Umriss
+    ctx.setLineDash([1.6,1.4]);
+    ctx.beginPath(); ctx.arc(0,-1.6,3.6,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='#3a4a5a';                              // nur die Augen bleiben
+    ctx.beginPath(); ctx.arc(-1.4,-2,0.9,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc( 1.4,-2,0.9,0,TAU); ctx.fill(); }});
+defItem({id:'blutopfer',name:'Blutopfer',desc:'Ein halbes Herz für schweren Flächenschaden',
+  type:'active',pool:['devil','curse'],charge:2,
+  use:p=>{ if(p.red<=1&&!p.soul.length) return false;
+    if(!G.enemies.length) return false;
+    hurtPlayer(1,true);
+    G.enemies.forEach(e=>{ damageEnemy(e,40); blitz(e.x,e.y,e.r+6,'#c8283a',0.3); });
+    for(let i=0;i<24;i++){ const a=frand()*TAU;
+      G.fx.push({kind:'p',x:p.x,y:p.y,vx:Math.cos(a)*frand.range(120,260),
+        vy:Math.sin(a)*frand.range(120,260),t:0.4,color:'#a8182a',size:frand.range(2,3.5)}); }
+    schockwelle(p.x,p.y,160,'#c8283a',0.5,5); G.shake=9; Sfx.boom(); return true; },
+  icon:(c)=>{ ctx.save(); ctx.rotate(0.5); symKlinge('#c9d2dc','#4a3a2a'); ctx.restore();
+    symTropfen('#c8283a',-3.6,2.6,1.8); symTropfen('#c8283a',3.2,4.4,1.4); }});
+defItem({id:'sprungfeder',name:'Sprungfeder',desc:'Satz nach vorn, wirft alles um',
+  type:'active',pool:['treasure','shop'],charge:2,
+  use:p=>{ const a=p.aimDir&&(p.aimDir.x||p.aimDir.y)?p.aimDir:{x:0,y:-1};
+    const w=Math.atan2(a.y,a.x);
+    for(let i=0;i<6;i++) moveEntity(p,Math.cos(w)*11,Math.sin(w)*11,
+      p.flags.has('flight')?'fly':'walk');
+    p.iframes=Math.max(p.iframes,0.8);
+    G.enemies.forEach(e=>{ if(dist(p,e)<46){ const b=ang(p,e);
+      e.kx=(e.kx||0)+Math.cos(b)*240; e.ky=(e.ky||0)+Math.sin(b)*240;
+      damageEnemy(e,6); } });
+    schockwelle(p.x,p.y,46,'#d8f0ff',0.35,3); G.shake=4; Sfx.active(); return true; },
+  icon:(c)=>{ ctx.strokeStyle='#a8b4c0'; ctx.lineWidth=1.8;   // Spiralfeder
+    ctx.lineCap='round'; ctx.beginPath();
+    for(let i=0;i<=44;i++){ const t=i/44;
+      const x=Math.sin(t*Math.PI*4)*3.4, y=5.2-t*9.6;
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.stroke();
+    ctx.fillStyle='#8a94a0'; ctx.fillRect(-4.4,4.8,8.8,1.8);   // Fuß
+    ctx.beginPath(); ctx.rect(-4.4,4.8,8.8,1.8); symUmriss(0.8);
+    ctx.fillStyle='#ffd07a';                                    // Sprungpfeil
+    ctx.beginPath(); ctx.moveTo(0,-6.6); ctx.lineTo(2.6,-3.6); ctx.lineTo(-2.6,-3.6);
+    ctx.closePath(); ctx.fill(); symUmriss(0.8); }});
+defItem({id:'magnet',name:'Magnet',desc:'Zieht alle Fundstücke im Raum zu dir',
+  type:'active',pool:['shop','treasure'],charge:2,
+  use:p=>{ let n=0;
+    for(const q of G.pickups){ if(q.price||q.type.includes('chest')) continue;
+      q.x=p.x+frand.range(-14,14); q.y=p.y+frand.range(-10,10); q.cd=0.25; n++; }
+    if(!n) return false;
+    schockwelle(p.x,p.y,120,'#e05a5a',0.45,4); Sfx.pickup();
+    addText(p.x,p.y-24,n+' geholt','#e08a8a'); return true; },
+  icon:(c)=>{ const bogen=(farbe,breite)=>{                  // Hufeisen in zwei Zügen
+      ctx.strokeStyle=farbe; ctx.lineWidth=breite; ctx.lineCap='butt';
+      ctx.beginPath(); ctx.arc(0,-0.6,3.9,Math.PI,0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-3.9,-0.6); ctx.lineTo(-3.9,3);
+      ctx.moveTo( 3.9,-0.6); ctx.lineTo( 3.9,3); ctx.stroke();
+    };
+    bogen('#120e12',4.6); bogen('#c8323a',3);                  // dunkle Kontur, dann rot
+    ctx.strokeStyle='#120e12'; ctx.lineWidth=4.6;              // Polschuhe
+    ctx.beginPath(); ctx.moveTo(-3.9,3); ctx.lineTo(-3.9,6.2);
+    ctx.moveTo( 3.9,3); ctx.lineTo( 3.9,6.2); ctx.stroke();
+    ctx.strokeStyle='#e8ecf0'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(-3.9,3); ctx.lineTo(-3.9,6.2);
+    ctx.moveTo( 3.9,3); ctx.lineTo( 3.9,6.2); ctx.stroke();
+    ctx.lineCap='round'; }});
+defItem({id:'beschwoerung',name:'Beschwörung',desc:'Ruft drei Kampfgeister herbei',
+  type:'active',pool:['treasure','devil','secret'],charge:6,
+  use:p=>{ for(let i=0;i<3;i++){
+      const a=i*TAU/3;
+      /* Die Geister laufen als zeitlich begrenzte Begleiter mit — so
+         kämpfen sie auf deiner Seite, ohne dir schaden zu können. */
+      G.familiars.push({kind:'geist',x:p.x+Math.cos(a)*26,y:p.y+Math.sin(a)*26,
+        angle:a,fireT:0,chain:1,wx:p.x,wy:p.y,cd:0,leben:14});
+      blitz(p.x+Math.cos(a)*26,p.y+Math.sin(a)*26,18,'#a8c8ff',0.3);
+    }
+    schockwelle(p.x,p.y,60,'#a8c8ff',0.5,4); Sfx.active();
+    addText(p.x,p.y-26,'Beschworen','#a8c8ff'); return true; },
+  icon:(c)=>{ ctx.beginPath(); ctx.arc(0,1.4,5.4,0,TAU);      // Beschwörungskreis
+    ctx.strokeStyle='#6a5aa8'; ctx.lineWidth=1.4; ctx.stroke();
+    ctx.fillStyle='#8a7ac8';                                   // Sternzacken
+    for(let i=0;i<5;i++){ const a=-1.57+i*TAU/5;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*5.4,1.4+Math.sin(a)*5.4,0.9,0,TAU); ctx.fill(); }
+    ctx.save(); ctx.globalAlpha=0.9;                           // Geist steigt auf
+    ctx.beginPath(); ctx.arc(0,-1.4,3,0,TAU); ctx.fillStyle='#c8d8ff'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-2.8,-0.6); ctx.quadraticCurveTo(-3.2,3.4,-2,4.4);
+    ctx.quadraticCurveTo(-0.8,3.2,0,4.4); ctx.quadraticCurveTo(1,3.2,2,4.4);
+    ctx.quadraticCurveTo(3.2,3.4,2.8,-0.6); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.fillStyle='#2a2440';
+    ctx.beginPath(); ctx.arc(-1.1,-1.8,0.8,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc( 1.1,-1.8,0.8,0,TAU); ctx.fill(); }});
+
 /* --- Nützliches --- */
 defItem({id:'dietrich',name:'Dietrichfinger',desc:'+3 Schlüssel, Türen klemmen nie',type:'passive',pool:['shop','secret'],flags:['keysaver'],pickup:p=>{p.keys+=3;}});
 defItem({id:'sprengmeister',name:'Sprengmeister',desc:'+5 Bomben, immun gegen eigene',type:'passive',pool:['shop','treasure'],flags:['bombimmun'],pickup:p=>{p.bombs+=5;}});
@@ -1392,6 +1697,17 @@ function enterRoom(key,fromDir){
     if(room.type==='boss'&&room.bossId){ spawnBoss(room.bossId); }
     else for(const s of room.spawns) spawnEnemy(s.type,s.x,s.y,s.champ);
   }
+  /* Würfel und Reroll-Stein greifen beim Betreten: der eine würfelt die
+     Fundstücke neu, der andere die Items auf den Podesten. */
+  if(p.flags.has('wuerfel')){
+    const sorten=['coin','bomb','key','heart','soulheart','pill','card'];
+    for(const q of G.pickups) if(!q.price&&!q.type.includes('chest')) q.type=frand.pick(sorten);
+  }
+  if(p.flags.has('reroll')){
+    for(const pd of room.pedestals) if(!pd.taken&&!pd.price){
+      pd.itemId=pickFromPool(room.type==='shop'?'shop':(room.type==='boss'?'boss':'treasure'));
+    }
+  }
   spawnFamiliars();
   G.roomFresh=0.5; // kurze Schonfrist beim Betreten
   updateDoorsOpen(true);
@@ -1469,6 +1785,12 @@ function updateDoorsOpen(silent){
     if(G.player.flags.has('moos')&&G.player.red<G.player.redMax){
       G.player.red++; Sfx.heart(); addText(G.player.x,G.player.y-18,'+½','#8ac86a');
     }
+    /* Schlüsselherz: ein geräumter Raum lässt hin und wieder einen
+       Schlüssel liegen — man steht nie wieder vor verschlossenen Türen. */
+    if(G.player.flags.has('schluesselherz')
+       &&frand.chance(0.3+G.player.stats.luck*0.02)){
+      G.player.keys++; Sfx.key(); addText(G.player.x,G.player.y-18,'+Schlüssel','#e8c030');
+    }
     if(!silent) Sfx.doorOpen();
     // kleine Raum-Belohnung
     if(room.type==='normal'&&frand.chance(0.25+G.player.stats.luck*0.03))
@@ -1480,7 +1802,7 @@ function updateDoorsOpen(silent){
 function randomDrop(){
   const l=G.player.stats.luck*0.01;
   const r=frand();
-  if(r<0.3+l) return 'coin';
+  if(r<0.3+l+(G.player.flags.has('muenzbeutel')?0.25:0)) return 'coin';
   if(r<0.5) return 'heart';
   if(r<0.65) return 'bomb';
   if(r<0.8) return 'key';
@@ -1904,6 +2226,13 @@ function openAllDoors(){
   Sfx.doorOpen();
 }
 
+/* Schatzkarte: legt die ganze Etage offen. Geheimräume bleiben verborgen —
+   die will man selbst finden. */
+function etageAufdecken(){
+  for(const k in G.floor.rooms)
+    if(G.floor.rooms[k].type!=='secret') G.floor.rooms[k].seen=true;
+}
+
 function teleportRandom(){
   const keys=Object.keys(G.floor.rooms).filter(k=>G.floor.rooms[k].type!=='secret'&&k!==G.roomKey);
   if(!keys.length) return;
@@ -1996,6 +2325,8 @@ function updatePlayer(dt){
   p.taumeln=Math.max(0,(p.taumeln||0)-dt);
   p.gepackt=Math.max(0,(p.gepackt||0)-dt);
   p.rausch=Math.max(0,(p.rausch||0)-dt);
+  p.unsichtbar=Math.max(0,(p.unsichtbar||0)-dt);
+  p.steinCd=Math.max(0,(p.steinCd||0)-dt);
   /* Doppelherz: wer unversehrt ist, trägt ein Schild vor sich her. Es geht
      beim ersten Treffer und wächst nach, sobald man wieder voll ist. */
   if(p.flags.has('vollschild')&&p.red>=p.redMax&&!p.vollschild){
@@ -2620,6 +2951,29 @@ function updateFamiliars(dt){
       for(const k in f.trefferT) f.trefferT[k]=Math.max(0,f.trefferT[k]-dt);
     }
 
+    /* Beschwörung: die gerufenen Geister jagen selbstständig und lösen
+       sich nach vierzehn Sekunden wieder auf. */
+    if(f.kind==='geist'){
+      f.leben-=dt;
+      if(f.leben<=0){ f.weg=true;
+        for(let i=0;i<8;i++) schweber(f.x,f.y,'#a8c8ff',-frand.range(20,50),0.6);
+        continue;
+      }
+      const ziel=naechsterGegner(f,1e9);
+      if(ziel){
+        const a=ang(f,ziel);
+        f.x+=Math.cos(a)*120*dt; f.y+=Math.sin(a)*120*dt;
+        f.cd-=dt;
+        if(dist(f,ziel)<ziel.r+8&&f.cd<=0){
+          f.cd=0.45; damageEnemy(ziel,5+G.depth);
+          funken(ziel.x,ziel.y,a,'#a8c8ff',5,0.9); Sfx.hit();
+        }
+      } else {
+        f.x=lerp(f.x,p.x+Math.cos(f.angle)*24,3*dt);
+        f.y=lerp(f.y,p.y+Math.sin(f.angle)*24,3*dt);
+      }
+    }
+
     /* Seelenvogel: flattert über dem Spieler und sammelt die Seelen der
        Erlegten. Alle acht Seelen gibt er ein halbes Herz zurück; der
        Zähler steht in G.seelen, killEnemy() füllt ihn. */
@@ -2635,6 +2989,7 @@ function updateFamiliars(dt){
       }
     }
   }
+  if(G.familiars.some(f=>f.weg)) G.familiars=G.familiars.filter(f=>!f.weg);
 }
 let KLINGEN_ID=0;   // laufende Nummer, damit der Klingenring Treffer merken kann
 
@@ -2936,6 +3291,25 @@ function hurtPlayer(halves,force){
   /* Engelsflügel: der erste Treffer je Raum verpufft in einem Federstoß.
      Der Begleiter wird bei jedem Raumwechsel neu aufgestellt, die Feder
      also auch. */
+  /* Teleportstein: statt getroffen zu werden, blitzt man ein Stück weiter.
+     Alle sechs Sekunden einmal — Notausgang, kein Dauerschutz. */
+  if(!force&&p.flags.has('teleportstein')&&(p.steinCd||0)<=0){
+    p.steinCd=6;
+    blitz(p.x,p.y,20,'#b8a8e8',0.25);
+    for(let i=0;i<10;i++){ const a=frand()*TAU;
+      G.fx.push({kind:'p',x:p.x,y:p.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,
+                 t:0.3,color:'#b8a8e8',size:2.4}); }
+    for(let v=0;v<12;v++){                  // freien Platz in der Nähe suchen
+      const a=frand()*TAU, d0=frand.range(44,80);
+      const nx=clamp(p.x+Math.cos(a)*d0,RX+p.r,RX+COLS*TILE-p.r);
+      const ny=clamp(p.y+Math.sin(a)*d0,RY+p.r,RY+ROWS*TILE-p.r);
+      if(!circleHitsGrid(nx,ny,p.r,p.flags.has('flight')?'fly':'walk')){
+        p.x=nx; p.y=ny; break; }
+    }
+    p.iframes=0.6; blitz(p.x,p.y,20,'#b8a8e8',0.25);
+    addText(p.x,p.y-24,'weg!','#b8a8e8');
+    return false;
+  }
   if(!force){
     const fl=G.familiars.find(f=>f.kind==='engelsfluegel'&&f.frei!==false);
     if(fl){
@@ -2962,6 +3336,11 @@ function hurtPlayer(halves,force){
         addText(p.x,p.y-20,'zerplatzt','#9ad4f0');
       }
     } else p.red--;
+  }
+  /* Opferkelch: was an Leben verlorengeht, kommt als Schaden zurück. */
+  if(p.flags.has('opferkelch')){
+    p.permDmg+=0.3*halves; recomputeStats();
+    addText(p.x,p.y-30,'+'+(0.3*halves).toFixed(1)+' Schaden','#b8a038');
   }
   p.iframes=1.1; p.hitFlash=0.3;
   G.shake=Math.max(G.shake,5); Sfx.hurt();
@@ -3097,6 +3476,7 @@ function nextFloor(){
   G.floorHit=false;                // neue Etage, neue Chance auf die Kammer
   G.room=null;
   G.floor=genFloor(G.depth);
+  if(G.player.flags.has('karte')) etageAufdecken();   // Schatzkarte bleibt gültig
   Sfx.setPattern(G.floor.data.mus);
   G.banner={title:G.floor.data.name,desc:'Etage '+G.depth,t:2.5};
   laterneLeuchtet();
@@ -3231,6 +3611,8 @@ function spawnItemAbwurf(x,y){
 
 /* Gegnergeschoss */
 function fireEshot(x,y,a,spd,opts){
+  /* Wer dich nicht sieht, schießt auch nicht auf dich. */
+  if(G.player.unsichtbar>0&&!(opts&&opts.egal)) return {x,y,vx:0,vy:0,r:0,life:0,dead:true};
   const sh={x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,r:4.5,life:4,...(opts||{})};
   G.eshots.push(sh);
   return sh;
@@ -3238,6 +3620,7 @@ function fireEshot(x,y,a,spd,opts){
 
 function updateEshots(dt){
   const p=G.player;
+  if(G.zeitstopp>0) return;              // im Stillstand fliegt nichts
   for(const sh of G.eshots){
     sh.life-=dt;
     sh.x+=sh.vx*dt; sh.y+=sh.vy*dt;
@@ -3289,7 +3672,13 @@ function updateEnemies(dt){
     e.poison=Math.max(0,e.poison-dt);
     e.burn=Math.max(0,e.burn-dt);
     e.frost=Math.max(0,e.frost-dt);
-    const slow=e.frost>0?0.45:1;
+    /* Zeituhr verlangsamt dauerhaft, der Zeitstopp hält alles ganz an. */
+    let slow=e.frost>0?0.45:1;
+    if(p.flags.has('zeituhr')) slow*=0.75;
+    if(G.zeitstopp>0){
+      e.t+=dt*0.05;                       // nur ein Hauch Eigenleben
+      continue;
+    }
     const mode=e.fly?'fly':'walk';
     e.t+=dt; e.cd-=dt*slow;
 
@@ -3312,6 +3701,8 @@ function updateEnemies(dt){
 
 function chaseMove(e,dt,slow,mode,speedMul){
   const p=G.player;
+  /* Unsichtbar: die Gegner wissen nicht mehr, wohin, und irren umher. */
+  if(p.unsichtbar>0){ wanderMove(e,dt,slow,mode); return; }
   const a=ang(e,p);
   const sp=e.spd*slow*(speedMul||1);
   e.vx=lerp(e.vx,Math.cos(a)*sp,4*dt); e.vy=lerp(e.vy,Math.sin(a)*sp,4*dt);
@@ -5868,6 +6259,19 @@ function drawFamiliar(f){
       ctx.restore();
     }
   }
+  if(f.kind==='geist'){                          // gerufener Kampfgeist
+    const fl=Math.sin(performance.now()/240+f.angle)*1.5;
+    const y=f.y+fl;
+    ctx.globalAlpha=f.leben<2?0.3+Math.sin(performance.now()/60)*0.2:0.85;
+    disc(f.x,y-2,6,'#c8d8ff');
+    ctx.fillStyle='#c8d8ff';                     // ausgefranster Schweif
+    ctx.beginPath(); ctx.moveTo(f.x-6,y-1);
+    ctx.quadraticCurveTo(f.x-5,y+6,f.x-2.4,y+5);
+    ctx.quadraticCurveTo(f.x,y+7,f.x+2.4,y+5);
+    ctx.quadraticCurveTo(f.x+5,y+6,f.x+6,y-1); ctx.fill();
+    ctx.globalAlpha=1;
+    disc(f.x-2.2,y-3,1.3,'#2a2440'); disc(f.x+2.2,y-3,1.3,'#2a2440');
+  }
   if(f.kind==='seelenvogel'){                    // Vogel mit Seelenperlen
     const w=Math.sin(performance.now()/110)*3.4;
     ctx.globalAlpha=0.9;
@@ -7244,6 +7648,7 @@ function startRun(charIdx,seedStr){
     lasers:[],creeps:[],familiars:[],texts:[],einschlaege:[],
     deathTimer:0,roomFresh:0,bossName:'',room:null,roomKey:null,
     seelen:0,                      // Vorrat des Seelenvogels
+    zeitstopp:0,                   // Restzeit des Stillstands
     floorHit:false,deals:0,        // heil durch die Etage? schon gehandelt?
     floorRooms:()=>G.floor.rooms};
   const p={char,x:0,y:0,vx:0,vy:0,r:9,
@@ -7313,6 +7718,7 @@ function updateGame(dt){
   }
   G.time+=dt;
   G.roomFresh=Math.max(0,G.roomFresh-dt);
+  G.zeitstopp=Math.max(0,(G.zeitstopp||0)-dt);
   if(!p.dead){
     updatePlayer(dt);
     if(Input.pause()){ G.state='pause'; return; }

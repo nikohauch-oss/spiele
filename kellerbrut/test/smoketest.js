@@ -318,6 +318,8 @@ await withPage(async(page,errs)=>{
       p.redMax=12; p.red=4;                 // damit auch Heilitems anschlagen
       KB.G.enemies.length=0;
       for(let i=0;i<4;i++) spawnEnemy('blobling',tx(3+i*2),ty(2),null);
+      KB.G.pickups.length=0;                // damit auch der Magnet etwas findet
+      spawnPickup(tx(1),ty(1),'coin');
       KB.G.fx.length=0;
       it.use(p);
       if(KB.G.fx.length===0) ohne.push(id);
@@ -1034,6 +1036,10 @@ await withPage(async(page,errs)=>{
         enterRoom(key,null); KB.G.bossIntro=null;
         if(vorbereiten) vorbereiten(KB.G.player);
         const pd=KB.G.room.pedestals[0];
+        /* Ein neutrales Item auflegen: geprüft wird der Preis des Handels,
+           nicht was das Item selbst noch kostet (der Dämonenpakt etwa
+           nimmt für sich schon einen Container). */
+        pd.itemId='vierblatt';
         KB.G.player.x=pd.x; KB.G.player.y=pd.y; pd.cd=0;
         const vorMax=KB.G.player.redMax, vorItems=KB.G.player.items.length;
         const vorDeals=KB.G.deals;
@@ -2174,6 +2180,251 @@ await withPage(async(page,errs)=>{
        'alle zehn laufen gleichzeitig ohne Ausfall',
        '('+w.zusammen.begleiter+' Begleiter)');
   note(w.gezeichnet===10,'alle zehn werden gezeichnet');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
+
+if(want(25)){
+console.log('\n[25] Zwanzig Fundstücke: passiv und aktiv');
+await withPage(async(page,errs)=>{
+  const passiv=['gluecksklee','schatzkarte','zeituhr','muenzbeutel','schluesselherz',
+                'wuerfel','opferkelch','teleportstein','daemonenpakt','rerollstein'];
+  const aktiv=['bombenbeutel','heiltrank','schild','wuttrank','zeitstopp',
+               'unsichtbarkeit','blutopfer','sprungfeder','magnet','beschwoerung'];
+  const da=await page.evaluate(([passiv,aktiv])=>{
+    const alle=passiv.concat(aktiv);
+    return {
+      fehlt:alle.filter(id=>!KB.ITEMS[id]),
+      ohneSymbol:alle.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].icon),
+      ohnePool:alle.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].pool.length),
+      falscherTyp:passiv.filter(id=>KB.ITEMS[id]&&KB.ITEMS[id].type!=='passive')
+        .concat(aktiv.filter(id=>KB.ITEMS[id]&&KB.ITEMS[id].type!=='active')),
+      ohneLadung:aktiv.filter(id=>KB.ITEMS[id]&&!KB.ITEMS[id].charge),
+      gesamt:Object.keys(KB.ITEMS).length
+    };
+  },[passiv,aktiv]);
+  note(da.fehlt.length===0,'alle zwanzig sind da',da.fehlt.join(' '));
+  note(da.ohneSymbol.length===0,'jedes hat ein eigenes, gezeichnetes Symbol',da.ohneSymbol.join(' '));
+  note(da.ohnePool.length===0,'jedes liegt in mindestens einem Topf',da.ohnePool.join(' '));
+  note(da.falscherTyp.length===0,'zehn passiv, zehn aktiv',da.falscherTyp.join(' '));
+  note(da.ohneLadung.length===0,'jedes Aktivitem hat eine Ladung',da.ohneLadung.join(' '));
+  console.log('    Items im Spiel: '+da.gesamt);
+
+  const w=await page.evaluate(()=>{
+    const bau=(ids,vor)=>{
+      startRun(0,'PA'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.iframes=0; KB.G.roomFresh=0; p.itemGet=null;
+      KB.G.enemies.length=0; KB.G.eshots.length=0; KB.G.creeps.length=0;
+      KB.G.tears.length=0; KB.G.bombs.length=0; KB.G.zeitstopp=0;
+      for(const z of KB.G.room.grid) z.fill(null);
+      if(vor) vor(p);
+      for(const id of ids) acquireItem(id,null);
+      p.itemGet=null; recomputeStats(); spawnFamiliars();
+      return p;
+    };
+    const uebung=(hp)=>{ const g=spawnEnemy('blobling',tx(9),ty(3),null);
+      g.hp=g.maxHp=hp||1e6; return g; };
+    const e={};
+
+    /* --- Passives ------------------------------------------------------ */
+    { const ohne=bau([]).stats.luck; const mit=bau(['gluecksklee']).stats.luck;
+      e.klee={ohne,mit}; }
+    { bau([]);
+      const zu=Object.keys(KB.G.floor.rooms).filter(k=>!KB.G.floor.rooms[k].seen).length;
+      bau(['schatzkarte']);
+      const offen=Object.keys(KB.G.floor.rooms)
+        .filter(k=>KB.G.floor.rooms[k].type!=='secret'&&!KB.G.floor.rooms[k].seen).length;
+      const geheimZu=Object.keys(KB.G.floor.rooms)
+        .filter(k=>KB.G.floor.rooms[k].type==='secret'&&!KB.G.floor.rooms[k].seen).length;
+      e.karte={vorherZu:zu,offen,geheimZu}; }
+    { /* Zeituhr: gleiche Zeit, weniger zurückgelegter Weg */
+      const weg=(ids)=>{ bau(ids); const g=uebung();
+        g.x=tx(10); g.y=ty(3); const x0=g.x;
+        for(let i=0;i<120;i++) updateGame(1/60);
+        return x0-g.x; };
+      e.uhr={ohne:weg([]),mit:weg(['zeituhr'])}; }
+    { const p=bau(['muenzbeutel']);
+      e.beutel={muenzen:p.coins,flagge:p.flags.has('muenzbeutel')}; }
+    { const p=bau(['schluesselherz']);
+      KB.G.room.type='normal';                 // der Startraum zahlt nie aus
+      const start=p.keys; let dazu=0;
+      for(let i=0;i<40;i++){ KB.G.room.cleared=false; updateDoorsOpen(true);
+        if(p.keys>start+dazu) dazu=p.keys-start; }
+      /* Ohne das Item darf gar nichts kommen. */
+      const q=bau([]); KB.G.room.type='normal';
+      const start2=q.keys;
+      for(let i=0;i<40;i++){ KB.G.room.cleared=false; updateDoorsOpen(true); }
+      e.schluessel={start,dazu,ohne:q.keys-start2}; }
+    { /* Würfel: die Fundstücke im Raum sind nach dem Betreten andere */
+      const p=bau(['wuerfel']);
+      const raum=KB.G.roomKey;
+      KB.G.pickups.length=0;
+      for(let i=0;i<12;i++) spawnPickup(tx(2+i%9),ty(1+(i%3)),'coin');
+      KB.G.room.drops=KB.G.pickups.map(q=>({...q}));
+      enterRoom(raum,null);
+      e.wuerfel={andere:KB.G.pickups.filter(q=>q.type!=='coin').length,
+                 gesamt:KB.G.pickups.length}; }
+    { const p=bau(['opferkelch']); p.red=8; p.redMax=12;
+      const vor=p.stats.dmg; p.iframes=0; hurtPlayer(2);
+      recomputeStats();
+      e.kelch={vor,nach:p.stats.dmg}; }
+    { const p=bau(['teleportstein']); p.red=8;
+      const x0=p.x,y0=p.y; p.iframes=0;
+      const erster=hurtPlayer(2);
+      const versetzt=Math.hypot(p.x-x0,p.y-y0)>20;
+      const lebenNachErstem=p.red;
+      p.iframes=0;
+      const zweiter=hurtPlayer(2);           // Abklingzeit läuft noch
+      e.stein={erster,versetzt,lebenNachErstem,zweiter,cd:p.steinCd>0}; }
+    { const ohne=bau([]); const vorMax=ohne.redMax, vorDmg=ohne.stats.dmg;
+      const p=bau(['daemonenpakt']);
+      e.pakt={maxVor:vorMax,maxNach:p.redMax,dmgVor:vorDmg,dmgNach:p.stats.dmg}; }
+    { /* Reroll-Stein: das Podest zeigt beim Betreten etwas anderes */
+      const p=bau(['rerollstein']);
+      const raum=KB.G.roomKey;
+      KB.G.room.pedestals=[{x:tx(6),y:ty(3),itemId:'herzkern',taken:false,cd:0}];
+      let anders=0;
+      for(let i=0;i<12;i++){ KB.G.room.pedestals[0].itemId='herzkern';
+        enterRoom(raum,null);
+        if(KB.G.room.pedestals[0].itemId!=='herzkern') anders++; }
+      e.reroll={anders}; }
+
+    /* --- Aktivitems ----------------------------------------------------- */
+    const nutze=(id,vor)=>{
+      const p=bau([],vor);
+      const it=KB.ITEMS[id];
+      return {p,it,wirkte:it.use(p)};
+    };
+    { const {p,wirkte}=nutze('bombenbeutel',pp=>{pp.bombs=0;});
+      e.bomben={wirkte,bomben:p.bombs}; }
+    { const {p,wirkte}=nutze('heiltrank',pp=>{pp.red=2;});
+      const voll=bau([]); voll.red=voll.redMax;
+      e.trank={wirkte,red:p.red,beiVoll:KB.ITEMS.heiltrank.use(voll)}; }
+    { const {p,wirkte}=nutze('schild');
+      e.schild={wirkte,dauer:p.shield}; }
+    { const {p,wirkte}=nutze('wuttrank');
+      const g=uebung(); const vor=g.hp; hitEnemyWithMods(g,5,0,true);
+      const mitWut=vor-g.hp;
+      p.rausch=0; const vor2=g.hp; hitEnemyWithMods(g,5,0,true);
+      e.wut={wirkte,mitWut,ohneWut:vor2-g.hp}; }
+    { const p=bau([]); const g=uebung(); g.spd=200; g.x=tx(10); g.y=ty(3);
+      const leer=KB.ITEMS.zeitstopp.use(p);      // mit Gegner: muss wirken
+      const x0=g.x;
+      for(let i=0;i<120;i++) updateGame(1/60);
+      const bewegt=Math.abs(g.x-x0);
+      const q=bau([]); KB.G.enemies.length=0; KB.G.eshots.length=0;
+      e.stopp={wirkte:leer,bewegt,leerRaum:KB.ITEMS.zeitstopp.use(q)}; }
+    { const p=bau([]); const g=uebung(); g.x=tx(10); g.y=ty(3);
+      const wirkte=KB.ITEMS.unsichtbarkeit.use(p);
+      const x0=g.x, y0=g.y;
+      let schuss=0;
+      for(let i=0;i<180;i++){ updateGame(1/60); schuss+=KB.G.eshots.length; }
+      /* Ein Schütze darf im Unsichtbaren nichts abfeuern. */
+      const s=bau([]); const sch=spawnEnemy('spucker',tx(9),ty(3),null);
+      sch.hp=sch.maxHp=1e6;
+      let ohne=0; for(let i=0;i<240;i++){ updateGame(1/60); ohne+=KB.G.eshots.length; }
+      e.unsicht={wirkte,dauer:p.unsichtbar>0,schuss,ohne}; }
+    { const p=bau([],pp=>{pp.red=6;}); const g=uebung(500);
+      const vorLeben=p.red, vorHp=g.hp;
+      const wirkte=KB.ITEMS.blutopfer.use(p);
+      const q=bau([],pp=>{pp.red=6;}); KB.G.enemies.length=0;
+      e.opfer={wirkte,leben:vorLeben-p.red,schaden:vorHp-g.hp,
+               leerRaum:KB.ITEMS.blutopfer.use(q)}; }
+    { const p=bau([]); p.aimDir={x:1,y:0};
+      const x0=p.x;
+      const wirkte=KB.ITEMS.sprungfeder.use(p);
+      e.feder={wirkte,weite:p.x-x0,schutz:p.iframes>0}; }
+    { const p=bau([]);
+      for(let i=0;i<6;i++) spawnPickup(tx(1+i),ty(1),'coin');
+      const fern=KB.G.pickups.filter(q=>dist(q,p)>60).length;
+      const wirkte=KB.ITEMS.magnet.use(p);
+      const nah=KB.G.pickups.filter(q=>dist(q,p)<40).length;
+      const q=bau([]); KB.G.pickups.length=0;
+      e.magnet={wirkte,fern,nah,leerRaum:KB.ITEMS.magnet.use(q)}; }
+    { const p=bau([]); const g=uebung();
+      const wirkte=KB.ITEMS.beschwoerung.use(p);
+      const gerufen=KB.G.familiars.filter(f=>f.kind==='geist').length;
+      const vorHp=g.hp;
+      for(let i=0;i<180;i++) updateGame(1/60);
+      const schaden=vorHp-g.hp;
+      for(let i=0;i<15*60;i++) updateGame(1/60);      // Lebenszeit abwarten
+      e.geister={wirkte,gerufen,schaden,
+                 danach:KB.G.familiars.filter(f=>f.kind==='geist').length}; }
+
+    /* Alle zwanzig zusammen unter Dauerfeuer. */
+    { const p=bau(['gluecksklee','schatzkarte','zeituhr','muenzbeutel','schluesselherz',
+                   'wuerfel','opferkelch','teleportstein','daemonenpakt','rerollstein']);
+      for(const id of ['bombenbeutel','heiltrank','schild','wuttrank','zeitstopp',
+                       'unsichtbarkeit','blutopfer','sprungfeder','magnet','beschwoerung']){
+        uebung(1e6);
+        spawnPickup(tx(3),ty(2),'coin');
+        try{ KB.ITEMS[id].use(p); }catch(err){ return {absturz:id+': '+err.message}; }
+        for(let i=0;i<60;i++) updateGame(1/60);
+        render();
+      }
+      e.zusammen={lebt:!p.dead}; }
+
+    return e;
+  });
+
+  if(w.absturz){ note(false,'kein Absturz beim Benutzen',w.absturz); }
+  note(w.klee.mit===w.klee.ohne+3,'Glücksklee gibt drei Glück',
+       '('+w.klee.ohne+' → '+w.klee.mit+')');
+  note(w.karte.offen===0&&w.karte.vorherZu>0&&w.karte.geheimZu>0,
+       'Schatzkarte deckt alles außer den Geheimräumen auf',
+       '(vorher '+w.karte.vorherZu+' zu, danach '+w.karte.offen
+       +' offen, '+w.karte.geheimZu+' Geheimräume verborgen)');
+  note(w.uhr.mit<w.uhr.ohne*0.9,'Zeituhr bremst die Gegner',
+       '(Weg '+w.uhr.ohne.toFixed(0)+' → '+w.uhr.mit.toFixed(0)+' px)');
+  note(w.beutel.muenzen>=10&&w.beutel.flagge,'Münzbeutel gibt zehn Münzen',
+       '('+w.beutel.muenzen+')');
+  note(w.schluessel.dazu>0&&w.schluessel.ohne===0,
+       'Schlüsselherz lässt geräumte Räume Schlüssel geben',
+       '(+'+w.schluessel.dazu+' aus 40 Räumen, ohne das Item +'+w.schluessel.ohne+')');
+  note(w.wuerfel.andere>0,'Würfel würfelt die Beute beim Betreten neu',
+       '('+w.wuerfel.andere+' von '+w.wuerfel.gesamt+' verändert)');
+  note(w.kelch.nach>w.kelch.vor,'Opferkelch macht Schaden aus verlorenem Leben',
+       '('+w.kelch.vor.toFixed(1)+' → '+w.kelch.nach.toFixed(1)+')');
+  note(w.stein.erster===false&&w.stein.versetzt&&w.stein.lebenNachErstem===8
+       &&w.stein.zweiter===true,
+       'Teleportstein blitzt einmal aus dem Treffer, dann kühlt er ab');
+  note(w.pakt.maxNach===w.pakt.maxVor-2&&w.pakt.dmgNach===w.pakt.dmgVor+2,
+       'Dämonenpakt: +2 Schaden für einen Herzcontainer',
+       '(Container '+w.pakt.maxVor+' → '+w.pakt.maxNach
+       +', Schaden '+w.pakt.dmgVor.toFixed(1)+' → '+w.pakt.dmgNach.toFixed(1)+')');
+  note(w.reroll.anders>0,'Reroll-Stein tauscht das Podest-Item aus',
+       '('+w.reroll.anders+' von 12)');
+  note(w.bomben.wirkte&&w.bomben.bomben===5,'Bombenbeutel gibt fünf Bomben',
+       '('+w.bomben.bomben+')');
+  note(w.trank.wirkte&&w.trank.red===6&&w.trank.beiVoll===false,
+       'Heiltrank heilt zwei Herzen und verpufft nicht bei vollem Leben',
+       '(2 → '+w.trank.red+' Hälften)');
+  note(w.schild.wirkte&&w.schild.dauer>=8,'Schild hält acht Sekunden',
+       '('+w.schild.dauer.toFixed(1)+' s)');
+  note(w.wut.wirkte&&w.wut.mitWut>w.wut.ohneWut*1.8,'Wuttrank verdoppelt den Schaden',
+       '('+w.wut.ohneWut.toFixed(1)+' → '+w.wut.mitWut.toFixed(1)+')');
+  note(w.stopp.wirkte&&w.stopp.bewegt<2&&w.stopp.leerRaum===false,
+       'Zeitstopp hält die Gegner an und verpufft im leeren Raum',
+       '(Bewegung '+w.stopp.bewegt.toFixed(1)+' px in 2 s)');
+  note(w.unsicht.wirkte&&w.unsicht.schuss===0&&w.unsicht.ohne>0,
+       'Unsichtbarkeit: niemand schießt mehr auf dich',
+       '(unsichtbar '+w.unsicht.schuss+', sichtbar '+w.unsicht.ohne+' Geschossticks)');
+  note(w.opfer.wirkte&&w.opfer.leben===1&&w.opfer.schaden>=40&&w.opfer.leerRaum===false,
+       'Blutopfer kostet ein halbes Herz und schlägt hart zu',
+       '('+w.opfer.leben+' Hälfte, '+w.opfer.schaden.toFixed(0)+' Schaden)');
+  note(w.feder.wirkte&&w.feder.weite>40&&w.feder.schutz,
+       'Sprungfeder setzt dich weit nach vorn',
+       '('+w.feder.weite.toFixed(0)+' px)');
+  note(w.magnet.wirkte&&w.magnet.fern>0&&w.magnet.nah===w.magnet.fern
+       &&w.magnet.leerRaum===false,
+       'Magnet holt alle Fundstücke heran',
+       '('+w.magnet.fern+' geholt)');
+  note(w.geister.wirkte&&w.geister.gerufen===3&&w.geister.schaden>0
+       &&w.geister.danach===0,
+       'Beschwörung ruft drei Geister, die kämpfen und wieder vergehen',
+       '('+w.geister.gerufen+' Geister, '+w.geister.schaden.toFixed(0)+' Schaden)');
+  note(w.zusammen&&w.zusammen.lebt,'alle zwanzig zusammen ohne Ausfall');
   note(errs.length===0,'keine JS-Fehler',errs.join(' '));
 });
 
