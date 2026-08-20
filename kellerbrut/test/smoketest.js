@@ -2429,6 +2429,271 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+if(want(26)){
+console.log('\n[26] Etagenflüche, Arena und Bibliothek');
+await withPage(async(page,errs)=>{
+
+  /* --- Die Flüche über viele Etagen -------------------------------------- */
+  const fl=await page.evaluate(()=>{
+    const zaehler={}, ids=KB.FLUECHE.map(f=>f.id);
+    for(const id of ids) zaehler[id]=0;
+    let mitFluch=0, gesamt=0, aufEins=0, labRaeume=[], normRaeume=[];
+    for(let s=0;s<60;s++){
+      startRun(0,'FL'+s);
+      for(let d=1;d<=6;d++){
+        const f=genFloor(d); gesamt++;
+        const n=Object.keys(f.rooms).length;
+        if(f.fluch){
+          mitFluch++; zaehler[f.fluch]++;
+          if(d===1) aufEins++;
+          if(f.fluch==='labyrinth') labRaeume.push(n);
+        } else normRaeume.push(n);
+      }
+    }
+    /* Derselbe Seed muss denselben Fluch ergeben. */
+    startRun(0,'GLEICH'); const a=[]; for(let d=1;d<=6;d++) a.push(genFloor(d).fluch);
+    startRun(0,'GLEICH'); const b=[]; for(let d=1;d<=6;d++) b.push(genFloor(d).fluch);
+    const mit=x=>x.length?x.reduce((s,v)=>s+v,0)/x.length:0;
+    return {zaehler,mitFluch,gesamt,aufEins,
+            labSchnitt:mit(labRaeume),normSchnitt:mit(normRaeume),
+            gleich:a.join()===b.join(),
+            beschriftet:KB.FLUECHE.every(f=>f.name&&f.desc)};
+  });
+  const fehlend=Object.keys(fl.zaehler).filter(k=>fl.zaehler[k]===0);
+  note(fehlend.length===0,'jeder der fünf Flüche kommt vor',fehlend.join(' '));
+  note(fl.mitFluch>0&&fl.mitFluch<fl.gesamt*0.5,
+       'Flüche sind die Ausnahme, nicht die Regel',
+       '('+fl.mitFluch+' von '+fl.gesamt+' Etagen)');
+  note(fl.aufEins===0,'Etage 1 bleibt immer ungeflucht');
+  note(fl.gleich,'derselbe Seed ergibt dieselben Flüche');
+  note(fl.beschriftet,'jeder Fluch hat Namen und Beschreibung');
+  note(fl.labSchnitt>fl.normSchnitt*1.4,'das Labyrinth macht die Etage größer',
+       '(Ø '+fl.normSchnitt.toFixed(1)+' → '+fl.labSchnitt.toFixed(1)+' Räume)');
+
+  /* Das Labyrinth legt einen zweiten Schatzraum aus. */
+  const lab=await page.evaluate(()=>{
+    let mitLab=0, ohne=0, n=0, m=0;
+    for(let s=0;s<200;s++){
+      startRun(0,'LB'+s);
+      for(let d=2;d<=6;d++){
+        const f=genFloor(d);
+        const schaetze=Object.values(f.rooms).filter(r=>r.type==='treasure').length;
+        if(f.fluch==='labyrinth'){ mitLab+=schaetze; n++; }
+        else if(!f.fluch){ ohne+=schaetze; m++; }
+      }
+      if(n>=25&&m>=25) break;
+    }
+    return {mitLab:n?mitLab/n:0,ohne:m?ohne/m:0,n,m};
+  });
+  note(lab.n>0&&lab.mitLab>lab.ohne,'im Labyrinth liegt ein Schatzraum mehr',
+       '(Ø '+lab.ohne.toFixed(2)+' → '+lab.mitLab.toFixed(2)+')');
+
+  /* --- Wirkung der Flüche im Spiel --------------------------------------- */
+  const w=await page.evaluate(()=>{
+    /* Eine Etage mit dem gewünschten Fluch herbeiführen. */
+    const mitFluch=(id)=>{
+      startRun(0,'W'+id); KB.G.bossIntro=null;
+      KB.G.floor.fluch=id;
+      const p=KB.G.player; p.itemGet=null; p.iframes=0; KB.G.roomFresh=0;
+      KB.G.enemies.length=0;
+      return p;
+    };
+    const e={};
+    /* Hunger halbiert die Heilung — auch die aus einem Herz am Boden. */
+    { const p=mitFluch(null); p.redMax=12; p.red=2;
+      const ohne=heileSpieler(4);
+      const q=mitFluch('hunger'); q.redMax=12; q.red=2;
+      const mit=heileSpieler(4);
+      e.hunger={ohne,mit}; }
+    /* Nebel: die Karte zeigt nur den eigenen Raum. Gezählt wird, wie viele
+       Zellen drawMinimap wirklich setzt — verlässlicher als Pixelzählen. */
+    const kartePixel=()=>{ render(); return KB.karteRaeume; };
+    { const p=mitFluch(null);
+      for(const k in KB.G.floor.rooms){ KB.G.floor.rooms[k].seen=true;
+        KB.G.floor.rooms[k].visited=true; }
+      const offen=kartePixel();
+      KB.G.floor.fluch='nebel';
+      const zu=kartePixel();
+      e.nebel={offen,zu}; }
+    /* Labyrinth verschweigt Räume, in denen man noch nicht war. */
+    { const p=mitFluch('labyrinth');
+      for(const k in KB.G.floor.rooms){ KB.G.floor.rooms[k].seen=true;
+        KB.G.floor.rooms[k].visited=(k===KB.G.roomKey); }
+      const wenig=kartePixel();
+      for(const k in KB.G.floor.rooms) KB.G.floor.rooms[k].visited=true;
+      const viel=kartePixel();
+      e.labKarte={wenig,viel}; }
+    /* Finsternis verdunkelt den Raum wirklich. */
+    const raumHelligkeit=()=>{
+      const c=document.querySelector('canvas'), g=c.getContext('2d');
+      render();
+      const f=c.width/640;
+      /* Ecke oben links im Raum — weit weg vom Spieler in der Mitte. */
+      const d=g.getImageData(Math.round(70*f),Math.round(60*f),
+                             Math.round(40*f),Math.round(30*f)).data;
+      let sum=0; for(let i=0;i<d.length;i+=4) sum+=d[i]+d[i+1]+d[i+2];
+      return sum/(d.length/4);
+    };
+    { mitFluch(null); for(const z of KB.G.room.grid) z.fill(null);
+      const hell=raumHelligkeit();
+      KB.G.floor.fluch='finsternis';
+      const dunkel=raumHelligkeit();
+      e.finsternis={hell,dunkel}; }
+    /* Blindheit: auf dem Podest steht ein Fragezeichen, die Tafel schweigt. */
+    { const p=mitFluch('blindheit');
+      KB.G.room.pedestals=[{x:tx(6),y:ty(3),itemId:'herzkern',taken:false,cd:9}];
+      p.x=tx(6); p.y=ty(3)+18;
+      render();
+      const tafelBlind=KB.tafelnGezeichnet;
+      KB.G.floor.fluch=null;
+      render();
+      e.blind={tafelBlind,tafelNormal:KB.tafelnGezeichnet}; }
+    return e;
+  });
+  note(w.hunger.mit>0&&w.hunger.mit<w.hunger.ohne,'Hunger halbiert die Heilung',
+       '('+w.hunger.ohne+' → '+w.hunger.mit+' Hälften)');
+  note(w.nebel.zu===1&&w.nebel.offen>3,'Nebel löscht die Karte bis auf den eigenen Raum',
+       '('+w.nebel.offen+' → '+w.nebel.zu+' Räume auf der Karte)');
+  note(w.labKarte.wenig===1&&w.labKarte.viel>3,
+       'das Labyrinth zeigt nur betretene Räume',
+       '('+w.labKarte.viel+' → '+w.labKarte.wenig+' Räume auf der Karte)');
+  note(w.finsternis.dunkel<w.finsternis.hell*0.35,'Finsternis verdunkelt den Raum',
+       '(Helligkeit '+w.finsternis.hell.toFixed(0)+' → '+w.finsternis.dunkel.toFixed(0)+')');
+  note(w.blind.tafelBlind>0&&w.blind.tafelNormal>0,
+       'auch blind steht eine Tafel da — sie verrät nur nichts');
+
+  /* --- Herausforderungsraum ---------------------------------------------- */
+  const ar=await page.evaluate(()=>{
+    for(let s=0;s<400;s++){
+      startRun(0,'AR'+s);
+      let key=null, tiefe=1;
+      for(let d=2;d<=6&&!key;d++){
+        KB.G.depth=d; KB.G.floor=genFloor(d);
+        key=Object.keys(KB.G.floor.rooms).find(k=>KB.G.floor.rooms[k].type==='arena');
+        tiefe=d;
+      }
+      if(!key) continue;
+      const room=KB.G.floor.rooms[key];
+      const lohn=room.lohn;
+      enterRoom(key,null); KB.G.bossIntro=null;
+      const p=KB.G.player; p.itemGet=null; p.iframes=1e9; p.dmgTest=true;
+      const vorAusloesen={gegner:KB.G.enemies.length,
+                          offen:Object.keys(KB.G.room.doors)
+                                 .every(d=>doorPassable(KB.G.room.doors[d]))};
+      /* Auf die Platte treten. */
+      p.x=room.platte.x; p.y=room.platte.y;
+      for(let i=0;i<10;i++) updateGame(1/60);
+      const gestartet=!!(KB.G.arena&&KB.G.arena.laeuft);
+      const zuNachStart=Object.keys(KB.G.room.doors)
+                          .some(d=>!doorPassable(KB.G.room.doors[d]));
+      /* Alle Wellen niedermachen. */
+      const wellen=[]; let ticks=0;
+      while(KB.G.arena&&KB.G.arena.laeuft&&ticks<4000){
+        if(KB.G.enemies.length){
+          if(!wellen.length||wellen[wellen.length-1].nr!==KB.G.arena.welle)
+            wellen.push({nr:KB.G.arena.welle,n:KB.G.enemies.length});
+          else wellen[wellen.length-1].n=Math.max(wellen[wellen.length-1].n,KB.G.enemies.length);
+          for(const g of [...KB.G.enemies]) killEnemy(g);
+          KB.G.enemies=KB.G.enemies.filter(g=>!g.dead);
+        }
+        updateGame(1/60); ticks++;
+      }
+      const nachher={fertig:!!KB.G.room.arenaFertig,
+                     podeste:KB.G.room.pedestals.length,
+                     lohnDa:KB.G.room.pedestals.some(pd=>pd.itemId===lohn),
+                     truhe:KB.G.pickups.some(q=>q.type==='goldchest'),
+                     platteWeg:!KB.G.room.platte,
+                     wieOffen:Object.keys(KB.G.room.doors)
+                                .every(d=>doorPassable(KB.G.room.doors[d]))};
+      /* Wieder betreten: nichts startet erneut, der Lohn bleibt liegen. */
+      const anderer=Object.keys(KB.G.floor.rooms).find(k=>k!==key);
+      enterRoom(anderer,null); enterRoom(key,null); KB.G.bossIntro=null;
+      const erneut={arena:!!KB.G.arena,podeste:KB.G.room.pedestals.length};
+      return {tiefe,vorAusloesen,gestartet,zuNachStart,wellen,nachher,erneut,ticks};
+    }
+    return null;
+  });
+  note(!!ar,'ein Herausforderungsraum ist auffindbar',ar?'(Etage '+ar.tiefe+')':'keiner in 400 Seeds');
+  if(ar){
+    note(ar.vorAusloesen.gegner===0&&ar.vorAusloesen.offen,
+         'vor dem Auslösen ist der Raum leer und offen');
+    note(ar.gestartet&&ar.zuNachStart,'die Platte startet den Kampf und schließt die Türen');
+    note(ar.wellen.length===3,'genau drei Wellen','('+ar.wellen.map(x=>x.n).join(' / ')+' Gegner)');
+    note(ar.wellen.length===3&&ar.wellen[2].n>ar.wellen[0].n,
+         'jede Welle ist größer als die vorige');
+    note(ar.nachher.fertig&&ar.nachher.lohnDa&&ar.nachher.truhe&&ar.nachher.platteWeg,
+         'nach der letzten Welle steht der Lohn bereit');
+    note(ar.nachher.wieOffen,'danach gehen die Türen wieder auf');
+    note(!ar.erneut.arena&&ar.erneut.podeste>0,
+         'ein bestandener Raum startet nicht noch einmal');
+  }
+
+  /* --- Bibliothek --------------------------------------------------------- */
+  const bib=await page.evaluate(()=>{
+    for(let s=0;s<400;s++){
+      startRun(0,'BI'+s);
+      let key=null, tiefe=1;
+      for(let d=2;d<=6&&!key;d++){
+        KB.G.depth=d; KB.G.floor=genFloor(d);
+        key=Object.keys(KB.G.floor.rooms).find(k=>KB.G.floor.rooms[k].type==='library');
+        tiefe=d;
+      }
+      if(!key) continue;
+      enterRoom(key,null); KB.G.bossIntro=null;
+      const p=KB.G.player; p.itemGet=null; p.iframes=1e9;
+      p.pocket=null;
+      const vorher=KB.G.pickups.filter(q=>q.wahl).length;
+      const arten=[...new Set(KB.G.pickups.filter(q=>q.wahl).map(q=>q.type))];
+      /* Zu einem Pult gehen und zugreifen. */
+      const ziel=KB.G.pickups.find(q=>q.wahl);
+      p.x=ziel.x; p.y=ziel.y;
+      for(let i=0;i<20;i++) updateGame(1/60);
+      const uebrig=KB.G.pickups.filter(q=>q.wahl&&!q.dead).length;
+      const hat=!!p.pocket;
+      /* Wieder betreten: es kommt nichts nach. */
+      const anderer=Object.keys(KB.G.floor.rooms).find(k=>k!==key);
+      enterRoom(anderer,null); enterRoom(key,null); KB.G.bossIntro=null;
+      const nachRueckkehr=KB.G.pickups.filter(q=>q.wahl).length;
+      return {tiefe,vorher,arten,uebrig,hat,nachRueckkehr};
+    }
+    return null;
+  });
+  note(!!bib,'eine Bibliothek ist auffindbar',bib?'(Etage '+bib.tiefe+')':'keine in 400 Seeds');
+  if(bib){
+    note(bib.vorher===3,'drei Fundstücke liegen aus','('+bib.vorher+')');
+    note(bib.arten.every(t=>t==='card'||t==='pill'),
+         'ausgelegt werden nur Karten und Pillen','('+bib.arten.join(' ')+')');
+    note(bib.hat&&bib.uebrig===0,'wer eines nimmt, verliert die anderen beiden');
+    note(bib.nachRueckkehr===0,'zurückkommen bringt nichts nach');
+  }
+
+  /* --- Nichts davon bricht einen normalen Durchlauf ---------------------- */
+  const lauf=await page.evaluate(()=>{
+    startRun(0,'DURCH'); KB.G.bossIntro=null;
+    const p=KB.G.player; p.iframes=1e9;
+    let besucht=0, arenen=0, bibs=0, verflucht=0;
+    for(let d=1;d<=6;d++){
+      KB.G.depth=d; KB.G.floor=genFloor(d);
+      if(KB.G.floor.fluch) verflucht++;
+      for(const k in KB.G.floor.rooms){
+        const t=KB.G.floor.rooms[k].type;
+        if(t==='boss'||t==='devil'||t==='angel') continue;
+        enterRoom(k,null); KB.G.bossIntro=null; besucht++;
+        if(t==='arena') arenen++;
+        if(t==='library') bibs++;
+        for(let i=0;i<8;i++){ updateGame(1/60); render(); }
+      }
+    }
+    return {besucht,arenen,bibs,verflucht,lebt:!p.dead};
+  });
+  note(lauf.lebt&&lauf.besucht>40,'alle Räume von sechs Etagen laufen und zeichnen',
+       '('+lauf.besucht+' Räume, '+lauf.arenen+' Arenen, '+lauf.bibs
+       +' Bibliotheken, '+lauf.verflucht+' verfluchte Etagen)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

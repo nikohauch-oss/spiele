@@ -58,6 +58,40 @@ im Shop 5 Münzen, und es gibt sie über die Pille *Schlüsselglück* (+2) und d
 *Dietrichfinger* (+3, spart Schlüssel manchmal ganz ein). Die Karte
 *Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
 
+**Etagenflüche.** Ab Etage 2 kann ein Fluch über der ganzen Etage liegen —
+gewürfelt aus dem Seed, also reproduzierbar. Er ändert nicht, wie stark man
+ist, sondern wie sich die Etage anfühlt:
+
+- **Fluch der Finsternis** — der Raum liegt im Dunkeln, nur dein eigenes Licht
+  wandert mit. Feuerstellen, brennende Gegner, liegende Bomben und die Glut
+  der Glutmotte leuchten mit: man kann sich also Licht *machen*.
+- **Fluch des Labyrinths** — die Etage ist fast doppelt so weitläufig und die
+  Karte zeigt nur, wo du schon warst. Dafür liegt ein Schatzraum mehr darin.
+- **Fluch des Hungers** — jede Heilung wirkt nur halb. Mit dem Stahlherz
+  zusammen bleibt es bei der Hälfte, die beiden stapeln sich nicht zu null.
+- **Fluch der Blindheit** — auf Podesten und am Boden steht statt des Symbols
+  ein Fragezeichen, und die Tafel verrät nur noch den Preis. Was du gekauft
+  hast, erfährst du beim Aufheben.
+- **Fluch des Nebels** — die Karte zeigt einzig den Raum, in dem du stehst.
+
+Etage 1 bleibt immer ungeflucht, und ein Fluch bleibt die Ausnahme: über
+sechs Etagen trifft es im Schnitt jede vierte. Beim Betreten schlägt der
+Name rot statt golden an, und unten links steht er neben der Etage.
+
+**Herausforderungsraum.** In einer Sackgasse liegt eine Kammer mit einer
+eisernen Druckplatte in der Mitte. Wer darauftritt, schließt die Türen hinter
+sich und ficht drei Wellen aus — jede größer als die vorige, die letzte mit
+Champions. Oben zählt ein Zählwerk mit. Steht die letzte Welle, fährt der
+Lohn aus dem Boden: ein Item auf dem Podest, das schon beim Erzeugen der
+Etage feststand, dazu eine Goldtruhe. Ein bestandener Raum bleibt bestanden;
+die Platte ist danach nur noch Bodenschmuck.
+
+**Bibliothek.** Drei Lesepulte, auf jedem eine Karte oder eine Pille — nehmen
+darf man genau eines. Die anderen beiden zerfallen, und Zurückkommen bringt
+nichts nach. Beide Räume haben eigene Türen: Eisenbeschlag für die Arena,
+helles Holz mit Messington für die Bibliothek, und auf der Karte ein ⚔
+beziehungsweise ein ≡.
+
 **Teufels- und Engelsraum.** Hinter jedem Bossraum liegt eine Kammer, die
 erst der erlegte Boss aufschließt. Wer die Etage **ohne einen einzigen
 Treffer** übersteht, bekommt sie sicher — sonst entscheidet der Zufall
@@ -531,7 +565,9 @@ Fortsetzen eines Durchlaufs samt veränderter Etage, die Menüeinträge und die
 Einstellungsregler, die
 Spielbarkeit aller zwanzig Grundrisse, die
 Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
-wirklich anders aussieht, die Wirkung aller zwanzig Herz- und
+wirklich anders aussieht, jeder der fünf Etagenflüche einzeln in seiner Wirkung, die drei Wellen des
+Herausforderungsraums samt Lohn und die Einmalwahl der Bibliothek,
+die Wirkung aller zwanzig Herz- und
 Schadensitems einzeln nachgerechnet, der Dienst jedes der zehn Begleiter,
 Wirkung und Verweigerung jedes der zwanzig neuen passiven und aktiven
 Fundstücke, das Zeichnen sämtlicher Sprites sowie die Bildrate

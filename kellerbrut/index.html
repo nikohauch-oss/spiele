@@ -1048,6 +1048,27 @@ const CHARS=[
   unlock:'tode10',unlockText:'Stirb zehnmal'},
 ];
 
+/* --- ETAGENFLÜCHE ---------------------------------------------------------
+   Ein Fluch liegt über einer ganzen Etage und ändert, wie sie sich anfühlt —
+   nicht wie stark man ist. Er wird beim Erzeugen der Etage gewürfelt und
+   gehört damit zum Seed. Ab Etage 2, mit wachsender Wahrscheinlichkeit.
+   Wer einen Fluch aushält, wird belohnt: siehe fluchLohn().              */
+const FLUECHE=[
+ {id:'finsternis', name:'Fluch der Finsternis',
+  desc:'Nur dein eigenes Licht bleibt'},
+ {id:'labyrinth',  name:'Fluch des Labyrinths',
+  desc:'Weitläufiger — dafür liegt ein Schatz mehr darin'},
+ {id:'hunger',     name:'Fluch des Hungers',
+  desc:'Herzen heilen nur halb so viel'},
+ {id:'blindheit',  name:'Fluch der Blindheit',
+  desc:'Was ein Item ist, siehst du erst, wenn du zugreifst'},
+ {id:'nebel',      name:'Fluch des Nebels',
+  desc:'Die Karte zeigt nur, wo du gerade stehst'},
+];
+const FLUCH={}; for(const f of FLUECHE) FLUCH[f.id]=f;
+/* Kurze Abfrage für alles, was auf einen Fluch reagiert. */
+function fluchAktiv(id){ return !!(G.floor&&G.floor.fluch===id); }
+
 /* --- ETAGEN: Tileset-Farben, Gegnerpool, Bosse, Musik --- */
 const FLOORS=[
  /* Jeder Pool beginnt mit den drei Kennzeichen-Gegnern dieser Etage — die
@@ -1421,8 +1442,12 @@ function doorXY(dir){
 
 function genFloor(depth){
   const rng=RNG((G.seedNum ^ Math.imul(depth+1,2654435761))>>>0);
+  /* Der Fluch fällt als Erstes, weil das Labyrinth die Raumzahl mitbestimmt.
+     Etage 1 bleibt immer ungeflucht — der Einstieg soll sauber sein. */
+  let fluch=null;
+  if(depth>=2&&rng.chance(0.16+depth*0.035)) fluch=rng.pick(FLUECHE).id;
   const cells={}; cells['0,0']=true; const list=['0,0'];
-  const target=8+depth*2+rng.int(3);
+  const target=Math.round((8+depth*2+rng.int(3))*(fluch==='labyrinth'?1.8:1));
   let tries=0;
   const nbCount=(x,y)=>['u','d','l','r'].reduce((n,d)=>n+(cells[roomKey(x+DIRS[d][0],y+DIRS[d][1])]?1:0),0);
   while(list.length<target&&tries++<600){
@@ -1458,6 +1483,12 @@ function genFloor(depth){
   if(rng.chance(0.6)){const k=deadends.shift(); if(k) types[k]='curse';}
   if(rng.chance(0.4)){const k=deadends.shift(); if(k) types[k]='sacrifice';}
   if(depth>=2&&rng.chance(0.4)){const k=deadends.shift(); if(k) types[k]='arcade';}
+  /* Herausforderungsraum und Bibliothek: beide in Sackgassen, beide erst ab
+     Etage 2 — auf Etage 1 hat man weder die Ausrüstung noch die Übersicht. */
+  if(depth>=2&&rng.chance(0.35)){const k=deadends.shift(); if(k) types[k]='arena';}
+  if(depth>=2&&rng.chance(0.32)){const k=deadends.shift(); if(k) types[k]='library';}
+  /* Wer das Labyrinth aushält, findet einen zweiten Schatzraum darin. */
+  if(fluch==='labyrinth'){const k=deadends.shift(); if(k) types[k]='treasure';}
   /* Teufelskammer: hängt als Sackgasse am Bossraum und wird immer mitgebaut,
      damit der Platz garantiert frei ist. Ob sie sich öffnet, entscheidet erst
      der Bosskampf — bis dahin ist ihre Tür unsichtbar. Sie darf nur den
@@ -1527,12 +1558,14 @@ function genFloor(depth){
         else if(a==='shop'||b==='shop'){kind='shop';locked=true;}
         else if(a==='treasure'||b==='treasure'){kind='schatz';locked=rng.chance(0.55);}
         else if(a==='curse'||b==='curse'){kind='curse';}
+        else if(a==='arena'||b==='arena'){kind='arena';}
+        else if(a==='library'||b==='library'){kind='bibliothek';}
         doors[ek]={kind,locked,revealed:kind!=='secret'&&kind!=='devil'};
       }
       room.doors[d]={to:nk,edge:doors[ek]};
     }
   }
-  const floor={depth,rooms,doors,startKey:'0,0',bossKey:bossK,
+  const floor={depth,rooms,doors,startKey:'0,0',bossKey:bossK,fluch,
                data:FLOORS[Math.min(depth-1,FLOORS.length-1)]};
   platziereSchluessel(floor,rng);
   return floor;
@@ -1590,7 +1623,7 @@ function buildRoom(gx,gy,type,depth,rng){
     spawns:[],drops:[],pedestals:[],machines:[],trapdoor:false,bossId:null,
     sacrificeCount:0};
   const clearedByDefault=['start','treasure','shop','secret','curse','sacrifice',
-                          'arcade','devil','angel'];
+                          'arcade','devil','angel','arena','library'];
   if(clearedByDefault.includes(type)) room.cleared=true;
 
   let tmpl=null;
@@ -1654,6 +1687,23 @@ function buildRoom(gx,gy,type,depth,rng){
     room.machines.push({x:tx(8),y:ty(2),kind:'orakel',broken:false,cd:0});
     room.drops.push({x:tx(6),y:ty(5),type:'coin'});
   }
+  /* Herausforderungsraum: eine Druckplatte in der Mitte, ringsum frei. Wer
+     darauftritt, schließt die Türen hinter sich und ficht drei Wellen aus;
+     der Lohn steht schon fest, damit er nach dem Kampf verlässlich da ist. */
+  if(type==='arena'){
+    room.platte={x:tx(6),y:ty(3)};
+    room.wellen=3;
+    room.arenaFertig=false;
+    room.lohn=pickFromPool('treasure',rng);
+    for(const [c,r] of [[2,1],[10,1],[2,5],[10,5]]) room.grid[r][c]={t:'rock'};
+  }
+  /* Bibliothek: drei Fundstücke auf Pulten, nehmen darf man genau eines.
+     Das Feld `wahl` markiert sie; collectPickup räumt die anderen weg. */
+  if(type==='library'){
+    for(let i=0;i<3;i++)
+      room.drops.push({x:tx(4+i*2),y:ty(3),
+                       type:rng.chance(0.5)?'card':'pill',wahl:true});
+  }
   return room;
 }
 
@@ -1708,6 +1758,10 @@ function enterRoom(key,fromDir){
       pd.itemId=pickFromPool(room.type==='shop'?'shop':(room.type==='boss'?'boss':'treasure'));
     }
   }
+  /* Herausforderungsraum: Zustand zurücksetzen. Ein bereits bestandener
+     Raum bleibt bestanden, seine Platte ist dann nur noch Bodenschmuck. */
+  G.arena=(room.type==='arena'&&!room.arenaFertig)
+    ? {laeuft:false,welle:0,max:room.wellen||3,pause:0} : null;
   spawnFamiliars();
   G.roomFresh=0.5; // kurze Schonfrist beim Betreten
   updateDoorsOpen(true);
@@ -1760,10 +1814,75 @@ function saveRoomState(){
   // Pickups (ohne aufgehobene) zurückschreiben. pillId/cardId müssen mit,
   // sonst wird eine abgelegte Pille beim Wiederbetreten zu einer anderen.
   room.drops=G.pickups.filter(q=>!q.dead).map(q=>({x:q.x,y:q.y,type:q.type,
-    price:q.price,pillId:q.pillId,cardId:q.cardId,itemId:q.itemId,garantiert:q.garantiert}));
+    price:q.price,pillId:q.pillId,cardId:q.cardId,itemId:q.itemId,
+    garantiert:q.garantiert,wahl:q.wahl}));
 }
 
-function roomIsClear(){ return G.enemies.length===0; }
+/* Solange die Arena läuft, gilt der Raum nicht als geschafft — die Türen
+   bleiben also zu, bis die letzte Welle liegt. */
+function roomIsClear(){
+  if(G.arena&&G.arena.laeuft) return false;
+  return G.enemies.length===0;
+}
+
+/* --- HERAUSFORDERUNGSRAUM -------------------------------------------------
+   Wer die Platte betritt, schließt die Türen hinter sich und ficht drei
+   Wellen aus. Jede Welle ist größer als die vorige, die letzte bringt einen
+   Champion mit. Danach fährt der Lohn aus dem Boden: das vorher festgelegte
+   Item und eine Goldtruhe.                                              */
+function updateArena(dt){
+  const a=G.arena; if(!a) return;
+  const room=G.room, p=G.player;
+  if(!a.laeuft){
+    if(room.platte&&dist(p,room.platte)<15){
+      a.laeuft=true; a.welle=0; a.pause=0.8;
+      room.cleared=false;
+      G.banner={title:'Herausforderung',desc:'Drei Wellen — dann gehört dir der Lohn',t:2.4};
+      G.shake=Math.max(G.shake,6); Sfx.doorOpen(); Sfx.bossroar();
+      schockwelle(room.platte.x,room.platte.y,70,'#c8823a',0.6,4);
+    }
+    return;
+  }
+  a.pause=Math.max(0,a.pause-dt);
+  if(G.enemies.length||a.pause>0) return;
+  if(a.welle>=a.max){                       // geschafft
+    a.laeuft=false; G.arena=null;
+    room.arenaFertig=true; room.platte=null;
+    room.pedestals.push({x:tx(6),y:ty(2),itemId:room.lohn,cd:0.8});
+    room.drops.push({x:tx(6),y:ty(4),type:'goldchest'});
+    G.pickups.push({x:tx(6),y:ty(4),type:'goldchest',cd:0.8});
+    schockwelle(tx(6),ty(3),110,'#ffd75a',0.8,5);
+    blitz(tx(6),ty(2),26,'#ffd75a',0.5);
+    G.banner={title:'Bestanden',desc:'Der Lohn steht bereit',t:2.4};
+    Sfx.item(); updateDoorsOpen();
+    return;
+  }
+  arenaWelle(++a.welle,a.max);
+  a.pause=0.5;
+}
+
+/* Eine Welle aufstellen: Gegner aus dem Etagenpool, im Kreis um die Mitte,
+   mit kurzer Ankündigung an jedem Erscheinungspunkt. */
+function arenaWelle(nr,max){
+  const pool=G.floor.data.pool;
+  const n=2+nr+Math.floor(G.depth*0.5);
+  for(let i=0;i<n;i++){
+    const w=i*TAU/n+nr*0.7;
+    const x=clamp(tx(6)+Math.cos(w)*(70+frand.range(0,26)),RX+24,RX+COLS*TILE-24);
+    const y=clamp(ty(3)+Math.sin(w)*(52+frand.range(0,18)),RY+24,RY+ROWS*TILE-24);
+    /* Die letzte Welle bringt Champions mit. */
+    const champ=(nr>=max&&frand.chance(0.5))
+      ? frand.pick([{tint:'#ff5a5a',hpMul:1.7},{tint:'#5aa8ff',spdMul:1.4}]) : null;
+    const typ=frand.pick(pool);
+    if(ENEMY_TYPES[typ].noChamp&&champ) spawnEnemy(typ,x,y,null);
+    else spawnEnemy(typ,x,y,champ);
+    blitz(x,y,18,'#c8823a',0.35);
+    schockwelle(x,y,26,'#c8823a',0.35,3);
+  }
+  /* Angesagt wird die Welle nur oben am Zählwerk (drawArenaPlatte) —
+     ein zweiter schwebender Text daneben wäre bloß Lärm. */
+  G.shake=Math.max(G.shake,4); Sfx.bossroar();
+}
 
 /* Türblätter schwingen weich auf und zu, statt umzuspringen. */
 function updateDoorAnim(dt){
@@ -3139,7 +3258,10 @@ function touchThings(p,dt){
 /* Heilung an einer Stelle bündeln, damit das Stahlherz überall greift. */
 function heileSpieler(halbe){
   const p=G.player;
-  const wirkung=p.flags.has('halbheilung')?Math.max(1,Math.round(halbe*0.5)):halbe;
+  /* Stahlherz und Fluch des Hungers halbieren beide — zusammen bleibt es
+     bei der Hälfte, sie stapeln sich nicht zu null. */
+  const halbiert=p.flags.has('halbheilung')||fluchAktiv('hunger');
+  const wirkung=halbiert?Math.max(1,Math.round(halbe*0.5)):halbe;
   const vorher=p.red;
   p.red=Math.min(p.redMax,p.red+wirkung);
   return p.red-vorher;
@@ -3156,6 +3278,17 @@ function containerDazu(halbe,heilen){
 
 function collectPickup(q){
   const p=G.player;
+  /* Bibliothek: die drei Pulte sind ein Angebot, keine Beute. Wer eines
+     nimmt, sieht die anderen beiden zerfallen. */
+  if(q.wahl){
+    for(const r of G.pickups) if(r.wahl&&r!==q){
+      r.dead=true;
+      burst(r.x,r.y,'#8a76a0',10);
+      for(let i=0;i<5;i++) schweber(r.x,r.y,'#6a5880',-frand.range(20,50),0.7);
+    }
+    if(G.room) G.room.drops=(G.room.drops||[]).filter(d=>!d.wahl);
+    addText(q.x,q.y-20,'gewählt','#c9a8e8');
+  }
   switch(q.type){
     case 'coin': p.coins++; Sfx.coin(); break;
     case 'bigcoin': p.coins+=5; Sfx.coin(); break;
@@ -3478,7 +3611,10 @@ function nextFloor(){
   G.floor=genFloor(G.depth);
   if(G.player.flags.has('karte')) etageAufdecken();   // Schatzkarte bleibt gültig
   Sfx.setPattern(G.floor.data.mus);
-  G.banner={title:G.floor.data.name,desc:'Etage '+G.depth,t:2.5};
+  G.banner=G.floor.fluch
+    ? {title:FLUCH[G.floor.fluch].name,desc:FLUCH[G.floor.fluch].desc,t:3.4,fluch:true}
+    : {title:G.floor.data.name,desc:'Etage '+G.depth,t:2.5};
+  if(G.floor.fluch) Sfx.error();
   laterneLeuchtet();
   enterRoom(G.floor.startKey,null);
 }
@@ -4680,7 +4816,12 @@ function textZeilen(str,size,breite){
    liegenden Items eingeblendet, sobald man nahe genug steht — gerade im
    Laden und in der Teufelskammer will man das VOR dem Zugreifen wissen. */
 function itemTafel(id,x,y,preis,herzPreis){
-  const it=ITEMS[id]; if(!it) return;
+  /* Unter dem Fluch der Blindheit steht auf der Tafel nur der Preis — was
+     man kauft, erfährt man erst hinterher. */
+  const it=id==='__blind__'
+    ? {name:'Unbekannt',desc:'Der Fluch der Blindheit verbirgt, was hier liegt.'}
+    : ITEMS[id];
+  if(!it) return;
   const bw=142, size=7;
   const zeilen=textZeilen(it.desc,size,bw-14);
   const kosten=preis?preis+' Münzen':(herzPreis?(herzPreis===1?'1 Herzcontainer':herzPreis+' Herzcontainer'):null);
@@ -4692,7 +4833,7 @@ function itemTafel(id,x,y,preis,herzPreis){
   ctx.globalAlpha=0.92;
   ctx.fillStyle='#12101a'; ctx.fillRect(bx,by,bw,bh);
   ctx.globalAlpha=1;
-  ctx.strokeStyle=itemColor(id); ctx.lineWidth=1;
+  ctx.strokeStyle=id==='__blind__'?'#6a6a76':itemColor(id); ctx.lineWidth=1;
   ctx.strokeRect(bx+0.5,by+0.5,bw-1,bh-1);
   txt(it.name,bx+bw/2,by+9,'#e8e0d0',9);
   zeilen.forEach((z,i)=>txt(z,bx+bw/2,by+20+i*9,'#a9a294',size));
@@ -4826,6 +4967,12 @@ function symFluegel(vz,f,x,y){
   ctx.closePath(); ctx.fillStyle=f; ctx.fill(); symUmriss(0.9);
 }
 
+/* Solange diese Flagge steht, zeichnen wir ein Item, das noch niemandem
+   gehört — nur dort darf der Fluch der Blindheit es verhüllen. Im
+   Pausenmenü, im HUD und im Auswertungsbildschirm bleibt alles lesbar. */
+let blindKachel=false;
+function blindGesperrt(){ return blindKachel&&fluchAktiv('blindheit'); }
+
 function drawItemIcon(id,x,y,s){
   s=s||1;
   const h=itemHash(id), c=itemColor(id);
@@ -4836,6 +4983,14 @@ function drawItemIcon(id,x,y,s){
   rrect(x-6*s,y-6*s,12*s,2*s,`hsl(${h%360},55%,44%)`);
   // Emblem
   ctx.save(); ctx.translate(x,y+0.5*s); ctx.scale(s,s);
+  /* Fluch der Blindheit: statt des Symbols steht ein Fragezeichen auf der
+     Kachel. Erst das Aufheben verrät, was es war. */
+  if(blindGesperrt(id)){
+    tuscheAn=false;
+    txt('?',0,4.6,'#efe4cc',13);
+    tuscheAn=true; ctx.restore();
+    return;
+  }
   const eigen=ITEMS[id]&&ITEMS[id].icon;
   if(eigen){                       // eigenes, erkennbares Symbol
     const merk=tuscheAn; tuscheAn=false;   // Tuschekontur wäre auf 14 px Matsch
@@ -5585,10 +5740,13 @@ function drawRoom(){
     shadow(pd.x,pd.y+8,12);
     rrect(pd.x-10,pd.y,20,8,'#55504a');rrect(pd.x-8,pd.y-4,16,6,'#6e675e');
     const bob=Math.sin(performance.now()/300)*2;
-    drawItemIcon(pd.itemId,pd.x,pd.y-14+bob,1.2);
+    blindKachel=true; drawItemIcon(pd.itemId,pd.x,pd.y-14+bob,1.2); blindKachel=false;
     if(pd.price) txt(pd.price+'¢',pd.x,pd.y+16,'#ffd75a',9);
     // Wer nah genug steht, erfährt vor dem Zugreifen, was das Ding tut
-    if(dist(G.player,pd)<40) tafelWarteschlange.push([pd.itemId,pd.x,pd.y-24,pd.price,pd.herzPreis]);
+    if(dist(G.player,pd)<40){
+      if(fluchAktiv('blindheit')) tafelWarteschlange.push(['__blind__',pd.x,pd.y-24,pd.price,pd.herzPreis]);
+      else tafelWarteschlange.push([pd.itemId,pd.x,pd.y-24,pd.price,pd.herzPreis]);
+    }
     else if(pd.herzPreis){                   // Preis in Herzen statt in Münzen
       const p2=G.player;
       const bezahlbar=(p2.redMax-pd.herzPreis*2>=2&&p2.red-pd.herzPreis*2>=1)
@@ -5610,6 +5768,55 @@ function drawRoom(){
   }
 }
 
+/* Druckplatte im Herausforderungsraum: eine eiserne Scheibe im Boden, die
+   pocht, solange sie unberührt ist, und beim Auslösen eingedrückt wird.
+   Ist der Raum bestanden, bleibt nur die kalte Platte übrig.            */
+function drawArenaPlatte(){
+  const room=G.room; if(!room||room.type!=='arena') return;
+  const mitte={x:tx(6),y:ty(3)};
+  const gedrueckt=!room.platte;
+  const puls=gedrueckt?0:(Math.sin(performance.now()/420)+1)/2;
+  ctx.save();
+  ctx.globalAlpha=0.9;
+  ctx.beginPath(); ctx.ellipse(mitte.x,mitte.y+2,20,13,0,0,TAU);
+  ctx.fillStyle='#2a2f35'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(mitte.x,mitte.y-(gedrueckt?0:1.5),17,11,0,0,TAU);
+  ctx.fillStyle=gedrueckt?'#3e464e':'#4e5a64'; ctx.fill();
+  ctx.strokeStyle='#1c2026'; ctx.lineWidth=1.2; ctx.stroke();
+  /* Vier Nieten und ein Ring, der im Takt aufglüht. */
+  ctx.fillStyle='#78848e';
+  for(let i=0;i<4;i++){ const a=i*TAU/4+0.79;
+    ctx.beginPath(); ctx.arc(mitte.x+Math.cos(a)*12,mitte.y-1+Math.sin(a)*7.6,1.4,0,TAU);
+    ctx.fill(); }
+  if(!gedrueckt){
+    ctx.strokeStyle=`rgba(200,130,58,${0.35+puls*0.5})`; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.ellipse(mitte.x,mitte.y-1.5,10+puls*2.5,6.5+puls*1.6,0,0,TAU);
+    ctx.stroke();
+  }
+  ctx.restore();
+  /* Zählwerk über der Platte, solange die Wellen laufen. */
+  if(G.arena&&G.arena.laeuft){
+    const merk=tuscheAn; tuscheAn=false;
+    txt('Welle '+G.arena.welle+' / '+G.arena.max,mitte.x,RY+14,'#ffd75a',9);
+    tuscheAn=merk;
+  }
+}
+
+/* Bibliothek: unter jedem noch liegenden Wahlstück steht ein Lesepult. */
+function drawPulte(){
+  const room=G.room; if(!room||room.type!=='library') return;
+  for(const q of G.pickups){
+    if(!q.wahl||q.dead) continue;
+    shadow(q.x,q.y+10,11);
+    ctx.fillStyle='#4a3a28'; ctx.fillRect(q.x-2.5,q.y+1,5,9);      // Ständer
+    ctx.fillStyle='#6a5238';                                        // schräge Ablage
+    ctx.beginPath(); ctx.moveTo(q.x-11,q.y+3); ctx.lineTo(q.x+11,q.y+3);
+    ctx.lineTo(q.x+9,q.y-3); ctx.lineTo(q.x-9,q.y-3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#2e2418'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#8a76a0'; ctx.fillRect(q.x-9,q.y-3.6,18,1.4);   // Messingkante
+  }
+}
+
 /* Raumstimmung über allem: der Dunst der Etage und die Vignette, die die
    Dunkelheit von den Rändern hereindrückt. Wird nach der Spielwelt und vor
    dem HUD gezeichnet, damit das HUD lesbar bleibt. */
@@ -5625,6 +5832,52 @@ function raumStimmung(){
     vignette.addColorStop(0,'rgba(0,0,0,0)'); vignette.addColorStop(1,'rgba(0,0,0,0.55)');
   }
   ctx.fillStyle=vignette; ctx.fillRect(0,0,W,H);
+  if(fluchAktiv('finsternis')) finsternisSchleier();
+}
+
+/* Fluch der Finsternis: über den Raum legt sich Schwarz, in das nur der
+   Spieler ein Loch brennt. Feuerstellen und brennende Gegner leuchten
+   mit — man kann sich also Licht schaffen.
+
+   Der Schleier entsteht auf einer eigenen Ebene: 'destination-out' würde
+   sonst nicht bloß das Schwarz, sondern auch die Spielwelt darunter
+   wegradieren. Erst das fertige Bild wird über den Raum gelegt.        */
+let finsterBild=null, finsterCtx=null;
+function finsternisSchleier(){
+  const p=G.player; if(!p||!G.room) return;
+  if(!finsterBild){
+    finsterBild=document.createElement('canvas');
+    finsterBild.width=COLS*TILE; finsterBild.height=ROWS*TILE;
+    finsterCtx=finsterBild.getContext('2d');
+  }
+  const g=finsterCtx;
+  g.setTransform(1,0,0,1,0,0);
+  g.globalCompositeOperation='source-over';
+  g.clearRect(0,0,finsterBild.width,finsterBild.height);
+  g.fillStyle='rgba(0,0,0,0.93)';
+  g.fillRect(0,0,finsterBild.width,finsterBild.height);
+  g.globalCompositeOperation='destination-out';
+  /* Löcher werden in Raumkoordinaten gestanzt (Raumecke = 0,0). */
+  const loch=(x,y,r,staerke)=>{
+    const lx=x-RX, ly=y-RY;
+    const grad=g.createRadialGradient(lx,ly,0,lx,ly,r);
+    grad.addColorStop(0,`rgba(0,0,0,${staerke})`);
+    grad.addColorStop(0.5,`rgba(0,0,0,${staerke*0.8})`);
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=grad; g.beginPath(); g.arc(lx,ly,r,0,TAU); g.fill();
+  };
+  /* Das eigene Licht flackert leicht, sonst wirkt es wie ein Loch im Bild. */
+  const flacker=1+Math.sin(performance.now()/170)*0.04+Math.sin(performance.now()/61)*0.02;
+  loch(p.x,p.y-4,68*flacker,1);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const z=G.room.grid[r][c];
+    if(z&&z.t==='fire') loch(tx(c),ty(r),50,0.95);
+  }
+  for(const e of G.enemies) if(e.burn>0) loch(e.x,e.y,36,0.8);
+  for(const b of G.bombs) loch(b.x,b.y,28,0.6);
+  for(const c of G.creeps) if(c.glut) loch(c.x,c.y,32,0.6);
+  g.globalCompositeOperation='source-over';
+  ctx.drawImage(finsterBild,RX,RY);
 }
 
 /* --- TÜREN ---------------------------------------------------------------
@@ -5651,6 +5904,12 @@ function doorStyle(kind){
                            blatt:'#6a2a2a',blattTief:'#431a1a',schein:'#c03a5a'};
     case 'secret': return {rahmen:'#4a4a52',hell:'#65656f',dunkel:'#2b2b31',
                            blatt:'#4a4a52',blattTief:'#2b2b31'};
+    /* Arena: Eisenbeschlag, damit man den Kampfraum von außen erkennt. */
+    case 'arena':  return {rahmen:'#3e4650',hell:'#66727e',dunkel:'#20262c',
+                           blatt:'#4a545e',blattTief:'#2a3138',schein:'#c8823a'};
+    /* Bibliothek: helles Holz mit Messington. */
+    case 'bibliothek': return {rahmen:'#5a4a6a',hell:'#8a76a0',dunkel:'#2e2438',
+                           blatt:'#6a5880',blattTief:'#3e3250'};
     default:       return {rahmen:'#6b5b47',hell:'#8d7862',dunkel:'#42382c',
                            blatt:'#7a6448',blattTief:'#4e3f2c'};
   }
@@ -7288,7 +7547,7 @@ function drawPickup(q){
       const f=itemColor(q.itemId), p=0.55+Math.sin(performance.now()/280)*0.25;
       ctx.save(); ctx.globalAlpha=p*0.4;
       ctx.beginPath(); ctx.arc(q.x,y,13,0,TAU); ctx.fillStyle=f; ctx.fill(); ctx.restore();
-      drawItemIcon(q.itemId,q.x,y,1);
+      blindKachel=true; drawItemIcon(q.itemId,q.x,y,1); blindKachel=false;
       break; }
   }
   if(q.price) txt(q.price+'¢',q.x,q.y+16,'#ffd75a',9);
@@ -7414,15 +7673,20 @@ function drawHUD(){
   }
   // Etage & Seed
   txt(`E${G.depth} ${G.floor.data.name}`,10,H-8,'#5a5a66',8,'left');
+  if(G.floor.fluch){
+    const b=`E${G.depth} ${G.floor.data.name}`.length*4.6+16;
+    txt('✕ '+FLUCH[G.floor.fluch].name,10+b,H-8,'#8a3a4a',8,'left');
+  }
   txt('Seed '+G.seedStr,W-8,H-8,'#5a5a66',8,'right');
   // Item-Banner
   if(G.banner&&G.banner.t>0){
     const a=clamp(G.banner.t,0,1);
     ctx.globalAlpha=a;
-    const bw2=Math.max(160,G.banner.title.length*9+40);
+    const bw2=Math.min(W-16,Math.max(160,G.banner.title.length*9+40,
+                                    (G.banner.desc||'').length*4.9+28));
     rrect(W/2-bw2/2,34,bw2,32,'rgba(10,10,16,0.9)');
     ctx.strokeStyle='#8a7a5a';ctx.strokeRect(W/2-bw2/2+0.5,34.5,bw2-1,31);
-    txt(G.banner.title,W/2,45,'#ffd75a',11);
+    txt(G.banner.title,W/2,45,G.banner.fluch?'#c8283a':'#ffd75a',11);
     txt(G.banner.desc,W/2,58,'#b8b2a8',8);
     ctx.globalAlpha=1;
   }
@@ -7451,23 +7715,32 @@ function drawSporen(){
 }
 
 /* Automap oben rechts */
+let karteRaeume=0;      // wie viele Räume die Karte zuletzt gezeigt hat
 function drawMinimap(){
   const cw=9,ch=7, mx=W-12, my=12;
   const cur=G.room;
+  karteRaeume=0;
   ctx.globalAlpha=0.85;
+  /* Fluch des Nebels zeigt nur den eigenen Raum, das Labyrinth verschweigt
+     die Nachbarn, in denen man noch nicht war. */
+  const nebel=fluchAktiv('nebel'), lab=fluchAktiv('labyrinth');
   for(const k in G.floor.rooms){
     const r=G.floor.rooms[k];
+    if(nebel&&k!==G.roomKey) continue;
+    if(lab&&!r.visited) continue;
     if(!r.seen&&!r.visited) continue;
     const dx=r.gx-cur.gx, dy=r.gy-cur.gy;
     const x=mx-cw*4.5+dx*cw, y=my+ch*2+dy*ch;
     if(x<W-110||x>W-4||y<4||y>80) continue;
     let fill=r.visited?'#8a8276':'#3a3a42';
     if(k===G.roomKey) fill='#e8e0d0';
-    rrect(x,y,cw-1,ch-1,fill);
+    rrect(x,y,cw-1,ch-1,fill); karteRaeume++;
     // Icons
     let icon=null,icol='#111';
     if(r.type==='treasure'){icon='◆';icol='#d4af37';}
     if(r.type==='shop'){icon='¢';icol='#d4af37';}
+    if(r.type==='arena'){icon='⚔';icol='#c8823a';}
+    if(r.type==='library'){icon='≡';icol='#c9a8e8';}
     if(r.type==='boss'){icon='☠';icol='#c03a5a';}
     if(r.type==='secret'){icon='?';icol='#8a5aa8';}
     if(r.type==='curse'){icon='!';icol='#c03a5a';}
@@ -7648,6 +7921,7 @@ function startRun(charIdx,seedStr){
     lasers:[],creeps:[],familiars:[],texts:[],einschlaege:[],
     deathTimer:0,roomFresh:0,bossName:'',room:null,roomKey:null,
     seelen:0,                      // Vorrat des Seelenvogels
+    arena:null,                    // Zustand des Herausforderungsraums
     zeitstopp:0,                   // Restzeit des Stillstands
     floorHit:false,deals:0,        // heil durch die Etage? schon gehandelt?
     floorRooms:()=>G.floor.rooms};
@@ -7734,6 +8008,7 @@ function updateGame(dt){
   updateEshots(dt);
   updateCreeps(dt);
   updateEinschlaege(dt);
+  updateArena(dt);
   updateFx(dt);
   updateDoorsOpen(false);
   updateDoorAnim(dt);
@@ -7761,6 +8036,8 @@ function render(){
   if(G.shake>0.5&&saveData.wackeln!==false)
     ctx.translate(frand.range(-G.shake,G.shake)*0.5,frand.range(-G.shake,G.shake)*0.5);
   drawRoom();
+  drawArenaPlatte();
+  drawPulte();
   for(const q of G.pickups) drawPickup(q);
   for(const b of G.bombs) drawBombEnt(b);
   const sorted=[...G.enemies].sort((a,b)=>a.y-b.y);
@@ -8120,11 +8397,12 @@ requestAnimationFrame(frame);
 
 /* Test-Hooks (für automatisierte Smoke-Tests) */
 window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
-  CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES,
+  CHARS, ITEMS, ENEMY_TYPES, BOSS_TYPES, PILLS, CARDS, FLOORS, TEMPLATES, FLUECHE,
   HANDSCHRIFTEN, MAX_HERZEN, KAMMERN, laufSpeichern, laufFortsetzen,
   laufVerwerfen, laufVorhanden, get saveData(){return saveData;},
   get raumBildStand(){return bildStand;},
-  get tafelnGezeichnet(){return tafelnGezeichnet;} };
+  get tafelnGezeichnet(){return tafelnGezeichnet;},
+  get karteRaeume(){return karteRaeume;} };
 </script>
 </body>
 </html>
