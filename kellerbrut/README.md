@@ -188,13 +188,35 @@ HTML-Datei ohne Build-Schritt.
 Abschaltbar zur Laufzeit über `window.KBPhase2.enabled = false`, sparsamer
 über `window.KBPhase2.quality = 0.5`.
 
-**Warum kein `ctx.filter`.** Der Aufsatz kam mit einem leichten
+**Grafik-Overhaul Phase 3.** Ein dritter Aufsatz kümmert sich um die Bosse.
+Er hängt sich an `drawBossSprite`, `drawRoom`, `updateBossAI`, `killEnemy`,
+`drawBossIntro`, `drawHUD` und `render` und bringt: eine eigene Optik für
+jede der zwölf Boss-KIs, kräftigere Schatten und Auren, individuelles
+Idle-Pulsieren, Angriffstelegraphen aus den vorhandenen Bosszuständen,
+Treffer-Rim-Light, einen Burst beim Phasenwechsel, die organische
+Verbindung beim Doppelherz, einen neuen Lebensbalken mit Phasenmarkierungen,
+Cinematic-Balken beim Intro, eigene Todesexplosionen und Unruhe bei wenig
+Leben. `updateBossAI` und `killEnemy` werden nur beobachtet, nicht verändert —
+der Aufsatz liest den Phasenwechsel ab und zeichnet dazu.
+
+Abschaltbar über `window.KBPhase3.enabled = false`; einzeln lassen sich
+`cinematicIntro`, `bossBar` und `deathFx` ausschalten.
+
+**Warum kein `ctx.filter`.** Beide Aufsätze kamen mit einem leichten
 `saturate()/contrast()` je Figur. Das musste raus: KELLERBRUT zeichnet jede
-Figur aus vielen einzelnen Tuschepfaden, und jeder Filterwechsel zwingt
-Canvas 2D zu einem eigenen Compositing-Durchgang. Gemessen an 25 Gegnern
-kostete die Gegnerschleife **mit** Filter 1921 ms je Bild, **ohne** Filter
-0,69 ms — das Spiel lief mit 1 FPS statt 60. Fünf Prozent mehr Sättigung
-sind das nicht wert; alles andere aus dem Aufsatz ist unverändert
+Figur aus vielen einzelnen Tuschepfaden, und Canvas 2D rendert alles, was
+unter einem Filter gezeichnet wird, in eine eigene Ebene und komponiert sie
+danach. Gemessen:
+
+| | ohne Aufsatz | mit Filter | ohne Filter |
+|---|---|---|---|
+| Gegnerschleife, 25 Gegner | 0,56 ms | **1921 ms** | 0,69 ms |
+| Bosskampf Kammermutter | 60 FPS | **2 FPS** | 61 FPS |
+
+Über alle zwölf Bosse hinweg fiel die Bildrate mit Filter auf 2–16 FPS. Der
+Quality-Regler und das Abschalten des Bossbalkens änderten daran nichts — es
+war jedes Mal allein der Filter. Fünf bis siebzehn Prozent mehr Sättigung
+sind das nicht wert; alles andere aus beiden Aufsätzen ist unverändert
 übernommen.
 
 **Licht und Tiefe.** Das Licht kommt von oben links: eine Deckenlampe hellt die
