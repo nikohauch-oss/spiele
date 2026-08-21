@@ -2806,6 +2806,176 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+if(want(28)){
+console.log('\n[28] Phase 7: Synergien und Transformationen');
+await withPage(async(page,errs)=>{
+
+  /* Ein Item je Flag, damit die Synergiebedingungen gezielt erfuellt werden. */
+  const FLAG_ITEM={poison:'giftdruese',burn:'glutzunge',frost:'frostkern',
+    triple:'dreiklang',quad:'vierklang',pierce:'bohrer',bounce:'springball',
+    homing:'suchtraene',split:'splitterling',laser:'blitzfaden',
+    spectral:'geistertropfen',beam:'hoellenstrahl',bigshot:'riesentropfen',
+    needle:'nadelregen'};
+
+  const da=await page.evaluate(()=>({
+    aktiv: !!(window.KBPhase7 && window.KBPhase7.enabled),
+    syn: window.KBPhase7 ? window.KBPhase7.synergyCatalog.map(x=>x.id) : [],
+    tra: window.KBPhase7 ? window.KBPhase7.transformationCatalog.map(x=>x.id) : [],
+    beschriftet: window.KBPhase7
+      ? window.KBPhase7.synergyCatalog.every(x=>x.name&&x.desc)
+        && window.KBPhase7.transformationCatalog.every(x=>x.name&&x.desc)
+      : false
+  }));
+  note(da.aktiv,'Phase 7 ist aktiv');
+  note(da.syn.length===12,'zwoelf Synergien im Katalog','('+da.syn.length+')');
+  note(da.tra.length===5,'fuenf Transformationen im Katalog','('+da.tra.length+')');
+  note(da.beschriftet,'jede hat Namen und Beschreibung');
+
+  /* Jede Synergie einzeln ausloesen. */
+  const REZEPT={
+    siedegift:    ['poison','burn'],
+    thermoschock: ['burn','frost'],
+    seuchenfrost: ['poison','frost'],
+    sechsfach:    ['triple','quad'],
+    bohrspringer: ['pierce','bounce'],
+    suchsplitter: ['homing','split'],
+    geisterlaser: ['laser','spectral'],
+    elementstrahl:['beam','poison','burn'],
+    harpune:      ['bigshot','needle'],
+    phasenjaeger: ['homing','spectral'],
+  };
+  const w=await page.evaluate(([REZEPT,FLAG_ITEM])=>{
+    const bau=(ids)=>{
+      startRun(0,'P7'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.iframes=0; KB.G.roomFresh=0; p.itemGet=null;
+      KB.G.enemies.length=0; KB.G.tears.length=0;
+      for(const z of KB.G.room.grid) z.fill(null);
+      for(const id of ids) acquireItem(id,null);
+      p.itemGet=null; recomputeStats();
+      for(let i=0;i<3;i++) updateGame(1/60);   // Phase 7 scannt im Update
+      return p;
+    };
+    const e={ausgeloest:{},fehlend:[]};
+    for(const [syn,flags] of Object.entries(REZEPT)){
+      const ids=flags.map(f=>FLAG_ITEM[f]);
+      bau(ids);
+      const an=KBPhase7.activeSynergies.includes(syn);
+      e.ausgeloest[syn]=an;
+      if(!an) e.fehlend.push(syn+' via '+ids.join('+'));
+    }
+    /* Die beiden Item-basierten Synergien. */
+    bau(['schattengeselle','schattenorb']);
+    e.ausgeloest.schattenchor=KBPhase7.activeSynergies.includes('schattenchor');
+    bau(['seelenlicht','nachtdorn']);
+    e.ausgeloest.eklipse=KBPhase7.activeSynergies.includes('eklipse');
+
+    /* Ohne passende Items darf nichts anspringen. */
+    bau([]);
+    e.leer=KBPhase7.activeSynergies.length;
+
+    /* Thermoschock muss wirklich 20 % mehr Schaden machen. */
+    const messe=(ids)=>{
+      const p=bau(ids);
+      const g=spawnEnemy('blobling',tx(9),ty(3),null); g.hp=g.maxHp=1e6;
+      const vor=g.hp; KB.hitEnemyWithMods(g,10,0,true);
+      return vor-g.hp;
+    };
+    const ohne=messe([FLAG_ITEM.burn]);
+    const mit =messe([FLAG_ITEM.burn,FLAG_ITEM.frost]);
+    e.thermo={ohne,mit,faktor:+(mit/ohne).toFixed(3)};
+
+    /* Gebrochener Chor: zwei Schuesse mehr als Vierklang allein. */
+    const schuesse=(ids)=>{
+      const p=bau(ids);
+      KB.G.tears.length=0; fireShot({x:1,y:0});
+      return KB.G.tears.filter(t=>!t.fam).length;
+    };
+    e.chor={vier:schuesse([FLAG_ITEM.quad]),
+            beide:schuesse([FLAG_ITEM.quad,FLAG_ITEM.triple])};
+    return e;
+  },[REZEPT,FLAG_ITEM]);
+
+  note(w.fehlend.length===0 && w.ausgeloest.schattenchor && w.ausgeloest.eklipse,
+       'alle zwoelf Synergien lassen sich gezielt ausloesen',
+       w.fehlend.join('; ') || (!w.ausgeloest.schattenchor?'schattenchor ':'')
+                              + (!w.ausgeloest.eklipse?'eklipse':''));
+  note(w.leer===0,'ohne passende Items ist keine Synergie aktiv','('+w.leer+')');
+  note(Math.abs(w.thermo.faktor-1.2)<0.03,'Thermoschock gibt wirklich +20 % Schaden',
+       '(Faktor '+w.thermo.faktor+')');
+  note(w.chor.beide===w.chor.vier+2,'Gebrochener Chor gibt zwei Schuesse dazu',
+       '('+w.chor.vier+' -> '+w.chor.beide+')');
+
+  /* Transformationen: drei passende Items je Kategorie. */
+  const t=await page.evaluate(()=>{
+    const bau=(ids)=>{
+      startRun(0,'P7T'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.iframes=0; p.itemGet=null;
+      KB.G.enemies.length=0;
+      for(const id of ids) acquireItem(id,null);
+      p.itemGet=null; recomputeStats();
+      for(let i=0;i<3;i++) updateGame(1/60);
+      return p;
+    };
+    const REZ={
+      elementbrut : ['giftdruese','glutzunge','frostkern'],
+      schemenleib : ['geistertropfen','suchtraene','seelenlicht'],
+      maschinenleib:['blitzfaden','bohrer','nadelregen'],
+      herzbrut    : ['herzkern','seelenlicht','blutpumpe'],
+      schwarmkrone: ['messerfliege','augapfel','stichling'],
+    };
+    const e={aus:{},fehlend:[],werte:{}};
+    for(const [id,ids] of Object.entries(REZ)){
+      const p=bau(ids);
+      const an=KBPhase7.activeTransformations.includes(id);
+      e.aus[id]=an;
+      if(!an) e.fehlend.push(id+' via '+ids.join('+'));
+    }
+    /* Zwei statt drei Element-Items duerfen noch nicht reichen. */
+    bau(['giftdruese','glutzunge']);
+    e.zweiReichtNicht=!KBPhase7.activeTransformations.includes('elementbrut');
+    /* Elementbrut gibt +10 % Schaden. */
+    const dmg=(ids)=>{ const p=bau(ids); return p.stats.dmg; };
+    const zwei=dmg(['giftdruese','glutzunge']);
+    const drei=dmg(['giftdruese','glutzunge','frostkern']);
+    e.werte={zwei:+zwei.toFixed(2),drei:+drei.toFixed(2)};
+    return e;
+  });
+  note(t.fehlend.length===0,'alle fuenf Transformationen lassen sich ausloesen',
+       t.fehlend.join('; '));
+  note(t.zweiReichtNicht,'zwei Fundstuecke reichen noch nicht — es braucht drei');
+  note(t.werte.drei>t.werte.zwei,'Elementbrut hebt den Schaden',
+       '('+t.werte.zwei+' -> '+t.werte.drei+')');
+
+  /* Alles zusammen darf nicht umkippen. */
+  const stress=await page.evaluate(()=>{
+    startRun(0,'P7S'); KB.G.bossIntro=null;
+    const p=KB.G.player; p.iframes=1e9; p.itemGet=null;
+    for(const id of ['giftdruese','glutzunge','frostkern','dreiklang','vierklang',
+                     'bohrer','springball','suchtraene','splitterling','blitzfaden',
+                     'geistertropfen','hoellenstrahl','riesentropfen','nadelregen',
+                     'schattengeselle','schattenorb','seelenlicht','nachtdorn',
+                     'messerfliege','augapfel','stichling'])
+      acquireItem(id,null);
+    p.itemGet=null; recomputeStats();
+    for(let i=0;i<600;i++){
+      if(i%5===0) fireShot({x:Math.cos(i*0.2),y:Math.sin(i*0.2)});
+      if(i%90===0&&KB.G.enemies.length<6){
+        const g=spawnEnemy('blobling',tx(3+i%8),ty(2),null); g.hp=g.maxHp=1e5; }
+      if(i%150===0) for(const g of [...KB.G.enemies]) killEnemy(g);
+      updateGame(1/60); render();
+    }
+    return {lebt:!p.dead, syn:KBPhase7.activeSynergies.length,
+            tra:KBPhase7.activeTransformations.length,
+            dmg:+p.stats.dmg.toFixed(1)};
+  });
+  note(stress.lebt&&stress.syn>=8&&stress.tra>=3,
+       'alle Systeme zusammen laufen zehn Sekunden unter Dauerfeuer',
+       '('+stress.syn+' Synergien, '+stress.tra+' Transformationen aktiv)');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

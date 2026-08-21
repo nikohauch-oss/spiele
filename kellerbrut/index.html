@@ -8436,7 +8436,8 @@ window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   laufVerwerfen, laufVorhanden, get saveData(){return saveData;},
   get raumBildStand(){return bildStand;},
   get tafelnGezeichnet(){return tafelnGezeichnet;},
-  get karteRaeume(){return karteRaeume;} };
+  get karteRaeume(){return karteRaeume;},
+  hitEnemyWithMods:(...a)=>hitEnemyWithMods(...a) };
 </script>
 
 <!-- Grafik-Overhaul Phase 2: haengt sich nur an die Zeichenfunktionen -->
@@ -11483,6 +11484,896 @@ window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
 
   console.info(
     '[KELLERBRUT] Grafik-Overhaul Phase 6 aktiv — Final Polish + adaptive Performance'
+  );
+})();
+</script>
+
+<!-- Phase 7: Item-Synergien und Transformationen (Gameplay) -->
+<script>
+/* =====================================================================
+   KELLERBRUT — PHASE 7
+   ITEM-SYNERGIEN + TRANSFORMATIONEN
+
+   Einbau hier: als siebter Block inline hinter Phase 6. Der Pack liefert die
+   Datei als phase7.js zum Nachladen aus; KELLERBRUT ist aber bewusst eine
+   einzige HTML-Datei ohne Build-Schritt, deshalb steht der Code inline. Bis
+   auf diese Kommentarzeilen ist er unveraendert uebernommen.
+
+   Phase 7 ist der erste große Gameplay-Erweiterungspass nach dem
+   Grafik-Overhaul. Er benutzt ausschließlich bereits vorhandene KELLERBRUT-
+   Items, Flags, Projektile und Familiars.
+
+   Enthalten:
+   - 12 echte Item-Synergien
+   - 5 Transformationen
+   - Synergie-/Transformations-Benachrichtigungen
+   - Transformations-Auren
+   - kleines HUD-Statusfeld
+   - keine Änderungen an Savegame-Struktur oder Raumgenerierung
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  if (window.__KB_PHASE7_GAMEPLAY__) return;
+  window.__KB_PHASE7_GAMEPLAY__ = true;
+
+  const P7 = window.KBPhase7 = {
+    enabled: true,
+    notifications: true,
+    transformationVisuals: true,
+    hudBadge: true,
+    version: '7.0',
+    activeSynergies: [],
+    activeTransformations: [],
+    synergyCatalog: [],
+    transformationCatalog: []
+  };
+
+  const TAU7 = Math.PI * 2;
+  const clamp7 = (v,a,b) => Math.max(a,Math.min(b,v));
+  const sat7 = v => clamp7(v,0,1);
+  const now7 = () => performance.now()/1000;
+
+  const state = {
+    player: null,
+    synergies: new Set(),
+    transformations: new Set(),
+    notices: [],
+    scanCd: 0,
+    swarmCd: 1.6,
+    heartWardRoom: null,
+    heartWardTried: false,
+    chainGuard: 0
+  };
+
+  function game(){
+    return window.KB?.G || window.G || null;
+  }
+
+  function itemsDb(){
+    return window.KB?.ITEMS || window.ITEMS || {};
+  }
+
+  function currentPlayer(){
+    return game()?.player || null;
+  }
+
+  function flagsOf(p=currentPlayer()){
+    return p?.flags || new Set();
+  }
+
+  function hasFlag(flag,p=currentPlayer()){
+    return !!p?.flags?.has?.(flag);
+  }
+
+  function hasItem(id,p=currentPlayer()){
+    return !!p?.items?.includes?.(id);
+  }
+
+  function safe(fn,fallback=null){
+    try { return fn(); } catch (_) { return fallback; }
+  }
+
+  function wrap(name,factory){
+    const old=window[name];
+    if(typeof old!=='function'){
+      console.warn('[KELLERBRUT Phase 7] Funktion nicht gefunden:',name);
+      return false;
+    }
+    window[name]=factory(old);
+    return true;
+  }
+
+  function addTextSafe(x,y,str,color){
+    if(typeof window.addText==='function') addText(x,y,str,color);
+  }
+
+  function fxBurst(x,y,color,n=8){
+    if(typeof window.burst==='function') burst(x,y,color,n);
+  }
+
+  function fxWave(x,y,r,color){
+    if(typeof window.schockwelle==='function') schockwelle(x,y,r,color,.42,2.5);
+  }
+
+  function fxFlash(x,y,r,color){
+    if(typeof window.blitz==='function') blitz(x,y,r,color,.22);
+  }
+
+  function directDamage(e,d){
+    if(!e || e.dead || d<=0) return;
+    if(typeof window.damageEnemy==='function') damageEnemy(e,d);
+  }
+
+  function randomChance(p){
+    // Der existierende Effekt-RNG ist nicht zwingend als Window-Property
+    // exportiert. Für diese nicht-seedrelevanten Kampfboni reicht Math.random.
+    return Math.random()<p;
+  }
+
+  /* ---------------------------------------------------------------------
+     12 SYNERGIEN
+     --------------------------------------------------------------------- */
+  const SYNERGIES = [
+    {
+      id:'siedegift',
+      name:'Siedegift',
+      desc:'Gift + Feuer: jeder 4. Treffer löst eine giftige Feuerwelle aus.',
+      color:'#d7b650',
+      test:p=>hasFlag('poison',p)&&hasFlag('burn',p)
+    },
+    {
+      id:'thermoschock',
+      name:'Thermoschock',
+      desc:'Feuer + Frost: elementare Treffer verursachen 20% mehr Schaden.',
+      color:'#e89a72',
+      test:p=>hasFlag('burn',p)&&hasFlag('frost',p)
+    },
+    {
+      id:'seuchenfrost',
+      name:'Seuchenfrost',
+      desc:'Gift + Frost: besiegte Gegner stecken Feinde in der Nähe an.',
+      color:'#9ed99e',
+      test:p=>hasFlag('poison',p)&&hasFlag('frost',p)
+    },
+    {
+      id:'sechsfach',
+      name:'Gebrochener Chor',
+      desc:'Drei- + Vierklang: zwei zusätzliche schwächere Außenschüsse.',
+      color:'#d9b6e8',
+      test:p=>hasFlag('triple',p)&&hasFlag('quad',p)
+    },
+    {
+      id:'bohrspringer',
+      name:'Bohrspringer',
+      desc:'Durchschlag + Abpraller: +2 Abpraller und mehr Projektilwucht.',
+      color:'#c9c1a6',
+      test:p=>hasFlag('pierce',p)&&hasFlag('bounce',p)
+    },
+    {
+      id:'suchsplitter',
+      name:'Suchsplitter',
+      desc:'Homing + Splitter: Splitter suchen weiter; zusätzlich Feuerrate.',
+      color:'#a8c9ed',
+      test:p=>hasFlag('homing',p)&&hasFlag('split',p)
+    },
+    {
+      id:'geisterlaser',
+      name:'Geisterlaser',
+      desc:'Laser + Spektral: Laser werden stärker und ignorieren Hindernisse.',
+      color:'#9fdcf0',
+      test:p=>hasFlag('laser',p)&&hasFlag('spectral',p)
+    },
+    {
+      id:'elementstrahl',
+      name:'Elementstrahl',
+      desc:'Höllenstrahl + zwei Elemente: breiterer und stärkerer Strahl.',
+      color:'#ff9c74',
+      test:p=>{
+        if(!hasFlag('beam',p)) return false;
+        return ['poison','burn','frost'].filter(f=>hasFlag(f,p)).length>=2;
+      }
+    },
+    {
+      id:'harpune',
+      name:'Kellerharpune',
+      desc:'Riesentropfen + Nadelregen: große Nadeln durchschlagen Gegner.',
+      color:'#ded6c8',
+      test:p=>hasFlag('bigshot',p)&&hasFlag('needle',p)
+    },
+    {
+      id:'phasenjaeger',
+      name:'Phasenjäger',
+      desc:'Homing + Spektral: größere Reichweite und stabileres Dauerfeuer.',
+      color:'#b7c9ef',
+      test:p=>hasFlag('homing',p)&&hasFlag('spectral',p)
+    },
+    {
+      id:'schattenchor',
+      name:'Schattenchor',
+      desc:'Schattengeselle + Schattenorb: dein Schattenfeuer wird schneller.',
+      color:'#9988c4',
+      test:p=>hasItem('schattengeselle',p)&&hasItem('schattenorb',p)
+    },
+    {
+      id:'eklipse',
+      name:'Eklipse',
+      desc:'Seelenlicht + Nachtdorn: Licht und Finsternis verstärken Schaden und Glück.',
+      color:'#c1a9dc',
+      test:p=>hasItem('seelenlicht',p)&&hasItem('nachtdorn',p)
+    }
+  ];
+
+  /* ---------------------------------------------------------------------
+     5 TRANSFORMATIONEN
+
+     Jede Transformation verlangt drei VERSCHIEDENE passive Fundstücke der
+     passenden Kategorie. Kategorien werden aus den echten Item-Flags,
+     Familiar-Arten und Itemnamen abgeleitet.
+     --------------------------------------------------------------------- */
+  const TRANSFORMATIONS = [
+    {
+      id:'elementbrut',
+      name:'ELEMENTBRUT',
+      desc:'3 Element-Fundstücke · +10% Schaden · +Feuerrate · Elementpuls',
+      color:'#d0c66a',
+      category:'element'
+    },
+    {
+      id:'schemenleib',
+      name:'SCHEMENLEIB',
+      desc:'3 Geister-Fundstücke · Spektralflug der Schüsse · Tempo + Reichweite',
+      color:'#a5c9e9',
+      category:'ghost'
+    },
+    {
+      id:'maschinenleib',
+      name:'MASCHINENLEIB',
+      desc:'3 Technik-Fundstücke · schnellere Projektile und Feuerrate',
+      color:'#b9c1c9',
+      category:'machine'
+    },
+    {
+      id:'herzbrut',
+      name:'HERZBRUT',
+      desc:'3 Herz-Fundstücke · mehr Schaden · einmal je Raum Chance auf Schutz',
+      color:'#d66b7d',
+      category:'heart'
+    },
+    {
+      id:'schwarmkrone',
+      name:'SCHWARMKRONE',
+      desc:'3 verschiedene Begleiter · Glück + Schwarmangriff',
+      color:'#c7b96c',
+      category:'swarm'
+    }
+  ];
+
+  P7.synergyCatalog = SYNERGIES.map(x=>({...x,test:undefined}));
+  P7.transformationCatalog = TRANSFORMATIONS.map(x=>({...x}));
+
+  function categoriesForItem(id,it){
+    const out=new Set();
+    if(!it) return out;
+    const fl=new Set(it.flags||[]);
+    const fam=String(it.famil||'').toLowerCase();
+    const text=(String(id)+' '+String(it.name||'')).toLowerCase();
+
+    if(fl.has('poison')||fl.has('burn')||fl.has('frost')||
+       ['bug','frostgeist','motte','feuerschaedel'].includes(fam))
+      out.add('element');
+
+    if(fl.has('spectral')||fl.has('homing')||
+       /seele|geist|schatten|nacht|schemen/.test(text)||
+       ['shadow','schattenorb','frostgeist'].includes(fam))
+      out.add('ghost');
+
+    if(fl.has('laser')||fl.has('needle')||fl.has('pierce')||
+       fl.has('heavyknock')||fl.has('bounce')||
+       ['panzer','spaeher','messerfliege','bird'].includes(fam)||
+       /blitz|bohr|nadel|panzer|klinge|eisen/.test(text))
+      out.add('machine');
+
+    if(/herz|seele|nacht|wurz|kelch|kristall|pumpe/.test(text))
+      out.add('heart');
+
+    if(it.famil) out.add('swarm');
+
+    return out;
+  }
+
+  function categoryCounts(p){
+    const db=itemsDb();
+    const counts={element:0,ghost:0,machine:0,heart:0,swarm:0};
+    const unique=new Set(p?.items||[]);
+    for(const id of unique){
+      const cats=categoriesForItem(id,db[id]);
+      for(const c of cats) counts[c]=(counts[c]||0)+1;
+    }
+    return counts;
+  }
+
+  function notify(title,desc,color='#e6d8c8',major=false){
+    if(!P7.notifications) return;
+    state.notices.push({
+      title,desc,color,major,
+      t:major?3.2:2.5,
+      max:major?3.2:2.5
+    });
+    if(state.notices.length>5) state.notices.shift();
+  }
+
+  function ensurePlayerState(p){
+    if(!p) return false;
+    if(state.player===p) return true;
+
+    state.player=p;
+    state.synergies=new Set();
+    state.transformations=new Set();
+    state.scanCd=0;
+    state.swarmCd=1.6;
+    state.heartWardRoom=null;
+    state.heartWardTried=false;
+    return true;
+  }
+
+  function scanBuild(announce=true){
+    const p=currentPlayer();
+    if(!p) return false;
+    ensurePlayerState(p);
+
+    const nextSyn=new Set();
+    for(const s of SYNERGIES){
+      if(s.test(p)) nextSyn.add(s.id);
+    }
+
+    const counts=categoryCounts(p);
+    const nextTrans=new Set();
+    for(const t of TRANSFORMATIONS){
+      if((counts[t.category]||0)>=3) nextTrans.add(t.id);
+    }
+
+    let changed=false;
+
+    for(const id of nextSyn){
+      if(!state.synergies.has(id)){
+        changed=true;
+        const s=SYNERGIES.find(x=>x.id===id);
+        if(announce) notify('SYNERGIE: '+s.name,s.desc,s.color,false);
+      }
+    }
+
+    for(const id of nextTrans){
+      if(!state.transformations.has(id)){
+        changed=true;
+        const t=TRANSFORMATIONS.find(x=>x.id===id);
+        if(announce){
+          notify(t.name,t.desc,t.color,true);
+          fxBurst(p.x,p.y,t.color,18);
+          fxWave(p.x,p.y,58,t.color);
+          safe(()=>Sfx.item());
+        }
+      }
+    }
+
+    state.synergies=nextSyn;
+    state.transformations=nextTrans;
+
+    // Transformationsflags sind absichtlich abgeleitete Laufzeit-Flags.
+    if(nextTrans.has('schemenleib')) p.flags?.add?.('spectral');
+    if(nextTrans.has('elementbrut')) p.flags?.add?.('p7_elementbrut');
+    if(nextTrans.has('maschinenleib')) p.flags?.add?.('p7_maschine');
+    if(nextTrans.has('herzbrut')) p.flags?.add?.('p7_herzbrut');
+    if(nextTrans.has('schwarmkrone')) p.flags?.add?.('p7_schwarm');
+
+    P7.activeSynergies=[...nextSyn];
+    P7.activeTransformations=[...nextTrans];
+    return changed;
+  }
+
+  function hasSyn(id){ return P7.enabled && state.synergies.has(id); }
+  function hasTrans(id){ return P7.enabled && state.transformations.has(id); }
+
+  function applyDerivedStats(){
+    const p=currentPlayer();
+    if(!p?.stats || !P7.enabled) return;
+    const s=p.stats;
+
+    // Synergieboni
+    if(hasSyn('suchsplitter')) s.tps+=.25;
+    if(hasSyn('phasenjaeger')){ s.range+=28; s.tps+=.10; }
+    if(hasSyn('schattenchor')) s.tps+=.20;
+    if(hasSyn('eklipse')){ s.dmg+=.40; s.luck+=1; }
+
+    // Transformationsboni
+    if(hasTrans('elementbrut')){ s.dmg*=1.10; s.tps+=.15; }
+    if(hasTrans('schemenleib')){ s.speed+=.18; s.range+=30; }
+    if(hasTrans('maschinenleib')){ s.shot+=.40; s.tps+=.20; }
+    if(hasTrans('herzbrut')) s.dmg+=.35;
+    if(hasTrans('schwarmkrone')){ s.luck+=1; s.speed+=.10; }
+
+    // Dieselben Sicherheitsgrenzen wie der Kerncode.
+    s.tps=clamp7(s.tps,.6,8);
+    s.dmg=Math.max(.5,s.dmg);
+    s.speed=clamp7(s.speed,.8,3.8);
+    s.shot=clamp7(s.shot,2,8);
+    s.range=clamp7(s.range,80,470);
+  }
+
+  /* ---------------------------------------------------------------------
+     GAMEPLAY-HOOKS
+     --------------------------------------------------------------------- */
+
+  wrap('recomputeStats',old=>function(...args){
+    const r=old.apply(this,args);
+    scanBuild(false);
+    applyDerivedStats();
+    return r;
+  });
+
+  wrap('acquireItem',old=>function(...args){
+    const r=old.apply(this,args);
+    const changed=scanBuild(true);
+    // Das Original hat vor unserem Scan bereits Stats neu berechnet.
+    // Bei neu aktivierter Form/Synergie einmal sauber neu berechnen.
+    if(changed && typeof window.recomputeStats==='function') recomputeStats();
+    return r;
+  });
+
+  wrap('startRun',old=>function(...args){
+    const r=old.apply(this,args);
+    state.player=null;
+    scanBuild(false);
+    if(typeof window.recomputeStats==='function') recomputeStats();
+    return r;
+  });
+
+  wrap('laufFortsetzen',old=>function(...args){
+    const r=old.apply(this,args);
+    if(r!==false){
+      state.player=null;
+      scanBuild(false);
+      if(typeof window.recomputeStats==='function') recomputeStats();
+    }
+    return r;
+  });
+
+  wrap('spawnTear',old=>function(x,y,a,s,f,fromFam,...rest){
+    const t=old.call(this,x,y,a,s,f,fromFam,...rest);
+    if(!P7.enabled || !t) return t;
+
+    if(hasSyn('bohrspringer')){
+      t.pierce=true;
+      t.bounce=Math.max(Number(t.bounce)||0,4);
+      t.dmg*=1.12;
+      t.__p7Bohr=true;
+    }
+
+    if(hasSyn('harpune')){
+      t.pierce=true;
+      t.r=Math.max(5.5,Number(t.r)||5);
+      t.dmg*=1.20;
+      t.life*=1.12;
+      t.__p7Harpune=true;
+    }
+
+    if(hasTrans('maschinenleib')){
+      t.vx*=1.06;
+      t.vy*=1.06;
+      t.__p7Machine=true;
+    }
+
+    return t;
+  });
+
+  wrap('fireShot',old=>function(aim,...rest){
+    const g=game(),p=g?.player;
+    const r=old.call(this,aim,...rest);
+    if(!P7.enabled || !p || !hasSyn('sechsfach')) return r;
+
+    const base=Math.atan2(aim.y,aim.x);
+    const s={...p.stats,dmg:p.stats.dmg*.58,range:p.stats.range*.88};
+
+    for(const off of [-.44,.44]){
+      const a=base+off;
+      if(hasFlag('laser',p) && typeof window.fireLaser==='function'){
+        fireLaser(a,s.dmg);
+      }else if(typeof window.spawnTear==='function'){
+        const t=spawnTear(p.x,p.y-4,a,s,p.flags,false);
+        if(t) t.__p7Outer=true;
+      }
+    }
+    return r;
+  });
+
+  wrap('fireLaser',old=>function(a,dmg,src,...rest){
+    const g=game();
+    const before=g?.lasers?.length||0;
+    let d=dmg;
+
+    if(P7.enabled && hasSyn('geisterlaser')) d*=1.18;
+    if(P7.enabled && hasTrans('maschinenleib')) d*=1.10;
+
+    const r=old.call(this,a,d,src,...rest);
+
+    if(g?.lasers && g.lasers.length>before){
+      for(let i=before;i<g.lasers.length;i++){
+        if(hasSyn('geisterlaser')) g.lasers[i].__p7Ghost=true;
+        if(hasTrans('maschinenleib')) g.lasers[i].__p7Machine=true;
+      }
+    }
+    return r;
+  });
+
+  wrap('fireBeam',old=>function(aim,...rest){
+    const g=game();
+    const before=g?.beams?.length||0;
+    const r=old.call(this,aim,...rest);
+
+    if(!P7.enabled || !g?.beams) return r;
+
+    for(let i=before;i<g.beams.length;i++){
+      const b=g.beams[i];
+      if(hasSyn('elementstrahl')){
+        b.dmg*=1.15;
+        b.w*=1.28;
+        b.__p7Element=true;
+      }
+      if(hasTrans('maschinenleib')){
+        b.dmg*=1.08;
+        b.__p7Machine=true;
+      }
+    }
+    return r;
+  });
+
+  wrap('hitEnemyWithMods',old=>function(e,dmg,a,isTear,...rest){
+    let d=dmg;
+
+    if(P7.enabled && hasSyn('thermoschock')){
+      d*=1.20;
+    }
+
+    const before=Number(e?.hp)||0;
+    const r=old.call(this,e,d,a,isTear,...rest);
+
+    if(!P7.enabled || !e) return r;
+
+    // Gift + Feuer: jeder vierte Treffer erzeugt eine kleine Kettenwelle.
+    if(hasSyn('siedegift') && !e.dead){
+      e.__p7Siede=(e.__p7Siede||0)+1;
+      if(e.__p7Siede>=4){
+        e.__p7Siede=0;
+        const g=game(),p=g?.player;
+        const splash=Math.max(1,(p?.stats?.dmg||d)*.35);
+
+        fxFlash(e.x,e.y,e.r+12,'#d7b650');
+        fxWave(e.x,e.y,48,'#c7b34d');
+
+        for(const other of g?.enemies||[]){
+          if(other===e||other.dead) continue;
+          if(Math.hypot(other.x-e.x,other.y-e.y)>58) continue;
+          other.poison=Math.max(other.poison||0,2.2);
+          other.burn=Math.max(other.burn||0,2.2);
+          directDamage(other,splash);
+        }
+      }
+    }
+
+    // Elementbrut: kontrollierter Elementpuls, höchstens per Zufallstreffer.
+    if(hasTrans('elementbrut') && !e.dead &&
+       (hasFlag('poison')||hasFlag('burn')||hasFlag('frost')) &&
+       randomChance(.10)){
+      const g=game(),p=g?.player;
+      const pulse=Math.max(1,(p?.stats?.dmg||d)*.22);
+      for(const other of g?.enemies||[]){
+        if(other===e||other.dead) continue;
+        if(Math.hypot(other.x-e.x,other.y-e.y)>44) continue;
+        directDamage(other,pulse);
+      }
+      fxWave(e.x,e.y,38,'#d0c66a');
+    }
+
+    return r;
+  });
+
+  wrap('killEnemy',old=>function(e,...rest){
+    const wasAlive=!!e && !e.dead;
+    const x=e?.x,y=e?.y;
+    const r=old.call(this,e,...rest);
+
+    if(!P7.enabled || !wasAlive || !e?.dead || state.chainGuard>0) return r;
+
+    if(hasSyn('seuchenfrost')){
+      const g=game(),p=g?.player;
+      state.chainGuard++;
+      try{
+        const splash=Math.max(1,(p?.stats?.dmg||3)*.22);
+        for(const other of g?.enemies||[]){
+          if(other===e||other.dead) continue;
+          if(Math.hypot(other.x-x,other.y-y)>72) continue;
+          other.poison=Math.max(other.poison||0,2.5);
+          other.frost=Math.max(other.frost||0,1.7);
+          directDamage(other,splash);
+        }
+      }finally{
+        state.chainGuard--;
+      }
+      fxBurst(x,y,'#a9d9ae',8);
+      fxWave(x,y,66,'#9ed99e');
+    }
+
+    return r;
+  });
+
+  wrap('hurtPlayer',old=>function(halves,force,...rest){
+    const g=game(),p=g?.player;
+
+    if(P7.enabled && p && hasTrans('herzbrut') && !force){
+      const room=String(g.roomKey??'');
+      if(state.heartWardRoom!==room){
+        state.heartWardRoom=room;
+        state.heartWardTried=false;
+      }
+
+      if(!state.heartWardTried){
+        state.heartWardTried=true;
+        if(randomChance(.25)){
+          addTextSafe(p.x,p.y-24,'HERZBRUT SCHÜTZT','#e58a98');
+          fxWave(p.x,p.y,46,'#d66b7d');
+          fxFlash(p.x,p.y,18,'#f0a2ad');
+          safe(()=>Sfx.heart());
+          return false;
+        }
+      }
+    }
+
+    return old.call(this,halves,force,...rest);
+  });
+
+  function swarmAttack(dt){
+    if(!P7.enabled || !hasTrans('schwarmkrone')) return;
+    const g=game(),p=g?.player;
+    if(!p || !g?.enemies?.length || !g?.familiars?.length) return;
+
+    state.swarmCd-=dt;
+    if(state.swarmCd>0) return;
+
+    state.swarmCd=2.45;
+    let target=null,bd=1e9;
+    for(const e of g.enemies){
+      if(e.dead||e.ghosted) continue;
+      const d=Math.hypot(e.x-p.x,e.y-p.y);
+      if(d<bd){bd=d;target=e;}
+    }
+    if(!target) return;
+
+    const count=g.familiars.length;
+    const dmg=2+count*.8+(p.stats?.dmg||3)*.15;
+    directDamage(target,dmg);
+
+    fxFlash(target.x,target.y,target.r+7,'#d6c770');
+    fxBurst(target.x,target.y,'#c7b96c',Math.min(10,4+count));
+    addTextSafe(target.x,target.y-18,'SCHWARM','#d8ca77');
+  }
+
+  wrap('updateGame',old=>function(dt,...rest){
+    const r=old.call(this,dt,...rest);
+    if(!P7.enabled) return r;
+
+    const p=currentPlayer();
+    if(!p) return r;
+    ensurePlayerState(p);
+
+    state.scanCd-=dt;
+    if(state.scanCd<=0){
+      state.scanCd=.30;
+      const changed=scanBuild(true);
+      if(changed && typeof window.recomputeStats==='function') recomputeStats();
+    }
+
+    swarmAttack(dt);
+
+    for(const n of state.notices) n.t-=dt;
+    state.notices=state.notices.filter(n=>n.t>0);
+    return r;
+  });
+
+  /* ---------------------------------------------------------------------
+     VISUELLE RÜCKMELDUNG
+     --------------------------------------------------------------------- */
+
+  function circle(x,y,r,color,a=1,w=1){
+    ctx.save();
+    ctx.globalAlpha*=a;
+    ctx.strokeStyle=color;
+    ctx.lineWidth=w;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,TAU7);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function dot(x,y,r,color,a=1){
+    ctx.save();
+    ctx.globalAlpha*=a;
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,TAU7);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function transformationAura(p){
+    if(!P7.transformationVisuals || !P7.enabled || !p || p.dead) return;
+    const t=now7();
+
+    if(hasTrans('elementbrut')){
+      const colors=['#9ed36e','#f19a55','#9fd9ef'];
+      for(let i=0;i<3;i++){
+        const a=t*(.8+i*.12)+i*TAU7/3;
+        dot(p.x+Math.cos(a)*14,p.y-5+Math.sin(a)*10,1.4,colors[i],.55);
+      }
+    }
+
+    if(hasTrans('schemenleib')){
+      circle(p.x,p.y-5,15+Math.sin(t*2)*1.2,'#a5c9e9',.18,1);
+    }
+
+    if(hasTrans('maschinenleib')){
+      for(let i=0;i<3;i++){
+        const a=-t*1.4+i*TAU7/3;
+        const x=p.x+Math.cos(a)*17,y=p.y-5+Math.sin(a)*12;
+        ctx.save();
+        ctx.globalAlpha=.35;
+        ctx.fillStyle='#c5ccd2';
+        ctx.fillRect(x-1.2,y-1.2,2.4,2.4);
+        ctx.restore();
+      }
+    }
+
+    if(hasTrans('herzbrut')){
+      const pulse=Math.pow(Math.max(0,Math.sin(t*2.8)),4);
+      circle(p.x,p.y-4,16+pulse*3,'#d66b7d',.16+.12*pulse,1.1);
+    }
+
+    if(hasTrans('schwarmkrone')){
+      const count=Math.min(5,game()?.familiars?.length||3);
+      for(let i=0;i<count;i++){
+        const a=t*.7+i*TAU7/count;
+        dot(p.x+Math.cos(a)*20,p.y-5+Math.sin(a)*14,1.1,'#d8ca77',.34);
+      }
+    }
+  }
+
+  wrap('drawPlayer',old=>function(p,...rest){
+    const r=old.call(this,p,...rest);
+    transformationAura(p);
+    return r;
+  });
+
+  wrap('drawTear',old=>function(t,...rest){
+    const r=old.call(this,t,...rest);
+    if(!P7.enabled || !t) return r;
+
+    if(t.__p7Harpune){
+      circle(t.x,t.y-(t.z||0)+9,Math.max(3,t.r*.85),'#efe5d4',.32,.8);
+    }else if(t.__p7Bohr){
+      circle(t.x,t.y-(t.z||0)+9,Math.max(3,t.r*.80),'#c9c1a6',.24,.7);
+    }
+    return r;
+  });
+
+  wrap('drawLaser',old=>function(l,...rest){
+    if(P7.enabled && l?.__p7Ghost){
+      ctx.save();
+      ctx.shadowColor='rgba(170,220,255,.65)';
+      ctx.shadowBlur=12;
+      const r=old.call(this,l,...rest);
+      ctx.restore();
+      return r;
+    }
+    return old.call(this,l,...rest);
+  });
+
+  wrap('drawBeam',old=>function(b,...rest){
+    if(P7.enabled && b?.__p7Element){
+      ctx.save();
+      ctx.shadowColor='rgba(240,190,100,.65)';
+      ctx.shadowBlur=14;
+      const r=old.call(this,b,...rest);
+      ctx.restore();
+      return r;
+    }
+    return old.call(this,b,...rest);
+  });
+
+  function drawHudBadge(){
+    if(!P7.hudBadge || !P7.enabled || !window.ctx) return;
+    const syn=state.synergies.size,tr=state.transformations.size;
+    if(!syn&&!tr) return;
+
+    const label=`Σ ${syn}  ·  FORM ${tr}`;
+    const x=W-122,y=92,w=116,h=17;
+
+    ctx.save();
+    ctx.fillStyle='rgba(6,7,11,.60)';
+    ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle='rgba(235,220,202,.08)';
+    ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    ctx.font='600 6px ui-monospace,Consolas,monospace';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillStyle=tr?'#cfc08a':'#888188';
+    ctx.fillText(label,x+w/2,y+h/2);
+    ctx.restore();
+  }
+
+  wrap('drawHUD',old=>function(...args){
+    const r=old.apply(this,args);
+    drawHudBadge();
+    return r;
+  });
+
+  function drawNotice(n,index){
+    const age=n.max-n.t;
+    const a=Math.min(sat7(age/.18),sat7(n.t/.35));
+    const w=n.major?360:330;
+    const h=n.major?54:46;
+    const x=W/2-w/2;
+    const y=75+index*(h+7)-(1-a)*8;
+
+    ctx.save();
+    ctx.globalAlpha=a;
+
+    ctx.shadowColor='rgba(0,0,0,.55)';
+    ctx.shadowBlur=16;
+    ctx.fillStyle=n.major?'rgba(15,11,14,.94)':'rgba(8,9,14,.91)';
+    ctx.fillRect(x,y,w,h);
+    ctx.shadowBlur=0;
+
+    ctx.strokeStyle=n.color;
+    ctx.globalAlpha=a*.35;
+    ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    ctx.globalAlpha=a;
+
+    ctx.fillStyle=n.color;
+    ctx.fillRect(x,y,3,h);
+
+    ctx.font=`800 ${n.major?12:9}px ui-sans-serif,system-ui,sans-serif`;
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillStyle=n.color;
+    ctx.fillText(n.title,x+15,y+(n.major?17:14));
+
+    ctx.font='500 6.5px ui-sans-serif,system-ui,sans-serif';
+    ctx.fillStyle='#ada29c';
+    ctx.fillText(n.desc,x+15,y+(n.major?36:31));
+
+    ctx.restore();
+  }
+
+  wrap('render',old=>function(...args){
+    const r=old.apply(this,args);
+    if(!P7.enabled || !P7.notifications || !state.notices.length) return r;
+
+    if(typeof window.grundTransform==='function') grundTransform();
+
+    // Höchstens zwei Hinweise gleichzeitig, damit der Kampf sichtbar bleibt.
+    state.notices.slice(-2).forEach((n,i)=>drawNotice(n,i));
+    return r;
+  });
+
+  // Einmaliger Scan, falls Phase 7 in einen bereits laufenden Run injiziert wird.
+  setTimeout(()=>{
+    if(currentPlayer()){
+      state.player=null;
+      const changed=scanBuild(true);
+      if(changed && typeof window.recomputeStats==='function') recomputeStats();
+    }
+  },0);
+
+  console.info(
+    '[KELLERBRUT] Phase 7 aktiv — 12 Item-Synergien + 5 Transformationen'
   );
 })();
 </script>

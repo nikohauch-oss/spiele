@@ -173,6 +173,32 @@ Kontexts trägt den Faktor, im ganzen Spielcode wird weiterhin in 640×360
 gerechnet. Ändert sich die Fenstergröße, wird der vorgebackene
 Raumhintergrund verworfen und in der neuen Auflösung neu gezeichnet.
 
+**Phase 7: Synergien und Transformationen.** Der erste Gameplay-Aufsatz nach
+dem Grafik-Overhaul. Er erfindet keine neuen Items, sondern belohnt
+Kombinationen der vorhandenen — und rechnet sie zur Laufzeit aus den Flags
+aus, weshalb er auch für einen geladenen Durchlauf gilt.
+
+**Zwölf Synergien**, je zwei zusammenpassende Wirkungen: *Siedegift*
+(Gift + Feuer), *Thermoschock* (Feuer + Frost, +20 % Schaden),
+*Seuchenfrost* (Gift + Frost), *Gebrochener Chor* (Drei- + Vierklang, zwei
+Außenschüsse mehr), *Bohrspringer* (Durchschlag + Abpraller), *Suchsplitter*
+(Homing + Splitter), *Geisterlaser* (Laser + Spektral), *Elementstrahl*
+(Höllenstrahl + zwei Elemente), *Kellerharpune* (Riesentropfen + Nadelregen),
+*Phasenjäger* (Homing + Spektral), *Schattenchor* (Schattengeselle +
+Schattenorb) und *Eklipse* (Seelenlicht + Nachtdorn).
+
+**Fünf Transformationen**, je drei verschiedene Fundstücke einer Art:
+*Elementbrut*, *Schemenleib*, *Maschinenleib*, *Herzbrut* und
+*Schwarmkrone*. Die Zuordnung leitet der Aufsatz aus Flags, Begleiterart und
+Itemnamen ab — zwei Fundstücke reichen nicht, es müssen drei sein.
+
+Weil das echtes Gameplay ist und nicht bloß Optik, prüft Testphase 28 jede
+einzelne davon nach: dass sich alle zwölf Synergien und alle fünf
+Transformationen gezielt auslösen lassen, dass ohne passende Items keine
+aktiv ist, dass Thermoschock wirklich Faktor 1,2 ergibt, dass der Gebrochene
+Chor von vier auf sechs Schüsse geht, und dass alles zusammen zehn Sekunden
+Dauerfeuer übersteht.
+
 **Grafik-Overhaul Phase 2.** Ein zusätzlicher Zeichen-Aufsatz hängt sich an
 `zeichneCharakter`, `drawPlayer`, `drawEnemy` und `drawFamiliar` und legt
 Politur darüber, ohne KI, Schaden, Trefferflächen, RNG oder Savegame zu
