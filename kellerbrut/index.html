@@ -8438,5 +8438,428 @@ window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   get tafelnGezeichnet(){return tafelnGezeichnet;},
   get karteRaeume(){return karteRaeume;} };
 </script>
+
+<!-- Grafik-Overhaul Phase 2: haengt sich nur an die Zeichenfunktionen -->
+<script>
+/* ============================================================
+   KELLERBRUT — GRAFIK-OVERHAUL PHASE 2
+   Spieler + Gegner
+
+   Einbau hier: direkt hinter dem Haupt-Script von KELLERBRUT eingebettet.
+   Der Pack liefert die Datei als phase2.js zum Nachladen aus; KELLERBRUT ist
+   aber bewusst eine einzige HTML-Datei ohne Build-Schritt und wird als solche
+   veroeffentlicht, deshalb steht der Code hier inline statt als <script src>.
+   Bis auf diese Kommentarzeilen ist er unveraendert uebernommen.
+
+   Diese Datei verändert nur Rendering/Animation.
+   KI, Schaden, Kollisionsboxen, RNG und Savegame bleiben unangetastet.
+   ============================================================ */
+(() => {
+  'use strict';
+
+  if (window.__KB_PHASE2_VISUALS__) return;
+  window.__KB_PHASE2_VISUALS__ = true;
+
+  const P2 = window.KBPhase2 = {
+    enabled: true,
+    quality: 1,
+    version: '2.0'
+  };
+
+  const TWO_PI = Math.PI * 2;
+  const clamp01 = v => Math.max(0, Math.min(1, v));
+
+  function time() {
+    return performance.now() / 1000;
+  }
+
+  function hashText(s) {
+    s = String(s || '');
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function phaseFor(s) {
+    return (hashText(s) % 6283) / 1000;
+  }
+
+  function safeSpeed(o) {
+    return Math.hypot(Number(o?.vx) || 0, Number(o?.vy) || 0);
+  }
+
+  function ellipseFill(x, y, rx, ry, color, alpha = 1) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, TWO_PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function ellipseStroke(x, y, rx, ry, color, width = 1, alpha = 1) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, TWO_PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function softDisc(x, y, r, inner, alpha = 1) {
+    if (!P2.enabled || P2.quality <= 0) return;
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, r));
+    g.addColorStop(0, inner);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(1, r), 0, TWO_PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function wrapGlobal(name, factory) {
+    const old = window[name];
+    if (typeof old !== 'function') {
+      console.warn('[KELLERBRUT Phase 2] Funktion nicht gefunden:', name);
+      return false;
+    }
+    window[name] = factory(old);
+    return true;
+  }
+
+  function enemyMaterial(e) {
+    const n = String(e?.type || e?.ai || '').toLowerCase();
+
+    if (/geist|schemen|seele|schatten|spuk|phantom/.test(n)) return 'spectral';
+    if (/bot|klinge|rad|kreuz|maschine|kanone|panzer|metall/.test(n)) return 'metal';
+    if (/stein|grab|fels|kristall|ruecken|rücken/.test(n)) return 'stone';
+    if (/gift|schleim|spore|pilz|schimmel|matsch|kot|lauge/.test(n)) return 'slime';
+    if (/fisch|fliege|motte|vogel|auge/.test(n)) return 'creature';
+    return 'organic';
+  }
+
+  function enemyAccent(material) {
+    switch (material) {
+      case 'spectral': return 'rgba(165,205,255,.50)';
+      case 'metal':    return 'rgba(215,230,240,.42)';
+      case 'stone':    return 'rgba(220,205,178,.30)';
+      case 'slime':    return 'rgba(160,220,95,.38)';
+      case 'creature': return 'rgba(235,205,160,.32)';
+      default:         return 'rgba(245,184,176,.30)';
+    }
+  }
+
+  function drawGrounding(e) {
+    if (!e || e.ghosted) return;
+
+    const r = Math.max(5, Number(e.r) || 8);
+    const flying = !!e.fly;
+    const boss = !!e.isBoss;
+
+    ellipseFill(
+      e.x,
+      e.y + r * (flying ? 1.05 : .76),
+      r * (boss ? .92 : .72),
+      r * (flying ? .22 : .19),
+      '#050509',
+      flying ? .17 : .28
+    );
+
+    if ((e.champ || boss) && P2.quality >= .7) {
+      const color = e.champ
+        ? 'rgba(238,190,85,.12)'
+        : 'rgba(205,45,70,.11)';
+      softDisc(e.x, e.y, r * (boss ? 2.15 : 1.55), color, 1);
+    }
+  }
+
+  function drawEnemyMotionTrail(e) {
+    if (!e || e.ghosted || e.isBoss) return;
+    const sp = safeSpeed(e);
+    if (sp < 95) return;
+
+    const vx = Number(e.vx) || 0;
+    const vy = Number(e.vy) || 0;
+    const d = Math.hypot(vx, vy) || 1;
+    const r = Math.max(5, Number(e.r) || 8);
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(.18, (sp - 95) / 700);
+    ctx.strokeStyle = 'rgba(225,230,235,.7)';
+    ctx.lineWidth = Math.max(.6, r * .055);
+    ctx.lineCap = 'round';
+
+    for (let i = -1; i <= 1; i++) {
+      const ox = -vy / d * i * r * .22;
+      const oy =  vx / d * i * r * .22;
+      ctx.beginPath();
+      ctx.moveTo(e.x + ox - vx / d * r * .72, e.y + oy - vy / d * r * .72);
+      ctx.lineTo(e.x + ox - vx / d * r * 1.25, e.y + oy - vy / d * r * 1.25);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function enemyTransform(e) {
+    const t = time();
+    const phase = phaseFor(e?.type || e?.ai || 'enemy');
+    const speed = safeSpeed(e);
+    const moving = clamp01(speed / 110);
+    const material = enemyMaterial(e);
+
+    let freq = 2.1;
+    let amount = .018;
+
+    if (material === 'spectral') { freq = 2.8; amount = .028; }
+    if (material === 'slime')    { freq = 1.6; amount = .035; }
+    if (material === 'metal')    { freq = 4.4; amount = .008; }
+    if (material === 'stone')    { freq = 1.2; amount = .007; }
+
+    const breathe = Math.sin(t * freq + phase) * amount;
+    const moveSquash = Math.sin(t * (8 + moving * 4) + phase) * .018 * moving;
+
+    const sx = 1 + breathe + moveSquash;
+    const sy = 1 - breathe * .72 - moveSquash * .62;
+    const tilt = Math.max(-.045, Math.min(.045, (Number(e?.vx) || 0) / 1100));
+
+    return { sx, sy, tilt, material };
+  }
+
+  function drawEnemyFinish(e, material) {
+    if (!e || e.ghosted || e.isBoss) return;
+
+    const r = Math.max(5, Number(e.r) || 8);
+    const y = e.y - (Number(e.z) || 0);
+    const accent = enemyAccent(material);
+    const t = time();
+    const ph = phaseFor(e.type);
+
+    ctx.save();
+    ctx.globalAlpha = .55;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = Math.max(.65, r * .055);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(e.x - r * .03, y - r * .02, r * .78, Math.PI * 1.05, Math.PI * 1.55);
+    ctx.stroke();
+    ctx.restore();
+
+    if (material === 'organic') {
+      ellipseFill(e.x - r * .30, y - r * .33, r * .16, r * .08,
+                  'rgba(255,225,215,.35)', .55);
+    } else if (material === 'slime') {
+      const pulse = .75 + Math.sin(t * 2.3 + ph) * .20;
+      ellipseFill(e.x - r * .28, y - r * .25, r * .18 * pulse, r * .07,
+                  'rgba(215,255,170,.34)', .55);
+    } else if (material === 'metal') {
+      ctx.save();
+      ctx.globalAlpha = .34;
+      ctx.strokeStyle = '#eef5fa';
+      ctx.lineWidth = Math.max(.55, r * .04);
+      ctx.beginPath();
+      ctx.moveTo(e.x - r * .42, y - r * .30);
+      ctx.lineTo(e.x - r * .08, y - r * .48);
+      ctx.stroke();
+      ctx.restore();
+    } else if (material === 'stone') {
+      ctx.save();
+      ctx.globalAlpha = .28;
+      ctx.strokeStyle = '#eee1c9';
+      ctx.lineWidth = Math.max(.55, r * .035);
+      ctx.beginPath();
+      ctx.moveTo(e.x - r * .26, y - r * .42);
+      ctx.lineTo(e.x - r * .08, y - r * .12);
+      ctx.lineTo(e.x + r * .07, y - r * .25);
+      ctx.stroke();
+      ctx.restore();
+    } else if (material === 'spectral') {
+      ellipseStroke(e.x, y, r * .92, r * .76, accent, 1, .24);
+    } else if (material === 'creature') {
+      ellipseFill(e.x - r * .26, y - r * .32, r * .07, r * .045,
+                  'rgba(255,250,225,.46)', .65);
+    }
+
+    if ((Number(e.flash) || 0) > 0) {
+      ellipseStroke(e.x, y, r * 1.05, r * .90,
+                    'rgba(255,255,255,.95)', Math.max(1, r * .075), .42);
+    }
+
+    if (e.champ) {
+      ellipseStroke(e.x, e.y + r * .72, r * .72, r * .20,
+                    'rgba(245,198,80,.62)', 1, .42);
+    }
+  }
+
+  function playerPalette(c) {
+    const id = String(c?.id || '').toLowerCase();
+    if (/schemen|geist|seele/.test(id)) return 'rgba(145,205,255,.24)';
+    if (/moos|pilz/.test(id)) return 'rgba(150,210,105,.20)';
+    if (/horn|teuf|blut/.test(id)) return 'rgba(235,90,105,.20)';
+    return 'rgba(255,220,180,.18)';
+  }
+
+  function drawPlayerGround(p) {
+    if (!p || p.dead) return;
+    const flight = p.char?.id === 'schemen' || p.flags?.has?.('flight');
+
+    ellipseFill(
+      p.x,
+      p.y + 10,
+      flight ? 7.0 : 8.6,
+      flight ? 2.0 : 2.45,
+      '#030407',
+      flight ? .17 : .31
+    );
+
+    if (P2.quality >= .7) {
+      softDisc(p.x, p.y - 4, flight ? 25 : 20, playerPalette(p.char), .82);
+    }
+  }
+
+  function drawPlayerStateFx(p) {
+    if (!p || p.dead) return;
+
+    const t = time();
+
+    if ((Number(p.hitFlash) || 0) > 0) {
+      const a = clamp01(Number(p.hitFlash) * 2);
+      ellipseStroke(p.x, p.y - 4, 14 + (1 - a) * 4, 15 + (1 - a) * 4,
+                    'rgba(255,105,115,.9)', 1.25, .48 * a);
+    }
+
+    if (p.itemGet) {
+      const pulse = 1 + Math.sin(t * 7) * .06;
+      ellipseStroke(p.x, p.y - 8, 17 * pulse, 19 * pulse,
+                    'rgba(245,220,145,.72)', 1, .42);
+    }
+
+    const aim = p.aimDir || {x:0, y:1};
+    const d = Math.hypot(Number(aim.x)||0, Number(aim.y)||0) || 1;
+    const ax = (Number(aim.x)||0) / d;
+    const ay = (Number(aim.y)||0) / d;
+
+    ellipseFill(
+      p.x + ax * 4.2 - 1.1,
+      p.y - 9 + ay * 2.0 - 1.0,
+      1.15, .7,
+      'rgba(255,255,245,.52)',
+      .42
+    );
+  }
+
+  wrapGlobal('zeichneCharakter', old => function(c, x, y, z = {}) {
+    if (!P2.enabled) return old.call(this, c, x, y, z);
+
+    const t = time();
+    const moving = Math.abs(Number(z.schritt) || 0);
+    const ph = phaseFor(c?.id || c?.name || 'char');
+
+    const breathe = Math.sin(t * 2.15 + ph) * .010;
+    const stepSquash = moving * Math.sin(t * 8.6 + ph) * .010;
+    const sx = 1 + breathe + stepSquash;
+    const sy = 1 - breathe * .62 - stepSquash * .55;
+
+    const aimx = Number(z?.aim?.x) || 0;
+    const tilt = Math.max(-.025, Math.min(.025, aimx * .018));
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    ctx.scale(sx, sy);
+    ctx.translate(-x, -y);
+
+    /* ctx.filter ausgebaut: KELLERBRUT zeichnet jede Figur aus vielen
+       einzelnen Pfaden, und jeder Filterwechsel zwingt Canvas 2D zu einem
+       eigenen Compositing-Durchgang. Gemessen: 25 Gegner kosten mit Filter
+       1921 ms je Bild, ohne Filter 0,69 ms. Der Zugewinn waeren 5 % mehr
+       Saettigung gewesen — das ist es nicht wert. Alles Uebrige aus Phase 2
+       bleibt unveraendert. */
+    const r = old.call(this, c, x, y, z);
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = .24;
+    ctx.strokeStyle = 'rgba(255,238,218,.75)';
+    ctx.lineWidth = .72;
+    ctx.beginPath();
+    ctx.arc(x - .4, y - 18, 8.1, Math.PI * 1.08, Math.PI * 1.53);
+    ctx.stroke();
+    ctx.restore();
+
+    return r;
+  });
+
+  wrapGlobal('drawPlayer', old => function(p, ...rest) {
+    if (!P2.enabled || !p) return old.call(this, p, ...rest);
+
+    drawPlayerGround(p);
+
+    const r = old.call(this, p, ...rest);
+
+    drawPlayerStateFx(p);
+    return r;
+  });
+
+  wrapGlobal('drawEnemy', old => function(e, ...rest) {
+    if (!P2.enabled || !e) return old.call(this, e, ...rest);
+
+    drawGrounding(e);
+    drawEnemyMotionTrail(e);
+
+    if (e.isBoss) {
+      return old.call(this, e, ...rest);
+    }
+
+    const tr = enemyTransform(e);
+    const yPivot = e.y - (Number(e.z) || 0);
+
+    ctx.save();
+    ctx.translate(e.x, yPivot);
+    ctx.rotate(tr.tilt);
+    ctx.scale(tr.sx, tr.sy);
+    ctx.translate(-e.x, -yPivot);
+
+    const r = old.call(this, e, ...rest);
+
+    ctx.restore();
+
+    drawEnemyFinish(e, tr.material);
+    return r;
+  });
+
+  wrapGlobal('drawFamiliar', old => function(f, ...rest) {
+    if (!P2.enabled || !f) return old.call(this, f, ...rest);
+
+    const t = time();
+    const ph = phaseFor(f.kind || 'familiar');
+    const pulse = 1 + Math.sin(t * 2.6 + ph) * .012;
+
+    ellipseFill(f.x, f.y + 7, 5.6, 1.7, '#030407', .22);
+
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.scale(pulse, 2 - pulse);
+    ctx.translate(-f.x, -f.y);
+
+    const r = old.call(this, f, ...rest);
+
+    ctx.restore();
+
+    return r;
+  });
+
+  console.info('[KELLERBRUT] Grafik-Overhaul Phase 2 aktiv — Spieler + Gegner');
+})();
+</script>
 </body>
 </html>

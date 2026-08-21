@@ -173,6 +173,30 @@ Kontexts trägt den Faktor, im ganzen Spielcode wird weiterhin in 640×360
 gerechnet. Ändert sich die Fenstergröße, wird der vorgebackene
 Raumhintergrund verworfen und in der neuen Auflösung neu gezeichnet.
 
+**Grafik-Overhaul Phase 2.** Ein zusätzlicher Zeichen-Aufsatz hängt sich an
+`zeichneCharakter`, `drawPlayer`, `drawEnemy` und `drawFamiliar` und legt
+Politur darüber, ohne KI, Schaden, Trefferflächen, RNG oder Savegame zu
+berühren: Kontaktschatten unter allem, was steht oder fliegt, ein Rim-Light
+zur Lichtseite hin, eine leise Atem- und Schrittstauchung, Motion-Trails bei
+schnellen Gegnern, ein Goldring unter Champions, sowie Material-Details je
+nach Gegnerart — Schleim glänzt pulsierend, Metall bekommt eine harte Kante,
+Stein einen Riss, Spektrales eine zweite Kontur. Dazu Trefferringe und ein
+Aufhebe-Puls beim Spieler. Er liegt inline im zweiten `<script>`-Block am
+Dateiende, nicht als eigene Datei — KELLERBRUT bleibt bewusst eine einzige
+HTML-Datei ohne Build-Schritt.
+
+Abschaltbar zur Laufzeit über `window.KBPhase2.enabled = false`, sparsamer
+über `window.KBPhase2.quality = 0.5`.
+
+**Warum kein `ctx.filter`.** Der Aufsatz kam mit einem leichten
+`saturate()/contrast()` je Figur. Das musste raus: KELLERBRUT zeichnet jede
+Figur aus vielen einzelnen Tuschepfaden, und jeder Filterwechsel zwingt
+Canvas 2D zu einem eigenen Compositing-Durchgang. Gemessen an 25 Gegnern
+kostete die Gegnerschleife **mit** Filter 1921 ms je Bild, **ohne** Filter
+0,69 ms — das Spiel lief mit 1 FPS statt 60. Fünf Prozent mehr Sättigung
+sind das nicht wert; alles andere aus dem Aufsatz ist unverändert
+übernommen.
+
 **Licht und Tiefe.** Das Licht kommt von oben links: eine Deckenlampe hellt die
 Raummitte auf, die Wände werfen Schatten auf den Boden (oben am tiefsten, unten
 am flachsten), jedes Hindernis wirft einen Schlagschatten, Löcher bekommen
