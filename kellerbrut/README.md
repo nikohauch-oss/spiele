@@ -202,6 +202,31 @@ der Aufsatz liest den Phasenwechsel ab und zeichnet dazu.
 Abschaltbar über `window.KBPhase3.enabled = false`; einzeln lassen sich
 `cinematicIntro`, `bossBar` und `deathFx` ausschalten.
 
+**Grafik-Overhaul Phase 4.** Items, Fundstücke und Kampfeffekte. Eigene
+Auren für Münzen, Herzen, Seelen- und schwarze Herzen, Bomben, Schlüssel,
+Karten, Pillen, Truhen, Container und Damage-Up; Glanzpunkte auf seltener
+Beute; farbiges Licht unter den Podesten; Spuren und Glow auf Spieler- wie
+Gegnergeschossen, deutlich unterscheidbar nach Gift, Feuer, Frost und
+Explosiv; Bloom auf Strahlen und Lasern; Bomben zeigen deutlicher, wie nah
+sie an der Explosion sind; gerichtete Trefferpartikel, Bursts beim
+Item-Aufheben und Truhenöffnen. Dieser Aufsatz brauchte keinen Eingriff — er
+kommt ohne `ctx.filter` aus und lief auf Anhieb mit 60 FPS.
+
+**Grafik-Overhaul Phase 5.** Die Oberflächen. Als einziger der vier Aufsätze
+*ersetzt* er Funktionen vollständig statt sie zu umhüllen: `drawMenu`,
+`drawStatistik`, `drawOptionen`, `drawCharSel`, `drawHUD`, `drawPause`,
+`drawPostRun` und `drawBossIntro`. Neu sind ein Hauptmenü mit animiertem
+Kellerhintergrund, eine Charakterauswahl mit großer Karte, Werte-Balken und
+Nachbarvorschau, gefasste HUD-Panels für Herzen, Vorräte, Aktivitem und
+Tasche, eine eingerahmte Minimap, Etagen- und Seed-Chips, ein eigener
+Bosslebensbalken, ein neuer Pause-Screen und eine neue Auswertung.
+
+Weil er `drawHUD` ersetzt statt umhüllt, wurde geprüft, was dabei
+verlorengehen könnte — nichts ist es: die Fluchanzeige der Etage kennt er,
+die Item-Erklärungen hängen an `render()` statt am HUD, die Item-Liste der
+Pause behält Namen, Wirkung und Blättern, und die vier Raumecken bleiben
+hinter den Panels sichtbar (nachgemessen an den Pixeln).
+
 **Warum kein `ctx.filter`.** Beide Aufsätze kamen mit einem leichten
 `saturate()/contrast()` je Figur. Das musste raus: KELLERBRUT zeichnet jede
 Figur aus vielen einzelnen Tuschepfaden, und Canvas 2D rendert alles, was
