@@ -1,0 +1,12 @@
+{
+  "name": "kellerbrut",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KELLERBRUT — ein 2D-Twin-Stick-Roguelite in einer einzigen HTML-Datei",
+  "scripts": {
+    "test": "node test/smoketest.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

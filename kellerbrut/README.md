@@ -1,0 +1,819 @@
+# KELLERBRUT
+
+Ein 2D-Twin-Stick-Roguelite im Geist von *The Binding of Isaac* — mit
+denselben Mechaniken, aber komplett eigenen Grafiken, Namen und Items.
+Alles steckt in **einer einzigen HTML-Datei** (`index.html`, ca. 2800 Zeilen):
+kein Build, keine Abhängigkeiten, keine externen Assets.
+
+**Spielen:** `index.html` im Browser öffnen. Fertig.
+
+---
+
+## Steuerung
+
+| Taste | Wirkung |
+|---|---|
+| WASD | Bewegen |
+| Pfeiltasten | Schießen (8 Richtungen) |
+| E | Aktives Item benutzen |
+| Leertaste | Bombe legen |
+| Q | Pille / Karte benutzen |
+| P oder ESC | Pause |
+| M / N | Musik / Ton umschalten |
+
+Gamepads werden unterstützt: linker Stick bewegt, rechter Stick schießt,
+A = Bombe, B = aktives Item, X = Pille/Karte, Start = Pause.
+
+---
+
+## Was drin ist
+
+**Kampf.** Tränen als Projektile mit Reichweite, Flughöhe samt Schatten und
+Streuung. Die Statwerte sind Tempo, Feuerrate, Schaden, Reichweite,
+Schussgeschwindigkeit und Glück. Treffer erzeugen Rückstoß und Screenshake.
+
+**Leben.** Rote Herzcontainer in halben Schritten, dazu Seelenherzen und
+schwarze Herzen (die beim Verlust alle Gegner im Raum verletzen). Ein Treffer
+kostet ein halbes Herz, danach kurze Unverwundbarkeit mit Blinken.
+
+**Etagen.** Sechs Etagen mit eigenen Tilesets und Gegnerpools, prozedural auf
+einem Raster erzeugt. Raumtypen: Start, Normal, Schatzraum, Shop, Boss,
+Geheimraum, Fluchraum, Opferraum und Arkade. Die Automap oben rechts deckt
+sich beim Erkunden auf.
+
+**Schlüssel sind garantiert.** Jede Etage legt 1–2 Schlüssel aus, und zwar
+immer in Räumen, die man ohne Schlüssel und ohne Bombe erreicht — sonst
+bräuchte man ja einen Schlüssel, um an den Schlüssel zu kommen. Sie liegen
+außerdem nur auf Feldern, die zu Fuß mit dem Raumrand verbunden sind, also nie
+in einer von Steinen umschlossenen Nische. Dazu kommen die üblichen
+Zufallsfunde.
+
+**Geld ist knapp, aber nicht zu knapp.** Jede Etage 1 und 2 legt einen
+garantierten Münzfund aus — ein Fünferstück, manchmal mit einer einzelnen
+Münze daneben —, ab Etage 3 nur noch etwa jede zweite. Er liegt nach denselben
+Regeln wie die garantierten Schlüssel: nur in Räumen, die man ohne Schlüssel
+und ohne Bombe erreicht. Dazu fällt aus Gegnern, Steinen und Kothaufen etwas
+öfter Geld, und jeder zwölfte Münzfund ist ein Fünferstück statt einer
+einzelnen Münze (Glück erhöht beides). Vorher kamen auf Etage 1 im Schnitt
+gut fünf Münzen zusammen — der Artikel auf dem Ladenpodest kostet fünfzehn,
+man stand also regelmäßig vor einem Laden, den man nicht benutzen konnte.
+Jetzt sind es rund zwölf auf Etage 1 und etwa hundertzehn über einen ganzen
+Durchlauf. Der Smoke-Test rechnet beides nach, damit die Wirtschaft nicht
+unbemerkt kippt.
+
+**Schatzräume und Shops.** Shoptüren sind immer verschlossen. Schatzräume
+dagegen nur etwa zur Hälfte — die anderen stehen offen, damit man nie ganz
+ohne Item dasteht, bloß weil kein Schlüssel gefallen ist. Vor einer
+verschlossenen Tür genügt ein Schlüssel im Gepäck: sie springt von selbst auf
+und ein Schlüssel wird verbraucht. Hat man keinen, ertönt nur ein Fehlton.
+Schlüssel fallen aus geräumten Räumen, Steinen, Kothaufen und Truhen, kosten
+im Shop 5 Münzen, und es gibt sie über die Pille *Schlüsselglück* (+2) und den
+*Dietrichfinger* (+3, spart Schlüssel manchmal ganz ein). Die Karte
+*Die Pforte* öffnet alle Türen im Raum ohne Schlüssel.
+
+**Etagenflüche.** Ab Etage 2 kann ein Fluch über der ganzen Etage liegen —
+gewürfelt aus dem Seed, also reproduzierbar. Er ändert nicht, wie stark man
+ist, sondern wie sich die Etage anfühlt:
+
+- **Fluch der Finsternis** — der Raum liegt im Dunkeln, nur dein eigenes Licht
+  wandert mit. Feuerstellen, brennende Gegner, liegende Bomben und die Glut
+  der Glutmotte leuchten mit: man kann sich also Licht *machen*.
+- **Fluch des Labyrinths** — die Etage ist fast doppelt so weitläufig und die
+  Karte zeigt nur, wo du schon warst. Dafür liegt ein Schatzraum mehr darin.
+- **Fluch des Hungers** — jede Heilung wirkt nur halb. Mit dem Stahlherz
+  zusammen bleibt es bei der Hälfte, die beiden stapeln sich nicht zu null.
+- **Fluch der Blindheit** — auf Podesten und am Boden steht statt des Symbols
+  ein Fragezeichen, und die Tafel verrät nur noch den Preis. Was du gekauft
+  hast, erfährst du beim Aufheben.
+- **Fluch des Nebels** — die Karte zeigt einzig den Raum, in dem du stehst.
+
+Etage 1 bleibt immer ungeflucht, und ein Fluch bleibt die Ausnahme: über
+sechs Etagen trifft es im Schnitt jede vierte. Beim Betreten schlägt der
+Name rot statt golden an, und unten links steht er neben der Etage.
+
+**Herausforderungsraum.** In einer Sackgasse liegt eine Kammer mit einer
+eisernen Druckplatte in der Mitte. Wer darauftritt, schließt die Türen hinter
+sich und ficht drei Wellen aus — jede größer als die vorige, die letzte mit
+Champions. Oben zählt ein Zählwerk mit. Steht die letzte Welle, fährt der
+Lohn aus dem Boden: ein Item auf dem Podest, das schon beim Erzeugen der
+Etage feststand, dazu eine Goldtruhe. Ein bestandener Raum bleibt bestanden;
+die Platte ist danach nur noch Bodenschmuck.
+
+**Bibliothek.** Drei Lesepulte, auf jedem eine Karte oder eine Pille — nehmen
+darf man genau eines. Die anderen beiden zerfallen, und Zurückkommen bringt
+nichts nach. Beide Räume haben eigene Türen: eine vergitterte Eisentür für die
+Arena, dunkelviolettes Holz mit Messingbeschlag und aufgeschlagenem Buch für
+die Bibliothek, und auf der Karte ein ⚔ beziehungsweise ein ≡.
+
+**Teufels- und Engelsraum.** Hinter jedem Bossraum liegt eine Kammer, die
+erst der erlegte Boss aufschließt. Wer die Etage **ohne einen einzigen
+Treffer** übersteht, bekommt sie sicher — sonst entscheidet der Zufall
+(etwa jedes vierte Mal). Vorher ist sie weder sichtbar noch auf der Karte.
+
+Der **Teufel** legt zwei Items aus, bezahlt wird nicht mit Münzen, sondern
+mit einem **Herzcontainer** je Item; wer keinen entbehren kann, zahlt
+ersatzweise mit drei Seelen- oder schwarzen Herzen. Reicht beides nicht,
+bleibt das Angebot einfach stehen — daran stirbt niemand. Seine Ware ist roh
+stärker: *Blutpakt*, *Hornhaut*, *Schlangenzunge*, *Pechschwinge*,
+*Schwarze Galle*.
+
+Der **Engel** schenkt: ein Item umsonst und zwei Seelenherzen. Dafür zeigt er
+sich nur, solange man noch **keinen Handel mit dem Teufel** geschlossen hat.
+Wer einmal mit Herzen bezahlt hat, sieht ihn den ganzen Durchlauf nicht
+wieder — das ist die eigentliche Entscheidung eines Runs. Seine Ware schützt
+statt zu wüten: *Federkleid*, *Taufwasser*, *Richtstrahl*, *Schutzfeder*.
+
+Man erkennt die Türen sofort: die Teufelstür ist eine Ritualtür — blutrot,
+mit einem Siegel und glühendem Auge auf den Blättern und zwei brennenden
+Kerzen im Sturz; die Engelstür hell mit Kreuz, Heiligenschein und Flügeln.
+Auf der Automap stehen dafür kleine Hörner und ein Ring.
+
+**Zwölf Möblierungen** sorgen dafür, dass die Kammer nicht jedes Mal derselbe
+leere Raum ist. Beim Teufel: *Der Handelstisch* (Steintisch im Kreidekreis
+zwischen zwei Kohlebecken), *Das Schlachthaus* (Fleischerhaken an Ketten,
+Blutrinnen, Abfluss), *Der Pferch* (Ring angeketteter Schädel), *Die Waage*
+(die Ware liegt auf den Schalen), *Der Schlund* (Maul im Boden, die Ware auf
+zwei Simsen darüber), *Die Nagelkapelle* (Kerzen brennen verkehrt herum über
+einem blutigen Altar). Beim Engel: *Der Lichtschacht*, *Die Federkammer*,
+*Der Brunnen*, *Der Chor* (sechs gesichtslose Sänger an der Wand), *Die
+Waschung* (knöchelhoch klares Wasser, als einzige Kammer mit drei
+Seelenherzen) und *Das Auge im Licht*, das genau einmal blinzelt.
+
+Jede Möblierung stellt ihre Podeste selbst hin — auf den Tisch, an die Haken,
+auf die Simse. Die gewählte Kammer merkt sich der Raum (`room.kammerId`),
+beim Wiederbetreten steht dieselbe da. Eine neue braucht nur einen weiteren
+Eintrag in `KAMMERN` mit `bauen()` und `zeichnen()`.
+
+**Zwanzig benannte Grundrisse.** Jeder Normalraum kommt aus einem von zwanzig
+Plänen mit eigenem Einfall: der *Kreuzgang* teilt den Raum in vier Viertel, die
+*Säulenhalle* schluckt jeden weiten Schuss, die *Brücke* lässt nur einen
+schmalen Steg über ein Loch, das *Schneckenhaus* dreht sich als Spirale nach
+innen, der *Altar* liegt als Insel hinter Löchern und einem Stachelring. Man
+erkennt Räume dadurch wieder, statt immer dasselbe Gestrüpp zu sehen. In jedem
+Plan sind alle vier Türgassen begehbar und miteinander verbunden — auch dann,
+wenn jeder Zufallsstein wirklich steht.
+
+**Jede Etage hat ihre eigene Handschrift.** Nicht nur die Bodenfarbe ändert
+sich, sondern das Material, aus dem alles gemacht ist. Im *Feuchten Keller*
+sind es nasse Feldsteine, Pfützen und Moos in den Fugen, von der Decke tropft
+es. Die *Pilzgrotte* wächst aus jeder Fuge, die Feuerstellen brennen grün und
+Sporen steigen auf. Der *Knochengang* ist ein Beinhaus: Schädel im Boden,
+Rippenbögen, eingemauerte Schädel in den Wänden, kalter Zug quer durch den
+Raum. Im *Giftschlund* sind die Steine violette Kristalle, die Lauge frisst
+Flecken in den Boden und läuft die Wände herunter. Die *Blutkammer* ist
+Fleisch: Adern unter dem Boden, Schleifspuren, und der ganze Raum schlägt wie
+ein Herz. In der *Wurzel des Kellers* brechen Wurzeln durch den Boden und
+blasse Lichter treiben durch die Dunkelheit.
+
+**Scharfes Bild.** Gerechnet und gezeichnet wird in 640×360, aber die
+Leinwand bekommt so viele echte Bildpunkte, wie der Bildschirm an dieser
+Stelle hergibt (`leinwandAnpassen()`, Faktor `SKALA`, bis zu vierfach). Auf
+Full HD entsteht dadurch ein 1280×720- statt eines hochskalierten
+640×360-Bildes — nichts wird mehr weichgezogen. Die Grundtransformation des
+Kontexts trägt den Faktor, im ganzen Spielcode wird weiterhin in 640×360
+gerechnet. Ändert sich die Fenstergröße, wird der vorgebackene
+Raumhintergrund verworfen und in der neuen Auflösung neu gezeichnet.
+
+**Phase 7: Synergien und Transformationen.** Der erste Gameplay-Aufsatz nach
+dem Grafik-Overhaul. Er erfindet keine neuen Items, sondern belohnt
+Kombinationen der vorhandenen — und rechnet sie zur Laufzeit aus den Flags
+aus, weshalb er auch für einen geladenen Durchlauf gilt.
+
+**Zwölf Synergien**, je zwei zusammenpassende Wirkungen: *Siedegift*
+(Gift + Feuer), *Thermoschock* (Feuer + Frost, +20 % Schaden),
+*Seuchenfrost* (Gift + Frost), *Gebrochener Chor* (Drei- + Vierklang, zwei
+Außenschüsse mehr), *Bohrspringer* (Durchschlag + Abpraller), *Suchsplitter*
+(Homing + Splitter), *Geisterlaser* (Laser + Spektral), *Elementstrahl*
+(Höllenstrahl + zwei Elemente), *Kellerharpune* (Riesentropfen + Nadelregen),
+*Phasenjäger* (Homing + Spektral), *Schattenchor* (Schattengeselle +
+Schattenorb) und *Eklipse* (Seelenlicht + Nachtdorn).
+
+**Fünf Transformationen**, je drei verschiedene Fundstücke einer Art:
+*Elementbrut*, *Schemenleib*, *Maschinenleib*, *Herzbrut* und
+*Schwarmkrone*. Die Zuordnung leitet der Aufsatz aus Flags, Begleiterart und
+Itemnamen ab — zwei Fundstücke reichen nicht, es müssen drei sein.
+
+Weil das echtes Gameplay ist und nicht bloß Optik, prüft Testphase 28 jede
+einzelne davon nach: dass sich alle zwölf Synergien und alle fünf
+Transformationen gezielt auslösen lassen, dass ohne passende Items keine
+aktiv ist, dass Thermoschock wirklich Faktor 1,2 ergibt, dass der Gebrochene
+Chor von vier auf sechs Schüsse geht, und dass alles zusammen zehn Sekunden
+Dauerfeuer übersteht.
+
+**Grafik-Overhaul Phase 2.** Ein zusätzlicher Zeichen-Aufsatz hängt sich an
+`zeichneCharakter`, `drawPlayer`, `drawEnemy` und `drawFamiliar` und legt
+Politur darüber, ohne KI, Schaden, Trefferflächen, RNG oder Savegame zu
+berühren: Kontaktschatten unter allem, was steht oder fliegt, ein Rim-Light
+zur Lichtseite hin, eine leise Atem- und Schrittstauchung, Motion-Trails bei
+schnellen Gegnern, ein Goldring unter Champions, sowie Material-Details je
+nach Gegnerart — Schleim glänzt pulsierend, Metall bekommt eine harte Kante,
+Stein einen Riss, Spektrales eine zweite Kontur. Dazu Trefferringe und ein
+Aufhebe-Puls beim Spieler. Er liegt inline im zweiten `<script>`-Block am
+Dateiende, nicht als eigene Datei — KELLERBRUT bleibt bewusst eine einzige
+HTML-Datei ohne Build-Schritt.
+
+Abschaltbar zur Laufzeit über `window.KBPhase2.enabled = false`, sparsamer
+über `window.KBPhase2.quality = 0.5`.
+
+**Bosse als Highlight.** Phase 3 bringt Auren, Idle-Pulsieren,
+Angriffstelegraphen, Treffer-Rim-Light, Phasenwechsel-Burst und
+Todespartikel bereits mit. Vier Dinge fehlten und stehen in einem eigenen
+Block darüber:
+
+- **Größer, ohne die Trefferfläche anzufassen.** Die frühen Bosse (Radius 24
+  bis 30) wirkten neben den späteren (bis 52) wie kräftige Normalgegner.
+  Sie werden jetzt nur *gezeichnet* größer — bis zu einem Fünftel, mit einer
+  Kurve, die den ohnehin Großen nichts hinzufügt. `e.r` bleibt unangetastet,
+  Kollision und Treffer sind exakt wie zuvor.
+- **Angriffsanimation aus dem echten KI-Zustand.** Wechselt `e.state` oder
+  `e.pat`, hat der Boss gerade etwas getan; darauf folgt ein kurzer Ruck —
+  zusammenziehen, strecken, auspendeln — und ein heller Ring. Gelesen wird
+  nur, gefahren wird nichts.
+- **Ein Todesablauf statt eines Verschwindens.** Der Boss kippt, sinkt,
+  glüht von innen auf, verblasst, und aus ihm fahren sechsundzwanzig Trümmer
+  und zwei versetzte Druckwellen. Gezeichnet wird aus einer Kopie, damit der
+  eigentliche Gegner ganz normal aus `G.enemies` fliegt.
+- **Bildschirmschlag** bei angekündigten Einschlägen, Phasenwechseln und dem
+  Bosstod.
+
+**Die Mechanik bleibt, und das ist nachgemessen.** Testphase 30 vergleicht
+alle zwölf Bosse mit und ohne Aufwertung: Trefferradius, Leben und der
+Schaden eines Treffers sind auf die dritte Nachkommastelle gleich. Dazu:
+kleine Bosse werden sichtbar größer gezeichnet (Faktor 1,24), die großen
+nicht (1,00), der Boss zerfällt sichtbar und ist danach wirklich weg.
+
+**Grafik-Overhaul Phase 3.** Ein dritter Aufsatz kümmert sich um die Bosse.
+Er hängt sich an `drawBossSprite`, `drawRoom`, `updateBossAI`, `killEnemy`,
+`drawBossIntro`, `drawHUD` und `render` und bringt: eine eigene Optik für
+jede der zwölf Boss-KIs, kräftigere Schatten und Auren, individuelles
+Idle-Pulsieren, Angriffstelegraphen aus den vorhandenen Bosszuständen,
+Treffer-Rim-Light, einen Burst beim Phasenwechsel, die organische
+Verbindung beim Doppelherz, einen neuen Lebensbalken mit Phasenmarkierungen,
+Cinematic-Balken beim Intro, eigene Todesexplosionen und Unruhe bei wenig
+Leben. `updateBossAI` und `killEnemy` werden nur beobachtet, nicht verändert —
+der Aufsatz liest den Phasenwechsel ab und zeichnet dazu.
+
+Abschaltbar über `window.KBPhase3.enabled = false`; einzeln lassen sich
+`cinematicIntro`, `bossBar` und `deathFx` ausschalten.
+
+**Grafik-Overhaul Phase 4.** Items, Fundstücke und Kampfeffekte. Eigene
+Auren für Münzen, Herzen, Seelen- und schwarze Herzen, Bomben, Schlüssel,
+Karten, Pillen, Truhen, Container und Damage-Up; Glanzpunkte auf seltener
+Beute; farbiges Licht unter den Podesten; Spuren und Glow auf Spieler- wie
+Gegnergeschossen, deutlich unterscheidbar nach Gift, Feuer, Frost und
+Explosiv; Bloom auf Strahlen und Lasern; Bomben zeigen deutlicher, wie nah
+sie an der Explosion sind; gerichtete Trefferpartikel, Bursts beim
+Item-Aufheben und Truhenöffnen. Dieser Aufsatz brauchte keinen Eingriff — er
+kommt ohne `ctx.filter` aus und lief auf Anhieb mit 60 FPS.
+
+**Grafik-Overhaul Phase 5.** Die Oberflächen. Als einziger der vier Aufsätze
+*ersetzt* er Funktionen vollständig statt sie zu umhüllen: `drawMenu`,
+`drawStatistik`, `drawOptionen`, `drawCharSel`, `drawHUD`, `drawPause`,
+`drawPostRun` und `drawBossIntro`. Neu sind ein Hauptmenü mit animiertem
+Kellerhintergrund, eine Charakterauswahl mit großer Karte, Werte-Balken und
+Nachbarvorschau, gefasste HUD-Panels für Herzen, Vorräte, Aktivitem und
+Tasche, eine eingerahmte Minimap, Etagen- und Seed-Chips, ein eigener
+Bosslebensbalken, ein neuer Pause-Screen und eine neue Auswertung.
+
+Weil er `drawHUD` ersetzt statt umhüllt, wurde geprüft, was dabei
+verlorengehen könnte — nichts ist es: die Fluchanzeige der Etage kennt er,
+die Item-Erklärungen hängen an `render()` statt am HUD, die Item-Liste der
+Pause behält Namen, Wirkung und Blättern, und die vier Raumecken bleiben
+hinter den Panels sichtbar (nachgemessen an den Pixeln).
+
+**Grafik-Overhaul Phase 6.** Der Schlussschliff, als letzter Block geladen:
+gecachte Vignette, feines Filmkorn, ein Reveal beim Betreten eines Raums mit
+Richtungswirkung, Etagen-Titelkarte beim Abstieg, Bewegungsakzente bei hohem
+Tempo, Trefferfeedback am Bildrand, ein Randpuls bei wenig Leben, Lichtimpulse
+beim Aufheben und beim Wiederbeleben, weichere Tod- und Sieg-Blenden, kleine
+Trefferringe an Gegnern. Alle Wraps (`hurtPlayer`, `damageEnemy`,
+`acquireItem`, `enterRoom`, `playerDie`, `render`) rufen das Original auf und
+lesen nur ab — verändert wird nichts davon.
+
+Dazu bringt er ein Sicherheitsnetz mit: Phase 6 misst die geglättete Bildrate
+und senkt bei dauerhaft unter 48 FPS die Qualitätsstufe von Phase 2, 3 und 4
+ab, bis es wieder flüssig läuft. Nachgeprüft mit künstlicher Überlast:
+
+| | Bildrate | Qualität P2/P3/P4 |
+|---|---|---|
+| 25 Gegner | 60 FPS | 1 / 1 / 1 |
+| 700 Gegner | 16 FPS | **0,65 / 0,65 / 0,65** |
+| wieder 25 Gegner | 60 FPS | 1 / 1 / 1 |
+
+Es greift also nur, wenn es nötig ist, und stellt danach von selbst wieder her.
+
+**Warum kein `ctx.filter`.** Beide Aufsätze kamen mit einem leichten
+`saturate()/contrast()` je Figur. Das musste raus: KELLERBRUT zeichnet jede
+Figur aus vielen einzelnen Tuschepfaden, und Canvas 2D rendert alles, was
+unter einem Filter gezeichnet wird, in eine eigene Ebene und komponiert sie
+danach. Gemessen:
+
+| | ohne Aufsatz | mit Filter | ohne Filter |
+|---|---|---|---|
+| Gegnerschleife, 25 Gegner | 0,56 ms | **1921 ms** | 0,69 ms |
+| Bosskampf Kammermutter | 60 FPS | **2 FPS** | 61 FPS |
+
+Über alle zwölf Bosse hinweg fiel die Bildrate mit Filter auf 2–16 FPS. Der
+Quality-Regler und das Abschalten des Bossbalkens änderten daran nichts — es
+war jedes Mal allein der Filter. Fünf bis siebzehn Prozent mehr Sättigung
+sind das nicht wert; alles andere aus beiden Aufsätzen ist unverändert
+übernommen.
+
+**Gemäuer statt Füllfläche, Platten statt Schachbrett.** Die Wandbande war
+eine einfarbige Fläche mit einer Licht- und einer Schattenkante, der Boden ein
+Schachbrett aus zwei Tönen. Beides ist ersetzt:
+
+- **Bodenplatten** — große Steinplatten im Läuferverband, zwei Kacheln breit
+  und eine hoch, jede zweite Reihe um eine halbe Platte versetzt. Dunkle Fuge,
+  Lichtkante oben, Schattenkante unten, und jede Platte etwas anders hell,
+  damit der Boden nicht gegossen wirkt.
+- **Mauerwerk** — waagerechte Schichten mit versetzten Fugen in allen vier
+  Banden. Oben und links fangen die Steine Licht, unten und rechts liegen sie
+  im Schatten.
+- **Eckplatten** — an den vier Ecken ein größerer, dunklerer Block, der das
+  Gemäuer sichtbar zusammenhält.
+- **Wandlampen** — zwei Leuchten an der oberen Bande, jede mit einem
+  Lichtkegel, der in den Raum fällt. Die Farbe kommt aus dem Feuerschein der
+  Etage, brennt auf jeder also anders.
+
+Alles gebacken; zur Laufzeit kostet es nichts.
+
+**Ein alter Fehler in der Bodendeko.** Beim Nachbauen fiel auf, dass jede
+Etage nur die Hälfte ihrer Bodendekoration zeigte. Der Grund: dieselbe
+Zufallszahl entschied erst, *ob* ein Feld dekoriert wird (`rausch(k) > 0.42`
+→ überspringen), und dann *womit* (`(rausch(k)*4)|0`). Nach dem ersten Filter
+konnte der Wert nie über 0,42 liegen, mal vier also nie über 1,68 — die
+Varianten 2 und 3 waren auf **allen sechs Etagen** unerreichbar. Seit dem
+Spielstart. Der Aufrufer übergibt jetzt einen eigenen Schlüssel; die Auswahl,
+*welche* Felder Deko bekommen, bleibt unverändert, nur die Vielfalt stimmt.
+Damit erscheinen im Feuchten Keller endlich die Halme, die aus den Fugen
+wachsen, und auf jeder anderen Etage ihre beiden verlorenen Varianten.
+
+**Der Raum ist kein Rechteck.** Vier zusätzliche Lagen geben der Kachelfläche
+Tiefe, alle in die vorgebackene Bodenlage gerechnet und damit zur Laufzeit
+kostenlos:
+
+- **Bodenstruktur** — vierzehn große weiche Flecken, hell und dunkel im
+  Wechsel, an die Raumkoordinate geknüpft. Damit ist der Boden keine Tapete
+  mehr. Gezeichnet wird auf Viertelauflösung und hochgezogen: in voller
+  Größe kostete diese eine Lage 6,3 der 26,6 ms eines Raumwechsels, klein
+  gezeichnet sind es 2,2 — bei gleichem Ergebnis, weil das Hochziehen die
+  Flecken ohnehin weichzeichnet.
+- **Wandkante** — ein heller Grat oben und links, ein dunkler unten und
+  rechts. Erst dieses Paar aus Licht und Schatten liest sich als Lippe statt
+  als aufgemalter Streifen; das Licht kommt wie überall von oben links.
+- **Schadstellen** — zehn ausgebrochene Kerben entlang der Wandkante, außen
+  bündig an der Wand, innen ausgefranst, in der Tiefenfarbe der Etage.
+- **Dunkle Ecken** — anders als die bildschirmweite Vignette folgt diese
+  Abdunklung der Raumform, sackt also genau dort ab, wo der Raum endet. Die
+  Mitte bleibt unangetastet.
+
+**Dunkel ja, unlesbar nein.** Die Vorgabe war Tiefe, nicht Dunkelheit, und
+das ist nachgemessen statt geschätzt. Testphase 29 prüft: die Ecken sind
+spürbar dunkler als die Mitte, saufen aber nicht ins Schwarz ab; der Boden
+streut messbar; und vor allem — ein Gegner in der dunkelsten Ecke hebt sich
+noch immer klar vom Boden ab und behält mehr als die Hälfte des Kontrasts,
+den er in der hellen Mitte hätte. Auch bleiben die sechs Etagen
+unterschiedlich hell, statt alle gleich düster zu werden.
+
+Der Ruckeltest über achtzehn Raumwechsel in Folge (fünf pro Sekunde, weit
+härter als echtes Spielen): Median 16,6 ms je Bild, zwei von 219 Bildern
+über 33 ms — und die fallen in den Raumwechsel, der ohnehin hinter einer
+Blende liegt.
+
+**Licht und Tiefe.** Das Licht kommt von oben links: eine Deckenlampe hellt die
+Raummitte auf, die Wände werfen Schatten auf den Boden (oben am tiefsten, unten
+am flachsten), jedes Hindernis wirft einen Schlagschatten, Löcher bekommen
+helle und dunkle Innenkanten, Feuerstellen leuchten flackernd den Boden aus,
+und eine Vignette drückt die Dunkelheit von den Rändern herein. Der ruhende
+Teil davon wird beim Betreten eines Raums einmal auf zwei Nebenleinwände
+gezeichnet und danach nur noch kopiert — sonst wäre das mit Schraffur und
+Handkontur nicht bei 60 Bildern die Sekunde zu halten.
+
+**Türen (Türset V2).** Rahmen in leichter Aufsichtsperspektive mit zwei
+Türblättern, die aufschwingen, sobald alle Gegner im Raum tot sind. Zehn
+Sorten, und jede ist ein eigenes Konzept statt nur einer anderen Farbe:
+
+| Sorte | Konzept |
+|---|---|
+| normal | **Alte Kellertür** — grobe Maserung, zwei Querbeschläge, rostige Nägel, Risse im Holz |
+| Boss | **Knochentor** — Knochenkreuz vor dem Tor, Schädel und Rippen im Sturz, roter Schein pulsiert aus dem Spalt |
+| Schatz | **Rostige Doppelluke** — genietete Metallplatten, zwei goldene Ventilräder im Sturz |
+| Laden | **Abgeriegelt** — schräg vernagelte Bretter, Warnschild „VERBOTEN“ über dem Sturz |
+| Teufel | **Ritualtür** — Siegel mit rotem Auge auf den Blättern, zwei brennende Kerzen im Sturz |
+| Engel | heller Stein, Kreuz und Heiligenschein, Flügel im Sturz |
+| Fluch | **Fleischtür** — Adern und Nähte in der Haut, ein Auge, knöcherne Zähne im Durchgang, Knötchen pulsieren mit |
+| Geheimgang | **Schimmel & Befall** — aufgesprengte Risse, Pilze wachsen aus dem Rahmen |
+| Arena | **Eisen-Gefängnistür** — schwere Platten, Nieten, vergittertes Fenster im Sturz |
+| Bibliothek | dunkelviolettes Holz mit Messingbeschlag, aufgeschlagenes Buch im Sturz |
+
+Die Silhouette im Türsturz ist der Trick: sie liegt auch bei offener Tür noch
+da, also sieht man schon vom Nachbarraum aus, was dahinter wartet. Ein
+Vorhängeschloss kommt auf jede verschlossene Tür.
+
+Gezeichnet wird immer in lokalen Koordinaten, in denen `-y` nach außen zeigt;
+die Wandseite ergibt sich allein aus der Drehung (`DOOR_ROT`). Eine neue
+Türart braucht daher nur einen Eintrag in `baseStyle()` und einen
+Verzierungsblock in `drawDoor()`. Beides steckt in einer IIFE, damit die
+Zeichenhelfer (`bone`, `candle`, `eye`, `fungus`, `rivet`, `crack`) mit ihren
+sehr allgemeinen Namen nicht global werden. Kollision und Öffnungslogik
+liegen außerhalb und sind davon unberührt.
+
+**Seeds.** Gleicher Seed erzeugt garantiert dieselben Etagen — in der
+Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten
+rechts.
+
+**Jede Etage hat eigene Gegner.** Drei Kennzeichen-Arten je Etage, die es
+nirgendwo sonst gibt und die aus dem Material der Etage gemacht sind: im
+*Knochengang* Klapperer, Schädelroller und Rippenwächter, im *Giftschlund*
+Säureblase, Laugenkriecher und Giftsprüher, in der *Blutkammer* Blutegel,
+Aderngeist und Herzklopfer. Wer im Eintrag ein Feld `etage` trägt, gehört
+ausschließlich in diesen Pool — der Smoke-Test prüft das über alle Etagen und
+Seeds nach.
+
+**Inhalte.** 111 Items (passiv und aktiv), 65 Gegnertypen mit Champion-Varianten,
+12 Bosse mit mehreren Angriffsmustern und Phasenwechsel, 10 Pillen, 8 Karten,
+9 Charaktere (acht davon freischaltbar).
+
+**Alles ist in Tusche gezeichnet.** Die Welt wird wie mit der Feder gesetzt:
+leicht unrunde Pfade, dunkle Kontur mit schwankender Strichstärke, Schraffur
+statt Verlauf. Die Linien werden siebenmal je Sekunde neu gezogen, wie eine
+auf Dreier animierte Zeichnung. Das HUD bleibt ausgenommen — Zahlen und
+Herzen sollen ruhig stehen, deshalb schaltet `drawHUD()` den Stil ab
+(`tuscheAn`). Auch der Boden zeichnet ohne Kontur, sonst ergäbe jede Kachel
+ein Gitter, das alles andere erschlägt. Die ruhende Kulisse — Steine, Stacheln,
+Wucherungen, Löcher, Wände — wird vorgebacken und zittert deshalb nicht mit;
+Feuer, Wände-Bewuchs und alles Lebende schon.
+
+**Zwölf Bosse, alle groß.** Jede Etage hat zwei zur Auswahl, man trifft also
+nicht jedes Mal denselben. Die fünf Großen fallen besonders auf:
+
+- **Die Kammermutter** (Radius 52) füllt ein Drittel des Raumes. Sechs Arme
+  schlagen nacheinander ein, aus ihrem offenen Leib fällt Brut nach.
+- **Der Schlundvater** ist ein Maul im Boden, das nicht weggeht. Sein Sog
+  zieht einen ständig zu ihm, die Zunge peitscht heraus, wer zu nah kommt,
+  wird gebissen.
+- **Der Gehängte** schwingt am Strick quer durch den Raum. An jedem
+  Umkehrpunkt regnet es Finger.
+- **Die Fleischmade** wühlt sich unter dem Boden durch — dort ist sie
+  unverwundbar, man sieht nur den Hügel. Bei halber Kraft speit sie Brutmaden aus.
+- **Der Bittende** kniet in der Mitte und wächst mit jedem Viertel, das er
+  verliert; mit jeder Stufe schlägt ein weiteres Händepaar zu.
+
+Auch die sieben älteren sind gewachsen (Radius 24 bis 38 statt 18 bis 26).
+Alle Boss-Sprites rechnen jetzt mit `s = r/20`, ein anderer Radius zieht die
+ganze Zeichnung mit — vorher hätte ein größerer Boss winzige Augen bekommen.
+
+**Schläge werden angekündigt.** Ein Armschlag der Kammermutter füllt ein
+Viertel des Raumes; ohne Vorwarnung wäre ihm nicht auszuweichen. Deshalb
+zieht sich erst ein Ring auf der Stelle zusammen, dann schlägt es ein
+(`einschlagSetzen()`). Getroffen wird, wer dann noch drinsteht — auch
+Gegner. Wer klug steht, lässt den Boss seine eigene Brut zerschlagen.
+
+**Zwölf neue Kreaturen aus dem Bestiarium.** Das *Nabelkind* pendelt an einer
+Schnur von der Decke, bis man sie durchtrennt — dann fällt es und kriecht
+weiter. Der *Häutling* rennt ohne Haut und hinterlässt eine nasse Spur, auf
+der man ins Rutschen kommt. Das *Vielauge* schießt unvorhersehbare Fächer,
+der *Zwillingsbalg* wechselt zwischen zwei streitenden Köpfen und schießt nie
+mit beiden zugleich. Die *Schlundmutter* klappt ihren Bauch auf und entlässt
+Spinnlinge. Der *Fingerbaum* wächst fest und packt zu — wer erwischt wird,
+steht zwei Sekunden still. Der *Grabhusten* wirft einen Sporenkegel, der die
+Sicht nimmt. Die *Nagelbraut* verliert bei jedem Treffer Nägel, die liegen
+bleiben und selbst verletzen: sie zu erlegen macht den Raum gefährlicher.
+Der *Kriechkiefer* beißt im Vorbeilauf und dreht sofort wieder ab. Das
+*Wachslicht* schmilzt im Laufen, wird kleiner und lässt Brandflecken zurück.
+Der *Ohrwurm* fährt durch die Wand und ist nur zu treffen, solange er
+heraussieht. Der *Spiegelbalg* macht jeden Schritt spiegelverkehrt mit — zu
+fassen bekommt man ihn nur in einer Ecke.
+
+**Zwölf Kreaturen mit eigenem Haken.** Der *Talgwicht* wird gefährlicher,
+wenn man ihn trifft: Erlischt seine Flamme, rennt er blind und doppelt so
+schnell weiter. Der *Spinnwirt* fällt von der Decke und legt ein Netz, das
+auf ein Drittel Tempo bremst. Das *Glockenmaul* schlägt an und wirft einen
+mit einer Ringwelle zurück. Der *Schlundling* frisst deine Beute und trägt
+sie zur nächsten Tür hinaus. Der *Aschgeist* sammelt sich nach dem Tod wieder
+— außer er brennt oder ist vereist. Der *Sporenwirt* presst bei jedem Treffer
+eine Wolke aus, die die Sicht nimmt. Das *Klingenrad* umrundet den Raum und
+legt pro Runde zu. Der *Zwiebelbalg* schält sich über drei Stufen zu einem
+kleinen, schnellen Kern. Der *Laternenfisch* zieht dich heran, bis seine
+Lampe erlischt. Der *Kettenhund* bewacht einen festen Kreis. Das
+*Schimmelherz* heilt alle anderen und schlägt schneller, je weniger noch
+stehen. Der *Steinrücken* ist von vorn immun und muss umlaufen werden.
+
+**Jeder Boss lohnt sich.** Neben dem Item auf dem Podest lässt jeder Boss
+etwas Dauerhaftes liegen: entweder einen **Herzcontainer** (ein Herz mehr,
+dazu volle Heilung) oder einen **Schadensbonus**, der den ganzen Lauf über
+bleibt. Welches von beidem, entscheidet der Zufall zur Hälfte. Ein Bosskampf
+ist damit immer spürbar wert, auch wenn das Podest-Item nicht zum Aufbau
+passt.
+
+**Zwölf Herzen sind die Grenze.** Mehr rote Container gibt es nicht — weder
+über Bosslohn noch über *Herzwurz* oder *Eisenherz*. Wer schon bei zwölf
+steht, bekommt vom Boss statt des Containers den Schadensbonus, damit die
+Belohnung nicht verpufft. Seelen- und schwarze Herzen zählen nicht mit, die
+kommen oben drauf.
+
+**Kothaufen** sind mehr als Deko: Wer einen aufbricht, findet manchmal Beute —
+manchmal krabbelt aber auch ein **Kotkrabbler** heraus, und die Chance darauf
+steigt mit jeder Etage. Der **Kotspritzer** lobt Klumpen im Bogen, die als
+ätzende Pfütze zerplatzen. Beide gehören zum **Kloakenfürsten**, einem Boss,
+der auf den Spieler springt (bei der Landung spritzt ein Ring aus Klumpen weg),
+Klumpenregen wirft und ab der Hälfte seiner Lebenspunkte quer durch den Raum
+rutscht, dabei eine Spur hinterlässt und Diener aus dem Dreck ruft.
+
+**Gegner lassen auch Items fallen.** Neben Münzen, Herzen, Schlüsseln und
+Bomben fällt selten ein richtiges Item aus einem erlegten Gegner: bei
+gewöhnlichen Gegnern in gut einem von hundert Fällen, bei **Champions** rund
+neunmal so oft — es lohnt sich also, sie zu jagen statt zu umgehen. Glück
+(*Luck*) erhöht beides. Das Item liegt leuchtend am Boden und wird beim
+Darüberlaufen aufgenommen; es kommt aus demselben Topf wie die Schatzräume,
+man findet also nichts doppelt. Hatte man schon ein Aktivitem, legt man das
+alte daneben ab, statt es zu verlieren.
+
+**Die Figuren** haben Isaac-Proportionen: großer runder Kopf auf kleinem
+Körper, Beine treten im Laufen abwechselnd, die Pupillen folgen der
+Schussrichtung, gelegentlich wird geblinzelt, bei Schaden reißt der Mund auf.
+Frisur und Zierrat unterscheiden sie — Lumo trägt eine Kapuze, Flink
+Stachelhaar, Brocken Zotteln mit wippenden Büscheln, Schemen schwebt als
+Geist mit Schleier und Schweif statt Beinen. Gezeichnet werden alle von
+derselben Funktion `zeichneCharakter()`, die auch die Charakterauswahl
+benutzt; eine neue Frisur braucht nur einen Zweig in `zeichneFrisur()` und
+das Feld `frisur` im Charaktereintrag, ein Gesichtsstück einen Zweig in
+`zeichneZier()` und das Feld `zier`.
+
+**Fünf Kellerkinder** kamen dazu, und jedes bringt eine eigene Regel mit —
+nicht bloß andere Zahlen:
+
+| Figur | Eigenheit | Freischaltung |
+|---|---|---|
+| **Der Schrauber** | Blechfaust und Schweißerbrille. Eigene Bomben tun ihm nichts, er startet mit vier davon, fünf Münzen und dem Bombenvogel. | Erreiche Etage 4 |
+| **Die Rosenbraut** | Trägt ein Brett vor der Gesichtshälfte und eine Dornenkrone. **Vor ihr geht jedes Schloss ohne Schlüssel auf** — dafür ist sie zart (2 Herzen) und schlägt hart zu. | Schließe einen Handel mit dem Teufel |
+| **Das Laternenkind** | Kapuze mit Hörnern, grüne Laterne in der Hand. **Kennt jede Etage sofort** (Geheimräume ausgenommen) und schießt durch Wände. | Finde einen Geheimraum |
+| **Das Mooskind** | Moospelz mit leuchtenden Pilzen. Vergiftet mit jedem Schuss und **heilt ein halbes Herz je geräumtem Raum** — nie über die eigenen Container hinaus. | Erlege insgesamt 500 Gegner |
+| **Die Flickenpuppe** | Knopfaugen, Nahtmund, bunte Wollsträhnen. **Steht einmal je Lauf wieder auf**, mit einem halben Herzen und kurzer Unverwundbarkeit. | Stirb zehnmal |
+
+Die Sonderregeln hängen an Fahnen im Charaktereintrag (`tuerkind`, `laterne`,
+`moos`, `flicken`), die beim Start in `p.flags` wandern — genau wie
+Item-Fahnen. Eine neue Figur mit eigener Regel braucht also nur einen Eintrag
+in `CHARS` und eine Stelle im Code, die ihre Fahne abfragt.
+
+**Neun Begleiter** kämpfen mit, jeder auf eigene Art: der *Schattengeselle*
+schießt im Takt mit dir, der *Kreiselgeist* kreist und blockt, der
+*Brummkäfer* vergiftet im Vorbeikrabbeln, die *Sammelratte* zieht Beute
+heran, der *Bombenvogel* spuckt explosive Kugeln, der *Frostgeist* vereist
+den nächsten Gegner, die *Glutmotte* lässt brennende Glut fallen, der
+*Panzerling* stellt sich in Blickrichtung vor dich und fängt gegnerische
+Geschosse ab, und das *Späherauge* jagt selbstständig Gegner mit
+durchschlagenden Schüssen.
+
+**Zwanzig Herz- und Schadensitems.** Zehn drehen am Leben, zehn an der
+Faust. Beim Leben geht es nie nur um „mehr“: der *Herzkern* gibt schlicht ein
+Herz dazu, das *Stahlherz* zwei — halbiert dafür aber jede Heilung, das
+*Blaue Siegel* schenkt drei Seelenherzen, der *Herzcontainer* füllt komplett
+auf, das *Doppelherz* verdoppelt jedes aufgesammelte Herz, das *Geisterherz*
+fängt einen tödlichen Treffer je Etage ab, die *Blutpumpe* heilt langsam von
+selbst, der *Lebenskristall* macht jeden Raumabschluss zur kleinen Heilung,
+das *Fluchherz* zahlt vier Container gegen dauerhaft mehr Schaden, und das
+*Unsterbliche Herz* gibt einmal je Durchlauf alles zurück.
+
+Bei den Waffen sind es Haken statt reiner Zahlen: die *Blutklinge* schlägt
+pauschal härter zu, der *Kristallzahn* trifft öfter kritisch, der *Wutkern*
+wird umso stärker, je weniger Leben übrig ist, das *Doppelgeschoss* wirft
+einen zweiten, schwächeren Schuss hinterher, das *Glutauge* zündet, der
+*Schädelbrecher* haut vor allem Bosse und Champions, der *Giftzahn*
+vergiftet, das *Donnerherz* lässt jeden achten Treffer einen Blitz rufen, die
+*Chaos-Matrix* würfelt den Schaden jedes Mal neu, und der *Seelenschlitzer*
+macht nach einem Kill kurz rasend.
+
+**Zehn neue Begleiter.** Jeder hat eine klare Aufgabe, keiner ist bloß ein
+zweiter Schuss. Im Nahkampf: die *Messerfliege* schwirrt mit und stürzt sich
+in kurzen Sätzen auf den nächsten Gegner, der *Stichling* rollt sich zusammen
+und rammt, der *Klingenring* lässt drei Klingen auf einer Bahn um dich
+kreisen, die alles schneiden und Geschosse wegschlagen. Im Fernkampf: der
+*Feuerschädel* spuckt Feuerbälle, die in Brand setzen, der *Augapfel* schießt
+mit deinen eigenen Werten mit (er erbt also Reichweite, Tempo und
+Sonderwirkungen), der *Kreuzbot* feuert Vierersalven in alle Himmelsrichtungen,
+und der *Schattenorb* gibt jeden deiner Schüsse mit halber Wucht ab. Dazu drei,
+die nicht schießen: die *Engelsflügel* fangen je Raum genau einen Treffer ab,
+der *Bombenfreund* legt regelmäßig eigene Bomben (die dir nichts tun), und der
+*Seelenvogel* sammelt die Seelen der Erlegten und gibt für je acht ein halbes
+Herz zurück.
+
+**Zehn Fundstücke fürs Drumherum.** Sie drehen nicht am Schaden, sondern am
+Rest: der *Glücksklee* gibt drei Glück und damit überall bessere Beute, die
+*Schatzkarte* legt jede Etage offen (Geheimräume ausgenommen — die soll man
+selbst finden), die *Zeituhr* bremst alle Gegner dauerhaft um ein Viertel, der
+*Münzbeutel* bringt zehn Münzen und lässt Gegner öfter Geld fallen, das
+*Schlüsselherz* gibt zwei Schlüssel und lässt geräumte Räume weitere liegen,
+der *Würfel* würfelt beim Betreten die Fundstücke im Raum neu und der
+*Reroll-Stein* dasselbe mit den Items auf den Podesten. Drei kosten etwas: der
+*Opferkelch* verwandelt jedes verlorene halbe Herz in dauerhaften Schaden, der
+*Teleportstein* blitzt dich alle sechs Sekunden aus einem Treffer heraus statt
+ihn einzustecken, und der *Dämonenpakt* gibt zwei Schaden für einen
+Herzcontainer.
+
+**Zehn neue Aktivitems.** Vom Vorrat bis zur Notbremse: *Bombenbeutel* (+5
+Bomben), *Heiltrank* (zwei Herzen), *Schild* (acht Sekunden unverwundbar),
+*Wuttrank* (zehn Sekunden doppelter Schaden), *Zeitstopp* (fünf Sekunden steht
+alles still, Geschosse eingeschlossen), *Unsichtbarkeit* (acht Sekunden irren
+die Gegner umher und schießen nicht mehr), *Blutopfer* (ein halbes Herz gegen
+schweren Flächenschaden), *Sprungfeder* (Satz nach vorn, wirft alles um und
+macht kurz unverwundbar), *Magnet* (holt alle Fundstücke im Raum heran) und die
+*Beschwörung* (drei Kampfgeister, die vierzehn Sekunden lang selbstständig
+jagen). Jedes gibt nur dann `true` zurück, wenn es wirklich gewirkt hat — eine
+Ladung verpufft also nie ins Leere.
+
+**Jedes Item hat sein eigenes Symbol.** Kein zufälliges Emblem mehr: Herzen,
+Klingen, Schädel, Augen, Flammen, Kristalle, Blitze, Flaschen, Ringe und
+Flügel werden einzeln gezeichnet, damit man ein Item schon auf 14 Pixel im
+Inventar wiedererkennt. Ein Item darf dafür im Datentabelleneintrag ein Feld
+`icon(c,dunkel)` mitbringen; `drawItemIcon()` beschneidet es auf die Kachel,
+schaltet die Tuschekontur ab (die würde auf dieser Größe alles zumatschen)
+und setzt den Glanzstrich darüber. Fehlt das Feld, greift weiterhin das alte
+Verfahren aus der ID.
+
+**Was ein Item tut, steht dabei.** An drei Stellen:
+
+- **Am Podest**, sobald man nahe genug steht — Name, Wirkung und Preis, im
+  Laden in Münzen, in der Teufelskammer in Herzcontainern. Gerade dort will
+  man das wissen, *bevor* man zugreift. Dasselbe gilt für Items, die ein
+  Gegner hat fallen lassen.
+- **Im Pausenbildschirm** als Liste mit Namen und Wirkung, sieben je Seite,
+  geblättert mit ◄ ►. Das Aktivitem steht oben und ist mit `[Q]` markiert,
+  die Pille oder Karte in der Tasche darunter. Bei zwanzig Fundstücken sagen
+  einem bloße Symbole nichts mehr.
+- **Im Post-Run-Screen** stehen unter den Symbolen alle Namen des Laufs.
+
+Beim Aufheben zeigt ohnehin ein Banner Namen und Wirkung.
+
+**Item-Wirkungen sind sichtbar.** Elementare Schüsse ziehen ihre Spur — Gift
+qualmt grün, Feuer sprüht Funken, Frost stäubt. Getroffene Gegner zeigen den
+Zustand deutlich: Vergiftete blubbern und färben sich grün, Brennende lodern,
+Erfrorene bekommen einen Eispanzer mit Zacken. Kritische Treffer blitzen auf
+und lassen das Bild kurz wackeln. Jedes Aktivitem hat eine eigene Signatur,
+etwa die Druckwelle des *Sturmatems*, die Schallringe der *Knochenglocke*
+oder das rote Aufwallen des *Berserkerkelchs*.
+
+**Giftpfützen haben einen Besitzer.** Gegnerische sind violett und schaden
+dir, deine eigenen (aus Schüssen mit der *Giftdrüse*) sind grün und vergiften
+Gegner, die hineinlaufen.
+
+**Der Durchlauf überlebt das Schließen des Tabs.** Bei jedem Raumwechsel
+landet ein Zwischenstand in `localStorage`; im Menü steht dann
+**Weiterspielen** ganz oben, mit Figur, Etage und Seed. Gespeichert wird
+nicht die ganze Welt, sondern nur, was sich nicht aus dem Seed ergibt: die
+Etage wird beim Laden neu erzeugt — sie ist deterministisch — und bekommt
+danach den Unterschied aufgesetzt: welche Räume geräumt sind, welche Steine
+weg sind, welche Türen offen stehen, was noch herumliegt. Tod, Sieg und ein
+neuer Abstieg löschen den Stand; aufgeben mit `X` ebenfalls.
+
+**Menü, Statistik, Einstellungen.** Das Hauptmenü hat jetzt Einträge statt
+nur ENTER. Die Statistikseite zeigt begonnene Läufe, Siege, Tode, beste
+Etage und erlegte Gegner über alle Läufe, dazu alle neun Figuren mit ihrer
+Freischaltbedingung — grün, sobald sie offen ist. Unter Einstellungen lassen
+sich Ton und Musik getrennt in zehn Stufen regeln und das Bildschirmwackeln
+abschalten; alles wird sofort gespeichert.
+
+**Progression.** Permadeath. Der Schwierigkeitsgrad steigt pro Etage (mehr
+Lebenspunkte, mehr Gegner, häufiger Champions). Nach dem Run gibt es einen
+Auswertungsbildschirm mit Statistik und allen gefundenen Items. Freischaltungen
+und Statistiken liegen im `localStorage`.
+
+**Ton.** Sämtliche Geräusche und die Hintergrundmusik werden zur Laufzeit per
+WebAudio synthetisiert — es wird keine Audiodatei geladen.
+
+---
+
+## Eigene Inhalte hinzufügen
+
+Alle Inhalte stehen in Datentabellen am Anfang der Datei. Suche im Code nach
+`==== 4.` und `==== 5.`, dort liegt alles beieinander.
+
+### Neues Item
+
+```js
+defItem({
+  id:'donnerkeil', name:'Donnerkeil', desc:'Schaden hoch, aber langsamer',
+  type:'passive',                 // 'passive' oder 'active'
+  pool:['treasure','boss'],       // treasure | boss | shop | curse | secret
+  mod:s=>{ s.dmg+=2; s.tps-=0.3; },   // verändert die Statwerte
+  flags:['pierce'],               // Schussverhalten, siehe unten
+});
+```
+
+Verfügbare `flags`: `triple`, `quad`, `homing`, `pierce`, `spectral`, `bounce`,
+`poison`, `burn`, `frost`, `split`, `bigshot`, `needle`, `beam`, `laser`,
+`heavyknock`, `crit`, `flight`, `spikeimmun`, `bombimmun`, `keysaver`, `greed`,
+`thorns`.
+
+Weitere Felder: `pickup:p=>{}` für einmalige Effekte beim Aufheben (etwa
+Herzcontainer), `famil:'shadow'` für einen Begleiter (`shadow`, `orbit`, `bug`,
+`rat`, `bird`, `frostgeist`, `motte`, `panzer`, `spaeher`), sowie `charge` und
+`use:p=>{}` für aktive Items.
+
+### Neuer Gegner
+
+```js
+zornbeisser: { name:'Zornbeißer', hp:14, spd:60, r:11, ai:'chase' },
+```
+
+Fertige Verhaltensmuster für `ai`: `chase`, `hop`, `shoot`, `wall`, `charge`,
+`creeper`, `spread`, `spray`, `dart`, `turret`, `ghost`, `spawner`, `bounce`,
+`ring`, `burrow`, `talg`, `decke`, `glocke`, `dieb`, `asche`, `sporen`,
+`wandlauf`, `laterne`, `kette`, `heiler`, `panzer`. Optional: `fly:true` (ignoriert Bodenhindernisse), `shotCd` in
+Sekunden, `onDeath:{split:['typ',anzahl]}` für Splittergegner. Damit der Gegner
+auch auftaucht, muss seine ID in den `pool` einer Etage in `FLOORS`.
+
+### Neues Raumlayout
+
+In `TEMPLATES.normal` einen Block aus 7 Zeilen à 13 Zeichen ergänzen:
+
+```
+'.'  frei        'R'  Stein        'r'  Stein (50% Chance)
+'P'  Loch        'S'  Stacheln     'F'  Feuerstelle
+'C'  Kothaufen   'e'  Gegner-Spawnpunkt
+```
+
+Die vier Türfelder — Zeile 0 und 6 in Spalte 6, Zeile 3 in Spalte 0 und 12 —
+müssen begehbar bleiben **und untereinander verbunden sein**, sonst sperrt man
+sich im Raum ein. Auch jeder Gegnerplatz muss von den Türen aus erreichbar
+sein, sonst lässt sich der Raum nie leerräumen und die Türen gehen nicht auf.
+Testphase 14 prüft beides für jedes Layout durch, im ungünstigsten Fall, in
+dem jedes `r` zum Stein wird.
+
+### Neue Spielfigur
+
+Einen Eintrag in `CHARS` ergänzen. Pflichtfelder: `id`, `name`, `desc`,
+`color` (Haut), `hood` (Kleidung), `frisur`, die Startwerte (`red`, `soul`,
+`speed`, `tps`, `dmg`, `range`, `shot`, `luck`, `coins`, `bombs`, `keys`)
+sowie `unlock` und `unlockText`, wenn sie freigeschaltet werden muss.
+
+Optional: `zier` für ein Gesichts- oder Handstück (`zeichneZier()`), `item`
+für ein Startitem, `pocket` für Pille oder Karte in der Tasche, und `flags`
+für angeborene Fahnen. Eine Fahne wird beim Start in `p.flags` gelegt und
+kann überall abgefragt werden — so hängen `tuerkind`, `laterne`, `moos` und
+`flicken` an genau einer Stelle im Code.
+
+### Neue Etage
+
+Zwei Einträge: einen in `FLOORS` (Farben des Tilesets, `pool` mit Gegner-IDs,
+`bosses`, `mus` als Index der Musikschleife) und einen in `HANDSCHRIFTEN`
+(siehe Abschnitt 10 im Code). Die Anzahl der Etagen ergibt sich automatisch aus
+der Länge von `FLOORS`.
+
+Die Handschrift bestimmt, **woraus** die Etage gemacht ist:
+
+```js
+{ licht:'rgba(230,186,120,0.16)',   // Farbe der Deckenlampe
+  tiefe:'#0b0806',                  // Farbe im Loch und hinter allem
+  feuerschein:'rgba(232,134,42,0.38)',
+  bodenDeko(x,y,s,k){ … },          // liegt flach IM Boden, ohne Kontur
+  wandDeko(ox,oy,bw,bh,rand,t){ … },// darf sich bewegen
+  dunst(x,y,w,h,t){ … },            // Raumstimmung über allem
+  stein(x,y,s){ … }, loch(x,y,s){ … }, stachel(x,y,s){ … },
+  feuer(x,y,s,rot,t){ … }, wuchs(x,y,s){ … } }
+```
+
+Fehlt der Eintrag, erbt die Etage die letzte vorhandene Handschrift.
+
+---
+
+## Tests
+
+Es gibt einen Smoke-Test, der das Spiel in einem echten Browser durchspielt:
+
+```bash
+npm install
+npm test                     # alle Phasen
+node test/smoketest.js 4,5   # nur einzelne Phasen
+```
+
+Geprüft werden unter anderem: Seed-Determinismus, 240 erzeugte Etagen auf
+Vollständigkeit und Erreichbarkeit aller Räume, jeder Gegnertyp, jeder Boss
+samt Phasenwechsel, jedes Item unter Dauerfeuer, alle Pillen und Karten, das
+Durchschreiten offener wie verschlossener Türen in allen vier Richtungen,
+jeder Raumtyp, ein kompletter Durchlauf bis zum Sieg, die Kennzeichnung der
+Sondertüren (Laden immer verschlossen, Schatz gemischt offen und verschlossen),
+der Item-Abwurf der Gegner, die Kammer hinter dem Boss samt Herzhandel, die
+Eigenheiten aller neun Spielfiguren, dass jedes Item eine Wirkungs-
+beschreibung hat, die auch auf die Tafel passt, die echte Bildauflösung, den
+Bosslohn und die Zwölf-Herzen-Grenze, die Größe aller zwölf Bosse samt ihren
+Kennzeichen-Angriffen und der angekündigte Einschlag, der Haken jeder der
+zwölf neuen Kreaturen, die Vollständigkeit und Streuung der zwölf Kammern, das Speichern und
+Fortsetzen eines Durchlaufs samt veränderter Etage, die Menüeinträge und die
+Einstellungsregler, die
+Spielbarkeit aller zwanzig Grundrisse, die
+Vollständigkeit der sechs Etagen-Handschriften samt Nachweis, dass jede Etage
+wirklich anders aussieht, die Reichweite und Streuung des garantierten Münzfunds samt dem Geld, das
+über einen Durchlauf zusammenkommt,
+jeder der fünf Etagenflüche einzeln in seiner Wirkung, die drei Wellen des
+Herausforderungsraums samt Lohn und die Einmalwahl der Bibliothek,
+die Wirkung aller zwanzig Herz- und
+Schadensitems einzeln nachgerechnet, der Dienst jedes der zehn Begleiter,
+Wirkung und Verweigerung jedes der zwanzig neuen passiven und aktiven
+Fundstücke, das Zeichnen sämtlicher Sprites sowie die Bildrate
+unter Last. Die Zahlen zieht der Test aus den
+Datentabellen — neue Inhalte werden also automatisch mitgeprüft.
+
+Zwei Umgebungsvariablen sind optional: `KB_CHROMIUM` setzt einen abweichenden
+Browser-Pfad, `KB_SHOTS` das Verzeichnis für die Screenshots.
