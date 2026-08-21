@@ -2976,6 +2976,99 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+if(want(29)){
+console.log('\n[29] Raumtiefe: Licht, Ecken, Lesbarkeit');
+await withPage(async(page,errs)=>{
+
+  const m=await page.evaluate(()=>{
+    const cv=document.querySelector('canvas'), g=cv.getContext('2d');
+    const f=cv.width/640;
+    /* Mittlere Helligkeit eines Feldes in Spielkoordinaten. */
+    const hell=(x,y,w,h)=>{
+      const d=g.getImageData(Math.round(x*f),Math.round(y*f),
+                             Math.round(w*f),Math.round(h*f)).data;
+      let sum=0; for(let i=0;i<d.length;i+=4) sum+=d[i]+d[i+1]+d[i+2];
+      return sum/(d.length/4);
+    };
+    const leererRaum=(tiefe)=>{
+      startRun(0,'TIEFE'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.itemGet=null; p.iframes=0; KB.G.banner=null;
+      if(tiefe>1){ KB.G.depth=tiefe; KB.G.floor=genFloor(tiefe);
+        enterRoom(KB.G.floor.startKey,null); KB.G.bossIntro=null; }
+      KB.G.enemies.length=0; KB.G.pickups.length=0;
+      for(const z of KB.G.room.grid) z.fill(null);
+      KB.G.floor.fluch=null;
+      raumBildNeu();
+      p.x=tx(6); p.y=ty(3); p.itemGet=null; KB.G.banner=null;
+      render();
+      return p;
+    };
+
+    const e={};
+    leererRaum(1);
+    /* Ecke gegen Mitte. RX=60 RY=50, Raum 520x280. */
+    e.mitte = hell(RX+220, RY+110, 80, 60);
+    e.ecke  = hell(RX+6,   RY+6,   46, 34);
+    e.eckeU = hell(RX+520-52, RY+280-40, 46, 34);
+
+    /* Bodenstruktur: streut die Helligkeit ueber die Flaeche? */
+    const proben=[];
+    for(let i=0;i<12;i++)
+      proben.push(hell(RX+40+ (i%6)*76, RY+60+Math.floor(i/6)*90, 30, 30));
+    const mw=proben.reduce((a,b)=>a+b,0)/proben.length;
+    e.streuung=+Math.sqrt(proben.reduce((a,b)=>a+(b-mw)**2,0)/proben.length).toFixed(2);
+
+    /* Lesbarkeit: ein Gegner in der dunkelsten Ecke muss sich klar vom
+       Boden abheben. Gemessen wird der Unterschied zwischen Gegnerfeld und
+       dem Boden direkt daneben. */
+    const p=leererRaum(1);
+    const bodenVorher=hell(RX+18, RY+18, 26, 26);
+    const gg=spawnEnemy('blobling', RX+31, RY+31, null);
+    gg.hp=gg.maxHp=1e6; gg.spd=0; p.iframes=0;
+    render();
+    const mitGegner=hell(RX+18, RY+18, 26, 26);
+    e.gegnerEcke={boden:+bodenVorher.toFixed(1), mit:+mitGegner.toFixed(1),
+                  unterschied:+(mitGegner-bodenVorher).toFixed(1)};
+
+    /* Dasselbe in der Mitte, als Vergleichsmassstab. */
+    const p2=leererRaum(1);
+    const bodenMitte=hell(RX+247, RY+127, 26, 26);
+    const g2=spawnEnemy('blobling', RX+260, RY+140, null);
+    g2.hp=g2.maxHp=1e6; g2.spd=0; p2.x=tx(2); p2.y=ty(5); p2.iframes=0;
+    render();
+    e.gegnerMitte={boden:+bodenMitte.toFixed(1), mit:+hell(RX+247,RY+127,26,26).toFixed(1)};
+    e.gegnerMitte.unterschied=+(e.gegnerMitte.mit-e.gegnerMitte.boden).toFixed(1);
+
+    /* Jede Etage behaelt ihre eigene Helligkeit — die Tiefe darf sie nicht
+       alle gleich dunkel machen. */
+    e.etagen=[];
+    for(let d=1;d<=6;d++){ leererRaum(d); e.etagen.push(+hell(RX+220,RY+110,80,60).toFixed(1)); }
+    return e;
+  });
+
+  note(m.ecke < m.mitte*0.80 && m.eckeU < m.mitte*0.85,
+       'die Raumecken sind spuerbar dunkler als die Mitte',
+       '(Mitte '+m.mitte.toFixed(1)+', Ecke oben '+m.ecke.toFixed(1)
+       +', Ecke unten '+m.eckeU.toFixed(1)+')');
+  note(m.ecke > 20,'die Ecken saufen aber nicht ins Schwarz ab',
+       '(Helligkeit '+m.ecke.toFixed(1)+')');
+  note(m.streuung > 2,'der Boden ist nicht flach, sondern strukturiert',
+       '(Streuung '+m.streuung+')');
+  /* Der Auftrag verlangt ausdruecklich, dass Gegner lesbar bleiben. */
+  note(Math.abs(m.gegnerEcke.unterschied) > 25,
+       'ein Gegner hebt sich auch in der dunkelsten Ecke klar vom Boden ab',
+       '(Unterschied '+m.gegnerEcke.unterschied+' bei Bodenhelligkeit '+m.gegnerEcke.boden+')');
+  note(Math.abs(m.gegnerEcke.unterschied) > Math.abs(m.gegnerMitte.unterschied)*0.5,
+       'die Ecke schluckt hoechstens die Haelfte des Kontrasts der Mitte',
+       '(Ecke '+m.gegnerEcke.unterschied+' gegen Mitte '+m.gegnerMitte.unterschied+')');
+  const min=Math.min(...m.etagen), max=Math.max(...m.etagen);
+  note(max > min*1.25,'die sechs Etagen bleiben unterschiedlich hell',
+       '('+m.etagen.join(' / ')+')');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

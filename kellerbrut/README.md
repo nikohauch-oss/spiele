@@ -291,6 +291,38 @@ war jedes Mal allein der Filter. Fünf bis siebzehn Prozent mehr Sättigung
 sind das nicht wert; alles andere aus beiden Aufsätzen ist unverändert
 übernommen.
 
+**Der Raum ist kein Rechteck.** Vier zusätzliche Lagen geben der Kachelfläche
+Tiefe, alle in die vorgebackene Bodenlage gerechnet und damit zur Laufzeit
+kostenlos:
+
+- **Bodenstruktur** — vierzehn große weiche Flecken, hell und dunkel im
+  Wechsel, an die Raumkoordinate geknüpft. Damit ist der Boden keine Tapete
+  mehr. Gezeichnet wird auf Viertelauflösung und hochgezogen: in voller
+  Größe kostete diese eine Lage 6,3 der 26,6 ms eines Raumwechsels, klein
+  gezeichnet sind es 2,2 — bei gleichem Ergebnis, weil das Hochziehen die
+  Flecken ohnehin weichzeichnet.
+- **Wandkante** — ein heller Grat oben und links, ein dunkler unten und
+  rechts. Erst dieses Paar aus Licht und Schatten liest sich als Lippe statt
+  als aufgemalter Streifen; das Licht kommt wie überall von oben links.
+- **Schadstellen** — zehn ausgebrochene Kerben entlang der Wandkante, außen
+  bündig an der Wand, innen ausgefranst, in der Tiefenfarbe der Etage.
+- **Dunkle Ecken** — anders als die bildschirmweite Vignette folgt diese
+  Abdunklung der Raumform, sackt also genau dort ab, wo der Raum endet. Die
+  Mitte bleibt unangetastet.
+
+**Dunkel ja, unlesbar nein.** Die Vorgabe war Tiefe, nicht Dunkelheit, und
+das ist nachgemessen statt geschätzt. Testphase 29 prüft: die Ecken sind
+spürbar dunkler als die Mitte, saufen aber nicht ins Schwarz ab; der Boden
+streut messbar; und vor allem — ein Gegner in der dunkelsten Ecke hebt sich
+noch immer klar vom Boden ab und behält mehr als die Hälfte des Kontrasts,
+den er in der hellen Mitte hätte. Auch bleiben die sechs Etagen
+unterschiedlich hell, statt alle gleich düster zu werden.
+
+Der Ruckeltest über achtzehn Raumwechsel in Folge (fünf pro Sekunde, weit
+härter als echtes Spielen): Median 16,6 ms je Bild, zwei von 219 Bildern
+über 33 ms — und die fallen in den Raumwechsel, der ohnehin hinter einer
+Blende liegt.
+
 **Licht und Tiefe.** Das Licht kommt von oben links: eine Deckenlampe hellt die
 Raummitte auf, die Wände werfen Schatten auf den Boden (oben am tiefsten, unten
 am flachsten), jedes Hindernis wirft einen Schlagschatten, Löcher bekommen

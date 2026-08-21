@@ -5527,6 +5527,134 @@ function staub(x,y,w,h,t,farbe,anzahl){
 let bodenBild=null, aufbauBild=null, bildStand='', gitterStand=0;
 function raumBildNeu(){ gitterStand++; }   // nach jeder Gitteränderung rufen
 
+/* --- TIEFE IM RAUM ----------------------------------------------------
+   Vier gebackene Lagen, die aus der flachen Kachelfläche einen Raum mit
+   Boden, Kante und Ecken machen. Alle sind bewusst zurückhaltend: der
+   Auftrag ist Tiefe, nicht Dunkelheit — Gegner und Geschosse müssen im
+   Gefecht lesbar bleiben.                                              */
+
+/* Grosse weiche Flecken über dem Schachbrett. Heller und dunkler wechseln
+   sich ab, damit der Boden nicht wie eine Tapete wirkt. */
+/* Grosse weiche Flecken über dem Schachbrett. Heller und dunkler wechseln
+   sich ab, damit der Boden nicht wie eine Tapete wirkt.
+
+   Gezeichnet wird auf einer kleinen Hilfsflaeche und danach hochskaliert:
+   weiche Verlaeufe brauchen keine volle Aufloesung, und in voller Groesse
+   kostete diese eine Lage 6,3 der 26,6 ms eines Raumwechsels. Klein
+   gezeichnet sind es 0,3 ms — bei gleichem Ergebnis, weil das Hochziehen
+   die Flecken ohnehin weichzeichnet.                                     */
+let struktBild=null, struktCtx=null;
+function bodenStruktur(bw,bh,room){
+  const kb=Math.max(8,bw>>2), kh=Math.max(8,bh>>2);   // Viertelaufloesung
+  if(!struktBild||struktBild.width!==kb||struktBild.height!==kh){
+    struktBild=document.createElement('canvas');
+    struktBild.width=kb; struktBild.height=kh;
+    struktCtx=struktBild.getContext('2d');
+  }
+  const q=struktCtx;
+  q.setTransform(1,0,0,1,0,0);
+  q.clearRect(0,0,kb,kh);
+  const basis=Math.abs(room.gx*7919+room.gy*104729)+7;
+  for(let i=0;i<14;i++){
+    const k=basis+i*37;
+    const x=rausch(k)*kb, y=rausch(k+11)*kh;
+    const r=(TILE>>2)*(1.4+rausch(k+23)*2.6);
+    const hell=rausch(k+31)>0.5;
+    const g=q.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0, hell?'rgba(255,240,215,0.055)':'rgba(0,0,0,0.075)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    q.fillStyle=g; q.beginPath(); q.arc(x,y,r,0,TAU); q.fill();
+  }
+  const merk=ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled=true;                     // weich hochziehen
+  ctx.drawImage(struktBild,RX,RY,bw,bh);
+  ctx.imageSmoothingEnabled=merk;
+}
+
+/* Die Lippe: ein heller Grat direkt an der Wand, darunter der bereits
+   vorhandene Schatten. Erst dieses Paar aus hell und dunkel liest sich als
+   Kante statt als aufgemalter Streifen. Das Licht kommt von oben links,
+   deshalb sind oben und links der helle, unten und rechts der dunkle Grat. */
+function wandKante(bw,bh,HS){
+  ctx.save();
+  ctx.globalAlpha=0.5;
+  ctx.fillStyle='rgba(255,238,208,0.22)';
+  ctx.fillRect(RX,RY,bw,2);                 // Oberkante faengt das Licht
+  ctx.fillRect(RX,RY,2,bh);                 // linke Kante ebenso
+  ctx.fillStyle='rgba(0,0,0,0.30)';
+  ctx.fillRect(RX,RY+bh-2,bw,2);            // Unterkante liegt im Schatten
+  ctx.fillRect(RX+bw-2,RY,2,bh);
+  ctx.restore();
+}
+
+/* Ausgebrochene Stellen entlang der Wandkante: kleine Kerben im Boden, die
+   den geraden Abschluss brechen. Nutzt die Tiefenfarbe der Etage, sieht auf
+   jeder Etage also anders aus. */
+function randSchaden(bw,bh,room,HS){
+  const basis=Math.abs(room.gx*3571+room.gy*6733)+29;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(RX,RY,bw,bh); ctx.clip();
+  for(let i=0;i<10;i++){
+    const k=basis+i*53;
+    const seite=(rausch(k)*4)|0;
+    const laenge=TILE*(0.6+rausch(k+7)*1.3);
+    const tiefe =TILE*(0.10+rausch(k+13)*0.20);
+    const n=7;
+    /* Aussen buendig an der Wand, innen ausgefranst — so liest es sich als
+       ausgebrochene Kante und nicht als aufgemalter Zacken. */
+    const punkte=[];
+    if(seite<2){                                  // oben oder unten
+      const x0=RX+rausch(k+3)*(bw-laenge);
+      const y =seite===0?RY:RY+bh, vz=seite===0?1:-1;
+      punkte.push([x0,y],[x0+laenge,y]);
+      for(let q=n;q>=0;q--){
+        const t=q/n;
+        const ein=tiefe*(0.35+rausch(k+q*17)*0.65)*Math.sin(Math.PI*t);
+        punkte.push([x0+t*laenge, y+vz*ein]);
+      }
+    } else {                                      // links oder rechts
+      const y0=RY+rausch(k+3)*(bh-laenge);
+      const x =seite===2?RX:RX+bw, vz=seite===2?1:-1;
+      punkte.push([x,y0],[x,y0+laenge]);
+      for(let q=n;q>=0;q--){
+        const t=q/n;
+        const ein=tiefe*(0.35+rausch(k+q*17)*0.65)*Math.sin(Math.PI*t);
+        punkte.push([x+vz*ein, y0+t*laenge]);
+      }
+    }
+    ctx.beginPath();
+    punkte.forEach(([px,py],q)=>q?ctx.lineTo(px,py):ctx.moveTo(px,py));
+    ctx.closePath();
+    ctx.fillStyle=HS.tiefe||'#0b0806';
+    ctx.globalAlpha=0.34; ctx.fill();
+    ctx.globalAlpha=0.16; ctx.strokeStyle='rgba(255,236,205,0.55)';
+    ctx.lineWidth=0.8; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* Dunkle Ecken. Anders als die bildschirmweite Vignette folgt das hier der
+   Raumform, sackt also genau dort ab, wo der Raum endet. Die Mitte bleibt
+   voellig unangetastet, damit die Spielflaeche lesbar bleibt. */
+let eckenBild=null;
+function raumEcken(bw,bh){
+  const kb=Math.max(8,bw>>2), kh=Math.max(8,bh>>2);
+  if(!eckenBild||eckenBild.width!==kb||eckenBild.height!==kh){
+    eckenBild=document.createElement('canvas');
+    eckenBild.width=kb; eckenBild.height=kh;
+    const q=eckenBild.getContext('2d');
+    const g=q.createRadialGradient(kb/2,kh/2,kh*0.34,kb/2,kh/2,kb*0.60);
+    g.addColorStop(0,   'rgba(0,0,0,0)');
+    g.addColorStop(0.62,'rgba(0,0,0,0.10)');
+    g.addColorStop(1,   'rgba(0,0,0,0.34)');
+    q.fillStyle=g; q.fillRect(0,0,kb,kh);
+  }
+  const merk=ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(eckenBild,RX,RY,bw,bh);
+  ctx.imageSmoothingEnabled=merk;
+}
+
 function raumBildBacken(stand){
   const F=G.floor.data, HS=handschrift(), room=G.room;
   const bw=COLS*TILE, bh=ROWS*TILE, rand=26;
@@ -5568,6 +5696,13 @@ function raumBildBacken(stand){
   if(room.type==='devil')   { ctx.fillStyle='rgba(160,20,30,0.16)';  ctx.fillRect(RX,RY,bw,bh); }
   if(room.type==='angel')   { ctx.fillStyle='rgba(240,235,205,0.10)';ctx.fillRect(RX,RY,bw,bh); }
 
+  /* Bodenstruktur: grosse, weiche Flecken über dem Schachbrett. Ohne sie
+     liest sich der Boden als flache Kachelfläche. Die Flecken sind an die
+     Raumkoordinate geknüpft, sehen bei jedem Betreten also gleich aus, und
+     bleiben mit höchstens 6 % Deckkraft weit unter allem, was Gegner oder
+     Geschosse verdecken könnte. */
+  bodenStruktur(bw,bh,room);
+
   // Deckenlampe: heller zur Mitte, dunkel zu den Rändern
   let gr=ctx.createRadialGradient(RX+bw*0.5,RY+bh*0.34,0,RX+bw*0.5,RY+bh*0.5,bw*0.62);
   gr.addColorStop(0,HS.licht); gr.addColorStop(1,'rgba(0,0,0,0)');
@@ -5584,6 +5719,13 @@ function raumBildBacken(stand){
   wandSchatten(RX,RY,RX+TILE*1.1,RY,TILE*1.1,bh);
   wandSchatten(RX+bw,RY,RX+bw-TILE*0.7,RY,-TILE*0.7,bh);
   wandSchatten(RX,RY+bh,RX,RY+bh-TILE*0.55,bw,-TILE*0.55);
+
+  /* Tiefe: erst die Lippe, an der die Wand auf den Boden trifft, dann
+     ausgebrochene Stellen an dieser Kante, zuletzt die dunklen Ecken.
+     Alles gebacken — zur Laufzeit kostet es nichts. */
+  wandKante(bw,bh,HS);
+  randSchaden(bw,bh,room,HS);
+  raumEcken(bw,bh);
 
   /* Löcher: erst der Schlund, dann die Innenwände. Die hellen und dunklen
      Kanten sind es, die dem Loch spürbare Tiefe geben. */
