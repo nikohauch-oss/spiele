@@ -10784,5 +10784,707 @@ window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   );
 })();
 </script>
+
+<!-- Grafik-Overhaul Phase 6: Final Polish und adaptive Qualitaet -->
+<script>
+/* =====================================================================
+   KELLERBRUT — GRAFIK-OVERHAUL PHASE 6
+   FINAL POLISH + ÜBERGÄNGE + SCREEN-FX + ADAPTIVE PERFORMANCE
+
+   Empfohlene Reihenfolge:
+     Einbau hier: als letzter Block inline eingebettet. Der Pack liefert die
+     Datei als phase6.js zum Nachladen aus; KELLERBRUT ist aber bewusst eine
+     einzige HTML-Datei ohne Build-Schritt, deshalb steht der Code inline.
+     Bis auf diese Kommentarzeilen ist er unveraendert uebernommen.
+
+   Diese Datei ist ein visueller Abschluss-Pass.
+   Sie verändert NICHT:
+   - Schaden / HP / Balancing
+   - Gegner- oder Boss-KI
+   - Hitboxen / Kollisionen
+   - RNG / Raumgenerierung / Savegame
+
+   Phase 6 verbessert:
+   - Raum- und Etagenübergänge
+   - Treffer-/Low-HP-Screenfeedback
+   - Item-Aufhebe-Polish
+   - Bewegung / Kamera-Atmosphäre
+   - Death-/Win-Fades
+   - Filmkorn / Vignette als gecachte Overlays
+   - adaptive Effektqualität bei schwächerer Framerate
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  if (window.__KB_PHASE6_VISUALS__) return;
+  window.__KB_PHASE6_VISUALS__ = true;
+
+  const P6 = window.KBPhase6 = {
+    enabled: true,
+    adaptiveQuality: true,
+    quality: 1,
+    grain: true,
+    vignette: true,
+    lowHealthFx: true,
+    transitions: true,
+    floorCards: true,
+    motionAccents: true,
+    debugFps: false,
+    version: '6.0'
+  };
+
+  const TWO_PI = Math.PI * 2;
+  const clamp6 = (v,a,b) => Math.max(a,Math.min(b,v));
+  const sat6 = v => clamp6(v,0,1);
+  const now6 = () => performance.now()/1000;
+
+  const state = {
+    lastRender: performance.now(),
+    smoothDt: 1/60,
+    fps: 60,
+    lowFpsTime: 0,
+    highFpsTime: 0,
+    autoLow: false,
+
+    hitFlash: 0,
+    itemFlash: 0,
+    reviveFlash: 0,
+    roomPulse: 0,
+    roomDir: null,
+
+    floorCard: 0,
+    floorCardDepth: null,
+    floorCardName: '',
+
+    lastRoomKey: null,
+    lastDepth: null,
+    lastPlayerDead: false,
+    lastResult: null,
+
+    grainTick: -1,
+    grainCanvas: null,
+    vignetteCanvas: null,
+    cachedW: 0,
+    cachedH: 0,
+
+    localFx: [],
+  };
+
+  const originals = {};
+  const externalQuality = new Map();
+
+  function wrap(name,factory){
+    const old=window[name];
+    if(typeof old!=='function'){
+      console.warn('[KELLERBRUT Phase 6] Funktion nicht gefunden:',name);
+      return false;
+    }
+    originals[name]=old;
+    window[name]=factory(old);
+    return true;
+  }
+
+  function safe(fn,fallback=null){
+    try{return fn();}catch(_){return fallback;}
+  }
+
+  function rgba(hex,a){
+    if(typeof hex!=='string'||hex[0]!=='#') return `rgba(210,65,90,${a})`;
+    let s=hex.slice(1);
+    if(s.length===3) s=s.split('').map(c=>c+c).join('');
+    const n=parseInt(s,16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+
+  function rounded(x,y,w,h,r){
+    ctx.beginPath();
+    if(typeof ctx.roundRect==='function'){
+      ctx.roundRect(x,y,w,h,r);
+    }else{
+      r=Math.min(r,w/2,h/2);
+      ctx.moveTo(x+r,y);
+      ctx.lineTo(x+w-r,y);
+      ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r);
+      ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+      ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+      ctx.lineTo(x,y+r);
+      ctx.quadraticCurveTo(x,y,x+r,y);
+    }
+  }
+
+  function text6(str,x,y,size=9,color='#e8e0d0',align='center',weight='700',alpha=1){
+    ctx.save();
+    ctx.globalAlpha*=alpha;
+    ctx.font=`${weight} ${size}px ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif`;
+    ctx.textAlign=align;
+    ctx.textBaseline='middle';
+    ctx.fillStyle=color;
+    ctx.fillText(String(str),x,y);
+    ctx.restore();
+  }
+
+  function mono6(str,x,y,size=6,color='#777078',align='center',alpha=1){
+    ctx.save();
+    ctx.globalAlpha*=alpha;
+    ctx.font=`600 ${size}px ui-monospace,SFMono-Regular,Consolas,monospace`;
+    ctx.textAlign=align;
+    ctx.textBaseline='middle';
+    ctx.fillStyle=color;
+    ctx.fillText(String(str),x,y);
+    ctx.restore();
+  }
+
+  function glow(x,y,r,color,a=1){
+    ctx.save();
+    ctx.globalAlpha*=a;
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,color);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,TWO_PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function ring(x,y,r,color,w=1,a=1){
+    ctx.save();
+    ctx.globalAlpha*=a;
+    ctx.strokeStyle=color;
+    ctx.lineWidth=w;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,TWO_PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function makeCanvas(w,h){
+    if(typeof OffscreenCanvas!=='undefined') return new OffscreenCanvas(w,h);
+    const c=document.createElement('canvas');
+    c.width=w;c.height=h;
+    return c;
+  }
+
+  function ensureCaches(){
+    const w=640,h=360;
+    if(state.cachedW===w && state.cachedH===h &&
+       state.vignetteCanvas && state.grainCanvas) return;
+
+    state.cachedW=w;state.cachedH=h;
+
+    // Vignette wird nur einmal berechnet und danach pro Frame kopiert.
+    const vc=makeCanvas(w,h);
+    const vx=vc.getContext('2d');
+    const vg=vx.createRadialGradient(w/2,h*.48,h*.16,w/2,h*.5,w*.61);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(.64,'rgba(0,0,0,.015)');
+    vg.addColorStop(.84,'rgba(0,0,0,.10)');
+    vg.addColorStop(1,'rgba(0,0,0,.28)');
+    vx.fillStyle=vg;
+    vx.fillRect(0,0,w,h);
+    state.vignetteCanvas=vc;
+
+    const gc=makeCanvas(w,h);
+    state.grainCanvas=gc;
+    rebuildGrain(0);
+  }
+
+  function rebuildGrain(tick){
+    if(!state.grainCanvas) return;
+    if(tick===state.grainTick) return;
+    state.grainTick=tick;
+
+    const gctx=state.grainCanvas.getContext('2d');
+    gctx.clearRect(0,0,640,360);
+
+    // Wenige große Körner statt pixelweises Noise: sehr billig.
+    const count=P6.quality<.8?34:62;
+    for(let i=0;i<count;i++){
+      const x=(i*137 + tick*47 + (i*i*13))%640;
+      const y=(i*83 + tick*29 + (i*i*7))%360;
+      const light=((i+tick)%3)!==0;
+      gctx.fillStyle=light?'rgba(255,245,235,.030)':'rgba(0,0,0,.035)';
+      const s=(i%7===0)?1.2:.65;
+      gctx.fillRect(x,y,s,s);
+    }
+  }
+
+  function totalHalfHearts(){
+    const p=safe(()=>G.player,null);
+    if(!p) return 99;
+    return Math.max(0,(Number(p.red)||0)+(p.soul?.length||0));
+  }
+
+  function lowHealthOverlay(){
+    if(!P6.lowHealthFx || !window.G || G.state!=='game') return;
+    const p=G.player;
+    if(!p || p.dead) return;
+
+    const hp=totalHalfHearts();
+    if(hp>3) return;
+
+    const severity=hp<=1?1:(hp===2?.72:.42);
+    const pulse=.5+.5*Math.sin(now6()*(hp<=1?4.5:3.0));
+    const alpha=(.035+.055*pulse)*severity;
+
+    ctx.save();
+    const g=ctx.createRadialGradient(W/2,H/2,H*.20,W/2,H/2,W*.60);
+    g.addColorStop(0,'rgba(80,0,10,0)');
+    g.addColorStop(.70,'rgba(90,8,18,0)');
+    g.addColorStop(1,`rgba(130,8,24,${alpha})`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  function hitOverlay(){
+    if(state.hitFlash<=0) return;
+    const a=sat6(state.hitFlash/.28);
+    ctx.save();
+    const g=ctx.createRadialGradient(W/2,H/2,22,W/2,H/2,W*.62);
+    g.addColorStop(0,`rgba(255,115,120,${.015*a})`);
+    g.addColorStop(.65,`rgba(180,25,45,${.02*a})`);
+    g.addColorStop(1,`rgba(165,12,30,${.26*a})`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+
+    // Kurze weiße Innenkante, damit Schaden sofort lesbar ist.
+    ctx.strokeStyle=`rgba(255,230,225,${.10*a})`;
+    ctx.lineWidth=1;
+    ctx.strokeRect(5.5,5.5,W-11,H-11);
+    ctx.restore();
+  }
+
+  function itemOverlay(){
+    if(state.itemFlash<=0) return;
+    const a=sat6(state.itemFlash/.55);
+    const p=safe(()=>G.player,null);
+    const x=p?.x??W/2,y=(p?.y??H/2)-8;
+
+    ctx.save();
+    glow(x,y,65,'rgba(255,222,135,.12)',a);
+    ring(x,y,18+(1-a)*40,'rgba(255,229,160,.65)',1.2,.34*a);
+    ctx.restore();
+  }
+
+  function reviveOverlay(){
+    if(state.reviveFlash<=0) return;
+    const a=sat6(state.reviveFlash/.75);
+    ctx.save();
+    ctx.fillStyle=`rgba(245,225,165,${.055*a})`;
+    ctx.fillRect(0,0,W,H);
+    const p=safe(()=>G.player,null);
+    if(p){
+      ring(p.x,p.y,16+(1-a)*55,'rgba(255,236,185,.80)',1.4,.40*a);
+      glow(p.x,p.y,70,'rgba(255,222,145,.16)',.7*a);
+    }
+    ctx.restore();
+  }
+
+  function roomRevealOverlay(){
+    if(state.roomPulse<=0 || !P6.transitions) return;
+    const a=sat6(state.roomPulse/.34);
+    const p=safe(()=>G.player,null);
+    const x=p?.x??W/2,y=p?.y??H/2;
+
+    ctx.save();
+    const g=ctx.createRadialGradient(x,y,22,x,y,W*.62);
+    g.addColorStop(0,'rgba(0,0,0,0)');
+    g.addColorStop(.48,`rgba(0,0,0,${.02*a})`);
+    g.addColorStop(1,`rgba(0,0,0,${.30*a})`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  function transitionOverlay(){
+    if(!P6.transitions || !window.G || !G.trans) return;
+
+    const tr=G.trans;
+    const remaining=Number(tr.t)||0;
+    const peak=1-Math.abs(remaining-.175)/.175;
+    const a=sat6(peak);
+    if(a<=0) return;
+
+    const dir=String(tr.dir||state.roomDir||'');
+    let g;
+
+    ctx.save();
+    if(dir==='left'||dir==='west'||dir==='w'){
+      g=ctx.createLinearGradient(0,0,W,0);
+      g.addColorStop(0,`rgba(0,0,0,${.46*a})`);
+      g.addColorStop(.42,`rgba(35,18,28,${.13*a})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+    }else if(dir==='right'||dir==='east'||dir==='e'){
+      g=ctx.createLinearGradient(W,0,0,0);
+      g.addColorStop(0,`rgba(0,0,0,${.46*a})`);
+      g.addColorStop(.42,`rgba(35,18,28,${.13*a})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+    }else if(dir==='up'||dir==='north'||dir==='n'){
+      g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,`rgba(0,0,0,${.46*a})`);
+      g.addColorStop(.45,`rgba(35,18,28,${.13*a})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+    }else{
+      g=ctx.createLinearGradient(0,H,0,0);
+      g.addColorStop(0,`rgba(0,0,0,${.46*a})`);
+      g.addColorStop(.45,`rgba(35,18,28,${.13*a})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+    }
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+
+    // Kleine Lichtkante am Übergangsmittelpunkt.
+    ctx.globalAlpha=.18*a;
+    ctx.fillStyle='#d08a9c';
+    if(dir==='left'||dir==='right'||dir==='west'||dir==='east'||dir==='w'||dir==='e'){
+      ctx.fillRect(W/2-1,0,2,H);
+    }else{
+      ctx.fillRect(0,H/2-1,W,2);
+    }
+    ctx.restore();
+  }
+
+  function motionAccents(){
+    if(!P6.motionAccents || P6.quality<.75 || !window.G || G.state!=='game') return;
+    const p=G.player;
+    if(!p || p.dead) return;
+
+    const vx=Number(p.vx)||0,vy=Number(p.vy)||0;
+    const sp=Math.hypot(vx,vy);
+    if(sp<155) return;
+
+    const d=sp||1,dx=vx/d,dy=vy/d;
+    const a=sat6((sp-155)/170)*.09;
+
+    ctx.save();
+    ctx.strokeStyle=`rgba(230,224,220,${a})`;
+    ctx.lineWidth=.7;
+    ctx.lineCap='round';
+
+    for(let i=0;i<5;i++){
+      const side=(i-2)*32;
+      const x=W/2-dy*side-dx*(70+i*11);
+      const y=H/2+dx*side-dy*(70+i*11);
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      ctx.lineTo(x-dx*(11+i*2),y-dy*(11+i*2));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function floorCardOverlay(){
+    if(!P6.floorCards || state.floorCard<=0) return;
+
+    const age=2.15-state.floorCard;
+    const fadeIn=sat6(age/.22);
+    const fadeOut=sat6(state.floorCard/.42);
+    const a=Math.min(fadeIn,fadeOut);
+    const y=105-(1-a)*8;
+
+    ctx.save();
+    ctx.globalAlpha=a;
+
+    rounded(W/2-132,y-27,264,54,9);
+    ctx.fillStyle='rgba(6,7,11,.82)';
+    ctx.fill();
+    ctx.strokeStyle='rgba(234,218,200,.11)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+
+    const g=ctx.createLinearGradient(W/2-95,0,W/2+95,0);
+    g.addColorStop(0,'rgba(205,65,90,0)');
+    g.addColorStop(.5,'rgba(215,78,100,.58)');
+    g.addColorStop(1,'rgba(205,65,90,0)');
+    ctx.fillStyle=g;
+    ctx.fillRect(W/2-100,y+10,200,1);
+
+    text6(`ETAGE ${state.floorCardDepth}`,W/2,y-10,6,'#82797d','center','800');
+    text6(state.floorCardName,W/2,y+1,13,'#eee2d8','center','800');
+    ctx.restore();
+  }
+
+  function deathAndWinOverlay(){
+    if(!window.G) return;
+
+    if(G.player?.dead){
+      const d=sat6(1-(Number(G.deathTimer)||0)/1.2);
+      ctx.save();
+      const g=ctx.createRadialGradient(G.player.x,G.player.y,12,G.player.x,G.player.y,W*.60);
+      g.addColorStop(0,`rgba(35,0,6,${.05*d})`);
+      g.addColorStop(.55,`rgba(45,0,7,${.10*d})`);
+      g.addColorStop(1,`rgba(18,0,4,${.42*d})`);
+      ctx.fillStyle=g;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+
+    if(G.winQueued){
+      const remain=Number(G.winTimer)||0;
+      const p=sat6((2.5-remain)/2.5);
+      ctx.save();
+      const g=ctx.createRadialGradient(W/2,H/2,20,W/2,H/2,W*.60);
+      g.addColorStop(0,`rgba(235,220,165,${.035*p})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+  }
+
+  function subtleGlobalOverlay(){
+    if(!P6.enabled) return;
+    ensureCaches();
+
+    ctx.save();
+
+    if(P6.vignette && state.vignetteCanvas){
+      ctx.globalAlpha=.78;
+      ctx.drawImage(state.vignetteCanvas,0,0,W,H);
+    }
+
+    if(P6.grain && state.grainCanvas && P6.quality>=.55){
+      const tick=Math.floor(performance.now()/180);
+      rebuildGrain(tick);
+      ctx.globalAlpha=P6.quality<.8?.38:.55;
+      ctx.drawImage(state.grainCanvas,0,0,W,H);
+    }
+
+    ctx.restore();
+  }
+
+  function debugOverlay(){
+    if(!P6.debugFps) return;
+    ctx.save();
+    rounded(W-74,H-43,66,28,5);
+    ctx.fillStyle='rgba(0,0,0,.62)';
+    ctx.fill();
+    mono6(`${Math.round(state.fps)} FPS`,W-41,H-32,6.5,
+          state.fps<50?'#e48080':'#9bcf9f');
+    mono6(`FX ${P6.quality.toFixed(2)}`,W-41,H-20,5.5,'#777078');
+    ctx.restore();
+  }
+
+  function addLocalFx(kind,x,y,color='#fff'){
+    const max=P6.quality<.8?18:36;
+    state.localFx.push({kind,x,y,color,t:.55,max:.55});
+    if(state.localFx.length>max)
+      state.localFx.splice(0,state.localFx.length-max);
+  }
+
+  function updateLocal(dt){
+    state.hitFlash=Math.max(0,state.hitFlash-dt);
+    state.itemFlash=Math.max(0,state.itemFlash-dt);
+    state.reviveFlash=Math.max(0,state.reviveFlash-dt);
+    state.roomPulse=Math.max(0,state.roomPulse-dt);
+    state.floorCard=Math.max(0,state.floorCard-dt);
+
+    for(const f of state.localFx) f.t-=dt;
+    state.localFx=state.localFx.filter(f=>f.t>0);
+  }
+
+  function drawLocalFx(){
+    if(!state.localFx.length) return;
+    ctx.save();
+    for(const f of state.localFx){
+      const a=sat6(f.t/f.max);
+      const p=1-a;
+      if(f.kind==='impact'){
+        ring(f.x,f.y,5+p*13,f.color,1,.28*a);
+      }else if(f.kind==='room'){
+        ring(f.x,f.y,12+p*34,'rgba(235,220,200,.65)',1,.15*a);
+      }
+    }
+    ctx.restore();
+  }
+
+  function measurePerformance(now){
+    let dt=(now-state.lastRender)/1000;
+    state.lastRender=now;
+    dt=clamp6(dt,.001,.12);
+    state.smoothDt=state.smoothDt*.94+dt*.06;
+    state.fps=1/state.smoothDt;
+
+    if(!P6.adaptiveQuality) return;
+
+    if(state.fps<48){
+      state.lowFpsTime+=dt;
+      state.highFpsTime=0;
+    }else if(state.fps>56){
+      state.highFpsTime+=dt;
+      state.lowFpsTime=Math.max(0,state.lowFpsTime-dt*.5);
+    }else{
+      state.lowFpsTime=Math.max(0,state.lowFpsTime-dt*.25);
+      state.highFpsTime=Math.max(0,state.highFpsTime-dt*.25);
+    }
+
+    if(!state.autoLow && state.lowFpsTime>2.2){
+      state.autoLow=true;
+      P6.quality=.62;
+      applyExternalQuality(.65);
+    }
+
+    if(state.autoLow && state.highFpsTime>5.0){
+      state.autoLow=false;
+      P6.quality=1;
+      restoreExternalQuality();
+      state.lowFpsTime=0;
+      state.highFpsTime=0;
+    }
+  }
+
+  function applyExternalQuality(q){
+    for(const key of ['KBPhase2','KBPhase3','KBPhase4']){
+      const obj=window[key];
+      if(!obj || typeof obj.quality!=='number') continue;
+      if(!externalQuality.has(key)) externalQuality.set(key,obj.quality);
+      obj.quality=Math.min(externalQuality.get(key),q);
+    }
+
+    // G.fx enthält nur visuelle Effekte. Bei schwacher Framerate werden
+    // lediglich die ältesten überschüssigen Partikel entfernt.
+    if(window.G?.fx && G.fx.length>520) G.fx.splice(0,G.fx.length-520);
+  }
+
+  function restoreExternalQuality(){
+    for(const [key,value] of externalQuality){
+      const obj=window[key];
+      if(obj && typeof obj.quality==='number') obj.quality=value;
+    }
+    externalQuality.clear();
+  }
+
+  function detectWorldChanges(){
+    if(!window.G) return;
+
+    const roomKey=safe(()=>G.roomKey,null);
+    const depth=safe(()=>G.depth,null);
+
+    if(state.lastRoomKey===null && roomKey!=null) state.lastRoomKey=roomKey;
+    else if(roomKey!=null && roomKey!==state.lastRoomKey){
+      state.lastRoomKey=roomKey;
+      state.roomPulse=.34;
+      const p=G.player;
+      if(p) addLocalFx('room',p.x,p.y,'#eee0cf');
+    }
+
+    if(state.lastDepth===null && depth!=null){
+      state.lastDepth=depth;
+      if(G.state==='game' && P6.floorCards){
+        state.floorCard=2.15;
+        state.floorCardDepth=depth;
+        state.floorCardName=safe(()=>G.floor.data.name,'KELLER');
+      }
+    }else if(depth!=null && depth!==state.lastDepth){
+      state.lastDepth=depth;
+      state.floorCard=2.15;
+      state.floorCardDepth=depth;
+      state.floorCardName=safe(()=>G.floor.data.name,'KELLER');
+    }
+
+    const dead=!!safe(()=>G.player.dead,false);
+    if(state.lastPlayerDead && !dead){
+      state.reviveFlash=.75;
+    }
+    state.lastPlayerDead=dead;
+  }
+
+  // ------------------------------------------------------------------
+  // Ereignis-Hooks: Original-Gameplay läuft unverändert weiter.
+  // ------------------------------------------------------------------
+
+  wrap('hurtPlayer',old=>function(...args){
+    const before=totalHalfHearts();
+    const result=old.apply(this,args);
+    const after=totalHalfHearts();
+
+    if(result===true || after<before){
+      state.hitFlash=.28;
+    }
+    return result;
+  });
+
+  wrap('damageEnemy',old=>function(e,d,winkel,...rest){
+    const before=Number(e?.hp);
+    const result=old.call(this,e,d,winkel,...rest);
+    const after=Number(e?.hp);
+    if(e && Number.isFinite(before) && Number.isFinite(after) && after<before){
+      addLocalFx('impact',e.x,e.y-(e.z||0),
+                 e.isBoss?'rgba(255,210,190,.75)':'rgba(245,230,215,.62)');
+    }
+    return result;
+  });
+
+  wrap('acquireItem',old=>function(...args){
+    const result=old.apply(this,args);
+    state.itemFlash=.55;
+    return result;
+  });
+
+  wrap('enterRoom',old=>function(...args){
+    state.roomDir=args[1]??null;
+    const result=old.apply(this,args);
+    state.roomPulse=.34;
+    return result;
+  });
+
+  // playerDie kann durch Wiederbelebungsitems zurückkehren, ohne wirklich zu
+  // sterben. Deshalb wird der Zustand nach dem Original geprüft.
+  wrap('playerDie',old=>function(...args){
+    const wasDead=!!safe(()=>G.player.dead,false);
+    const result=old.apply(this,args);
+    const isDead=!!safe(()=>G.player.dead,false);
+    if(!wasDead && !isDead) state.reviveFlash=.75;
+    return result;
+  });
+
+  // ------------------------------------------------------------------
+  // Finaler Render-Wrapper: alle Phase-6-Overlays kommen nach den bisherigen
+  // Grafikphasen und können deshalb nichts aus deren Logik überschreiben.
+  // ------------------------------------------------------------------
+  wrap('render',old=>function(...args){
+    const now=performance.now();
+    measurePerformance(now);
+    const dt=clamp6((now-(state._lastUpdate||now))/1000,0,.10);
+    state._lastUpdate=now;
+    updateLocal(dt);
+
+    const result=old.apply(this,args);
+
+    if(!P6.enabled) return result;
+
+    // Nach allen vorhandenen Renderern wieder auf Basis-Koordinaten wechseln.
+    if(typeof window.grundTransform==='function') grundTransform();
+
+    detectWorldChanges();
+
+    // Weltbezogene Effekte zuerst, globale Körnung/Vignette zuletzt.
+    if(window.G){
+      roomRevealOverlay();
+      transitionOverlay();
+      motionAccents();
+      itemOverlay();
+      reviveOverlay();
+      hitOverlay();
+      lowHealthOverlay();
+      deathAndWinOverlay();
+      drawLocalFx();
+      floorCardOverlay();
+    }
+
+    subtleGlobalOverlay();
+    debugOverlay();
+
+    return result;
+  });
+
+  console.info(
+    '[KELLERBRUT] Grafik-Overhaul Phase 6 aktiv — Final Polish + adaptive Performance'
+  );
+})();
+</script>
 </body>
 </html>

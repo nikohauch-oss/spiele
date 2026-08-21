@@ -227,6 +227,27 @@ die Item-Erklärungen hängen an `render()` statt am HUD, die Item-Liste der
 Pause behält Namen, Wirkung und Blättern, und die vier Raumecken bleiben
 hinter den Panels sichtbar (nachgemessen an den Pixeln).
 
+**Grafik-Overhaul Phase 6.** Der Schlussschliff, als letzter Block geladen:
+gecachte Vignette, feines Filmkorn, ein Reveal beim Betreten eines Raums mit
+Richtungswirkung, Etagen-Titelkarte beim Abstieg, Bewegungsakzente bei hohem
+Tempo, Trefferfeedback am Bildrand, ein Randpuls bei wenig Leben, Lichtimpulse
+beim Aufheben und beim Wiederbeleben, weichere Tod- und Sieg-Blenden, kleine
+Trefferringe an Gegnern. Alle Wraps (`hurtPlayer`, `damageEnemy`,
+`acquireItem`, `enterRoom`, `playerDie`, `render`) rufen das Original auf und
+lesen nur ab — verändert wird nichts davon.
+
+Dazu bringt er ein Sicherheitsnetz mit: Phase 6 misst die geglättete Bildrate
+und senkt bei dauerhaft unter 48 FPS die Qualitätsstufe von Phase 2, 3 und 4
+ab, bis es wieder flüssig läuft. Nachgeprüft mit künstlicher Überlast:
+
+| | Bildrate | Qualität P2/P3/P4 |
+|---|---|---|
+| 25 Gegner | 60 FPS | 1 / 1 / 1 |
+| 700 Gegner | 16 FPS | **0,65 / 0,65 / 0,65** |
+| wieder 25 Gegner | 60 FPS | 1 / 1 / 1 |
+
+Es greift also nur, wenn es nötig ist, und stellt danach von selbst wieder her.
+
 **Warum kein `ctx.filter`.** Beide Aufsätze kamen mit einem leichten
 `saturate()/contrast()` je Figur. Das musste raus: KELLERBRUT zeichnet jede
 Figur aus vielen einzelnen Tuschepfaden, und Canvas 2D rendert alles, was
