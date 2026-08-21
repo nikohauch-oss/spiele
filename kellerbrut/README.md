@@ -214,6 +214,33 @@ HTML-Datei ohne Build-Schritt.
 Abschaltbar zur Laufzeit über `window.KBPhase2.enabled = false`, sparsamer
 über `window.KBPhase2.quality = 0.5`.
 
+**Bosse als Highlight.** Phase 3 bringt Auren, Idle-Pulsieren,
+Angriffstelegraphen, Treffer-Rim-Light, Phasenwechsel-Burst und
+Todespartikel bereits mit. Vier Dinge fehlten und stehen in einem eigenen
+Block darüber:
+
+- **Größer, ohne die Trefferfläche anzufassen.** Die frühen Bosse (Radius 24
+  bis 30) wirkten neben den späteren (bis 52) wie kräftige Normalgegner.
+  Sie werden jetzt nur *gezeichnet* größer — bis zu einem Fünftel, mit einer
+  Kurve, die den ohnehin Großen nichts hinzufügt. `e.r` bleibt unangetastet,
+  Kollision und Treffer sind exakt wie zuvor.
+- **Angriffsanimation aus dem echten KI-Zustand.** Wechselt `e.state` oder
+  `e.pat`, hat der Boss gerade etwas getan; darauf folgt ein kurzer Ruck —
+  zusammenziehen, strecken, auspendeln — und ein heller Ring. Gelesen wird
+  nur, gefahren wird nichts.
+- **Ein Todesablauf statt eines Verschwindens.** Der Boss kippt, sinkt,
+  glüht von innen auf, verblasst, und aus ihm fahren sechsundzwanzig Trümmer
+  und zwei versetzte Druckwellen. Gezeichnet wird aus einer Kopie, damit der
+  eigentliche Gegner ganz normal aus `G.enemies` fliegt.
+- **Bildschirmschlag** bei angekündigten Einschlägen, Phasenwechseln und dem
+  Bosstod.
+
+**Die Mechanik bleibt, und das ist nachgemessen.** Testphase 30 vergleicht
+alle zwölf Bosse mit und ohne Aufwertung: Trefferradius, Leben und der
+Schaden eines Treffers sind auf die dritte Nachkommastelle gleich. Dazu:
+kleine Bosse werden sichtbar größer gezeichnet (Faktor 1,24), die großen
+nicht (1,00), der Boss zerfällt sichtbar und ist danach wirklich weg.
+
 **Grafik-Overhaul Phase 3.** Ein dritter Aufsatz kümmert sich um die Bosse.
 Er hängt sich an `drawBossSprite`, `drawRoom`, `updateBossAI`, `killEnemy`,
 `drawBossIntro`, `drawHUD` und `render` und bringt: eine eigene Optik für

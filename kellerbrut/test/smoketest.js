@@ -3069,6 +3069,139 @@ await withPage(async(page,errs)=>{
 });
 
 }
+
+if(want(30)){
+console.log('\n[30] Bosse als Highlight');
+await withPage(async(page,errs)=>{
+
+  const da=await page.evaluate(()=>({
+    aktiv: !!(window.KBBossPlus && window.KBBossPlus.enabled),
+    schalter: window.KBBossPlus
+      ? ['groesse','angriff','tod','schlag'].filter(k=>k in window.KBBossPlus).length : 0
+  }));
+  note(da.aktiv,'die Boss-Aufwertung ist aktiv');
+  note(da.schalter===4,'alle vier Teile sind einzeln abschaltbar','('+da.schalter+')');
+
+  /* Der wichtigste Punkt des Auftrags: die Mechanik darf sich NICHT
+     aendern. Trefferflaeche, Leben und Schaden muessen mit und ohne
+     Aufwertung exakt gleich sein. */
+  const m=await page.evaluate(()=>{
+    const lauf=(an)=>{
+      window.KBBossPlus.enabled=an;
+      const werte={};
+      for(const id of Object.keys(KB.BOSS_TYPES)){
+        startRun(0,'BM'); KB.G.bossIntro=null;
+        const p=KB.G.player; p.itemGet=null; p.iframes=1e9;
+        KB.G.enemies.length=0; spawnBoss(id); KB.G.bossIntro=null;
+        const e=KB.G.enemies[0];
+        const vorHp=e.hp;
+        KB.hitEnemyWithMods(e,10,0,true);
+        werte[id]={r:e.r, maxHp:e.maxHp, schaden:+(vorHp-e.hp).toFixed(3)};
+      }
+      return werte;
+    };
+    const aus=lauf(false), an=lauf(true);
+    const abweichung=[];
+    for(const id of Object.keys(aus)){
+      if(aus[id].r!==an[id].r) abweichung.push(id+': r '+aus[id].r+'→'+an[id].r);
+      if(aus[id].maxHp!==an[id].maxHp) abweichung.push(id+': hp');
+      if(aus[id].schaden!==an[id].schaden)
+        abweichung.push(id+': Schaden '+aus[id].schaden+'→'+an[id].schaden);
+    }
+    return {abweichung, anzahl:Object.keys(aus).length,
+            beispiel:aus.kammermutter};
+  });
+  note(m.abweichung.length===0,
+       'Trefferflaeche, Leben und Schaden bleiben bei allen zwoelf Bossen exakt gleich',
+       m.abweichung.join('; ') || '('+m.anzahl+' Bosse geprueft)');
+
+  /* Groesser aussehen sollen sie trotzdem — aber nur die kleinen. */
+  const g=await page.evaluate(()=>{
+    const cv=document.querySelector('canvas'), gg=cv.getContext('2d'), f=cv.width/640;
+    const flaeche=(id,an)=>{
+      window.KBBossPlus.groesse=an; window.KBBossPlus.enabled=true;
+      startRun(0,'BG'); KB.G.bossIntro=null;
+      const p=KB.G.player; p.itemGet=null; p.iframes=0; KB.G.banner=null;
+      for(const z of KB.G.room.grid) z.fill(null);
+      KB.G.enemies.length=0; spawnBoss(id); KB.G.bossIntro=null;
+      const e=KB.G.enemies[0]; e.hp=e.maxHp=1e6; e.spd=0; e.x=tx(6); e.y=ty(3);
+      p.x=tx(1); p.y=ty(6);
+      raumBildNeu(); render();
+      const d=gg.getImageData(Math.round((e.x-70)*f),Math.round((e.y-70)*f),
+                              Math.round(140*f),Math.round(140*f)).data;
+      const px=[]; for(let i=0;i<d.length;i+=4) px.push(d[i]+d[i+1]+d[i+2]);
+      px.sort((a,b)=>a-b); const med=px[px.length>>1];
+      return px.filter(v=>Math.abs(v-med)>60).length;
+    };
+    const klein=flaeche('doppelherz',false), kleinAn=flaeche('doppelherz',true);
+    const gross=flaeche('kammermutter',false), grossAn=flaeche('kammermutter',true);
+    window.KBBossPlus.groesse=true;
+    return {kleinFaktor:+(kleinAn/Math.max(1,klein)).toFixed(2),
+            grossFaktor:+(grossAn/Math.max(1,gross)).toFixed(2)};
+  });
+  note(g.kleinFaktor>1.1,'kleine Bosse werden sichtbar groesser gezeichnet',
+       '(Faktor '+g.kleinFaktor+')');
+  note(Math.abs(g.grossFaktor-1)<0.06,'die ohnehin grossen bleiben, wie sie waren',
+       '(Faktor '+g.grossFaktor+')');
+
+  /* Todesablauf und Bildschirmschlag. */
+  const t=await page.evaluate(async()=>{
+    startRun(0,'BT'); KB.G.bossIntro=null;
+    const p=KB.G.player; p.itemGet=null; p.iframes=1e9;
+    for(const z of KB.G.room.grid) z.fill(null);
+    KB.G.enemies.length=0; spawnBoss('kellervater'); KB.G.bossIntro=null;
+    const e=KB.G.enemies[0]; e.x=tx(6); e.y=ty(3); e.spd=0;
+    p.x=tx(1); p.y=ty(6);
+    for(let i=0;i<10;i++) updateGame(1/60);
+    const cv=document.querySelector('canvas'), g=cv.getContext('2d'), f=cv.width/640;
+    /* Grundlinie: der blanke Boden zaehlt selbst schon Pixel, seit er aus
+       Platten mit Fugen und Bewuchs besteht. Ohne diesen Bezugswert misst
+       man den Boden statt des Bosses. */
+    const bossFeld=()=>{ render();
+      const d=g.getImageData(Math.round((tx(6)-70)*f),Math.round((ty(3)-70)*f),
+                             Math.round(140*f),Math.round(140*f)).data;
+      const px=[]; for(let i=0;i<d.length;i+=4) px.push(d[i]+d[i+1]+d[i+2]);
+      px.sort((a,b)=>a-b); const med=px[px.length>>1];
+      return px.filter(v=>Math.abs(v-med)>60).length; };
+    const lebend=bossFeld();
+    const merkE=KB.G.enemies.slice();
+    KB.G.enemies.length=0;
+    const blank=bossFeld();                    // nur Boden, ohne Boss
+    KB.G.enemies.push(...merkE);
+    e.hp=0; killEnemy(e);
+    KB.G.enemies=KB.G.enemies.filter(x=>!x.dead);
+    const schuettelt=KB.G.shake>4;
+    /* Mit ECHTEN Bildern warten, nicht in einer engen Schleife: Phase 3
+       altert ihre Todeseffekte ueber performance.now() im Render-Wrapper.
+       In einer Schleife ohne vergehende Zeit verblassen sie nie — das waere
+       ein Messfehler, kein Fehler im Spiel. */
+    const warte=(ms)=>new Promise(r=>{const t0=performance.now();
+      const l=()=>{ updateGame(1/60);
+        if(performance.now()-t0<ms) requestAnimationFrame(l); else r(); };
+      requestAnimationFrame(l);});
+    await warte(200);
+    const waehrend=bossFeld();                 // waehrend des Zerfalls noch sichtbar
+    await warte(2600);                         // Ablauf abwarten
+    /* Nach dem Bosskampf liegt die Belohnung auf tx(6),ty(4) — mitten im
+       Messfeld. Sie gehoert nicht zum Todesablauf, also raeumen wir sie
+       vor der letzten Messung weg. */
+    KB.G.pickups.length=0; KB.G.room.pedestals.length=0;
+    KB.G.room.trapdoor=false; KB.G.texts.length=0; KB.G.fx.length=0;
+    const danach=bossFeld();
+    return {lebend,waehrend,danach,blank,schuettelt};
+  });
+  /* Gemessen wird immer der Anteil UEBER dem blanken Boden. */
+  const anteil=v=>Math.max(0,v-t.blank);
+  note(anteil(t.waehrend)>anteil(t.lebend)*0.25,
+       'der Boss zerfaellt sichtbar, statt einfach zu verschwinden',
+       '(ueber dem Boden: lebend '+anteil(t.lebend)+', im Zerfall '+anteil(t.waehrend)+')');
+  note(anteil(t.danach)<anteil(t.lebend)*0.15,'nach dem Ablauf ist er wirklich weg',
+       '(Rest ueber dem Boden '+anteil(t.danach)+', Boden allein '+t.blank+')');
+  note(t.schuettelt,'der Tod gibt dem Bild einen Ruck');
+  note(errs.length===0,'keine JS-Fehler',errs.join(' '));
+});
+
+}
 console.log('\n================================');
 if(fails.length){ console.log('FEHLGESCHLAGEN:'); fails.forEach(f=>console.log(' - '+f)); process.exit(1); }
 console.log('ALLE PRÜFUNGEN BESTANDEN');

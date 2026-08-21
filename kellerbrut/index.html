@@ -12656,5 +12656,234 @@ window.KB={ get G(){return G;}, startRun, genFloor, hashSeed, Input, Sfx,
   );
 })();
 </script>
+
+<!-- Boss-Aufwertung: Groesse, Angriffsanimation, Todesablauf, Bildschirmschlag -->
+<script>
+/* ==================================================================
+   KELLERBRUT — BOSSE ALS HIGHLIGHT
+
+   Phase 3 bringt bereits Auren, Idle-Pulsieren, Angriffstelegraphen,
+   Treffer-Rim-Light, Phasenwechsel-Burst und Todespartikel mit. Was
+   fehlte, sind vier Dinge — und nur die stehen hier:
+
+     1. groessere Darstellung, OHNE die Trefferflaeche anzufassen
+     2. Angriffsanimation, gefahren aus dem echten KI-Zustand
+     3. ein Todesablauf statt eines schlichten Verschwindens
+     4. Bildschirmschlag bei angekuendigten Einschlaegen und
+        Phasenwechseln
+
+   Keine Bossmechanik wird veraendert: alle Haken rufen das Original
+   auf und lesen nur ab. e.r bleibt unangetastet, damit Trefferflaeche
+   und Kollision exakt bleiben wie zuvor.
+   ================================================================== */
+(() => {
+  'use strict';
+  if(window.__KB_BOSSPLUS__) return;
+  window.__KB_BOSSPLUS__ = true;
+
+  const P8 = window.KBBossPlus = {
+    enabled:true, groesse:true, angriff:true, tod:true, schlag:true, version:'1.0'
+  };
+
+  const zustand = new WeakMap();     // je Boss: letzter KI-Zustand, Schlagrest
+  let bossTod = null;                // laufender Todesablauf
+  let blitzRest = 0, blitzFarbe = 'rgba(255,255,255,0.5)';
+
+  function haken(name,bau){
+    const alt=window[name];
+    if(typeof alt!=='function'){ console.warn('[KELLERBRUT Boss+] fehlt:',name); return; }
+    window[name]=bau(alt);
+  }
+
+  /* --- 1) Groesse -------------------------------------------------
+     Die kleinen Bosse wirkten neben den spaeteren wie Normalgegner.
+     Sie werden nur GEZEICHNET groesser; e.r und damit jede Kollision
+     bleibt unveraendert. Wer schon gross ist, bleibt wie er ist.    */
+  function sichtSkala(e){
+    if(!P8.groesse) return 1;
+    const r=Number(e.r)||24;
+    return clamp(1+(38-r)/38*0.5, 1, 1.20);
+  }
+
+  /* --- 2) Angriffsanimation ---------------------------------------
+     Signal ist der echte KI-Zustand: wechselt e.state oder e.pat,
+     hat der Boss gerade etwas getan. Darauf folgt ein kurzer Ruck —
+     Ausholen, Schlag, Nachschwingen.                                */
+  function schlagRest(e){
+    let z=zustand.get(e);
+    if(!z){ z={state:e.state,pat:e.pat,rest:0}; zustand.set(e,z); }
+    if(e.state!==z.state||e.pat!==z.pat){ z.state=e.state; z.pat=e.pat; z.rest=0.34; }
+    return z;
+  }
+  function angriffsForm(e){
+    if(!P8.angriff) return {sx:1,sy:1,vor:0};
+    const z=zustand.get(e);
+    const rest=z?z.rest:0;
+    if(rest<=0) return {sx:1,sy:1,vor:0};
+    const t=1-rest/0.34;                       // 0 … 1 über den Schlag
+    /* Erst kurz zusammenziehen, dann strecken, dann auspendeln. */
+    const kurve=t<0.3 ? -(t/0.3)*0.5 : Math.sin((t-0.3)/0.7*Math.PI)*0.85;
+    return {sx:1-kurve*0.07, sy:1+kurve*0.09, vor:kurve};
+  }
+
+  /* --- 4) Bildschirmschlag ---------------------------------------- */
+  function bildschirmSchlag(staerke,farbe){
+    if(!P8.schlag) return;
+    blitzRest=Math.max(blitzRest,staerke);
+    blitzFarbe=farbe||'rgba(255,255,255,0.5)';
+    G.shake=Math.max(G.shake,6+staerke*10);
+  }
+
+  /* Zeichnet den weissen Anriss ueber das ganze Bild. */
+  function blitzZeichnen(){
+    if(blitzRest<=0) return;
+    const a=blitzRest*0.5;
+    ctx.save(); ctx.globalAlpha=a; ctx.fillStyle=blitzFarbe;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  /* --- 3) Todesablauf ---------------------------------------------
+     Der Boss verschwand bisher wie jeder Gegner. Jetzt kippt er, sackt
+     ein, reisst auf und zerfaellt — gezeichnet aus einer Kopie, damit
+     der eigentliche Gegner ganz normal aus G.enemies fliegt und keine
+     Mechanik daran haengt.                                          */
+  function todStarten(e){
+    if(!P8.tod) return;
+    bossTod={ e:{...e, dead:false }, t:0, dauer:1.5,
+              teile:Array.from({length:26},(_,i)=>{
+                const a=frand()*TAU, v=frand.range(30,150);
+                return {x:e.x,y:e.y-(e.z||0),vx:Math.cos(a)*v,vy:Math.sin(a)*v-40,
+                        r:frand.range(1.6,4.2),t:frand.range(0.5,1.3)};
+              }) };
+    bildschirmSchlag(0.55,'rgba(255,240,225,0.55)');
+  }
+
+  function todUpdate(dt){
+    if(!bossTod) return;
+    bossTod.t+=dt;
+    for(const q of bossTod.teile){
+      q.t-=dt; q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=210*dt; q.vx*=0.985;
+    }
+    if(bossTod.t>=bossTod.dauer) bossTod=null;
+  }
+
+  function todZeichnen(){
+    if(!bossTod) return;
+    const b=bossTod, e=b.e, t=clamp(b.t/b.dauer,0,1);
+    const merk=tuscheAn;
+    /* Der Koerper kippt, sinkt und verblasst. */
+    if(t<0.85){
+      const sink=t*t*18, kipp=t*0.5, weg=1-Math.max(0,(t-0.5)/0.35);
+      ctx.save();
+      ctx.globalAlpha=clamp(weg,0,1);
+      ctx.translate(e.x,e.y+sink);
+      ctx.rotate(kipp);
+      const sk=sichtSkala(e)*(1-t*0.18);
+      ctx.scale(sk,sk*(1-t*0.22));
+      ctx.translate(-e.x,-(e.y));
+      /* Beim Zerfallen glueht er von innen auf. */
+      const hitze=t<0.3?1-t/0.3:0;
+      drawBossSprite(e,e.y,c=>hitze>0.05
+        ? `rgba(255,${Math.round(200+40*hitze)},${Math.round(170+60*hitze)},1)` : c);
+      ctx.restore();
+    }
+    /* Trümmer. */
+    tuscheAn=false;
+    for(const q of b.teile){
+      if(q.t<=0) continue;
+      ctx.globalAlpha=clamp(q.t,0,1)*0.8;
+      disc(q.x,q.y,q.r,'#e8d8c8');
+    }
+    ctx.globalAlpha=1;
+    /* Zwei Druckwellen, versetzt. */
+    if(b.t<0.5) schockwelleEinmal(e.x,e.y,b.t/0.5, 120);
+    if(b.t>0.25&&b.t<0.85) schockwelleEinmal(e.x,e.y,(b.t-0.25)/0.6, 190);
+    tuscheAn=merk;
+  }
+  function schockwelleEinmal(x,y,t,rmax){
+    if(t<=0||t>=1) return;
+    ctx.save();
+    ctx.globalAlpha=(1-t)*0.45;
+    ctx.strokeStyle='#ffe8c8'; ctx.lineWidth=3*(1-t)+0.5;
+    ctx.beginPath(); ctx.arc(x,y,rmax*t,0,TAU); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* --- Haken ------------------------------------------------------ */
+
+  /* Groesse und Angriffsruck um die vorhandene Bosszeichnung. */
+  haken('drawBossSprite',alt=>function(e,y,col,...rest){
+    if(!P8.enabled||!e||!e.isBoss) return alt.call(this,e,y,col,...rest);
+    const f=angriffsForm(e), sk=sichtSkala(e);
+    ctx.save();
+    ctx.translate(e.x,y);
+    ctx.scale(sk*f.sx, sk*f.sy);
+    ctx.translate(-e.x,-y);
+    const r=alt.call(this,e,y,col,...rest);
+    ctx.restore();
+    /* Beim Schlag ein kurzer heller Ring in Schlagrichtung. */
+    if(f.vor>0.25){
+      ctx.save();
+      ctx.globalAlpha=(f.vor-0.25)*0.5;
+      ctx.strokeStyle='rgba(255,240,220,0.9)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(e.x,y,e.r*sk*(1.05+f.vor*0.35),0,TAU); ctx.stroke();
+      ctx.restore();
+    }
+    return r;
+  });
+
+  /* Zustandswechsel abgreifen — nur lesend, die KI laeuft unveraendert. */
+  haken('updateBossAI',alt=>function(e,dt,slow,...rest){
+    const vorPhase=e?.phase;
+    const r=alt.call(this,e,dt,slow,...rest);
+    if(P8.enabled&&e){
+      const z=schlagRest(e);
+      z.rest=Math.max(0,z.rest-(Number(dt)||0));
+      if(e.phase!==vorPhase) bildschirmSchlag(0.42,'rgba(255,210,190,0.5)');
+    }
+    return r;
+  });
+
+  /* Todesablauf beim Fall des Bosses. */
+  haken('killEnemy',alt=>function(e,...rest){
+    const warBoss=!!(e&&e.isBoss&&!e.dead&&(Number(e.hp)||0)<=0);
+    const kopie=warBoss?{...e}:null;
+    const r=alt.call(this,e,...rest);
+    if(P8.enabled&&warBoss&&e.dead) todStarten(kopie);
+    return r;
+  });
+
+  /* Angekuendigte Einschlaege sind die schweren Schlaege — sie geben
+     dem Bild einen Ruck. Der Haken liest nur, der Schaden bleibt. */
+  haken('updateEinschlaege',alt=>function(dt,...rest){
+    const offen=G.einschlaege.filter(s=>!s.aus).length;
+    const r=alt.call(this,dt,...rest);
+    const nachher=G.einschlaege.filter(s=>!s.aus).length;
+    if(P8.enabled&&nachher<offen) bildschirmSchlag(0.30,'rgba(255,225,210,0.45)');
+    return r;
+  });
+
+  haken('updateGame',alt=>function(dt,...rest){
+    const r=alt.call(this,dt,...rest);
+    if(P8.enabled){
+      todUpdate(Number(dt)||0);
+      blitzRest=Math.max(0,blitzRest-(Number(dt)||0)*3.4);
+    }
+    return r;
+  });
+
+  haken('render',alt=>function(...a){
+    const r=alt.apply(this,a);
+    if(!P8.enabled) return r;
+    if(typeof window.grundTransform==='function') grundTransform();
+    todZeichnen();
+    blitzZeichnen();
+    return r;
+  });
+
+  console.info('[KELLERBRUT] Boss-Aufwertung aktiv — Groesse, Angriff, Tod, Bildschirmschlag');
+})();
+</script>
 </body>
 </html>
