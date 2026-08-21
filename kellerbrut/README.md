@@ -291,6 +291,36 @@ war jedes Mal allein der Filter. Fünf bis siebzehn Prozent mehr Sättigung
 sind das nicht wert; alles andere aus beiden Aufsätzen ist unverändert
 übernommen.
 
+**Gemäuer statt Füllfläche, Platten statt Schachbrett.** Die Wandbande war
+eine einfarbige Fläche mit einer Licht- und einer Schattenkante, der Boden ein
+Schachbrett aus zwei Tönen. Beides ist ersetzt:
+
+- **Bodenplatten** — große Steinplatten im Läuferverband, zwei Kacheln breit
+  und eine hoch, jede zweite Reihe um eine halbe Platte versetzt. Dunkle Fuge,
+  Lichtkante oben, Schattenkante unten, und jede Platte etwas anders hell,
+  damit der Boden nicht gegossen wirkt.
+- **Mauerwerk** — waagerechte Schichten mit versetzten Fugen in allen vier
+  Banden. Oben und links fangen die Steine Licht, unten und rechts liegen sie
+  im Schatten.
+- **Eckplatten** — an den vier Ecken ein größerer, dunklerer Block, der das
+  Gemäuer sichtbar zusammenhält.
+- **Wandlampen** — zwei Leuchten an der oberen Bande, jede mit einem
+  Lichtkegel, der in den Raum fällt. Die Farbe kommt aus dem Feuerschein der
+  Etage, brennt auf jeder also anders.
+
+Alles gebacken; zur Laufzeit kostet es nichts.
+
+**Ein alter Fehler in der Bodendeko.** Beim Nachbauen fiel auf, dass jede
+Etage nur die Hälfte ihrer Bodendekoration zeigte. Der Grund: dieselbe
+Zufallszahl entschied erst, *ob* ein Feld dekoriert wird (`rausch(k) > 0.42`
+→ überspringen), und dann *womit* (`(rausch(k)*4)|0`). Nach dem ersten Filter
+konnte der Wert nie über 0,42 liegen, mal vier also nie über 1,68 — die
+Varianten 2 und 3 waren auf **allen sechs Etagen** unerreichbar. Seit dem
+Spielstart. Der Aufrufer übergibt jetzt einen eigenen Schlüssel; die Auswahl,
+*welche* Felder Deko bekommen, bleibt unverändert, nur die Vielfalt stimmt.
+Damit erscheinen im Feuchten Keller endlich die Halme, die aus den Fugen
+wachsen, und auf jeder anderen Etage ihre beiden verlorenen Varianten.
+
 **Der Raum ist kein Rechteck.** Vier zusätzliche Lagen geben der Kachelfläche
 Tiefe, alle in die vorgebackene Bodenlage gerechnet und damit zur Laufzeit
 kostenlos:

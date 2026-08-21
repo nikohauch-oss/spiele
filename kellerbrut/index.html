@@ -5090,9 +5090,25 @@ const HANDSCHRIFTEN=[
       ctx.beginPath(); ctx.ellipse(x,y,s*0.3,s*0.16,rausch(k+1)*3,0,TAU); ctx.fill();
       ctx.globalAlpha=0.2; ctx.fillStyle='#8fb4c4';
       ctx.beginPath(); ctx.ellipse(x-s*0.06,y-s*0.03,s*0.12,s*0.05,0,0,TAU); ctx.fill(); ctx.restore(); }
-    else if(w===2){ ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle='#4a5c30'; // Moos in der Fuge
-      for(let i=0;i<4;i++){ const a=rausch(k+i*3)*TAU, d=rausch(k+i*7)*s*0.3;
-        ctx.beginPath(); ctx.ellipse(x+Math.cos(a)*d,y+Math.sin(a)*d*0.6,s*0.09,s*0.05,a,0,TAU); ctx.fill(); }
+    else if(w===2){ /* Grünzeug, das aus der Fuge wächst: ein paar Halme mit
+                       kleinen Blättern. Bringt die einzige lebendige Farbe in
+                       den sonst steinernen Keller. */
+      ctx.save();
+      const halme=2+((rausch(k+5)*3)|0);
+      for(let i=0;i<halme;i++){
+        const bx=x+(rausch(k+i*11)-0.5)*s*0.5, by=y+(rausch(k+i*19)-0.5)*s*0.35;
+        const h=s*(0.16+rausch(k+i*23)*0.14), neig=(rausch(k+i*29)-0.5)*0.7;
+        ctx.strokeStyle='rgba(96,124,58,0.75)'; ctx.lineWidth=1.1; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(bx,by);
+        ctx.quadraticCurveTo(bx+neig*h*0.6,by-h*0.6,bx+neig*h,by-h); ctx.stroke();
+        ctx.fillStyle='rgba(118,150,66,0.8)';                 // zwei Blättchen
+        for(const vz of [-1,1]){
+          ctx.beginPath();
+          ctx.ellipse(bx+neig*h*0.55+vz*s*0.055, by-h*0.55, s*0.06, s*0.028,
+                      vz*0.8+neig, 0, TAU);
+          ctx.fill();
+        }
+      }
       ctx.restore(); }
     else { ctx.save(); ctx.globalAlpha=0.28; ctx.strokeStyle='#2a2018'; ctx.lineWidth=1; // Ziegelfeld
       ctx.strokeRect(x-s*0.26,y-s*0.2,s*0.52,s*0.4);
@@ -5527,6 +5543,120 @@ function staub(x,y,w,h,t,farbe,anzahl){
 let bodenBild=null, aufbauBild=null, bildStand='', gitterStand=0;
 function raumBildNeu(){ gitterStand++; }   // nach jeder Gitteränderung rufen
 
+/* --- MAUERWERK, BODENPLATTEN, WANDLAMPEN --------------------------------
+   Der Raum bekommt echtes Gemäuer statt einer Füllfläche und einen Boden
+   aus Platten statt eines Schachbretts. Alles gebacken, kostet zur Laufzeit
+   also nichts. Die Farben kommen aus der Etagenpalette (F.wall, F.accent,
+   F.fa, F.fb), damit jede Etage ihr eigenes Gestein behält.            */
+
+/* Boden aus grossen Steinplatten im Läuferverband. Jede Platte ist zwei
+   Kacheln breit und eine hoch; jede zweite Reihe ist um eine halbe Platte
+   versetzt, sonst entstünde wieder ein Gitter. Die Fuge ist dunkel, die
+   Oberkante jeder Platte fängt etwas Licht. */
+function bodenPlatten(bw,bh,room,F){
+  const pw=TILE*2, ph=TILE;
+  const basis=Math.abs(room.gx*1237+room.gy*7919)+5;
+  ctx.fillStyle=F.fb; ctx.fillRect(RX,RY,bw,bh);      // Fugenfarbe als Grund
+  ctx.save();
+  ctx.beginPath(); ctx.rect(RX,RY,bw,bh); ctx.clip();
+  for(let r=0;r<ROWS;r++){
+    const versatz=(r%2)?pw*0.5:0;
+    for(let x=RX-pw; x<RX+bw+pw; x+=pw){
+      const px=x+versatz, py=RY+r*ph;
+      const k=basis+Math.abs(Math.round(px))*13+r*97;
+      ctx.fillStyle=F.fa;
+      ctx.fillRect(px+1,py+1,pw-2,ph-2);
+      /* Jede Platte etwas anders hell — sonst wirkt der Boden gegossen. */
+      const v=rausch(k);
+      ctx.fillStyle=v>0.5?`rgba(255,248,232,${(v-0.5)*0.13})`
+                         :`rgba(0,0,0,${(0.5-v)*0.17})`;
+      ctx.fillRect(px+1,py+1,pw-2,ph-2);
+      ctx.fillStyle='rgba(255,248,232,0.085)';        // Lichtkante oben
+      ctx.fillRect(px+1,py+1,pw-2,1.2);
+      ctx.fillStyle='rgba(0,0,0,0.30)';                // Schattenkante unten
+      ctx.fillRect(px+1,py+ph-2.2,pw-2,1.4);
+      ctx.fillStyle='rgba(0,0,0,0.22)';                // Fuge rechts
+      ctx.fillRect(px+pw-2,py+1,1.2,ph-2);
+    }
+  }
+  ctx.restore();
+}
+
+/* Mauerwerk in der Wandbande: waagerechte Schichten mit versetzten Fugen.
+   Oben und links fangen die Steine Licht, unten und rechts liegen sie im
+   Schatten — dieselbe Lichtrichtung wie überall sonst. */
+function mauerwerk(bw,bh,rand,F,room){
+  const sh=9;                                    // Schichthöhe
+  const basis=Math.abs(room.gx*3319+room.gy*2621)+3;
+  const stein=(x,y,w,h,k,hell)=>{
+    const v=rausch(k);
+    ctx.fillStyle=v>0.5?`rgba(255,246,228,${0.05+(v-0.5)*0.10})`
+                       :`rgba(0,0,0,${0.05+(0.5-v)*0.16})`;
+    ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='rgba(0,0,0,0.34)';             // Fuge rechts und unten
+    ctx.fillRect(x+w-1,y,1,h);
+    ctx.fillRect(x,y+h-1,w,1);
+    if(hell){ ctx.fillStyle='rgba(255,246,228,0.10)'; ctx.fillRect(x,y,w,1); }
+  };
+  const bande=(x0,y0,w,h,hell)=>{
+    ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip();
+    let reihe=0;
+    for(let y=y0; y<y0+h; y+=sh, reihe++){
+      const sw=rand, versatz=(reihe%2)?sw*0.5:0;
+      for(let x=x0-sw; x<x0+w+sw; x+=sw)
+        stein(x+versatz,y,sw,sh,basis+Math.abs(Math.round(x))*7+reihe*53,hell);
+    }
+    ctx.restore();
+  };
+  bande(RX-rand,RY-rand,bw+rand*2,rand,true);           // oben, im Licht
+  bande(RX-rand,RY+bh,bw+rand*2,rand,false);            // unten, im Schatten
+  bande(RX-rand,RY-rand,rand,bh+rand*2,true);           // links
+  bande(RX+bw,RY-rand,rand,bh+rand*2,false);            // rechts
+}
+
+/* Eckplatten: an den vier Ecken sitzt ein grösserer, dunklerer Block, der
+   das Gemäuer sichtbar zusammenhält. */
+function eckPlatten(bw,bh,rand,F){
+  const s=rand;
+  const platte=(x,y)=>{
+    ctx.fillStyle='rgba(0,0,0,0.30)'; ctx.fillRect(x,y,s,s);
+    ctx.fillStyle='rgba(255,246,228,0.09)'; ctx.fillRect(x,y,s,1.5);
+    ctx.fillRect(x,y,1.5,s);
+    ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(x,y+s-1.5,s,1.5);
+    ctx.fillRect(x+s-1.5,y,1.5,s);
+  };
+  platte(RX-rand,RY-rand); platte(RX+bw,RY-rand);
+  platte(RX-rand,RY+bh);   platte(RX+bw,RY+bh);
+}
+
+/* Zwei Lampen an der oberen Wandbande. `teil` trennt die beiden Lagen: die
+   Fassung gehört auf die Wand, der Lichtkegel auf den Boden darunter. */
+function wandLampen(bw,bh,rand,HS,F,teil){
+  const stellen=[RX+bw*0.24, RX+bw*0.76];
+  const y=RY-rand*0.45;
+  for(const x of stellen){
+    if(teil==='schein'){
+      const g=ctx.createRadialGradient(x,RY,0,x,RY,TILE*2.6);
+      g.addColorStop(0,HS.feuerschein||'rgba(232,134,42,0.30)');
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.save(); ctx.beginPath(); ctx.rect(RX,RY,bw,bh); ctx.clip();
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,RY,TILE*2.6,0,TAU); ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillStyle='rgba(0,0,0,0.45)';                 // Halterung
+      ctx.fillRect(x-4,y-5,8,10);
+      ctx.fillStyle=F.accent||'#5a442f';
+      ctx.fillRect(x-3,y-4,6,8);
+      const g=ctx.createRadialGradient(x,y,0,x,y,9);    // Schein an der Wand
+      g.addColorStop(0,'rgba(255,214,140,0.85)');
+      g.addColorStop(1,'rgba(255,180,90,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,9,0,TAU); ctx.fill();
+      ctx.fillStyle='#ffe6a8';
+      ctx.beginPath(); ctx.ellipse(x,y,2.1,2.8,0,0,TAU); ctx.fill();
+    }
+  }
+}
+
 /* --- TIEFE IM RAUM ----------------------------------------------------
    Vier gebackene Lagen, die aus der flachen Kachelfläche einen Raum mit
    Boden, Kante und Ecken machen. Alle sind bewusst zurückhaltend: der
@@ -5645,8 +5775,8 @@ function raumEcken(bw,bh){
     const q=eckenBild.getContext('2d');
     const g=q.createRadialGradient(kb/2,kh/2,kh*0.34,kb/2,kh/2,kb*0.60);
     g.addColorStop(0,   'rgba(0,0,0,0)');
-    g.addColorStop(0.62,'rgba(0,0,0,0.10)');
-    g.addColorStop(1,   'rgba(0,0,0,0.34)');
+    g.addColorStop(0.66,'rgba(0,0,0,0.055)');
+    g.addColorStop(1,   'rgba(0,0,0,0.21)');
     q.fillStyle=g; q.fillRect(0,0,kb,kh);
   }
   const merk=ctx.imageSmoothingEnabled;
@@ -5672,11 +5802,8 @@ function raumBildBacken(stand){
   ctx.imageSmoothingEnabled=false;
   flaecheBeginnen(); tuscheAn=false;
 
-  // Kacheln. Ohne Tusche: eine Kontur je Kachel ergäbe ein unruhiges Gitter.
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    ctx.fillStyle=(r+c)%2?F.fa:F.fb;
-    ctx.fillRect(RX+c*TILE,RY+r*TILE,TILE,TILE);
-  }
+  // Boden: grosse Steinplatten im Laeuferverband statt Schachbrett.
+  bodenPlatten(bw,bh,room,F);
   /* Bodenhandschrift der Etage: liegt IM Boden, ohne Kontur und ohne
      Schlagschatten — dadurch klar von Hindernissen zu unterscheiden. Die
      Streuung hängt an der Raumkoordinate, ist also bei jedem Betreten
@@ -5686,7 +5813,12 @@ function raumBildBacken(stand){
     const k=Math.abs(room.gx*911+room.gy*577+r*31+c*7)+13;
     if(rausch(k)>0.42) continue;
     ctx.save(); ctx.globalAlpha=0.9;
-    HS.bodenDeko(RX+c*TILE+TILE/2,RY+r*TILE+TILE/2,TILE,k);
+    /* Der Deko-Schluessel muss ein anderer sein als der, der oben ueber das
+       OB entscheidet. Sonst waehlt jede bodenDeko ihre Variante mit
+       (rausch(k)*4)|0 aus einem Wert, der hier schon auf hoechstens 0,42
+       eingegrenzt wurde — 0,42*4 = 1,68, also kamen die Varianten 2 und 3
+       auf keiner Etage jemals vor. */
+    HS.bodenDeko(RX+c*TILE+TILE/2,RY+r*TILE+TILE/2,TILE,k+101);
     ctx.restore();
   }
   // Spezialraum-Bodenfärbung
@@ -5702,6 +5834,7 @@ function raumBildBacken(stand){
      bleiben mit höchstens 6 % Deckkraft weit unter allem, was Gegner oder
      Geschosse verdecken könnte. */
   bodenStruktur(bw,bh,room);
+  wandLampen(bw,bh,rand,HS,F,'schein');   // Lichtkegel der Wandlampen
 
   // Deckenlampe: heller zur Mitte, dunkel zu den Rändern
   let gr=ctx.createRadialGradient(RX+bw*0.5,RY+bh*0.34,0,RX+bw*0.5,RY+bh*0.5,bw*0.62);
@@ -5712,7 +5845,7 @@ function raumBildBacken(stand){
      links, deshalb ist der Schatten oben am tiefsten und unten am flachsten. */
   const wandSchatten=(x0,y0,x1,y1,w0,h0)=>{
     const lg=ctx.createLinearGradient(x0,y0,x1,y1);
-    lg.addColorStop(0,'rgba(0,0,0,0.55)'); lg.addColorStop(1,'rgba(0,0,0,0)');
+    lg.addColorStop(0,'rgba(0,0,0,0.38)'); lg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=lg; ctx.fillRect(x0,y0,w0,h0);
   };
   wandSchatten(RX,RY,RX,RY+TILE*1.5,bw,TILE*1.5);
@@ -5787,6 +5920,10 @@ function raumBildBacken(stand){
   ctx.fillRect(RX-rand,RY+bh,bw+rand*2,rand);
   ctx.fillRect(RX-rand,RY-rand,rand,bh+rand*2);
   ctx.fillRect(RX+bw,RY-rand,rand,bh+rand*2);
+  // Mauerwerk in die Bande, danach Eckplatten und Wandlampen
+  mauerwerk(bw,bh,rand,F,room);
+  eckPlatten(bw,bh,rand,F);
+  wandLampen(bw,bh,rand,HS,F,'fassung');
   ctx.fillStyle='rgba(255,255,255,0.14)';
   ctx.fillRect(RX-rand,RY-rand,bw+rand*2,7);
   ctx.fillRect(RX-rand,RY-rand,7,bh+rand*2);
