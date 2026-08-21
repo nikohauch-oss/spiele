@@ -101,9 +101,9 @@ die Platte ist danach nur noch Bodenschmuck.
 
 **Bibliothek.** Drei Lesepulte, auf jedem eine Karte oder eine Pille — nehmen
 darf man genau eines. Die anderen beiden zerfallen, und Zurückkommen bringt
-nichts nach. Beide Räume haben eigene Türen: Eisenbeschlag für die Arena,
-helles Holz mit Messington für die Bibliothek, und auf der Karte ein ⚔
-beziehungsweise ein ≡.
+nichts nach. Beide Räume haben eigene Türen: eine vergitterte Eisentür für die
+Arena, dunkelviolettes Holz mit Messingbeschlag und aufgeschlagenem Buch für
+die Bibliothek, und auf der Karte ein ⚔ beziehungsweise ein ≡.
 
 **Teufels- und Engelsraum.** Hinter jedem Bossraum liegt eine Kammer, die
 erst der erlegte Boss aufschließt. Wer die Etage **ohne einen einzigen
@@ -123,9 +123,10 @@ Wer einmal mit Herzen bezahlt hat, sieht ihn den ganzen Durchlauf nicht
 wieder — das ist die eigentliche Entscheidung eines Runs. Seine Ware schützt
 statt zu wüten: *Federkleid*, *Taufwasser*, *Richtstrahl*, *Schutzfeder*.
 
-Man erkennt die Türen sofort: die Teufelstür ist blutrot mit zwei Hörnern und
-einem glühenden Auge im Sturz, die Engelstür hell mit Flügeln und
-Heiligenschein. Auf der Automap stehen dafür kleine Hörner und ein Ring.
+Man erkennt die Türen sofort: die Teufelstür ist eine Ritualtür — blutrot,
+mit einem Siegel und glühendem Auge auf den Blättern und zwei brennenden
+Kerzen im Sturz; die Engelstür hell mit Kreuz, Heiligenschein und Flügeln.
+Auf der Automap stehen dafür kleine Hörner und ein Ring.
 
 **Zwölf Möblierungen** sorgen dafür, dass die Kammer nicht jedes Mal derselbe
 leere Raum ist. Beim Teufel: *Der Handelstisch* (Steintisch im Kreidekreis
@@ -389,16 +390,34 @@ Teil davon wird beim Betreten eines Raums einmal auf zwei Nebenleinwände
 gezeichnet und danach nur noch kopiert — sonst wäre das mit Schraffur und
 Handkontur nicht bei 60 Bildern die Sekunde zu halten.
 
-**Türen.** Steinrahmen in leichter Aufsichtsperspektive mit zwei Türblättern,
-die aufschwingen, sobald alle Gegner im Raum tot sind. Jede Türart ist auf
-einen Blick erkennbar: die **Schatztür golden** (mit Vorhängeschloss, wenn sie
-verschlossen ist, sonst einfach offen), die **Ladentür kupfern mit einer
-Münze im Sturz**, die Bosstür mit Schädel im Sturz und rotem Schein aus dem
-Spalt, die Fluchtür dunkelrot mit Zähnen im Durchgang, der Geheimgang als
-aufgesprengter Mauerriss mit Schutt. Schatz und Laden trägt man so schon vom
-Nachbarraum aus auseinander. Gezeichnet wird immer in lokalen Koordinaten, die Wandseite ergibt
-sich allein aus der Drehung (`DOOR_ROT`) — eine neue Türart braucht daher nur
-einen Eintrag in `doorStyle()` und einen Verzierungsblock in `drawDoor()`.
+**Türen (Türset V2).** Rahmen in leichter Aufsichtsperspektive mit zwei
+Türblättern, die aufschwingen, sobald alle Gegner im Raum tot sind. Zehn
+Sorten, und jede ist ein eigenes Konzept statt nur einer anderen Farbe:
+
+| Sorte | Konzept |
+|---|---|
+| normal | **Alte Kellertür** — grobe Maserung, zwei Querbeschläge, rostige Nägel, Risse im Holz |
+| Boss | **Knochentor** — Knochenkreuz vor dem Tor, Schädel und Rippen im Sturz, roter Schein pulsiert aus dem Spalt |
+| Schatz | **Rostige Doppelluke** — genietete Metallplatten, zwei goldene Ventilräder im Sturz |
+| Laden | **Abgeriegelt** — schräg vernagelte Bretter, Warnschild „VERBOTEN“ über dem Sturz |
+| Teufel | **Ritualtür** — Siegel mit rotem Auge auf den Blättern, zwei brennende Kerzen im Sturz |
+| Engel | heller Stein, Kreuz und Heiligenschein, Flügel im Sturz |
+| Fluch | **Fleischtür** — Adern und Nähte in der Haut, ein Auge, knöcherne Zähne im Durchgang, Knötchen pulsieren mit |
+| Geheimgang | **Schimmel & Befall** — aufgesprengte Risse, Pilze wachsen aus dem Rahmen |
+| Arena | **Eisen-Gefängnistür** — schwere Platten, Nieten, vergittertes Fenster im Sturz |
+| Bibliothek | dunkelviolettes Holz mit Messingbeschlag, aufgeschlagenes Buch im Sturz |
+
+Die Silhouette im Türsturz ist der Trick: sie liegt auch bei offener Tür noch
+da, also sieht man schon vom Nachbarraum aus, was dahinter wartet. Ein
+Vorhängeschloss kommt auf jede verschlossene Tür.
+
+Gezeichnet wird immer in lokalen Koordinaten, in denen `-y` nach außen zeigt;
+die Wandseite ergibt sich allein aus der Drehung (`DOOR_ROT`). Eine neue
+Türart braucht daher nur einen Eintrag in `baseStyle()` und einen
+Verzierungsblock in `drawDoor()`. Beides steckt in einer IIFE, damit die
+Zeichenhelfer (`bone`, `candle`, `eye`, `fungus`, `rivet`, `crack`) mit ihren
+sehr allgemeinen Namen nicht global werden. Kollision und Öffnungslogik
+liegen außerhalb und sind davon unberührt.
 
 **Seeds.** Gleicher Seed erzeugt garantiert dieselben Etagen — in der
 Charakterauswahl mit `S` eingebbar. Der Seed steht während des Spiels unten

@@ -6201,32 +6201,6 @@ function finsternisSchleier(){
    Aufsichtsperspektive (außen breiter als innen).                        */
 const DOOR_ROT={u:0, d:Math.PI, l:-Math.PI/2, r:Math.PI/2};
 
-function doorStyle(kind){
-  switch(kind){
-    case 'boss':   return {rahmen:'#4a4038',hell:'#6d5f52',dunkel:'#241e1a',
-                           blatt:'#5c4c44',blattTief:'#33292410',schein:'#c03a5a'};
-    case 'schatz': return {rahmen:'#8a6f2a',hell:'#d4af41',dunkel:'#54410f',
-                           blatt:'#b08d33',blattTief:'#7a6021'};
-    case 'shop':   return {rahmen:'#7a5230',hell:'#c98a4a',dunkel:'#452c17',
-                           blatt:'#9a6a3c',blattTief:'#6a4726'};
-    case 'devil':  return {rahmen:'#521018',hell:'#9a2030',dunkel:'#2a070c',
-                           blatt:'#3a0c12',blattTief:'#1e0508',schein:true};
-    case 'angel':  return {rahmen:'#8a8270',hell:'#efe8d0',dunkel:'#544e40',
-                           blatt:'#d8d0b8',blattTief:'#a09880'};
-    case 'curse':  return {rahmen:'#5a2424',hell:'#833636',dunkel:'#331313',
-                           blatt:'#6a2a2a',blattTief:'#431a1a',schein:'#c03a5a'};
-    case 'secret': return {rahmen:'#4a4a52',hell:'#65656f',dunkel:'#2b2b31',
-                           blatt:'#4a4a52',blattTief:'#2b2b31'};
-    /* Arena: Eisenbeschlag, damit man den Kampfraum von außen erkennt. */
-    case 'arena':  return {rahmen:'#3e4650',hell:'#66727e',dunkel:'#20262c',
-                           blatt:'#4a545e',blattTief:'#2a3138',schein:'#c8823a'};
-    /* Bibliothek: helles Holz mit Messington. */
-    case 'bibliothek': return {rahmen:'#5a4a6a',hell:'#8a76a0',dunkel:'#2e2438',
-                           blatt:'#6a5880',blattTief:'#3e3250'};
-    default:       return {rahmen:'#6b5b47',hell:'#8d7862',dunkel:'#42382c',
-                           blatt:'#7a6448',blattTief:'#4e3f2c'};
-  }
-}
 function poly(pts,color){
   ctx.fillStyle=color; ctx.beginPath();
   ctx.moveTo(pts[0][0],pts[0][1]);
@@ -6245,135 +6219,196 @@ function polyRing(aussen,innen,color){
   ctx.fill('evenodd');
 }
 
-function drawDoor(d,door){
-  const e=door.edge;
-  if(!e.revealed) return;   // Geheimgang oder verborgene Kammer: noch nicht da
-  const dp=doorXY(d), st=doorStyle(e.kind);
-  const a=clamp(door.anim===undefined?(doorPassable(door)?1:0):door.anim,0,1);
+/* --- Türen (Türset V2) ----------------------------------------------------
+   Acht handgezeichnete Türkonzepte: alte Kellertür, Schimmel & Befall,
+   Eisen-Gefängnistür, Ritualtür, Fleischtür, abgeriegelter Laden,
+   Knochentor (Boss) und rostige Doppelluke. Jede Sorte ist schon an der
+   Silhouette im Türsturz zu erkennen, damit man von der anderen Raumseite
+   aus sieht, was hinter der Tür liegt.
+   Kollision und Öffnungslogik bleiben unangetastet — der Block ersetzt
+   ausschließlich die Darstellung. Die Hilfsfunktionen stecken in einer
+   IIFE, damit allgemeine Namen wie `line` oder `eye` nicht global werden. */
+let drawDoor;
+(() => {
+  // Kellerbrut Türset V2 – nur Darstellung; Kollisionen/Öffnungslogik bleiben unverändert.
+  const baseStyle = kind => {
+    switch(kind){
+      case 'boss': return {rahmen:'#302a26',hell:'#6f655a',dunkel:'#171311',blatt:'#332823',tief:'#190f0d',akzent:'#ff5a3d'};
+      case 'schatz': return {rahmen:'#594520',hell:'#b28b3f',dunkel:'#2c2110',blatt:'#6b4a27',tief:'#382514',akzent:'#e2ba57'};
+      case 'shop': return {rahmen:'#504235',hell:'#8f765d',dunkel:'#282119',blatt:'#373231',tief:'#1c1918',akzent:'#d25a43'};
+      case 'devil': return {rahmen:'#421218',hell:'#842330',dunkel:'#1d070a',blatt:'#301014',tief:'#160609',akzent:'#ff3b42',schein:true};
+      case 'angel': return {rahmen:'#817b6e',hell:'#e7dfc7',dunkel:'#454138',blatt:'#bdb6a4',tief:'#777062',akzent:'#ffe69a'};
+      case 'curse': return {rahmen:'#4b2626',hell:'#7d3b3b',dunkel:'#271212',blatt:'#73343a',tief:'#421a20',akzent:'#dc4a54',schein:true};
+      case 'secret': return {rahmen:'#3f453d',hell:'#65705e',dunkel:'#20251f',blatt:'#4a5148',tief:'#292e28',akzent:'#7f9965'};
+      case 'arena': return {rahmen:'#384149',hell:'#69747b',dunkel:'#1c2227',blatt:'#454b4f',tief:'#252a2e',akzent:'#b85a37'};
+      case 'bibliothek': return {rahmen:'#50455e',hell:'#82749a',dunkel:'#292330',blatt:'#665673',tief:'#3c3148',akzent:'#d7b56f'};
+      default: return {rahmen:'#574739',hell:'#806a53',dunkel:'#2a221b',blatt:'#674a31',tief:'#3a281b',akzent:'#9f7147'};
+    }
+  };
 
-  // Rahmenform: außen (-14) breiter als innen (+13)
-  const AUSSEN=[[-24,-14],[24,-14],[20,13],[-20,13]];
-  const OEFFN =[[-16,-11],[16,-11],[13,12],[-13,12]];
-
-  ctx.save();
-  ctx.translate(dp.x,dp.y);
-  ctx.rotate(DOOR_ROT[d]);
-
-  // Durchgang
-  poly(OEFFN,'#07070a');
-  // Bossräume glühen rot aus dem Spalt
-  if(st.schein&&a>0.05){
-    const g=ctx.createLinearGradient(0,-11,0,12);
-    g.addColorStop(0,'rgba(0,0,0,0)');
-    g.addColorStop(1,`rgba(192,58,90,${0.30*a})`);
-    ctx.fillStyle=g; ctx.beginPath();
-    ctx.moveTo(-16,-11);ctx.lineTo(16,-11);ctx.lineTo(13,12);ctx.lineTo(-13,12);
-    ctx.closePath(); ctx.fill();
+  function line(x1,y1,x2,y2,col,w=1){
+    ctx.strokeStyle=col; ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  function crack(x,y,sx,sy,col){
+    ctx.strokeStyle=col; ctx.lineWidth=0.9; ctx.beginPath();
+    ctx.moveTo(x,y); ctx.lineTo(x+sx*0.35,y+sy*0.28); ctx.lineTo(x+sx*0.58,y+sy*0.62); ctx.lineTo(x+sx,y+sy); ctx.stroke();
+  }
+  function rivet(x,y,col='#91877c',r=1){ disc(x,y,r,col); disc(x-0.25,y-0.25,r*0.35,'rgba(255,255,255,0.28)'); }
+  function candle(x,y,h=5){
+    ctx.fillStyle='#e2d0a4'; ctx.fillRect(x-0.8,y-h,1.6,h);
+    ctx.fillStyle='#8a2530'; ctx.fillRect(x-1,y-h+2,2,0.8);
+    ctx.fillStyle='#ffb84e'; ctx.beginPath(); ctx.ellipse(x,y-h-1.2,1.1,1.8,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#fff1a8'; ctx.beginPath(); ctx.ellipse(x,y-h-1.2,0.45,0.8,0,0,TAU); ctx.fill();
+  }
+  function bone(x1,y1,x2,y2){
+    line(x1,y1,x2,y2,'#d6c9ad',2.2); disc(x1,y1,1.45,'#d6c9ad'); disc(x2,y2,1.45,'#d6c9ad');
+    disc(x1,y1,0.5,'#8b806d'); disc(x2,y2,0.5,'#8b806d');
+  }
+  function eye(x,y,rx=3.4,ry=2.1){
+    ctx.fillStyle='#170909'; ctx.beginPath(); ctx.ellipse(x,y,rx+1,ry+0.8,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#b72b27'; ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,TAU); ctx.fill();
+    disc(x,y,1.2,'#ffb13b'); disc(x,y,0.45,'#16080a');
+  }
+  function fungus(x,y,s=1){
+    ctx.fillStyle='#8c8a64'; ctx.fillRect(x-0.45*s,y,0.9*s,2.4*s);
+    ctx.fillStyle='#6f7650'; ctx.beginPath(); ctx.ellipse(x,y,2.2*s,1.2*s,0,Math.PI,TAU); ctx.fill();
+    disc(x-0.7*s,y-0.25*s,0.35*s,'#adb17a');
   }
 
-  // Türblätter — schwenken beim Öffnen nach außen zur Seite weg
-  if(a<0.98){
-    const b=14*(1-a*0.88);        // sichtbare Blattbreite
-    const weg=a*2.5;              // Versatz nach außen
-    for(const s of [-1,1]){
-      const x0=s*(0.8+weg), x1=s*(0.8+weg+b), x2=s*(0.8+weg+b*0.84);
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(x0,-10.5); ctx.lineTo(x1,-11); ctx.lineTo(x2,11.5); ctx.lineTo(x0,11.5);
-      ctx.closePath(); ctx.clip();
-      ctx.fillStyle=st.blatt; ctx.fillRect(-30,-12,60,26);
-      // Maserung / Beschläge
-      ctx.fillStyle=st.blattTief;
-      for(let y=-7;y<11;y+=6) ctx.fillRect(-30,y,60,1.2);
-      ctx.fillStyle='rgba(255,255,255,0.10)';
-      ctx.fillRect(-30,-11,60,1.5);
-      ctx.restore();
-      // Außenkante des Blattes betonen
-      ctx.strokeStyle=st.blattTief; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(x1,-11); ctx.lineTo(x2,11.5); ctx.stroke();
-    }
-    // Vorhängeschloss bei verschlossenen Türen
-    if(e.locked){
-      ctx.strokeStyle='#c8a032'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(0,-2.5,3.2,Math.PI,0); ctx.stroke();
-      rrect(-4.5,-1,9,8,'#d4af37');
-      rrect(-4.5,-1,9,2,'#f0d98a');
-      disc(0,3,1.6,'#4a3a10');
-      ctx.fillStyle='#4a3a10'; ctx.fillRect(-0.7,3,1.4,3);
-    }
-  }
+  drawDoor = function(d,door){
+    const e=door.edge;
+    if(!e.revealed) return;
+    const dp=doorXY(d), st=baseStyle(e.kind);
+    const a=clamp(door.anim===undefined?(doorPassable(door)?1:0):door.anim,0,1);
+    const AUSSEN=[[-25,-15],[25,-15],[21,13],[-21,13]];
+    const OEFFN=[[-16,-11],[16,-11],[13,12],[-13,12]];
 
-  // Rahmen über die Blätter legen
-  polyRing(AUSSEN,OEFFN,st.rahmen);
-  // Lichtkante oben, Schattenkante unten
-  poly([[-24,-14],[24,-14],[22,-11],[-22,-11]],st.hell);
-  poly([[-20,11],[20,11],[20,13],[-20,13]],st.dunkel);
-  // Steinfugen im Rahmen
-  ctx.fillStyle=st.dunkel;
-  ctx.fillRect(-21,-6,4.5,1.2); ctx.fillRect(16.5,-6,4.5,1.2);
-  ctx.fillRect(-20,2,4,1.2);    ctx.fillRect(16,2,4,1.2);
+    ctx.save(); ctx.translate(dp.x,dp.y); ctx.rotate(DOOR_ROT[d]);
 
-  /* Typ-Verzierungen. Alles bleibt innerhalb von y >= -12: die untere
-     Raumwand endet knapp am Bildrand, nach außen ragende Zierrat würde
-     dort abgeschnitten. */
-  if(e.kind==='boss'){                       // Schädel im Türsturz
-    disc(0,-8,4.2,'#d8d0c0');
-    rrect(-3,-6.5,6,2.6,'#d8d0c0');
-    disc(-1.7,-8.5,1.2,'#241e1a'); disc(1.7,-8.5,1.2,'#241e1a');
-    ctx.fillStyle='#241e1a';
-    ctx.fillRect(-1.7,-5.2,0.9,1.8); ctx.fillRect(0.8,-5.2,0.9,1.8);
-    disc(-18,-12,1.8,'#8a7a66'); disc(18,-12,1.8,'#8a7a66'); // Nieten
-  } else if(e.kind==='schatz'){               // goldene Nieten
-    for(const nx of [-18,-9,9,18]) disc(nx,-12,1.5,'#f0d98a');
-  } else if(e.kind==='shop'){                 // Münze im Türsturz
-    /* Die Münze sitzt so weit oben im Sturz, dass sie dem Vorhängeschloss
-       nicht ins Gehege kommt — sonst verschwimmen beide zu einem Klecks. */
-    disc(0,-9.6,4.4,'#3a2a12');
-    disc(0,-9.6,3.7,'#a8862a');
-    disc(0,-10,3.1,'#ffd75a');
-    ctx.fillStyle='#8a6a1a';
-    ctx.font='bold 6px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('¢',0,-9.4);
-    for(const nx of [-18,18]) disc(nx,-12,1.5,'#d8a86a');
-  } else if(e.kind==='devil'){                // zwei Hörner über dem Sturz
-    ctx.fillStyle='#c8384c';
-    for(const vz of [-1,1]){
-      ctx.beginPath();
-      ctx.moveTo(vz*4,-6.5);
-      ctx.quadraticCurveTo(vz*9,-9,vz*11,-13.5);
-      ctx.quadraticCurveTo(vz*7.5,-9.5,vz*5.5,-6.5);
-      ctx.closePath(); ctx.fill();
+    // tiefer Durchgang + farbiger Schein bei Ritual/Fleisch/Boss
+    poly(OEFFN,'#050507');
+    if(st.schein && a>0.04){
+      const glow=ctx.createLinearGradient(0,-11,0,12);
+      glow.addColorStop(0,'rgba(0,0,0,0)'); glow.addColorStop(1,`rgba(185,35,48,${0.38*a})`);
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.moveTo(-16,-11);ctx.lineTo(16,-11);ctx.lineTo(13,12);ctx.lineTo(-13,12);ctx.closePath();ctx.fill();
     }
-    disc(0,-8.5,2.4,'#2a070c');               // Auge dazwischen
-    disc(0,-8.5,1.1,'#ff5a5a');
-    for(const nx of [-18,18]) disc(nx,-12,1.6,'#7a1a24');
-  } else if(e.kind==='angel'){                // Heiligenschein und Federn
-    for(const vz of [-1,1]){                  // angedeutete Flügel im Sturz
-      ctx.fillStyle='#f2ecd8'; ctx.beginPath();
-      ctx.moveTo(vz*7,-7);
-      ctx.quadraticCurveTo(vz*15,-12,vz*20,-11.5);
-      ctx.quadraticCurveTo(vz*14,-8,vz*8,-5.5);
-      ctx.closePath(); ctx.fill();
+    if(e.kind==='boss' && a>0.04){
+      ctx.save(); ctx.globalAlpha=0.16+0.24*Math.sin(performance.now()/170)*Math.sin(performance.now()/170);
+      ctx.fillStyle='#ff4c2f'; ctx.fillRect(-12,4,24,7); ctx.restore();
     }
-    ctx.strokeStyle='#ffe8a0'; ctx.lineWidth=1.6;
-    ctx.beginPath(); ctx.ellipse(0,-10,6.5,2.4,0,0,TAU); ctx.stroke();
-    ctx.save(); ctx.globalAlpha=0.5;
-    ctx.beginPath(); ctx.ellipse(0,-10,9,3.6,0,0,TAU); ctx.stroke(); ctx.restore();
-  } else if(e.kind==='curse'){                // Zähne, die in die Öffnung ragen
-    ctx.fillStyle='#b0b0b8';
-    for(let i=-2;i<=2;i++){ const x=i*7;
-      ctx.beginPath(); ctx.moveTo(x-2.6,-11.5); ctx.lineTo(x,-5.5); ctx.lineTo(x+2.6,-11.5);
-      ctx.closePath(); ctx.fill(); }
-  } else if(e.kind==='secret'){               // aufgesprengter Mauerriss
-    ctx.strokeStyle='#1c1c22'; ctx.lineWidth=1.4;
-    ctx.beginPath();
-    ctx.moveTo(-21,-11); ctx.lineTo(-13,-7); ctx.lineTo(-17,-1); ctx.lineTo(-9,4);
-    ctx.moveTo(21,-11);  ctx.lineTo(14,-6);  ctx.lineTo(18,0);   ctx.lineTo(10,5);
-    ctx.stroke();
-    for(const bx of [-19,-8,9,19]) disc(bx,10,1.3,'#1c1c22'); // Schutt
-  }
-  ctx.restore();
-}
+
+    // zwei animierte Türblätter
+    if(a<0.98){
+      const b=14*(1-a*0.88), weg=a*2.5;
+      for(const s of [-1,1]){
+        const x0=s*(0.8+weg), x1=s*(0.8+weg+b), x2=s*(0.8+weg+b*0.84);
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(x0,-10.5);ctx.lineTo(x1,-11);ctx.lineTo(x2,11.5);ctx.lineTo(x0,11.5);ctx.closePath();ctx.clip();
+        ctx.fillStyle=st.blatt; ctx.fillRect(-30,-12,60,26);
+
+        if(e.kind==='curse'){
+          // organische Fleischhaut, Adern und Nähte
+          for(let yy=-8;yy<12;yy+=5){
+            ctx.strokeStyle='rgba(120,20,32,0.7)';ctx.lineWidth=1;
+            ctx.beginPath();ctx.moveTo(-28,yy);ctx.bezierCurveTo(-10,yy-3,9,yy+3,28,yy-1);ctx.stroke();
+          }
+          for(let yy=-8;yy<=8;yy+=4){ line(-1.5,yy,1.5,yy+1,'#d9a39c',1); }
+          if(s<0) eye(-7,-1,2.1,1.4);
+        } else if(e.kind==='arena' || e.kind==='schatz'){
+          // Metallplatten mit horizontalen Verstärkungen
+          ctx.fillStyle=st.tief; for(let yy=-7;yy<10;yy+=7) ctx.fillRect(-30,yy,60,1.8);
+          ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(-30,-10.5,60,1.2);
+          for(let yy=-7;yy<=7;yy+=7) rivet(s<0?-8:8,yy, e.kind==='schatz'?'#cda650':'#8c9395',0.8);
+        } else {
+          // grobe Holzmaserung
+          ctx.fillStyle=st.tief; for(let xx=-28;xx<30;xx+=5.5) ctx.fillRect(xx,-12,1,26);
+          ctx.fillStyle='rgba(255,255,255,0.055)'; for(let xx=-25;xx<30;xx+=9) ctx.fillRect(xx,-12,0.8,26);
+        }
+        ctx.restore();
+        line(x1,-11,x2,11.5,st.tief,1.1);
+      }
+
+      // typabhängige Details direkt auf den geschlossenen Blättern
+      if(e.kind==='default' || !e.kind){
+        ctx.fillStyle='#2f251d';ctx.fillRect(-14,-6,28,2.6);ctx.fillRect(-13,5,26,2.6);
+        for(const xx of [-11,-5,5,11]){rivet(xx,-4.7,'#776a5c',0.65);rivet(xx,6.3,'#776a5c',0.65);}
+        crack(-8,-8,4,7,'#281b13'); crack(7,-9,-3,8,'#281b13');
+      } else if(e.kind==='shop'){
+        // Bretter wie eine verbarrikadierte Kellertür
+        ctx.save();ctx.rotate(-0.10);rrect(-17,-5,34,4.3,'#795538');ctx.restore();
+        ctx.save();ctx.rotate(0.12);rrect(-17,3,34,4.3,'#67472f');ctx.restore();
+        ctx.fillStyle='#d45145';ctx.font='bold 4px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('ZUTRITT',0,0);
+      } else if(e.kind==='devil'){
+        // Ritual-Sigil
+        ctx.strokeStyle='#d4333e';ctx.lineWidth=1.1;ctx.beginPath();ctx.arc(0,0,6,0,TAU);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(0,-5);ctx.lineTo(5,4);ctx.lineTo(-5,4);ctx.closePath();ctx.stroke();
+        eye(0,0,1.8,1.1);
+      } else if(e.kind==='secret'){
+        crack(-9,-8,7,15,'#20271f'); crack(8,-7,-5,13,'#20271f');
+        fungus(-8,6,0.85);fungus(6,8,0.65);fungus(10,4,0.5);
+      } else if(e.kind==='boss'){
+        // Knochenkreuz vor dem Tor
+        bone(-10,-7,10,8);bone(10,-7,-10,8);eye(0,0,2.6,1.6);
+      } else if(e.kind==='angel'){
+        ctx.strokeStyle='#fff0b4';ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(0,-1,7,3,0,0,TAU);ctx.stroke();
+        line(0,-7,0,7,'#e8e1cc',1.3);line(-4,-3,4,-3,'#e8e1cc',1.3);
+      } else if(e.kind==='bibliothek'){
+        rrect(-8,-7,16,14,'#33263d');line(0,-6,0,6,'#d3b06b',0.9);line(-6,-5,-1,-5,'#9c7ab6',0.8);line(1,-5,6,-5,'#9c7ab6',0.8);
+      }
+
+      if(e.locked){
+        ctx.strokeStyle='#c8a032'; ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-2.5,3.2,Math.PI,0);ctx.stroke();
+        rrect(-4.5,-1,9,8,'#cda63f');rrect(-4.5,-1,9,2,'#efdc92');disc(0,3,1.5,'#493613');ctx.fillStyle='#493613';ctx.fillRect(-0.7,3,1.4,3);
+      }
+    }
+
+    // kräftiger Rahmen
+    polyRing(AUSSEN,OEFFN,st.rahmen);
+    poly([[-25,-15],[25,-15],[22,-11],[-22,-11]],st.hell);
+    poly([[-21,11],[21,11],[21,13],[-21,13]],st.dunkel);
+    ctx.fillStyle=st.dunkel;ctx.fillRect(-22,-6,5,1.2);ctx.fillRect(17,-6,5,1.2);ctx.fillRect(-21,2,4.5,1.2);ctx.fillRect(16.5,2,4.5,1.2);
+
+    // Silhouetten im Türsturz – damit jede Tür schon von weitem lesbar ist
+    if(e.kind==='boss'){
+      // Knochentor/Boss: Schädel + gebogene Rippen
+      disc(0,-9,4.3,'#d6c9ad');rrect(-3.2,-7,6.4,2.5,'#d6c9ad');disc(-1.7,-9.5,1.15,'#201816');disc(1.7,-9.5,1.15,'#201816');
+      bone(-18,-11,-10,-7);bone(18,-11,10,-7);eye(0,-8.7,1.45,0.9);
+    } else if(e.kind==='secret'){
+      // Schimmel & Befall
+      fungus(-17,-9,0.85);fungus(16,-8,0.7);fungus(-13,-5,0.5);disc(19,6,2.2,'#586342');disc(-19,7,1.7,'#6d7651');
+    } else if(e.kind==='arena'){
+      // Eisen-Gefängnistür: Nieten + kleines Gitter im Sturz
+      for(const xx of [-18,-12,12,18]) rivet(xx,-12,'#879095',0.9);
+      rrect(-6,-12,12,5,'#161b1e');for(const xx of [-4,-1.3,1.3,4]) ctx.fillRect(xx,-12,0.9,5);
+    } else if(e.kind==='devil'){
+      // Ritualtür: Kerzen, rotes Auge/Siegel
+      candle(-17,-5,4);candle(17,-5,4);ctx.strokeStyle='#b72b34';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,-9,4,0,TAU);ctx.stroke();eye(0,-9,1.8,1.1);
+    } else if(e.kind==='curse'){
+      // Fleischtür: knöcherne Zähne + pulsierende Knötchen
+      for(let i=-2;i<=2;i++){const x=i*7;ctx.fillStyle='#c5b79b';ctx.beginPath();ctx.moveTo(x-2.3,-12);ctx.lineTo(x,-6.8);ctx.lineTo(x+2.3,-12);ctx.closePath();ctx.fill();}
+      const p=1+0.12*Math.sin(performance.now()/140);disc(-18,5,1.6*p,'#a83a44');disc(18,3,1.3*p,'#8d2f3a');
+    } else if(e.kind==='shop'){
+      // Abgeriegelt: Warnschild + Nägel
+      rrect(-9,-12,18,5,'#272525');ctx.fillStyle='#d7c8a2';ctx.font='bold 3.4px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('VERBOTEN',0,-9.3);
+      for(const xx of [-18,18]) rivet(xx,-12,'#8f7d69',1);
+    } else if(e.kind==='schatz'){
+      // Rostige Doppelluke: zwei Ventilräder
+      for(const xx of [-8,8]){ctx.strokeStyle='#d0a34b';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(xx,-8.5,3.1,0,TAU);ctx.stroke();for(let i=0;i<4;i++){const aa=i*Math.PI/2;line(xx, -8.5, xx+Math.cos(aa)*3, -8.5+Math.sin(aa)*3,'#a47731',0.8);}}
+    } else if(e.kind==='angel'){
+      ctx.strokeStyle='#ffe9a8';ctx.lineWidth=1.3;ctx.beginPath();ctx.ellipse(0,-10,7,2.4,0,0,TAU);ctx.stroke();
+      ctx.fillStyle='#f2ead5';for(const s of [-1,1]){ctx.beginPath();ctx.moveTo(s*6,-8);ctx.quadraticCurveTo(s*14,-13,s*20,-11);ctx.quadraticCurveTo(s*14,-8,s*7,-6);ctx.closePath();ctx.fill();}
+    } else if(e.kind==='bibliothek'){
+      rrect(-6,-12,12,5,'#32263c');ctx.fillStyle='#d4b16a';ctx.font='bold 5px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('II',0,-9.2);
+    } else {
+      // Alte Kellertür: rostige Nägel und gebrochener Sturz
+      for(const xx of [-18,-9,9,18]) rivet(xx,-12,'#78695b',0.8);crack(-20,-12,6,5,'#30251c');
+    }
+
+    ctx.restore();
+  };
+
+  window.__KELLERBRUT_TUEREN_V2__ = true;
+})();
 
 /* --- Spielfigur -----------------------------------------------------------
    Großer runder Kopf auf kleinem Körper, Beine treten im Laufen abwechselnd,
