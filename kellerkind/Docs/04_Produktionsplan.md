@@ -34,7 +34,36 @@ Zufallsereignisse, 12 Horrorereignisse, 6 Enden, 4 Charaktere, 13 Freischaltunge
 
 ---
 
-## 2. Was fehlt
+## 2. Was noch nicht verdrahtet ist
+
+Die Systeme stehen, aber an einigen Stellen ruft sie noch niemand auf. Das sind reine
+Verbindungsarbeiten in C++ - keine Kunst, kein Editor. Sie muessen vor Stufe 1 erledigt
+sein, sonst laesst sich kein Run durchspielen.
+
+| Luecke | Was fehlt genau |
+|---|---|
+| **Raumbelohnungen** | `UKKContentRegistry::RollItem` wird nur vom Haendler benutzt. Schatzraum, Bossbelohnung, Challenge-Raum und Opferraum legen noch nichts aus. |
+| **Geheimraum-Zugang** | Der Generator markiert Knoten als `bHidden`, setzt aber keine `AKKBreakableWall` an die Verbindung. Geheimraeume sind dadurch erzeugt, aber nicht erreichbar. |
+| **Etagenwechsel** | `AKKGameMode::DescendToNextFloor` hat keinen Aufrufer - es fehlt das Treppen-Objekt im Bossraum. |
+| **Bosskampf-Start** | `AKKBossBase::BeginEncounter` hat keinen Aufrufer, `IntroSequence` wird nirgends abgespielt. Es fehlt der Ausloeser im Bossraum. |
+| **Schwachstellen** | `RegisterWeakPointHit` hat keinen Aufrufer - `ReceiveDamage` muss den getroffenen Knochen auf einen Schwachstellennamen abbilden. |
+| **Startausruestung** | `AKKCharacter::EquipWeapon` hat keinen Aufrufer. Leon startet ohne Waffe. |
+| **Charakterwerte** | Die vier Charaktere aus `Data/meta.json` (Leon, Mira, Hausmeister, Kellerkind) werden nirgends auf `UKKStatsComponent` angewendet. |
+| **Fluchwirkungen** | `ApplyCurse` sendet nur die Ansage. Von sechs Fluechen wirkt bisher nur *Gedaechtnis*, weil das HUD ihn selbst abfragt. |
+| **Zufallsereignisse** | Die zehn Ereignisse aus `Data/meta.json` haben noch keinen Code. |
+| **Enden** | `FinishRun(Ending)` existiert, aber die Bedingungen fuer Ende 2 bis 6 werden nirgends geprueft; jeder Abschluss ergibt derzeit Ende 1. |
+| **Freischaltungen** | `AdvanceUnlockProgress` und `UKKGameInstance::Unlock` haben keine Aufrufer - die 13 Bedingungen werden nicht gezaehlt. New Game+ wird gelesen, aber nie erhoeht. |
+| **Haendler-Angebot** | `AKKShopkeeper::BuildStock` hat keinen Aufrufer; der Haendlerraum muss es beim Betreten anstossen. |
+| **PlayerController** | Fehlt vollstaendig: HUD erzeugen, Eingabemodus, Pause, Todesablauf, Run-Auswertung. |
+| **Item-Effektklassen** | 7 von 142 im Katalog referenzierten `effect`-Namen haben eine Klasse, 1 von 45 Synergie-Effekten. Der Rest sind Definitionen ohne Verhalten. |
+
+Die letzte Zeile ist die groesste Einzelposition, aber auch die einfachste: Die
+vorhandenen acht Klassen in `Source/Kellerkind/Items/KKItemEffects.cpp` sind die
+Vorlagen, und jede weitere ist unabhaengig von allen anderen.
+
+---
+
+## 3. Was fehlt
 
 Alles, was Kunst ist, und alles, was im Editor gebaut wird. Das laesst sich nicht in
 Quelltext schreiben:
@@ -62,7 +91,11 @@ Effektklasse. Kein Eingriff in bestehenden Code.
 
 ---
 
-## 3. Reihenfolge
+## 4. Reihenfolge
+
+**Stufe 0 - Verdrahtung**
+Die Luecken aus Abschnitt 2 schliessen. Danach laesst sich ein Run von der Kellertuer
+bis zum Etagenwechsel durchspielen - noch ohne Kunst.
 
 **Stufe 1 - Spielbarer Kern (grau)**
 Prolog-Level, ein Raumsatz fuer Etage 1 mit Platzhaltergeometrie, Leon mit
@@ -88,7 +121,7 @@ Leistungsoptimierung an den in `03_Technik.md` genannten Kostenpunkten.
 
 ---
 
-## 4. Wie man weiterarbeitet
+## 5. Wie man weiterarbeitet
 
 **Ein Item hinzufuegen**
 1. Eintrag in eine der Dateien `Data/items_*.json`.
