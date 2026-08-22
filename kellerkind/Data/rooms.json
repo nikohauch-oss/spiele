@@ -1,0 +1,1237 @@
+{
+ "_kommentar": "KELLERKIND Raumkatalog. Raeume werden von Hand gebaut und prozedural kombiniert. doors = Bitmaske (1 Nord, 2 Ost, 4 Sued, 8 West).",
+ "rooms": [
+  {
+   "id": "AB_Boss_Halle",
+   "type": "Boss",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Eine Halle, die keine Halle ist."
+  },
+  {
+   "id": "AB_Challenge_Plattform",
+   "type": "Challenge",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 1,
+   "budget": 20,
+   "beschreibung": "Vier Wellen auf einer Plattform ohne Gelaender."
+  },
+  {
+   "id": "AB_Event_Einsturz",
+   "type": "Event",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "budget": 4,
+   "beschreibung": "Die Decke gibt nach. Der Weg zurueck auch."
+  },
+  {
+   "id": "AB_Geheim_Schachtgrund",
+   "type": "Geheim",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Der Grund eines Schachts. Hier liegt, was hinuntergefallen ist."
+  },
+  {
+   "id": "AB_Haendler_Gondel",
+   "type": "Haendler",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 8,
+   "budget": 0,
+   "beschreibung": "Der Haendler hat eine Gondel besetzt. Sie schwankt."
+  },
+  {
+   "id": "AB_Kampf_Bruecke",
+   "type": "Kampf",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 5,
+   "budget": 7,
+   "beschreibung": "Bruecke ohne Gelaender ueber einen Schacht ohne Boden."
+  },
+  {
+   "id": "AB_Kampf_Maschinenturm",
+   "type": "Kampf",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "budget": 8,
+   "beschreibung": "Vertikaler Raum mit Leitern und Plattformen."
+  },
+  {
+   "id": "AB_Kampf_Rohrbruecke",
+   "type": "Kampf",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "budget": 8,
+   "beschreibung": "Zwei Rohre als Bruecke, dazwischen offener Schacht."
+  },
+  {
+   "id": "AB_MiniBoss_Kranhaus",
+   "type": "MiniBoss",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 1,
+   "budget": 12,
+   "beschreibung": "Ein Kranhaus mit einer Kette, die sich noch bewegt."
+  },
+  {
+   "id": "AB_Opfer_Schacht",
+   "type": "Opfer",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Ein Schacht, der alles nimmt. Manchmal gibt er etwas zurueck."
+  },
+  {
+   "id": "AB_Raetsel_Aufzug",
+   "type": "Raetsel",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Ein Lastenaufzug, der nur mit Gegengewicht faehrt."
+  },
+  {
+   "id": "AB_Safe_Aufenthaltsraum",
+   "type": "SafeRoom",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 4,
+   "budget": 0,
+   "beschreibung": "Ein Aufenthaltsraum mit Spinden. Einer traegt Leons Namen."
+  },
+  {
+   "id": "AB_Schatz_Lastenkorb",
+   "type": "Schatz",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 2,
+   "budget": 0,
+   "beschreibung": "Ein Lastenkorb, der auf halber Hoehe haengengeblieben ist."
+  },
+  {
+   "id": "AB_Start_Absatz",
+   "type": "Start",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein Treppenabsatz ueber nichts."
+  },
+  {
+   "id": "AB_Story_Schichtplan",
+   "type": "Story",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Ein Schichtplan, der bis in dieses Jahr reicht."
+  },
+  {
+   "id": "AB_SuperGeheim_Fundament",
+   "type": "SuperGeheim",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Das Fundament von etwas, das viel aelter ist als das Haus."
+  },
+  {
+   "id": "AB_Verflucht_Maschinenraum",
+   "type": "Verflucht",
+   "floors": [
+    "Abgrund"
+   ],
+   "doors": 4,
+   "budget": 9,
+   "beschreibung": "Die Maschinen laufen an, sobald jemand da ist."
+  },
+  {
+   "id": "AK_Boss_Heizungsraum",
+   "type": "Boss",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Grosser Heizungsraum mit Kesselanlage. Zwei Ebenen, Gitterstege, ueberall Rohre."
+  },
+  {
+   "id": "AK_Challenge_Waschkeller",
+   "type": "Challenge",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 1,
+   "budget": 12,
+   "beschreibung": "Drei Wellen im Waschkeller. Die Tuer bleibt zu."
+  },
+  {
+   "id": "AK_Event_Stromausfall",
+   "type": "Event",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "budget": 2,
+   "beschreibung": "Beim Betreten faellt der Strom aus. Der Generator ist am anderen Ende."
+  },
+  {
+   "id": "AK_Geheim_Hohlraum",
+   "type": "Geheim",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Hohlraum zwischen zwei Waenden. Nur durch Sprengung erreichbar."
+  },
+  {
+   "id": "AK_Haendler_Nische",
+   "type": "Haendler",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 4,
+   "budget": 0,
+   "beschreibung": "Eine Nische hinter dem Heizungsraum. Der Haendler steht schon da."
+  },
+  {
+   "id": "AK_Kampf_Abteile",
+   "type": "Kampf",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "budget": 4,
+   "beschreibung": "Kellerabteile mit Lattenverschlaegen; enge Sichtlinien, viel zum Werfen."
+  },
+  {
+   "id": "AK_Kampf_Flur",
+   "type": "Kampf",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 5,
+   "budget": 3,
+   "beschreibung": "Langer Flur mit flackernder Gluehbirne. Nichts zum Verstecken."
+  },
+  {
+   "id": "AK_Kampf_Heizung",
+   "type": "Kampf",
+   "floors": [
+    "AlterKeller",
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 5,
+   "beschreibung": "Alte Heizungsanlage, heisse Rohre als Umgebungsschaden."
+  },
+  {
+   "id": "AK_Kampf_Waschraum",
+   "type": "Kampf",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 7,
+   "budget": 5,
+   "beschreibung": "Waschmaschinen, stehendes Wasser, eine tropfende Leitung - ideal fuer Elektro-Builds."
+  },
+  {
+   "id": "AK_Kampf_Werkraum",
+   "type": "Kampf",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 11,
+   "budget": 4,
+   "beschreibung": "Werkbank, Werkzeuge, ein Schraubstock; enge Gaenge zwischen Regalen."
+  },
+  {
+   "id": "AK_MiniBoss_Trockenraum",
+   "type": "MiniBoss",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 1,
+   "budget": 8,
+   "beschreibung": "Waeschestuecke haengen von der Decke. Etwas steht dazwischen."
+  },
+  {
+   "id": "AK_Raetsel_Sicherung",
+   "type": "Raetsel",
+   "floors": [
+    "AlterKeller",
+    "Versorgung"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Drei Sicherungen, zwei Fassungen. Was Licht bekommt, entscheidet der Spieler."
+  },
+  {
+   "id": "AK_Safe_Vorrat",
+   "type": "SafeRoom",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Vorratskammer mit einer Kerze. Hier ist es still - vorerst."
+  },
+  {
+   "id": "AK_Schatz_Abstell",
+   "type": "Schatz",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Verschlossener Abstellraum. Eine Truhe unter einer Plane."
+  },
+  {
+   "id": "AK_Start_Treppe",
+   "type": "Start",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Fuss der Kellertreppe. Die Tuer oben ist zu. Ein Sicherungskasten an der Wand."
+  },
+  {
+   "id": "AK_Story_Zeichnung",
+   "type": "Story",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Kinderzeichnungen an der Wand. Zwei Figuren, immer wieder."
+  },
+  {
+   "id": "AK_SuperGeheim_Brunnen",
+   "type": "SuperGeheim",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein zugemauerter Brunnenschacht. Unten liegt etwas Altes."
+  },
+  {
+   "id": "AK_Treppe_Runter",
+   "type": "Treppe",
+   "floors": [
+    "AlterKeller"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Eine Treppe, die weiter hinunterfuehrt, als sie sollte."
+  },
+  {
+   "id": "FT_Boss_Herzkammer",
+   "type": "Boss",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Eine Kammer, die sich im Takt eines Herzschlags weitet und schliesst."
+  },
+  {
+   "id": "FT_Challenge_Adernnetz",
+   "type": "Challenge",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 1,
+   "budget": 18,
+   "beschreibung": "Drei Wellen, waehrend der Boden zuckt."
+  },
+  {
+   "id": "FT_Event_Krampf",
+   "type": "Event",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "budget": 5,
+   "beschreibung": "Der Raum zieht sich zusammen. Man hat Zeit, bis er es wieder tut."
+  },
+  {
+   "id": "FT_Geheim_Blase",
+   "type": "Geheim",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Eine luftgefuellte Blase im Gewebe."
+  },
+  {
+   "id": "FT_Haendler_Auswuchs",
+   "type": "Haendler",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 2,
+   "budget": 0,
+   "beschreibung": "Der Haendler hat sich in einen Auswuchs eingerichtet. Er stoert es nicht."
+  },
+  {
+   "id": "FT_Kampf_Adernkammer",
+   "type": "Kampf",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 7,
+   "budget": 7,
+   "beschreibung": "Adern an der Decke; wer sie trifft, ueberflutet den Raum mit Blut."
+  },
+  {
+   "id": "FT_Kampf_Fleischgang",
+   "type": "Kampf",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "budget": 8,
+   "beschreibung": "Gang, dessen Waende sich zusammenziehen."
+  },
+  {
+   "id": "FT_Kampf_Knochenfeld",
+   "type": "Kampf",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "budget": 8,
+   "beschreibung": "Ein Feld aus Knochen, das bei jedem Schritt nachgibt."
+  },
+  {
+   "id": "FT_MiniBoss_Schlund",
+   "type": "MiniBoss",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 1,
+   "budget": 11,
+   "beschreibung": "Ein Schlund, aus dem etwas herauskommt, das schon einmal ein Hund war."
+  },
+  {
+   "id": "FT_Raetsel_Kreislauf",
+   "type": "Raetsel",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Drei Adern, ein Herz. Nur eine Reihenfolge oeffnet den Weg."
+  },
+  {
+   "id": "FT_Safe_Ruhekammer",
+   "type": "SafeRoom",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Eine Kammer, die im Takt atmet. Sie tut nichts. Vorerst."
+  },
+  {
+   "id": "FT_Schatz_Magen",
+   "type": "Schatz",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Etwas hat hier schon lange etwas nicht verdaut."
+  },
+  {
+   "id": "FT_Start_Rachen",
+   "type": "Start",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein Durchgang, der sich anfuehlt wie eine Kehle."
+  },
+  {
+   "id": "FT_Story_Gesichter",
+   "type": "Story",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Gesichter im Fleisch, die alle dasselbe sagen wollen."
+  },
+  {
+   "id": "FT_SuperGeheim_Embryo",
+   "type": "SuperGeheim",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Eine Kammer, in der etwas heranwaechst, das aussieht wie ein Kellerabteil."
+  },
+  {
+   "id": "FT_Verflucht_Nervenknoten",
+   "type": "Verflucht",
+   "floors": [
+    "Fleischtiefe"
+   ],
+   "doors": 4,
+   "budget": 7,
+   "beschreibung": "Ein Nervenknoten, der auf jeden Schritt reagiert."
+  },
+  {
+   "id": "KR_Boss_Kinderzimmer",
+   "type": "Boss",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Das eigentliche Kinderzimmer, in Originalgroesse - aber Leon ist zu klein."
+  },
+  {
+   "id": "KR_Challenge_Spielzimmer",
+   "type": "Challenge",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 1,
+   "budget": 15,
+   "beschreibung": "Alles im Raum steht gleichzeitig auf."
+  },
+  {
+   "id": "KR_Event_Verstecken",
+   "type": "Event",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "budget": 4,
+   "beschreibung": "Jemand zaehlt bis zehn. Danach beginnt die Suche."
+  },
+  {
+   "id": "KR_Geheim_Puppenhaus",
+   "type": "Geheim",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein Puppenhaus, in dem dieselben Raeume noch einmal stehen."
+  },
+  {
+   "id": "KR_Haendler_Kaufladen",
+   "type": "Haendler",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 4,
+   "budget": 0,
+   "beschreibung": "Ein Kaufmannsladen aus Holz, viel zu gross. Der Haendler spielt mit."
+  },
+  {
+   "id": "KR_Kampf_Bauklotz",
+   "type": "Kampf",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "budget": 6,
+   "beschreibung": "Bauklotztuerme als Deckung, die umgestossen werden koennen."
+  },
+  {
+   "id": "KR_Kampf_Bettenlager",
+   "type": "Kampf",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 7,
+   "budget": 5,
+   "beschreibung": "Riesige Betten. Darunter ist Platz - fuer beide Seiten."
+  },
+  {
+   "id": "KR_Kampf_Schrank",
+   "type": "Kampf",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 11,
+   "budget": 5,
+   "beschreibung": "Das Innere eines Schranks als Raum. Kleidung als Sichtschutz."
+  },
+  {
+   "id": "KR_Kampf_Stofftiere",
+   "type": "Kampf",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "budget": 6,
+   "beschreibung": "Ein Berg aus Stofftieren, in dem sich etwas bewegt."
+  },
+  {
+   "id": "KR_MiniBoss_Puppenstube",
+   "type": "MiniBoss",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 1,
+   "budget": 10,
+   "beschreibung": "Eine Puppenstube mit allen Figuren an ihrem Platz. Bis auf eine."
+  },
+  {
+   "id": "KR_Raetsel_Musikdose",
+   "type": "Raetsel",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Eine Spieluhr, deren Melodie in der richtigen Reihenfolge wiederholt werden muss."
+  },
+  {
+   "id": "KR_Safe_Nachtlicht",
+   "type": "SafeRoom",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Ein Nachtlicht, das noch brennt. Solange es brennt, kommt nichts herein."
+  },
+  {
+   "id": "KR_Schatz_Spielkiste",
+   "type": "Schatz",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 4,
+   "budget": 0,
+   "beschreibung": "Eine Spielzeugkiste, gross wie ein Zimmer."
+  },
+  {
+   "id": "KR_Start_Tuerrahmen",
+   "type": "Start",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein Tuerrahmen ohne Wand. Dahinter faengt das Kinderzimmer an."
+  },
+  {
+   "id": "KR_Story_Kassette",
+   "type": "Story",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Ein Kassettenrekorder. Seite B ist noch nicht abgespielt."
+  },
+  {
+   "id": "KR_SuperGeheim_Bettkasten",
+   "type": "SuperGeheim",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Der Hohlraum unter einem Bett. Jemand hat hier lange gewohnt."
+  },
+  {
+   "id": "KR_Verflucht_Kinderzimmer",
+   "type": "Verflucht",
+   "floors": [
+    "Kinderreich"
+   ],
+   "doors": 1,
+   "budget": 6,
+   "beschreibung": "Alles hier ist zu gross. Und alles sieht hin."
+  },
+  {
+   "id": "NE_Boss_Nest",
+   "type": "Boss",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Das Nest selbst. Der Raum bricht in vier Stufen auseinander."
+  },
+  {
+   "id": "NE_Challenge_Erinnerungsflut",
+   "type": "Challenge",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 1,
+   "budget": 22,
+   "beschreibung": "Fuenf Wellen aus allem, was Leon unterwegs getroffen hat."
+  },
+  {
+   "id": "NE_Event_Rueckwaerts",
+   "type": "Event",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "budget": 6,
+   "beschreibung": "Der Raum spielt rueckwaerts ab, was gerade passiert ist."
+  },
+  {
+   "id": "NE_Geheim_Wiederholung",
+   "type": "Geheim",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Derselbe Raum, aber die Details stimmen nicht."
+  },
+  {
+   "id": "NE_Haendler_Zwischenwelt",
+   "type": "Haendler",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 2,
+   "budget": 0,
+   "beschreibung": "Der Haendler ist hier fast durchsichtig. Sein Angebot nicht."
+  },
+  {
+   "id": "NE_Kampf_Erinnerung",
+   "type": "Kampf",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "budget": 8,
+   "beschreibung": "Ein Raum aus Leons Erinnerung, mit falschen Details."
+  },
+  {
+   "id": "NE_Kampf_Flurschleife",
+   "type": "Kampf",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "budget": 9,
+   "beschreibung": "Ein Flur, der in sich selbst zurueckfuehrt."
+  },
+  {
+   "id": "NE_MiniBoss_Wartezimmer",
+   "type": "MiniBoss",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 1,
+   "budget": 13,
+   "beschreibung": "Ein Wartezimmer. Alle Stuehle sind besetzt."
+  },
+  {
+   "id": "NE_Raetsel_Reihenfolge",
+   "type": "Raetsel",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Vier Erinnerungen. Nur eine Reihenfolge ergibt einen Sinn."
+  },
+  {
+   "id": "NE_Safe_Zwischenraum",
+   "type": "SafeRoom",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Ein Raum, der zwischen zwei Etagen zu liegen scheint."
+  },
+  {
+   "id": "NE_Schatz_Andenken",
+   "type": "Schatz",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Alles, was Leon je verloren hat, liegt hier ordentlich sortiert."
+  },
+  {
+   "id": "NE_Start_Schwelle",
+   "type": "Start",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Eine Tuerschwelle, die auf beiden Seiten nach unten fuehrt."
+  },
+  {
+   "id": "NE_Story_Anfang",
+   "type": "Story",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Der Hausflur von oben - hier hat alles angefangen."
+  },
+  {
+   "id": "NE_SuperGeheim_Vater",
+   "type": "SuperGeheim",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein Raum, der nur existiert, wenn man das Familienfoto bei sich traegt."
+  },
+  {
+   "id": "NE_Verflucht_Spiegelsaal",
+   "type": "Verflucht",
+   "floors": [
+    "Nest"
+   ],
+   "doors": 4,
+   "budget": 10,
+   "beschreibung": "Ein Saal aus Spiegeln. Nicht jedes Spiegelbild gehoert zu Leon."
+  },
+  {
+   "id": "SD_Boss_Platz",
+   "type": "Boss",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Der zentrale Platz der Siedlung. Viele Sichtlinien - und viele Ecken ausserhalb davon."
+  },
+  {
+   "id": "SD_Challenge_Schulhof",
+   "type": "Challenge",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 1,
+   "budget": 16,
+   "beschreibung": "Vier Wellen auf dem Schulhof. Die Pausenklingel gibt den Takt."
+  },
+  {
+   "id": "SD_Event_Bahnfahrt",
+   "type": "Event",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 5,
+   "budget": 5,
+   "beschreibung": "Ein Zug faehrt ein. Er ist nicht leer."
+  },
+  {
+   "id": "SD_Geheim_Keller",
+   "type": "Geheim",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Der Keller unter der Siedlung - der Keller hat selbst einen Keller."
+  },
+  {
+   "id": "SD_Haendler_Laden",
+   "type": "Haendler",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 2,
+   "budget": 0,
+   "beschreibung": "Ein echter Laden, mit Regalen und Kasse. Der Haendler steht hinter dem Tresen."
+  },
+  {
+   "id": "SD_Kampf_Hinterhof",
+   "type": "Kampf",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "budget": 7,
+   "beschreibung": "Hinterhof mit Muelltonnen und Waeschespinnen."
+  },
+  {
+   "id": "SD_Kampf_Kirche",
+   "type": "Kampf",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 4,
+   "budget": 6,
+   "beschreibung": "Kirchenschiff mit Baenken. Die Kerzen brennen frisch."
+  },
+  {
+   "id": "SD_Kampf_Krankenhaus",
+   "type": "Kampf",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "budget": 7,
+   "beschreibung": "Stationsflur mit Betten und Vorhaengen."
+  },
+  {
+   "id": "SD_Kampf_Schule",
+   "type": "Kampf",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 7,
+   "budget": 6,
+   "beschreibung": "Klassenzimmer mit Stuhlreihen. Die Tafel ist beschrieben."
+  },
+  {
+   "id": "SD_Kampf_Strasse",
+   "type": "Kampf",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "budget": 7,
+   "beschreibung": "Strassenzug mit Hauseingaengen, aus denen etwas kommen kann."
+  },
+  {
+   "id": "SD_Kampf_UBahn",
+   "type": "Kampf",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 5,
+   "budget": 8,
+   "beschreibung": "Bahnsteig und Tunnel. Aus dem Tunnel kommt Wind."
+  },
+  {
+   "id": "SD_MiniBoss_Spielplatz",
+   "type": "MiniBoss",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 1,
+   "budget": 10,
+   "beschreibung": "Ein Spielplatz mit einer Schaukel, die sich bewegt."
+  },
+  {
+   "id": "SD_Opfer_Altar",
+   "type": "Opfer",
+   "floors": [
+    "Siedlung",
+    "Nest"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Ein Altar, der nimmt, was man hinlegt - und etwas zurueckgibt."
+  },
+  {
+   "id": "SD_Raetsel_Sicherungskasten",
+   "type": "Raetsel",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Die Strassenbeleuchtung des Viertels haengt an sechs Sicherungen."
+  },
+  {
+   "id": "SD_Safe_Wohnung",
+   "type": "SafeRoom",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 8,
+   "budget": 0,
+   "beschreibung": "Eine Wohnung, in der noch gedeckt ist."
+  },
+  {
+   "id": "SD_Schatz_Wohnungssafe",
+   "type": "Schatz",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Eine Wohnung mit offenem Wandsafe."
+  },
+  {
+   "id": "SD_Start_UBahnausgang",
+   "type": "Start",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Der Ausgang einer U-Bahn-Station, die es oben nie gab."
+  },
+  {
+   "id": "SD_Story_Wohnung",
+   "type": "Story",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Leons Wohnung. Aber sie stand nie hier unten."
+  },
+  {
+   "id": "SD_SuperGeheim_Kanal",
+   "type": "SuperGeheim",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein trockengelegter Kanal unter der Kirche."
+  },
+  {
+   "id": "SD_Verflucht_Kirche",
+   "type": "Verflucht",
+   "floors": [
+    "Siedlung"
+   ],
+   "doors": 4,
+   "budget": 8,
+   "beschreibung": "In der Kirche wird gebetet. Von unten."
+  },
+  {
+   "id": "VS_Boss_Maschinenhalle",
+   "type": "Boss",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "grid": [
+    2,
+    2
+   ],
+   "budget": 0,
+   "beschreibung": "Maschinenhalle mit vier Tueren, die sich einzeln verriegeln lassen."
+  },
+  {
+   "id": "VS_Challenge_Kesselhaus",
+   "type": "Challenge",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 1,
+   "budget": 14,
+   "beschreibung": "Drei Wellen im Kesselhaus, waehrend der Dampfdruck steigt."
+  },
+  {
+   "id": "VS_Event_Flutung",
+   "type": "Event",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 3,
+   "beschreibung": "Beim Betreten bricht eine Leitung. Das Wasser steigt, solange man bleibt."
+  },
+  {
+   "id": "VS_Geheim_Zwischendecke",
+   "type": "Geheim",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Zwischendecke ueber der Rohrhalle."
+  },
+  {
+   "id": "VS_Haendler_Schleuse",
+   "type": "Haendler",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 8,
+   "budget": 0,
+   "beschreibung": "Eine Druckschleuse. Der Haendler hat sie sich eingerichtet."
+  },
+  {
+   "id": "VS_Kampf_Generator",
+   "type": "Kampf",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 5,
+   "beschreibung": "Generatorhalle. Licht nur, solange der Generator laeuft."
+  },
+  {
+   "id": "VS_Kampf_Pumpen",
+   "type": "Kampf",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 7,
+   "budget": 6,
+   "beschreibung": "Knietiefes Wasser, laufende Pumpen; alles hier ist nass."
+  },
+  {
+   "id": "VS_Kampf_Rohrhalle",
+   "type": "Kampf",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 6,
+   "beschreibung": "Rohre in drei Ebenen, Dampfstoesse als Umgebungsgefahr."
+  },
+  {
+   "id": "VS_Kampf_Wartungstunnel",
+   "type": "Kampf",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 5,
+   "budget": 4,
+   "beschreibung": "Enger Tunnel, teils kriechend. Schachtlaeufer sind hier zu Hause."
+  },
+  {
+   "id": "VS_MiniBoss_Pumpenhalle",
+   "type": "MiniBoss",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 1,
+   "budget": 9,
+   "beschreibung": "Flutbare Halle. Der Wasserstand steigt waehrend des Kampfes."
+  },
+  {
+   "id": "VS_Opfer_Kessel",
+   "type": "Opfer",
+   "floors": [
+    "Versorgung",
+    "Fleischtiefe"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Ein offener Kessel. Wer etwas hineinwirft, bekommt etwas zurueck."
+  },
+  {
+   "id": "VS_Raetsel_Ventile",
+   "type": "Raetsel",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 5,
+   "budget": 0,
+   "beschreibung": "Vier Ventile, ein Druckmesser. Zu viel Druck sprengt die Leitung."
+  },
+  {
+   "id": "VS_Safe_Kontrollraum",
+   "type": "SafeRoom",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 4,
+   "budget": 0,
+   "beschreibung": "Kontrollraum mit funktionierender Beleuchtung und einem Stuhl."
+  },
+  {
+   "id": "VS_Schatz_Lager",
+   "type": "Schatz",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 2,
+   "budget": 0,
+   "beschreibung": "Ersatzteillager mit einer versperrten Kiste."
+  },
+  {
+   "id": "VS_Start_Treppenfuss",
+   "type": "Start",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Fuss der Wendeltreppe zwischen zwei Rohrbuendeln. Eine Notleuchte summt."
+  },
+  {
+   "id": "VS_Story_Logbuch",
+   "type": "Story",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 1,
+   "budget": 0,
+   "beschreibung": "Ein Wartungslogbuch. Die letzten Eintraege sind von einer Kinderhand."
+  },
+  {
+   "id": "VS_SuperGeheim_Tank",
+   "type": "SuperGeheim",
+   "floors": [
+    "Versorgung"
+   ],
+   "doors": 15,
+   "budget": 0,
+   "beschreibung": "Ein leerer Wassertank. Von innen sind Zeichen eingeritzt."
+  }
+ ]
+}

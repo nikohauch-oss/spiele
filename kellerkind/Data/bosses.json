@@ -1,0 +1,173 @@
+{
+  "_kommentar": "KELLERKIND Bosse. Jeder Boss hat mehrere Phasen, Arena-Mechanik, Schwachstellen und angekuendigte Angriffe - kein Boss ist ein Schadensschwamm.",
+  "bosses": [
+    {
+      "id": "DerHeizer", "name": "Der Heizer", "floor": "AlterKeller", "hoehe": "ca. 4 m", "health": 900,
+      "aussehen": "Massiver verbrannter Mensch, mit einer alten Heizungsanlage verschmolzen. Breiter Oberkoerper, verbrannte Haut mit tiefen Rissen, gluehende Bereiche darunter, Metallplatten im Fleisch, Rohre aus Ruecken und Armen, sehr grosse Haende. Eine teilweise geschmolzene Metallmaske ist mit dem Gesicht verwachsen, ein Auge bleibt sichtbar; aus Mund und Hals tritt Dampf.",
+      "bewegung": "Langsam, schwer, brutal, gewaltige Schritte, die den Boden erzittern lassen.",
+      "intro": "Leon betritt den Heizungsraum. Maschinen laufen an, Druckanzeigen steigen, Rohre bewegen sich. Dann erkennt Leon: Die Rohre sind mit etwas verbunden. Der Heizer hebt langsam den Kopf. Der Kampf beginnt sofort.",
+      "schwachstellen": {"Rueckenrohre": 2.5, "Maske": 2.0},
+      "phasen": [
+        {"id":"Anheizen","schwelle":1.0,"tempo":1.0,"angriffsrate":1.0,"schaden":1.0,"arena":"","dauer":2.5},
+        {"id":"Ueberdruck","schwelle":0.55,"tempo":1.35,"angriffsrate":1.3,"schaden":1.0,"arena":"RohreExplodieren","dauer":3.0,
+         "beschreibung":"Teile der Rohre explodieren. Der Heizer wird schneller, die Arena beginnt zu brennen; Feuerflaechen breiten sich entlang der geplatzten Leitungen aus."},
+        {"id":"Gluehen","schwelle":0.2,"tempo":1.5,"angriffsrate":1.5,"schaden":0.85,"arena":"ArenaBrennt","dauer":2.0,
+         "beschreibung":"Die Panzerung platzt ab: mehr Schaden nehmbar, aber nur noch schmale Wege ohne Feuer."}
+      ],
+      "angriffe": [
+        {"id":"Faustschlag","telegraph":0.7,"cooldown":4,"minRange":0,"maxRange":400,"gewicht":2.0},
+        {"id":"Bodenstampfer","telegraph":1.0,"cooldown":9,"minRange":0,"maxRange":700,"gewicht":1.2,"beschreibung":"Schockwelle am Boden; nur ein Sprung oder erhoehtes Gitter hilft."},
+        {"id":"Dampfausstoss","telegraph":1.2,"cooldown":11,"minRange":0,"maxRange":900,"gewicht":1.0,"beschreibung":"Kegel aus Heissdampf, der Sicht und Leben nimmt."},
+        {"id":"Rohrschlag","telegraph":0.9,"cooldown":7,"minRange":300,"maxRange":1100,"gewicht":1.4},
+        {"id":"Feuerstoss","telegraph":1.3,"cooldown":13,"minRange":400,"maxRange":2000,"gewicht":1.2,"phasen":[1,2]}
+      ]
+    },
+    {
+      "id": "DerHausmeister", "name": "Der Hausmeister", "floor": "Versorgung", "hoehe": "ca. 2,7 m", "health": 1300,
+      "aussehen": "Sehr massiver menschlicher Koerper in alter Arbeitshose, schwerer Jacke, mit Werkzeugguertel, Schluesselbund und schweren Stiefeln. Das Gesicht verdeckt eine rostige Metallmaske; ein Auge schaut durch einen beschaedigten Schlitz.",
+      "bewegung": "Zielstrebig, ruhig, nie hektisch - er weiss, dass der Keller ihm gehoert.",
+      "intro": "Ein Schluesselbund klimpert im Dunkeln. Nacheinander fallen die Tueren des Wartungsgangs ins Schloss. Die letzte bleibt offen.",
+      "schwachstellen": {"Maske": 2.2, "Schluesselbund": 1.8},
+      "besonderheit": "Er kontrolliert die Tueren: verriegelt Wege, oeffnet andere, aktiviert Fallen und schaltet das Licht aus.",
+      "phasen": [
+        {"id":"Rundgang","schwelle":1.0,"tempo":1.0,"angriffsrate":1.0,"schaden":1.0,"arena":"TuerenVerriegeln","dauer":2.0},
+        {"id":"Wartung","schwelle":0.6,"tempo":1.15,"angriffsrate":1.2,"schaden":1.0,"arena":"FallenAktiv","dauer":2.5},
+        {"id":"Feierabend","schwelle":0.25,"tempo":1.3,"angriffsrate":1.4,"schaden":0.9,"arena":"LichtAus","dauer":3.0,
+         "beschreibung":"Er schaltet das Licht ab. Nur die Funken seines Rohrschluessels zeigen, wo er steht."}
+      ],
+      "angriffe": [
+        {"id":"Rohrschluessel","telegraph":0.8,"cooldown":5,"minRange":0,"maxRange":450,"gewicht":2.0},
+        {"id":"Kettenwurf","telegraph":1.0,"cooldown":10,"minRange":400,"maxRange":1600,"gewicht":1.3,"beschreibung":"Zieht Leon zu sich heran."},
+        {"id":"Werkzeughammer","telegraph":1.1,"cooldown":8,"minRange":0,"maxRange":500,"gewicht":1.2},
+        {"id":"TuerFalle","telegraph":0.6,"cooldown":14,"minRange":0,"maxRange":99999,"gewicht":1.0},
+        {"id":"Sicherungswurf","telegraph":0.9,"cooldown":12,"minRange":600,"maxRange":2200,"gewicht":1.0,"phasen":[1,2]}
+      ]
+    },
+    {
+      "id": "DasSpielzeug", "name": "Das Spielzeug", "floor": "Kinderreich", "hoehe": "ca. 3 m", "health": 1500,
+      "aussehen": "Eine Kreatur aus Puppenkoerpern, Holz, Stoff, Porzellan, Fleisch und Metallgelenken. Ueber den ganzen Koerper verteilt sitzen Gesichter: manche lachen, manche weinen, manche bewegen die Augen.",
+      "bewegung": "Marionettenartig und ruckhaft - und dann ploetzlich extrem schnell.",
+      "intro": "Im Kinderzimmer wird es still. Alle Gesichter im Raum drehen sich gleichzeitig zur Tuer.",
+      "schwachstellen": {"LachendesGesicht": 2.0, "Metallgelenk": 2.4},
+      "phasen": [
+        {"id":"Spielen","schwelle":1.0,"tempo":1.0,"angriffsrate":1.0,"schaden":1.0,"arena":"","dauer":2.0},
+        {"id":"Zerbrechen","schwelle":0.5,"tempo":1.4,"angriffsrate":1.3,"schaden":1.0,"arena":"KoerperZerfaellt","dauer":3.5,
+         "beschreibung":"Der Koerper bricht auseinander. Mehrere Teile kaempfen ab jetzt getrennt weiter und muessen einzeln zerstoert werden."}
+      ],
+      "angriffe": [
+        {"id":"LangeArme","telegraph":0.8,"cooldown":5,"minRange":200,"maxRange":1200,"gewicht":1.8},
+        {"id":"PuppenBeschwoeren","telegraph":1.4,"cooldown":16,"minRange":0,"maxRange":99999,"gewicht":1.2},
+        {"id":"Sprungangriff","telegraph":0.9,"cooldown":9,"minRange":500,"maxRange":2000,"gewicht":1.5},
+        {"id":"Faeden","telegraph":1.1,"cooldown":12,"minRange":0,"maxRange":1500,"gewicht":1.0,"beschreibung":"Faeden spannen sich durch die Arena und schneiden bei Beruehrung."},
+        {"id":"Spielzeugfalle","telegraph":0.7,"cooldown":10,"minRange":0,"maxRange":99999,"gewicht":1.0}
+      ]
+    },
+    {
+      "id": "DieMutter", "name": "Die Mutter", "floor": "Siedlung", "hoehe": "ca. 3 m", "health": 1800,
+      "aussehen": "Sehr duenne weibliche Silhouette in einem langen alten Kleid. Extrem lange Arme, Finger von fast 30 bis 40 cm. Das Gesicht ist fast vollstaendig von Haaren verdeckt; sichtbar ist es eingefallen, sehr blass, mit dunklen Augen und einem unnatuerlich breiten Mund.",
+      "bewegung": "Zunaechst langsam und fast wuerdevoll - dann ploetzlich extrem schnell.",
+      "intro": "Auf dem Spielplatz der Siedlung schaukelt eine Schaukel. Niemand sitzt darauf. Am anderen Ende des Platzes steht sie schon.",
+      "schwachstellen": {"Gesicht": 2.5, "Handgelenk": 1.8},
+      "besonderheit": "Sie teleportiert ausschliesslich ausserhalb der direkten Sicht - wer sie ansieht, haelt sie fest.",
+      "phasen": [
+        {"id":"Suchen","schwelle":1.0,"tempo":0.8,"angriffsrate":0.9,"schaden":1.0,"arena":"","dauer":2.0},
+        {"id":"Rufen","schwelle":0.65,"tempo":1.5,"angriffsrate":1.2,"schaden":1.0,"arena":"Doppelgaenger","dauer":3.0,
+         "beschreibung":"Falsche Doppelgaenger erscheinen. Nur einer wirft einen Schatten."},
+        {"id":"Finden","schwelle":0.3,"tempo":2.0,"angriffsrate":1.5,"schaden":0.9,"arena":"LichterGehenAus","dauer":3.5}
+      ],
+      "angriffe": [
+        {"id":"Greifen","telegraph":0.6,"cooldown":4,"minRange":0,"maxRange":700,"gewicht":2.0},
+        {"id":"Sprintangriff","telegraph":1.0,"cooldown":9,"minRange":800,"maxRange":3000,"gewicht":1.6},
+        {"id":"PsychischerSchrei","telegraph":1.3,"cooldown":14,"minRange":0,"maxRange":99999,"gewicht":1.2},
+        {"id":"FalscheDoppelgaenger","telegraph":1.5,"cooldown":20,"minRange":0,"maxRange":99999,"gewicht":1.0,"phasen":[1,2]},
+        {"id":"Teleport","telegraph":0.4,"cooldown":8,"minRange":0,"maxRange":99999,"gewicht":1.4}
+      ]
+    },
+    {
+      "id": "DerFleischkoenig", "name": "Der Fleischkoenig", "floor": "Fleischtiefe", "hoehe": "gigantisch, fuellt die Arena", "health": 2600,
+      "aussehen": "Ein gewaltiger organischer Koerper aus Fleisch, Knochen, alten Moebelteilen, Rohren und Kabeln. Mehrere menschliche Gesichter sitzen im Koerper. Er hat keine Beine - er zieht sich durch die Arena.",
+      "bewegung": "Schwerfaellig ziehend; der Boden bleibt hinter ihm veraendert zurueck.",
+      "intro": "Der Beton unter Leons Fuessen gibt nach. Er ist warm. Und er atmet.",
+      "schwachstellen": {"Gesicht_1": 2.0, "Gesicht_2": 2.0, "Gesicht_3": 2.0, "Herzkammer": 3.0},
+      "phasen": [
+        {"id":"Ausbreiten","schwelle":1.0,"tempo":1.0,"angriffsrate":1.0,"schaden":1.0,"arena":"BodenbefallStart","dauer":2.5},
+        {"id":"Wuchern","schwelle":0.6,"tempo":1.1,"angriffsrate":1.25,"schaden":0.9,"arena":"KreaturenBeschwoeren","dauer":3.0},
+        {"id":"Oeffnen","schwelle":0.25,"tempo":1.0,"angriffsrate":1.4,"schaden":0.7,"arena":"HerzkammerOffen","dauer":4.0,
+         "beschreibung":"Die Herzkammer oeffnet sich in Abstaenden - dort und nur dort ist er wirklich verwundbar."}
+      ],
+      "angriffe": [
+        {"id":"Fleischarm","telegraph":0.9,"cooldown":5,"minRange":0,"maxRange":1400,"gewicht":1.8},
+        {"id":"Knochenstacheln","telegraph":1.1,"cooldown":8,"minRange":0,"maxRange":2000,"gewicht":1.5},
+        {"id":"OrganischeProjektile","telegraph":1.0,"cooldown":7,"minRange":600,"maxRange":3000,"gewicht":1.3},
+        {"id":"Bodenbefall","telegraph":1.4,"cooldown":15,"minRange":0,"maxRange":99999,"gewicht":1.1},
+        {"id":"KreaturenBeschwoeren","telegraph":1.6,"cooldown":22,"minRange":0,"maxRange":99999,"gewicht":1.0,"phasen":[1,2]}
+      ]
+    },
+    {
+      "id": "DerSchlaefer", "name": "Der Schlaefer", "floor": "Abgrund", "hoehe": "die Arena selbst", "health": 3200,
+      "aussehen": "Zunaechst wirkt der Ort wie eine gewaltige Industriehalle. Erst nach und nach erkennt man: Teile der Arena sind Haut, Knochen und Organe. Der Spieler steht auf dem Koerper des Bosses.",
+      "bewegung": "Beim Erwachen bewegen sich Waende, der Boden hebt sich, riesige Augen oeffnen sich, die ganze Architektur veraendert sich.",
+      "intro": "Ein Windstoss aus der Tiefe. Er kommt im Takt eines Atems.",
+      "schwachstellen": {"Auge_Nord": 3.0, "Auge_Sued": 3.0, "Nervenstrang": 2.5},
+      "besonderheit": "Kein klassischer Kampf: Der Schlaefer ist Bewegung, Raetsel und Ueberleben. Man toetet ihn nicht mit Schlagkraft, sondern indem man die richtigen Punkte in der richtigen Reihenfolge trifft, waehrend sich die Arena verformt.",
+      "phasen": [
+        {"id":"Schlaf","schwelle":1.0,"tempo":0.0,"angriffsrate":0.4,"schaden":1.0,"arena":"ArenaRuhig","dauer":3.0},
+        {"id":"Unruhe","schwelle":0.75,"tempo":0.3,"angriffsrate":0.8,"schaden":1.0,"arena":"BodenHebtSich","dauer":4.0},
+        {"id":"Erwachen","schwelle":0.45,"tempo":0.6,"angriffsrate":1.2,"schaden":0.9,"arena":"AugenOeffnenSich","dauer":5.0},
+        {"id":"Aufrichten","schwelle":0.2,"tempo":1.0,"angriffsrate":1.5,"schaden":0.8,"arena":"ArenaKippt","dauer":6.0}
+      ],
+      "angriffe": [
+        {"id":"Atemzug","telegraph":2.0,"cooldown":12,"minRange":0,"maxRange":99999,"gewicht":1.5,"beschreibung":"Sog, der alles Lose - und Leon - in Richtung Abgrund zieht."},
+        {"id":"Bodenwelle","telegraph":1.5,"cooldown":10,"minRange":0,"maxRange":99999,"gewicht":1.4},
+        {"id":"Blick","telegraph":1.8,"cooldown":16,"minRange":0,"maxRange":99999,"gewicht":1.2,"beschreibung":"Ein Auge oeffnet sich; wer im Blick steht, nimmt dauerhaft psychischen Schaden."},
+        {"id":"Einsturz","telegraph":2.2,"cooldown":20,"minRange":0,"maxRange":99999,"gewicht":1.0,"phasen":[2,3]}
+      ]
+    },
+    {
+      "id": "DasAndereKind", "name": "Das Andere Kind", "floor": "Nest", "hoehe": "waechst mit jeder Phase", "health": 3800,
+      "aussehen": "Es aehnelt Leon als Kind, aber sein Koerper stimmt nicht: blasse Haut, schwarzes Haar, kindliche Kleidung, sehr duenner Koerper, schwarze Augen, zu lange Finger.",
+      "bewegung": "Zuerst kindlich und fast normal - mit jeder Phase weniger.",
+      "intro": "Es sitzt mit dem Ruecken zu Leon und spielt. Dann sagt es seinen Namen richtig.",
+      "schwachstellen": {"Brust": 2.0, "Nacken": 2.5},
+      "besonderheit": "Ab Phase 3 imitiert es die Faehigkeiten, die Leon in diesem Run am haeufigsten benutzt hat - nicht die staerksten, sondern die gewohntesten.",
+      "phasen": [
+        {"id":"Menschlich","schwelle":1.0,"tempo":1.0,"angriffsrate":1.0,"schaden":1.0,"arena":"","dauer":2.0},
+        {"id":"Deformiert","schwelle":0.7,"tempo":1.2,"angriffsrate":1.15,"schaden":1.0,"arena":"RaumVerzieht","dauer":3.0},
+        {"id":"Mischform","schwelle":0.45,"tempo":1.35,"angriffsrate":1.3,"schaden":0.95,"arena":"Imitation","dauer":4.0,
+         "beschreibung":"Mischung aus Leon, Kellerkind und den Horrorformen, die es unterwegs gesammelt hat."},
+        {"id":"Zerbrechen","schwelle":0.2,"tempo":1.5,"angriffsrate":1.5,"schaden":0.85,"arena":"ArenaZerbricht","dauer":5.0,
+         "beschreibung":"Die Arena zerbricht vollstaendig. Es bleiben nur noch einzelne Inseln aus Erinnerung."}
+      ],
+      "angriffe": [
+        {"id":"Kinderhand","telegraph":0.6,"cooldown":4,"minRange":0,"maxRange":400,"gewicht":1.8},
+        {"id":"Nachahmung_Nahkampf","telegraph":0.7,"cooldown":6,"minRange":0,"maxRange":600,"gewicht":1.0,"phasen":[2,3],"imitiert":"Nahkampf"},
+        {"id":"Nachahmung_Bombe","telegraph":1.0,"cooldown":11,"minRange":0,"maxRange":2000,"gewicht":1.0,"phasen":[2,3],"imitiert":"Bombe"},
+        {"id":"Nachahmung_Ausweichen","telegraph":0.35,"cooldown":5,"minRange":0,"maxRange":99999,"gewicht":1.0,"phasen":[2,3],"imitiert":"Ausweichen"},
+        {"id":"Nachahmung_Elektro","telegraph":1.1,"cooldown":9,"minRange":300,"maxRange":2500,"gewicht":1.0,"phasen":[2,3],"imitiert":"Elektro"},
+        {"id":"Nachahmung_Feuer","telegraph":1.1,"cooldown":9,"minRange":300,"maxRange":2500,"gewicht":1.0,"phasen":[2,3],"imitiert":"Feuer"},
+        {"id":"Erinnerungssplitter","telegraph":1.4,"cooldown":15,"minRange":0,"maxRange":99999,"gewicht":1.2,"phasen":[1,2,3]},
+        {"id":"Namensruf","telegraph":1.6,"cooldown":25,"minRange":0,"maxRange":99999,"gewicht":1.0,"beschreibung":"Es ruft Leon beim Namen. Wer stehen bleibt, verliert ein Herz."}
+      ]
+    },
+    {
+      "id": "DerVater", "name": "Der Vater", "floor": "Nest", "geheim": true, "hoehe": "riesig, aber schwer zu bestimmen", "health": 3000,
+      "aussehen": "Ein riesiger humanoider Schatten, aus der Ferne fast vollkommen menschlich. Je naeher der Spieler kommt, desto falscher werden seine Proportionen.",
+      "bewegung": "Er geht. Mehr nicht. Das reicht.",
+      "intro": "Kein Intro. Er steht schon da, wenn man den Raum betritt, und wartet, bis man ihn ansieht.",
+      "zugang": "Sehr selten erreichbar: nur ueber den Super-Geheimraum der siebten Etage, mit dem Familienfoto im Inventar und ohne dass in diesem Run ein Handel mit dem Teufelspakt geschlossen wurde.",
+      "besonderheit": "Er spricht waehrend des gesamten Kampfes. Der Boss arbeitet fast ausschliesslich mit psychologischem Horror; sein physischer Schaden ist gering, sein psychischer enorm.",
+      "schwachstellen": {"Schatten": 1.5},
+      "phasen": [
+        {"id":"Naeherkommen","schwelle":1.0,"tempo":0.5,"angriffsrate":0.6,"schaden":1.0,"arena":"","dauer":3.0},
+        {"id":"Erkennen","schwelle":0.6,"tempo":0.8,"angriffsrate":0.9,"schaden":1.0,"arena":"ProportionenKippen","dauer":4.0},
+        {"id":"Antworten","schwelle":0.25,"tempo":1.0,"angriffsrate":1.1,"schaden":1.0,"arena":"StimmenChor","dauer":5.0}
+      ],
+      "angriffe": [
+        {"id":"Frage","telegraph":2.0,"cooldown":18,"minRange":0,"maxRange":99999,"gewicht":1.5,"beschreibung":"Er stellt eine Frage. Wer nicht handelt, verliert ein Herz; wer falsch handelt, auch."},
+        {"id":"Schritt","telegraph":1.2,"cooldown":8,"minRange":0,"maxRange":99999,"gewicht":1.4},
+        {"id":"Griff","telegraph":0.9,"cooldown":7,"minRange":0,"maxRange":900,"gewicht":1.2},
+        {"id":"Schweigen","telegraph":3.0,"cooldown":30,"minRange":0,"maxRange":99999,"gewicht":1.0,"beschreibung":"Alles verstummt. Jedes Geraeusch, das Leon selbst macht, verletzt ihn."}
+      ]
+    }
+  ]
+}

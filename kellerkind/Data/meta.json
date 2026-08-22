@@ -1,0 +1,82 @@
+{
+  "_kommentar": "KELLERKIND: Fluecke, Zufallsereignisse, Enden, spielbare Charaktere, Freischaltungen, Horror-Ereignisse.",
+
+  "curses": [
+    {"id":"Dunkelheit","name":"Fluch der Dunkelheit","wirkung":"Alle Lichtquellen der Etage brennen mit 40 % Intensitaet, Lampen fallen haeufiger aus.","gegenmittel":"Lichtquellen, Nachtauge, Gluehbirne"},
+    {"id":"Stimmen","name":"Fluch der Stimmen","wirkung":"Der Sinnesreiz-Kanal erzeugt falsche Geraeusche: Schritte, Tueren und Kreaturenlaute ohne Ursache.","gegenmittel":"Ohrenschutz"},
+    {"id":"Gedaechtnis","name":"Fluch des Gedaechtnisses","wirkung":"Die Karte bleibt leer, auch fuer bereits betretene Raeume.","gegenmittel":"Kellerkarte, Kellerfluchtplan"},
+    {"id":"Tueren","name":"Fluch der Tueren","wirkung":"Ein Teil der Tueren fuehrt nicht in den angrenzenden Raum, sondern an eine andere Stelle der Etage.","gegenmittel":"Vaterstimme"},
+    {"id":"Kind","name":"Fluch des Kindes","wirkung":"Das Kellerkind erscheint drei- bis viermal so haeufig - und haelt sich weniger an sein Gleichgewicht.","gegenmittel":"Spielzeugfigur"},
+    {"id":"Blut","name":"Fluch des Blutes","wirkung":"Verletzte Kreaturen werden schneller und aggressiver statt schwaecher.","gegenmittel":"Hinrichtung, hoher Einzelschaden"}
+  ],
+
+  "events": [
+    {"id":"Stromausfall","beschreibung":"Der Strom der Etage faellt aus. Der Generator muss gefunden und angeworfen werden."},
+    {"id":"Ueberschwemmung","beschreibung":"Ein Rohr bricht. Der Raum fuellt sich langsam mit Wasser - gut fuer Elektro, schlecht fuer Feuer."},
+    {"id":"Rauch","beschreibung":"Dichter Rauch nimmt die Sicht. Kreaturen finden Leon weiter am Gehoer."},
+    {"id":"Feuer","beschreibung":"Ein Raum brennt. Er raeumt sich selbst - wenn man wartet."},
+    {"id":"Gegnerjagd","beschreibung":"Ein Rudel nimmt die Spur auf und folgt Leon ueber mehrere Raeume."},
+    {"id":"RaumWechsel","beschreibung":"Ein bereits geraeumter Raum ist beim naechsten Betreten ein anderer."},
+    {"id":"VersteckterHaendler","beschreibung":"Der Kellerhaendler taucht ausserhalb seines Ladens auf - mit anderer Ware."},
+    {"id":"SeltenerBoss","beschreibung":"Ein Miniboss einer tieferen Etage verirrt sich nach oben."},
+    {"id":"ItemRegen","beschreibung":"Aus einem geplatzten Rohr faellt, was der Keller gesammelt hat."},
+    {"id":"VerfluchteEtage","beschreibung":"Die ganze Etage steht unter zwei Fluechen statt einem - dafuer liegt ueberall mehr."}
+  ],
+
+  "horrorEvents": [
+    {"id":"LichtFaelltAus","jumpscare":false,"beschreibung":"Das Licht faellt aus. Ein Teil der Lampen bleibt danach kaputt."},
+    {"id":"TuerSchlaegtZu","jumpscare":false,"beschreibung":"Eine Tuer im Ruecken faellt zu. Der Knall zieht Kreaturen an."},
+    {"id":"SchritteHinterLeon","jumpscare":false,"beschreibung":"Schritte kommen naeher und hoeren auf. Es folgt nichts."},
+    {"id":"SchattenBewegtSich","jumpscare":false,"beschreibung":"Ein Schatten laeuft ueber die Wand am Rand des Blickfelds."},
+    {"id":"TelefonKlingelt","jumpscare":false,"beschreibung":"Irgendwo klingelt ein Telefon. Man muss hingehen, um abzunehmen."},
+    {"id":"SpiegelbildFalsch","jumpscare":false,"beschreibung":"Das Spiegelbild reagiert verzoegert - oder gar nicht."},
+    {"id":"KellerkindErscheint","jumpscare":false,"beschreibung":"Das Kellerkind steht in Entfernung und sieht zu."},
+    {"id":"SpielzeugBewegtSich","jumpscare":false,"beschreibung":"Ein Spielzeug steht anders, sobald man wegsieht."},
+    {"id":"RadioAktiviert","jumpscare":false,"beschreibung":"Ein Radio schaltet sich ein. Zwischen dem Rauschen ist eine Stimme."},
+    {"id":"WandKlopft","jumpscare":false,"beschreibung":"Es klopft dreimal in der Wand. Wie am Anfang."},
+    {"id":"GesichtImDunkeln","jumpscare":true,"beschreibung":"Nur mit Jumpscare-Budget: ein Gesicht direkt vor Leon, wenn er sich umdreht."},
+    {"id":"GriffVonHinten","jumpscare":true,"beschreibung":"Nur mit Jumpscare-Budget: eine Hand auf der Schulter, ohne Schaden."}
+  ],
+
+  "endings": [
+    {"id":"Flucht","name":"Ende 1 - Flucht","bedingung":"Das Nest ueberleben und den Aufstieg nehmen.","text":"Leon entkommt. Die Kellertuer faellt hinter ihm zu. In der Nacht hoert er drei Klopfgeraeusche aus seiner eigenen Wohnung. Etwas ist mit ihm gekommen."},
+    {"id":"Kellerkind","name":"Ende 2 - Kellerkind","bedingung":"Das Kellerkind hat im Run mehr geholfen als geschadet, und Leon greift es im Finale nicht an.","text":"Leon nimmt das Kind an die Hand. Der Keller laesst beide gehen - aber nicht als das, was sie vorher waren."},
+    {"id":"Opfer","name":"Ende 3 - Opfer","bedingung":"Im Finale die Tuer von innen schliessen.","text":"Leon bleibt. Der Keller braucht jemanden, der die Tuer zuhaelt. Oben hoert niemand mehr etwas."},
+    {"id":"Wahrheit","name":"Ende 4 - Wahrheit","bedingung":"Alle Storyraeume und beide Story-Relikte in einem Run.","text":"Leon versteht, was unter dem Haus liegt - und wer die Tuer damals wirklich offen gelassen hat."},
+    {"id":"DasTor","name":"Ende 5 - Das Tor","bedingung":"Im Nest die tiefere Ebene oeffnen, statt aufzusteigen.","text":"Leon oeffnet, was verschlossen war. Der Abstieg beginnt von vorn - tiefer."},
+    {"id":"Geheim","name":"Geheimes Ende","bedingung":"Der Vater besiegt, mit dem Familienfoto und ohne Teufelspakt im gesamten Run.","text":"Der Keller ist kein Ort. Er ist ein lebendiges Netzwerk aus Erinnerungen - und jeder, der hinuntersteigt, wird ein Teil davon."}
+  ],
+
+  "characters": [
+    {"id":"Leon","name":"Leon Keller","freigeschaltet":true,"beschreibung":"Ausgeglichen. Startwaffe Brecheisen.","hearts":3,"stats":{"Damage":3.5,"AttackSpeed":1.0,"MoveSpeed":380,"Range":220,"CritChance":0.03,"Luck":0,"Armor":0,"Dodge":0,"InteractionSpeed":1.0}},
+    {"id":"Mira","name":"Mira","unlock":"Erreiche die Siedlung","beschreibung":"Schnell, wenig Leben, gute Fernkampfwerte.","hearts":2,"stats":{"Damage":3.0,"AttackSpeed":1.25,"MoveSpeed":440,"Range":320,"CritChance":0.08,"Luck":1,"Armor":0,"Dodge":0.1,"InteractionSpeed":1.2},"startWeapon":"Waffe_Nagelpistole"},
+    {"id":"Hausmeister","name":"Der Hausmeister","unlock":"Besiege den Hausmeister dreimal","beschreibung":"Langsam, viele Herzen, starker Nahkampf.","hearts":6,"stats":{"Damage":5.0,"AttackSpeed":0.8,"MoveSpeed":310,"Range":240,"CritChance":0.02,"Luck":0,"Armor":8,"Dodge":0,"InteractionSpeed":1.5},"startWeapon":"Waffe_Hammer"},
+    {"id":"Kellerkind","name":"Das Kellerkind","unlock":"Geheimes Ende","beschreibung":"Geheimer Charakter. Kann Lueftungsschaechte und Schattenwege benutzen. Sehr wenig Leben.","hearts":1,"stats":{"Damage":3.0,"AttackSpeed":1.1,"MoveSpeed":420,"Range":200,"CritChance":0.05,"Luck":4,"Armor":0,"Dodge":0.2,"InteractionSpeed":1.4},"faehigkeiten":["Schachtwege","Schattensprung","Kreaturen ignorieren es kurz"]}
+  ],
+
+  "unlocks": [
+    {"id":"Mira","typ":"Charakter","bedingung":"Erreiche die vergessene Siedlung","fortschritt":"FloorReached_Siedlung","schwelle":1},
+    {"id":"Hausmeister","typ":"Charakter","bedingung":"Besiege den Hausmeister dreimal","fortschritt":"BossKills_DerHausmeister","schwelle":3},
+    {"id":"Kellerkind","typ":"Charakter","bedingung":"Erreiche das geheime Ende","fortschritt":"Ending_Geheim","schwelle":1},
+    {"id":"Waffe_Kettensaege","typ":"Startwaffe","bedingung":"Toete 300 Kreaturen im Nahkampf","fortschritt":"MeleeKills","schwelle":300},
+    {"id":"Waffe_Bolzenwerfer","typ":"Startwaffe","bedingung":"Beende eine Etage ohne einen Treffer","fortschritt":"PerfectFloors","schwelle":1},
+    {"id":"Kaltfeuer","typ":"Item","bedingung":"Loese 20 verschiedene Synergien aus","fortschritt":"SynergiesFound","schwelle":20},
+    {"id":"Hinrichtung","typ":"Item","bedingung":"Erziele 500 kritische Treffer","fortschritt":"CritHits","schwelle":500},
+    {"id":"Schutzengelfeder","typ":"Item","bedingung":"Beende eine Etage mit einem ueberlebten weissen Herz","fortschritt":"WhiteHeartsKept","schwelle":1},
+    {"id":"Kellerkindmuenze","typ":"Item","bedingung":"Begegne dem Kellerkind 25-mal","fortschritt":"StalkerAppearances","schwelle":25},
+    {"id":"NE_SuperGeheim_Vater","typ":"Raum","bedingung":"Finde alle vier Gegenstaende aus dem Paket in einem Run","fortschritt":"PaketKomplett","schwelle":1},
+    {"id":"DerVater","typ":"Boss","bedingung":"Erreiche das Nest ohne Teufelspakt","fortschritt":"NestOhnePakt","schwelle":1},
+    {"id":"Fleischtiefe_Alt","typ":"Weg","bedingung":"Besiege die Mutter mit vollem Leben","fortschritt":"MutterPerfekt","schwelle":1},
+    {"id":"NewGamePlus","typ":"Modus","bedingung":"Beende den Run mit einem beliebigen Ende","fortschritt":"RunsFinished","schwelle":1}
+  ],
+
+  "deathLines": [
+    "Nochmal.",
+    "Du kommst sowieso zurueck.",
+    "Ich habe gewartet.",
+    "Du hast die Tuer offen gelassen.",
+    "Beim naechsten Mal gehst du weiter.",
+    "Es war nicht deine Schuld. Nicht ganz.",
+    "Sie fragen nach dir. Oben."
+  ]
+}
