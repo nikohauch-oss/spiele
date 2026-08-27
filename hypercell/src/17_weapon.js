@@ -18,6 +18,8 @@
   const _right = new THREE.Vector3();
   const _up = new THREE.Vector3();
   const _tmp = new THREE.Vector3();
+  const _conv = new THREE.Vector3();
+  const _projDir = new THREE.Vector3();
 
   /**
    * @param owner  actor
@@ -288,10 +290,25 @@
           shotDir.normalize();
         }
         if (def.projectile) {
+          /* Converge on what the crosshair is looking at.
+           *
+           * Hitscan traces from the eye, but a projectile is born at the
+           * muzzle — roughly half a metre to the side of it. Firing the
+           * projectile *parallel* to the aim ray therefore misses by that
+           * offset at every single range, which is exactly what it did.
+           * Aim the bolt at the point the eye ray actually reaches. */
+          const aimHit = ctx.trace(origin, shotDir, def.range.max || 200, owner);
+          if (aimHit) _conv.copy(aimHit.point);
+          else _conv.copy(origin).addScaledVector(shotDir, 150);
+          _projDir.copy(_conv).sub(muzzlePos);
+          // Too close to converge sanely — keep the barrel direction.
+          if (_projDir.lengthSq() < 2.25) _projDir.copy(shotDir);
+          else _projDir.normalize();
+
           // The hit happens later; the projectile credits this component.
           ctx.spawnProjectile({
             owner, weapon: def, ownerWeapon: W,
-            origin: muzzlePos.clone(), direction: shotDir,
+            origin: muzzlePos.clone(), direction: _projDir.clone(),
             speed: def.projectile.speed, config: def.projectile
           });
         } else if (def.melee) {
@@ -583,7 +600,8 @@
       const cfg = p.config;
       const splash = cfg.splash;
       let landed = false;
-      const credit = (r) => { if (r && r.applied > 0) landed = true; };
+      let dealt = 0;
+      const credit = (r) => { if (r && r.applied > 0) { landed = true; dealt += r.applied; } };
       HC.VFX.explosion(position, splash ? splash.radius : 2, cfg.color, {
         groundY: position.y - 0.2, coreColor: 0xffffff
       });
@@ -606,12 +624,18 @@
           weaponId: p.weapon.id, exclude: directHit
         });
         // One connected shot, however many people were caught in it.
-        if (hits && hits.some(h => h.actor !== p.owner && h.result.applied > 0)) landed = true;
+        if (hits) {
+          hits.forEach(h => {
+            if (h.actor === p.owner) return;
+            if (h.result.applied > 0) { landed = true; dealt += h.result.applied; }
+          });
+        }
       }
       if (landed && p.ownerWeapon && !p.counted) {
         p.counted = true;
         p.ownerWeapon.stats.shotsHit++;
       }
+      if (p.ownerWeapon && dealt > 0) p.ownerWeapon.stats.damage += dealt;
       ctx.notify && ctx.notify('explosion', { position, radius: splash ? splash.radius : 2 });
     }
 
