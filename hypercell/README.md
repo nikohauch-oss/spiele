@@ -199,14 +199,20 @@ Die Vorgabe (§18) verlangt gleichzeitig wirkende Ebenen. Bei einem Schuss:
 3. **Kamera-Rückstoß** — separat, mit eigener Rückkehrkurve
 4. **Mündungsfeuer** — Lichtquelle + Flare-Quad + Funken + Rauchfahne
 5. **Schusssound** — fünf Schichten: Transiente, Body, Sub, Mechanik, Hall
-6. **Tracer** — vom echten Mündungs-Socket, nicht von der Kamera
-7. **Einschlag** — Material-abhängige Partikel, Sound und Decal
-8. **Trefferreaktion** — richtungsabhängiges Zucken des Getroffenen
-9. **Hitmarker** — eigene Form/Farbe/Ton für Normal, Krit, Schild, Kill
-10. **Damage Numbers** — abschaltbar
-11. **Umgebungssound** — Entfernungsdämpfung, Luftabsorption, Hall-Send
-12. **Screen Shake** — entfernungsgedämpft, per Slider skalierbar
-13. **Hit-Stop** — 55 ms Zeitlupe beim Kill
+6. **Hülsenauswurf** — echte Geometrie aus dem Auswurf-Socket, fällt, springt
+   auf dem Boden ab und klingt dabei
+7. **Tracer** — vom echten Mündungs-Socket, nicht von der Kamera
+8. **Einschlag** — Material-abhängige Partikel, Sound und Decal
+9. **Trefferreaktion** — richtungsabhängiges Zucken des Getroffenen
+10. **Hitmarker** — eigene Form/Farbe/Ton für Normal, Krit, Schild, Kill
+11. **Damage Numbers** — abschaltbar
+12. **Umgebungssound** — Entfernungsdämpfung, Luftabsorption, Hall-Send
+13. **Screen Shake** — entfernungsgedämpft, per Slider skalierbar
+14. **Hit-Stop** — 55 ms Zeitlupe beim Kill
+
+Beim Nachladen fällt das leere Magazin sichtbar aus der Waffe, die Hand führt
+ein neues zu, und Waffen mit Einzelladung (Timberline) laden Schuss für Schuss
+— unterbrechbar, sobald eine Patrone drin ist.
 
 Dazu Bloom auf allen emissiven Flächen, Rim-Light auf jedem Charakter für
 Silhouetten-Lesbarkeit (§67) und Team-Ringe am Boden.
@@ -229,6 +235,20 @@ schlägt bei **jeder** Konsolenfehlermeldung fehl. Screenshots landen in
 ```bash
 node hypercell/tools/smoketest.js zone_control brutus 15   # anderer Modus/Held
 ```
+
+Der Test prüft unter anderem:
+
+* jeder Held × jeder Skin × jede Waffe baut ohne Fehler
+* die Modellhöhe jedes Helden passt zur Kollisionskapsel
+* der Waffenlauf zeigt tatsächlich dorthin, wo gezielt wird (gemessen in
+  Weltkoordinaten, nicht per Augenmaß)
+* Schaden kommt an, Bots finden Wege, Objectives wechseln den Zustand
+* **keine einzige Konsolenfehlermeldung**
+
+Genau dieser Test hat die interessantesten Fehler gefunden — unter anderem
+einen Rim-Light-Shader, der bei flat-shaded Materialien nicht kompilierte,
+und ein `fired`-Event, das zwar gefeuert wurde, aber keinen Zuhörer hatte:
+Mündungsfeuer, Schusssound und Nachladeanimation liefen deshalb ins Leere.
 
 ### Typische Fehler und ihre Lösung
 

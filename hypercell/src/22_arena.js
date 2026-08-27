@@ -344,7 +344,6 @@
           killer.score.streak++;
           killer.score.bestStreak = Math.max(killer.score.bestStreak, killer.score.streak);
           killer.abilities.onKill();
-          if (killer.isPlayer) A.events.emit('playerKill', { victim, killer, assists });
         }
       }
       assists.forEach(a => { if (a.score) a.score.assists++; });

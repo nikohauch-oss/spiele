@@ -228,6 +228,30 @@
     VFX._sphereGeo = sphere;
     VFX.blasts = QuadPool(scene, sphere, () => Mats.additive(0xffffff, 1).clone(), 14, 13);
 
+    // Physical debris: ejected casings and dropped magazines. Small, but
+    // it is the difference between a weapon that fires and one that works.
+    VFX._debris = [];
+    const shellGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.052, 6);
+    const magGeo = new THREE.BoxGeometry(0.07, 0.17, 0.035);
+    VFX._debrisGeo = [shellGeo, magGeo];
+    const brassMat = new THREE.MeshStandardMaterial({
+      color: 0xc9a24a, roughness: 0.32, metalness: 0.95
+    });
+    const magMat = new THREE.MeshStandardMaterial({
+      color: 0x2b303a, roughness: 0.55, metalness: 0.6
+    });
+    VFX._debrisMat = [brassMat, magMat];
+    for (let i = 0; i < 44; i++) {
+      const isShell = i < 34;
+      const mesh = new THREE.Mesh(isShell ? shellGeo : magGeo, isShell ? brassMat : magMat);
+      mesh.visible = false;
+      mesh.castShadow = false;
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+      VFX._debris.push({ mesh, kind: isShell ? 'shell' : 'mag', active: false, life: 0,
+        vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, groundY: 0, bounces: 0 });
+    }
+
     // Dynamic light pool — muzzle flashes, explosions, ability casts.
     VFX.lights = [];
     for (let i = 0; i < CFG.gfx.maxDynamicLights; i++) {
@@ -245,10 +269,44 @@
 
   VFX.setViewportHeight = function (h) { VFX._viewportHeight = h; };
 
+  /**
+   * Spawns a piece of debris.
+   * @param kind 'shell' | 'mag'
+   */
+  VFX.debris = function (kind, position, direction, groundY, speed) {
+    if (!VFX.ready) return;
+    let slot = null, oldest = null;
+    for (let i = 0; i < VFX._debris.length; i++) {
+      const d = VFX._debris[i];
+      if (d.kind !== kind) continue;
+      if (!d.active) { slot = d; break; }
+      if (!oldest || d.life < oldest.life) oldest = d;
+    }
+    slot = slot || oldest;
+    if (!slot) return;
+
+    const sp = speed === undefined ? (kind === 'shell' ? 2.6 : 0.9) : speed;
+    slot.active = true;
+    slot.mesh.visible = true;
+    slot.mesh.position.copy(position);
+    slot.mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    slot.vx = direction.x * sp + jitter(0.7);
+    slot.vy = direction.y * sp + 1.1 + Math.random() * 0.6;
+    slot.vz = direction.z * sp + jitter(0.7);
+    slot.rx = jitter(16); slot.ry = jitter(16); slot.rz = jitter(16);
+    slot.groundY = groundY;
+    slot.bounces = kind === 'shell' ? 2 : 1;
+    slot.life = kind === 'shell' ? 2.4 : 4.0;
+    slot.maxLife = slot.life;
+  };
+
   VFX.dispose = function () {
     if (!VFX.ready) return;
     [VFX.sparks, VFX.smoke].forEach(f => { if (f) { VFX.scene.remove(f.points); f.dispose(); } });
     [VFX.tracers, VFX.flashes, VFX.shockwaves, VFX.decals, VFX.blasts].forEach(p => p && p.dispose());
+    (VFX._debris || []).forEach(d => VFX.scene.remove(d.mesh));
+    (VFX._debrisGeo || []).forEach(g => g.dispose());
+    (VFX._debrisMat || []).forEach(m => m.dispose());
     (VFX.lights || []).forEach(l => VFX.scene.remove(l.light));
     [VFX._quadGeo, VFX._ringGeo, VFX._decalGeo, VFX._sphereGeo].forEach(g => g && g.dispose());
     VFX._emitters.length = 0;
@@ -283,7 +341,8 @@
   /** Muzzle flash: light + flare quad + sparks + smoke wisp. */
   VFX.muzzleFlash = function (pos, dir, color, scale) {
     if (!VFX.ready) return;
-    scale = scale || 1;
+    scale = scale === undefined ? 1 : scale;
+    if (scale <= 0.001) return;
     VFX.light(pos, color, 5.5 * scale, 11 * scale, 0.075);
 
     const f = VFX.flashes.acquire();
@@ -637,6 +696,35 @@
       if (d.life < 2) d.mesh.material.opacity = 0.8 * (d.life / 2);
     }
 
+    // Debris
+    for (let i = 0; i < VFX._debris.length; i++) {
+      const d = VFX._debris[i];
+      if (!d.active) continue;
+      d.life -= dt;
+      if (d.life <= 0) { d.active = false; d.mesh.visible = false; continue; }
+      d.vy -= CFG.sim.gravity * 0.55 * dt;
+      const p = d.mesh.position;
+      p.x += d.vx * dt; p.y += d.vy * dt; p.z += d.vz * dt;
+      if (p.y <= d.groundY + 0.02) {
+        p.y = d.groundY + 0.02;
+        if (d.bounces > 0 && d.vy < -0.6) {
+          d.bounces--;
+          d.vy = -d.vy * 0.35;
+          d.vx *= 0.55; d.vz *= 0.55;
+          d.rx *= 0.4; d.ry *= 0.4; d.rz *= 0.4;
+          if (d.kind === 'shell') {
+            HC.Audio.play('impact_metal', { position: p, scale: 0.16, volume: 0.28, varyAmount: 0.25 });
+          }
+        } else {
+          d.vy = 0; d.vx *= 0.72; d.vz *= 0.72;
+          d.rx = d.ry = d.rz = 0;
+        }
+      }
+      d.mesh.rotation.x += d.rx * dt;
+      d.mesh.rotation.y += d.ry * dt;
+      d.mesh.rotation.z += d.rz * dt;
+    }
+
     // Dynamic lights
     for (let i = 0; i < VFX.lights.length; i++) {
       const L = VFX.lights[i];
@@ -670,6 +758,7 @@
       p.items.forEach(it => p.release(it));
     });
     VFX.lights.forEach(l => { l.life = 0; l.light.visible = false; l.light.intensity = 0; });
+    VFX._debris.forEach(d => { d.active = false; d.mesh.visible = false; });
     VFX._emitters.length = 0;
   };
 

@@ -162,6 +162,112 @@
       return true;
     };
 
+    /* ---- weapon feedback: casings, magazines, muzzle, audio ------------ */
+    const _ejectPos = new THREE.Vector3();
+    const _ejectDir = new THREE.Vector3();
+    let _shellCounter = 0;
+
+    /** Ejects a casing from the weapon's eject port, in world space. */
+    function ejectCasing() {
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (!slot || !slot.model) return;
+      const vfx = slot.def.vfx || {};
+      if (!vfx.shellEject) return;
+      const rate = vfx.shellRate || 1;
+      if (rate > 1 && (_shellCounter++ % rate) !== 0) return;
+
+      const port = slot.model.sockets.eject;
+      if (!port) return;
+      port.getWorldPosition(_ejectPos);
+      // Casings fly out to the shooter's right and slightly back.
+      _ejectDir.set(Math.cos(A.yaw), 0.35, -Math.sin(A.yaw)).normalize();
+      HC.VFX.debris('shell', _ejectPos, _ejectDir, A.position.y, 2.4 + Math.random() * 1.2);
+    }
+
+    /** Drops the spent magazine when a magazine-fed reload begins. */
+    function dropMagazine() {
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (!slot || !slot.model) return;
+      if (slot.def.reloadType !== 'magazine') return;
+      const port = slot.model.sockets.magazine;
+      if (!port) return;
+      port.getWorldPosition(_ejectPos);
+      _ejectDir.set(0, -0.2, 0);
+      HC.VFX.debris('mag', _ejectPos, _ejectDir, A.position.y, 0.6);
+    }
+
+    A.weapon.events.on('fired', (e) => {
+      const def = e.weapon;
+      const vfx = def.vfx || {};
+      // Melee has no muzzle; its swing is handled by the 'melee' event.
+      if (!def.melee) {
+        HC.VFX.muzzleFlash(e.muzzle, e.direction,
+          A.model.vfxColors.muzzle || vfx.flashColor,
+          vfx.muzzleScale === undefined ? 1 : vfx.muzzleScale);
+        const skinDef = HC.Skins.tryGet(A.skinId) || {};
+        const pitch = (skinDef.audio && skinDef.audio.firePitch) || 1;
+        HC.Audio.play(def.audio.fire, {
+          position: A.position, pitch, important: A.isPlayer, reverb: 0.22
+        });
+        ejectCasing();
+      }
+      if (A.isPlayer) A.setCameraKick(e.visualKick, 'fire');
+      A.animator.addRecoil(e.kick * 3.2, (Math.random() - 0.5) * 0.6);
+      A.health.breakSpawnProtection();
+    });
+
+    A.weapon.events.on('reloadStart', (def) => {
+      HC.Audio.play(def.audio.reload || 'reload_generic', { position: A.position, important: A.isPlayer });
+      const dur = def.reloadType === 'shell'
+        ? (def.reloadFirstShell || 0.5) * A.weapon.mods.reload
+        : def.reloadTime * A.weapon.mods.reload;
+      A.animator.playAction(def.reloadType === 'shell' ? 'reload_shell' : 'reload', dur);
+      dropMagazine();
+    });
+    A.weapon.events.on('shellLoaded', () => {
+      const def = A.weapon.def;
+      HC.Audio.play(def.audio.reload || 'reload_shell', { position: A.position });
+      A.animator.playAction('reload_shell', def.reloadTime * A.weapon.mods.reload);
+    });
+    A.weapon.events.on('reloadEnd', () => {
+      const def = A.weapon.def;
+      if (def.audio.reloadEnd) HC.Audio.play(def.audio.reloadEnd, { position: A.position });
+    });
+    A.weapon.events.on('scope', (scoped) => {
+      HC.Audio.play('weapon_swap', {
+        position: A.position, pitch: scoped ? 1.35 : 0.9,
+        volume: 0.7, important: A.isPlayer
+      });
+    });
+    A.weapon.events.on('dryFire', () => {
+      HC.Audio.play('empty_click', { position: A.position, important: A.isPlayer });
+    });
+    A.weapon.events.on('spinUp', () => {
+      const def = A.weapon.def;
+      if (def.audio.spinUp) {
+        HC.Audio.play(def.audio.spinUp, { position: A.position, dur: def.spinUpTime, important: A.isPlayer });
+      }
+    });
+    let _swingSide = 1;
+    A.weapon.events.on('melee', () => {
+      const skinDef = HC.Skins.tryGet(A.skinId) || {};
+      HC.Audio.play(A.weapon.def.audio.fire || 'fire_blade', {
+        position: A.position, important: A.isPlayer,
+        pitch: (skinDef.audio && skinDef.audio.firePitch) || 1
+      });
+      _swingSide = -_swingSide;
+      A.animator.playAction('melee_swing', 0.34, { side: _swingSide });
+      // Trail on the blade so the arc reads even when it misses.
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (slot && slot.model.animated && slot.model.animated.blade) {
+        const trail = HC.VFX.attachTrail(slot.model.sockets.bladeTip || slot.model.animated.blade, {
+          rate: 130, color0: 0xffffff, color1: A.model.vfxColors.blade,
+          size0: 0.20, size1: 0.01, life: 0.22, spread: 0.06, drag: 5, gravity: 0
+        });
+        setTimeout(() => trail.stop(), 260);
+      }
+    });
+
     /* ---- abilities ----------------------------------------------------- */
     A.abilities = HC.AbilitySystem(A, opts.abilityCtx || opts.combatCtx);
     A.abilities.setup(charDef);

@@ -306,6 +306,18 @@ html, body {
 .hc-vital-bar.shield > i { background: linear-gradient(90deg, #2f9fd0, var(--shield)); }
 .hc-vital-bar.armor > i { background: linear-gradient(90deg, #c79a25, var(--armor)); }
 .hc-vital-value { font-family: var(--font-mono); font-size: 0.86em; min-width: 3.2em; text-align: right; }
+.hc-spawnguard {
+  margin-top: 0.55em; padding: 0.32em 0.7em;
+  border-left: 2px solid var(--shield);
+  background: rgba(98, 214, 255, 0.10);
+  font-size: 0.68em; letter-spacing: 0.16em; color: var(--shield); text-transform: uppercase;
+}
+.hc-spawnguard b { color: #fff; margin-left: 0.3em; }
+.hc-spawnguard .sub {
+  display: block; color: var(--text-faint); letter-spacing: 0.1em;
+  font-size: 0.9em; margin-top: 0.1em; text-transform: none;
+}
+
 .hc-hero-tag { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.5em; }
 .hc-hero-tag .nm { font-family: var(--font-display); letter-spacing: 0.18em; font-size: 1.0em; }
 .hc-hero-tag .rl { font-size: 0.64em; letter-spacing: 0.2em; color: var(--text-faint); text-transform: uppercase; }

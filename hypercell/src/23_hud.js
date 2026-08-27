@@ -58,7 +58,10 @@
       '  <div class="hc-vital-row" data-armor-row><span class="hc-vital-label">ARM</span>' +
       '    <div class="hc-vital-bar armor"><u data-ar-ghost></u><i data-ar></i></div>' +
       '    <span class="hc-vital-value hc-mono" data-ar-val>0</span></div>' +
-      '</div>';
+      '</div>' +
+      '<div class="hc-spawnguard hc-hidden" data-spawnguard>' +
+      '  SPAWN PROTECTION <b class="hc-mono" data-spawnguard-t>0.0</b>' +
+      '  <span class="sub">ends when you attack</span></div>';
     layer.appendChild(bl);
 
     /* abilities */
@@ -185,7 +188,8 @@
       mag: q('[data-mag]'), res: q('[data-res]'), wname: q('[data-wname]'),
       reload: q('[data-reload]'), reloadWrap: q('[data-reload-wrap]'), swap: q('[data-swap]'),
       scoreA: q('[data-score-a]'), scoreB: q('[data-score-b]'), clock: q('[data-clock]'),
-      objective: q('[data-objective]'), ammoBox: layer.querySelector('.hc-ammo')
+      objective: q('[data-objective]'), ammoBox: layer.querySelector('.hc-ammo'),
+      spawnGuard: q('[data-spawnguard]'), spawnGuardT: q('[data-spawnguard-t]')
     };
 
     /* ---- attachment ---------------------------------------------------- */
@@ -294,6 +298,10 @@
       R.arVal.textContent = Math.ceil(h.armor);
       R.shRow.style.display = h.effectiveMaxShield() > 0 ? '' : 'none';
       R.arRow.style.display = h.maxArmor > 0 ? '' : 'none';
+
+      const guarded = h.alive && h.spawnProtected;
+      R.spawnGuard.classList.toggle('hc-hidden', !guarded);
+      if (guarded) R.spawnGuardT.textContent = h.spawnProtectionTimer.toFixed(1);
     }
 
     /* --- abilities --- */

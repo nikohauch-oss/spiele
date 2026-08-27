@@ -318,6 +318,18 @@ html, body {
 .hc-vital-bar.shield > i { background: linear-gradient(90deg, #2f9fd0, var(--shield)); }
 .hc-vital-bar.armor > i { background: linear-gradient(90deg, #c79a25, var(--armor)); }
 .hc-vital-value { font-family: var(--font-mono); font-size: 0.86em; min-width: 3.2em; text-align: right; }
+.hc-spawnguard {
+  margin-top: 0.55em; padding: 0.32em 0.7em;
+  border-left: 2px solid var(--shield);
+  background: rgba(98, 214, 255, 0.10);
+  font-size: 0.68em; letter-spacing: 0.16em; color: var(--shield); text-transform: uppercase;
+}
+.hc-spawnguard b { color: #fff; margin-left: 0.3em; }
+.hc-spawnguard .sub {
+  display: block; color: var(--text-faint); letter-spacing: 0.1em;
+  font-size: 0.9em; margin-top: 0.1em; text-transform: none;
+}
+
 .hc-hero-tag { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.5em; }
 .hc-hero-tag .nm { font-family: var(--font-display); letter-spacing: 0.18em; font-size: 1.0em; }
 .hc-hero-tag .rl { font-size: 0.64em; letter-spacing: 0.2em; color: var(--text-faint); text-transform: uppercase; }
@@ -654,7 +666,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /*! HYPERCELL — a stylised 3D hero shooter.
- *  Built 2026-08-27T04:49:29.021Z
+ *  Built 2026-08-27T04:53:04.984Z
  *  All geometry, textures, animation and audio are generated at runtime.
  *  Bundled: three.js r160 (MIT).
  */
@@ -6535,6 +6547,30 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     VFX._sphereGeo = sphere;
     VFX.blasts = QuadPool(scene, sphere, () => Mats.additive(0xffffff, 1).clone(), 14, 13);
 
+    // Physical debris: ejected casings and dropped magazines. Small, but
+    // it is the difference between a weapon that fires and one that works.
+    VFX._debris = [];
+    const shellGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.052, 6);
+    const magGeo = new THREE.BoxGeometry(0.07, 0.17, 0.035);
+    VFX._debrisGeo = [shellGeo, magGeo];
+    const brassMat = new THREE.MeshStandardMaterial({
+      color: 0xc9a24a, roughness: 0.32, metalness: 0.95
+    });
+    const magMat = new THREE.MeshStandardMaterial({
+      color: 0x2b303a, roughness: 0.55, metalness: 0.6
+    });
+    VFX._debrisMat = [brassMat, magMat];
+    for (let i = 0; i < 44; i++) {
+      const isShell = i < 34;
+      const mesh = new THREE.Mesh(isShell ? shellGeo : magGeo, isShell ? brassMat : magMat);
+      mesh.visible = false;
+      mesh.castShadow = false;
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+      VFX._debris.push({ mesh, kind: isShell ? 'shell' : 'mag', active: false, life: 0,
+        vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, groundY: 0, bounces: 0 });
+    }
+
     // Dynamic light pool — muzzle flashes, explosions, ability casts.
     VFX.lights = [];
     for (let i = 0; i < CFG.gfx.maxDynamicLights; i++) {
@@ -6552,10 +6588,44 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   VFX.setViewportHeight = function (h) { VFX._viewportHeight = h; };
 
+  /**
+   * Spawns a piece of debris.
+   * @param kind 'shell' | 'mag'
+   */
+  VFX.debris = function (kind, position, direction, groundY, speed) {
+    if (!VFX.ready) return;
+    let slot = null, oldest = null;
+    for (let i = 0; i < VFX._debris.length; i++) {
+      const d = VFX._debris[i];
+      if (d.kind !== kind) continue;
+      if (!d.active) { slot = d; break; }
+      if (!oldest || d.life < oldest.life) oldest = d;
+    }
+    slot = slot || oldest;
+    if (!slot) return;
+
+    const sp = speed === undefined ? (kind === 'shell' ? 2.6 : 0.9) : speed;
+    slot.active = true;
+    slot.mesh.visible = true;
+    slot.mesh.position.copy(position);
+    slot.mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    slot.vx = direction.x * sp + jitter(0.7);
+    slot.vy = direction.y * sp + 1.1 + Math.random() * 0.6;
+    slot.vz = direction.z * sp + jitter(0.7);
+    slot.rx = jitter(16); slot.ry = jitter(16); slot.rz = jitter(16);
+    slot.groundY = groundY;
+    slot.bounces = kind === 'shell' ? 2 : 1;
+    slot.life = kind === 'shell' ? 2.4 : 4.0;
+    slot.maxLife = slot.life;
+  };
+
   VFX.dispose = function () {
     if (!VFX.ready) return;
     [VFX.sparks, VFX.smoke].forEach(f => { if (f) { VFX.scene.remove(f.points); f.dispose(); } });
     [VFX.tracers, VFX.flashes, VFX.shockwaves, VFX.decals, VFX.blasts].forEach(p => p && p.dispose());
+    (VFX._debris || []).forEach(d => VFX.scene.remove(d.mesh));
+    (VFX._debrisGeo || []).forEach(g => g.dispose());
+    (VFX._debrisMat || []).forEach(m => m.dispose());
     (VFX.lights || []).forEach(l => VFX.scene.remove(l.light));
     [VFX._quadGeo, VFX._ringGeo, VFX._decalGeo, VFX._sphereGeo].forEach(g => g && g.dispose());
     VFX._emitters.length = 0;
@@ -6590,7 +6660,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   /** Muzzle flash: light + flare quad + sparks + smoke wisp. */
   VFX.muzzleFlash = function (pos, dir, color, scale) {
     if (!VFX.ready) return;
-    scale = scale || 1;
+    scale = scale === undefined ? 1 : scale;
+    if (scale <= 0.001) return;
     VFX.light(pos, color, 5.5 * scale, 11 * scale, 0.075);
 
     const f = VFX.flashes.acquire();
@@ -6944,6 +7015,35 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       if (d.life < 2) d.mesh.material.opacity = 0.8 * (d.life / 2);
     }
 
+    // Debris
+    for (let i = 0; i < VFX._debris.length; i++) {
+      const d = VFX._debris[i];
+      if (!d.active) continue;
+      d.life -= dt;
+      if (d.life <= 0) { d.active = false; d.mesh.visible = false; continue; }
+      d.vy -= CFG.sim.gravity * 0.55 * dt;
+      const p = d.mesh.position;
+      p.x += d.vx * dt; p.y += d.vy * dt; p.z += d.vz * dt;
+      if (p.y <= d.groundY + 0.02) {
+        p.y = d.groundY + 0.02;
+        if (d.bounces > 0 && d.vy < -0.6) {
+          d.bounces--;
+          d.vy = -d.vy * 0.35;
+          d.vx *= 0.55; d.vz *= 0.55;
+          d.rx *= 0.4; d.ry *= 0.4; d.rz *= 0.4;
+          if (d.kind === 'shell') {
+            HC.Audio.play('impact_metal', { position: p, scale: 0.16, volume: 0.28, varyAmount: 0.25 });
+          }
+        } else {
+          d.vy = 0; d.vx *= 0.72; d.vz *= 0.72;
+          d.rx = d.ry = d.rz = 0;
+        }
+      }
+      d.mesh.rotation.x += d.rx * dt;
+      d.mesh.rotation.y += d.ry * dt;
+      d.mesh.rotation.z += d.rz * dt;
+    }
+
     // Dynamic lights
     for (let i = 0; i < VFX.lights.length; i++) {
       const L = VFX.lights[i];
@@ -6977,6 +7077,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       p.items.forEach(it => p.release(it));
     });
     VFX.lights.forEach(l => { l.life = 0; l.light.visible = false; l.light.intensity = 0; });
+    VFX._debris.forEach(d => { d.active = false; d.mesh.visible = false; });
     VFX._emitters.length = 0;
   };
 
@@ -10990,6 +11091,112 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       return true;
     };
 
+    /* ---- weapon feedback: casings, magazines, muzzle, audio ------------ */
+    const _ejectPos = new THREE.Vector3();
+    const _ejectDir = new THREE.Vector3();
+    let _shellCounter = 0;
+
+    /** Ejects a casing from the weapon's eject port, in world space. */
+    function ejectCasing() {
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (!slot || !slot.model) return;
+      const vfx = slot.def.vfx || {};
+      if (!vfx.shellEject) return;
+      const rate = vfx.shellRate || 1;
+      if (rate > 1 && (_shellCounter++ % rate) !== 0) return;
+
+      const port = slot.model.sockets.eject;
+      if (!port) return;
+      port.getWorldPosition(_ejectPos);
+      // Casings fly out to the shooter's right and slightly back.
+      _ejectDir.set(Math.cos(A.yaw), 0.35, -Math.sin(A.yaw)).normalize();
+      HC.VFX.debris('shell', _ejectPos, _ejectDir, A.position.y, 2.4 + Math.random() * 1.2);
+    }
+
+    /** Drops the spent magazine when a magazine-fed reload begins. */
+    function dropMagazine() {
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (!slot || !slot.model) return;
+      if (slot.def.reloadType !== 'magazine') return;
+      const port = slot.model.sockets.magazine;
+      if (!port) return;
+      port.getWorldPosition(_ejectPos);
+      _ejectDir.set(0, -0.2, 0);
+      HC.VFX.debris('mag', _ejectPos, _ejectDir, A.position.y, 0.6);
+    }
+
+    A.weapon.events.on('fired', (e) => {
+      const def = e.weapon;
+      const vfx = def.vfx || {};
+      // Melee has no muzzle; its swing is handled by the 'melee' event.
+      if (!def.melee) {
+        HC.VFX.muzzleFlash(e.muzzle, e.direction,
+          A.model.vfxColors.muzzle || vfx.flashColor,
+          vfx.muzzleScale === undefined ? 1 : vfx.muzzleScale);
+        const skinDef = HC.Skins.tryGet(A.skinId) || {};
+        const pitch = (skinDef.audio && skinDef.audio.firePitch) || 1;
+        HC.Audio.play(def.audio.fire, {
+          position: A.position, pitch, important: A.isPlayer, reverb: 0.22
+        });
+        ejectCasing();
+      }
+      if (A.isPlayer) A.setCameraKick(e.visualKick, 'fire');
+      A.animator.addRecoil(e.kick * 3.2, (Math.random() - 0.5) * 0.6);
+      A.health.breakSpawnProtection();
+    });
+
+    A.weapon.events.on('reloadStart', (def) => {
+      HC.Audio.play(def.audio.reload || 'reload_generic', { position: A.position, important: A.isPlayer });
+      const dur = def.reloadType === 'shell'
+        ? (def.reloadFirstShell || 0.5) * A.weapon.mods.reload
+        : def.reloadTime * A.weapon.mods.reload;
+      A.animator.playAction(def.reloadType === 'shell' ? 'reload_shell' : 'reload', dur);
+      dropMagazine();
+    });
+    A.weapon.events.on('shellLoaded', () => {
+      const def = A.weapon.def;
+      HC.Audio.play(def.audio.reload || 'reload_shell', { position: A.position });
+      A.animator.playAction('reload_shell', def.reloadTime * A.weapon.mods.reload);
+    });
+    A.weapon.events.on('reloadEnd', () => {
+      const def = A.weapon.def;
+      if (def.audio.reloadEnd) HC.Audio.play(def.audio.reloadEnd, { position: A.position });
+    });
+    A.weapon.events.on('scope', (scoped) => {
+      HC.Audio.play('weapon_swap', {
+        position: A.position, pitch: scoped ? 1.35 : 0.9,
+        volume: 0.7, important: A.isPlayer
+      });
+    });
+    A.weapon.events.on('dryFire', () => {
+      HC.Audio.play('empty_click', { position: A.position, important: A.isPlayer });
+    });
+    A.weapon.events.on('spinUp', () => {
+      const def = A.weapon.def;
+      if (def.audio.spinUp) {
+        HC.Audio.play(def.audio.spinUp, { position: A.position, dur: def.spinUpTime, important: A.isPlayer });
+      }
+    });
+    let _swingSide = 1;
+    A.weapon.events.on('melee', () => {
+      const skinDef = HC.Skins.tryGet(A.skinId) || {};
+      HC.Audio.play(A.weapon.def.audio.fire || 'fire_blade', {
+        position: A.position, important: A.isPlayer,
+        pitch: (skinDef.audio && skinDef.audio.firePitch) || 1
+      });
+      _swingSide = -_swingSide;
+      A.animator.playAction('melee_swing', 0.34, { side: _swingSide });
+      // Trail on the blade so the arc reads even when it misses.
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (slot && slot.model.animated && slot.model.animated.blade) {
+        const trail = HC.VFX.attachTrail(slot.model.sockets.bladeTip || slot.model.animated.blade, {
+          rate: 130, color0: 0xffffff, color1: A.model.vfxColors.blade,
+          size0: 0.20, size1: 0.01, life: 0.22, spread: 0.06, drag: 5, gravity: 0
+        });
+        setTimeout(() => trail.stop(), 260);
+      }
+    });
+
     /* ---- abilities ----------------------------------------------------- */
     A.abilities = HC.AbilitySystem(A, opts.abilityCtx || opts.combatCtx);
     A.abilities.setup(charDef);
@@ -12686,7 +12893,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           killer.score.streak++;
           killer.score.bestStreak = Math.max(killer.score.bestStreak, killer.score.streak);
           killer.abilities.onKill();
-          if (killer.isPlayer) A.events.emit('playerKill', { victim, killer, assists });
         }
       }
       assists.forEach(a => { if (a.score) a.score.assists++; });
@@ -13409,7 +13615,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       '  <div class="hc-vital-row" data-armor-row><span class="hc-vital-label">ARM</span>' +
       '    <div class="hc-vital-bar armor"><u data-ar-ghost></u><i data-ar></i></div>' +
       '    <span class="hc-vital-value hc-mono" data-ar-val>0</span></div>' +
-      '</div>';
+      '</div>' +
+      '<div class="hc-spawnguard hc-hidden" data-spawnguard>' +
+      '  SPAWN PROTECTION <b class="hc-mono" data-spawnguard-t>0.0</b>' +
+      '  <span class="sub">ends when you attack</span></div>';
     layer.appendChild(bl);
 
     /* abilities */
@@ -13536,7 +13745,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       mag: q('[data-mag]'), res: q('[data-res]'), wname: q('[data-wname]'),
       reload: q('[data-reload]'), reloadWrap: q('[data-reload-wrap]'), swap: q('[data-swap]'),
       scoreA: q('[data-score-a]'), scoreB: q('[data-score-b]'), clock: q('[data-clock]'),
-      objective: q('[data-objective]'), ammoBox: layer.querySelector('.hc-ammo')
+      objective: q('[data-objective]'), ammoBox: layer.querySelector('.hc-ammo'),
+      spawnGuard: q('[data-spawnguard]'), spawnGuardT: q('[data-spawnguard-t]')
     };
 
     /* ---- attachment ---------------------------------------------------- */
@@ -13645,6 +13855,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       R.arVal.textContent = Math.ceil(h.armor);
       R.shRow.style.display = h.effectiveMaxShield() > 0 ? '' : 'none';
       R.arRow.style.display = h.maxArmor > 0 ? '' : 'none';
+
+      const guarded = h.alive && h.spawnProtected;
+      R.spawnGuard.classList.toggle('hc-hidden', !guarded);
+      if (guarded) R.spawnGuardT.textContent = h.spawnProtectionTimer.toFixed(1);
     }
 
     /* --- abilities --- */
