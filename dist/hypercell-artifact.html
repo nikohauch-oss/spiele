@@ -661,7 +661,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /*! HYPERCELL — a stylised 3D hero shooter.
- *  Built 2026-08-27T05:03:53.690Z
+ *  Built 2026-08-27T05:10:25.199Z
  *  All geometry, textures, animation and audio are generated at runtime.
  *  Bundled: three.js r160 (MIT).
  */
@@ -1058,6 +1058,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         melee:     { shield: 1.00, health: 1.15, armor: 0.85 }
       },
 
+      killPlaneY: -22,               // below this you are out of the world
+      outOfBoundsMargin: 14,         // metres past the map bounds
       friendlyFire: false,
       selfDamageScale: 0.38,         // rocket / blast jumping
       knockbackSelfScale: 1.0
@@ -8003,6 +8005,43 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       }
     }
 
+    /**
+     * Stairs as stacked boxes. Ramps rely on slope maths and can be walked
+     * into at any angle; steps use the same auto-step path as a kerb, which
+     * makes vertical access completely predictable.
+     * @param axis 'x' or 'z' — the direction of travel
+     * @param dir  +1 climbs toward increasing axis, -1 toward decreasing
+     */
+    function stairs(cx, cz, fromY, toY, width, run, axis, dir, mat, surface) {
+      const rise = toY - fromY;
+      const steps = Math.max(2, Math.ceil(rise / (CFG.body.stepHeight * 0.82)));
+      const stepRise = rise / steps;
+      const tread = run / steps;
+      for (let i = 0; i < steps; i++) {
+        const y = fromY + stepRise * (i + 1);
+        const offset = (i + 0.5 - steps / 2) * tread * dir;
+        const sx = axis === 'x' ? cx + offset : cx;
+        const sz = axis === 'z' ? cz + offset : cz;
+        const w = axis === 'x' ? tread : width;
+        const d = axis === 'z' ? tread : width;
+        // Each tread is a solid block from the ground up to its own height.
+        solid(sx, (fromY + y) / 2, sz, w + 0.02, y - fromY, d, mat, surface || 'metal');
+      }
+      // Side rails so nobody walks off the edge by accident.
+      const railW = axis === 'x' ? run : 0.22;
+      const railD = axis === 'z' ? run : 0.22;
+      [-1, 1].forEach(sgn => {
+        const rx = axis === 'x' ? cx : cx + sgn * (width / 2 + 0.11);
+        const rz = axis === 'z' ? cz : cz + sgn * (width / 2 + 0.11);
+        const rx2 = axis === 'z' ? cx + sgn * (width / 2 + 0.11) : rx;
+        const rz2 = axis === 'x' ? cz + sgn * (width / 2 + 0.11) : rz;
+        deco(new THREE.BoxGeometry(railW, rise + 1.0, railD), M.steel,
+          [rx2, fromY + rise / 2 + 0.5, rz2], axis === 'x' ? [Math.atan2(rise, run), 0, 0] : [0, 0, 0]);
+      });
+      result.minimap.walls.push({ x: cx, z: cz, w: axis === 'x' ? run : width,
+        d: axis === 'z' ? run : width, h: rise });
+    }
+
     /* ---- named results ------------------------------------------------ */
     const result = {
       id: 'nova_district',
@@ -8197,11 +8236,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     B.push(building(-48, 36, 12, 16, 15.0, { wall: M.wallLight, cool: true }));
     B.push(building(48, 36, 12, 16, 15.0, { wall: M.wallLight }));
 
-    /* --- rooftop access --- */
-    // Long ramps from the street up to the 7m shop roofs
+    /* --- rooftop access ---
+     * Stairs along the side streets, climbing north-to-south into the shop
+     * roofs. Both sides are mirrored so neither team owns the high ground. */
     [-1, 1].forEach(sx => {
-      ramp(sx * 39.5, 0.18, -22, 5.0, 14, 6.82, 'x', sx < 0, M.panel, 'metal');
-      ramp(sx * 39.5, 0.18, 22, 5.0, 14, 6.82, 'x', sx < 0, M.panel, 'metal');
+      stairs(sx * 39.5, -30.5, 0.18, 7.0, 5.0, 13, 'z', 1, M.panel, 'metal');
+      stairs(sx * 39.5, 30.5, 0.18, 7.0, 5.0, 13, 'z', -1, M.panel, 'metal');
+      // Landing that meets the roof lip.
+      solid(sx * 39.5, 6.85, -23.6, 5.0, 0.4, 3.0, M.panel, 'metal');
+      solid(sx * 39.5, 6.85, 23.6, 5.0, 0.4, 3.0, M.panel, 'metal');
+      solid(sx * 34.5, 6.85, -22, 5.5, 0.4, 4.0, M.panel, 'metal');
+      solid(sx * 34.5, 6.85, 22, 5.5, 0.4, 4.0, M.panel, 'metal');
     });
     // Catwalks joining the shop roofs across the side streets
     [-1, 1].forEach(sx => {
@@ -8216,43 +8261,60 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     [-1, 1].forEach(sx => {
       solid(sx * 21.5, 7.5, 0, 5, 0.4, 12, M.panel, 'metal');
       solid(sx * 19.2, 8.2, 0, 0.4, 1.2, 12, M.darkSteel, 'metal', { blocksProjectiles: false });
-      ramp(sx * 25.8, 0.18, 0, 4.4, 12, 7.32, 'x', sx > 0, M.panel, 'metal');
+      stairs(sx * 25.8, -8.5, 0.18, 7.5, 4.4, 12, 'z', 1, M.panel, 'metal');
+      solid(sx * 25.8, 7.35, -1.6, 4.4, 0.4, 3.0, M.panel, 'metal');
     });
 
     /* ================================================================== *
      * 4. SERVICE TUNNELS — the flank routes
      * ================================================================== */
-    function tunnel(sx) {
+    /**
+     * Service corridor: a covered flank route at street level. It used to be
+     * a sunken trench, but the map's ground slab spans the whole arena, so
+     * the trench floor sat *below* solid ground and could never be entered.
+     * At street level it is reachable, readable and does the same job.
+     */
+    function corridor(sx) {
       const x = sx * 30;
-      const depth = -3.6;
-      // Trench walls
-      solid(x - 3.6, depth / 2 - 0.5, 0, 1.2, 4.6, 26, M.wallDark, 'concrete');
-      solid(x + 3.6, depth / 2 - 0.5, 0, 1.2, 4.6, 26, M.wallDark, 'concrete');
-      solid(x, depth - 0.4, 0, 6.0, 0.8, 26, M.sidewalk, 'concrete');
-      // Ceiling over the middle section makes it a true tunnel, not a ditch.
-      solid(x, 0.4, 0, 8.0, 0.8, 14, M.wallDark, 'concrete');
-      for (let z = -5; z <= 5; z += 2.5) {
-        deco(new THREE.BoxGeometry(5.4, 0.10, 0.35), M.windowCool, [x, -0.15, z]);
-        lights.push(makePointLight(x, -0.5, z, 0x62d6ff, 0.55, 11));
-      }
-      // Pipe runs
-      [-1, 1].forEach(s => {
-        deco(new THREE.CylinderGeometry(0.20, 0.20, 25, 8), M.rust, [x + s * 2.9, -0.9, 0], [Math.PI / 2, 0, 0]);
-        deco(new THREE.CylinderGeometry(0.14, 0.14, 25, 8), M.darkSteel, [x + s * 2.9, -1.5, 0], [Math.PI / 2, 0, 0]);
+      const H = 3.2;
+      // Side walls with a gap at each end so the route stays open.
+      [-1, 1].forEach(sz => {
+        solid(x - 3.4, H / 2, sz * 8.5, 0.8, H, 13, M.wallDark, 'concrete');
+        solid(x + 3.4, H / 2, sz * 8.5, 0.8, H, 13, M.wallDark, 'concrete');
       });
-      // Entrance ramps at both ends
-      ramp(x, depth, -16.5, 5.6, 7, 3.78, 'z', false, M.sidewalk, 'concrete');
-      ramp(x, depth, 16.5, 5.6, 7, 3.78, 'z', true, M.sidewalk, 'concrete');
-      result.ambientEmitters.push({ pos: new THREE.Vector3(x, -1.2, 0), sound: 'vent_hiss', interval: 6.5 });
+      // Roof over the middle so it reads as a tunnel from outside.
+      solid(x, H + 0.3, 0, 7.6, 0.6, 30, M.wallDark, 'concrete');
+      // Lit ceiling strip + pipes.
+      for (let z = -12; z <= 12; z += 3) {
+        deco(new THREE.BoxGeometry(5.0, 0.10, 0.35), M.windowCool, [x, H - 0.12, z]);
+        lights.push(makePointLight(x, H - 0.5, z, 0x62d6ff, 0.85, 13));
+      }
+      [-1, 1].forEach(s2 => {
+        deco(new THREE.CylinderGeometry(0.20, 0.20, 29, 8), M.rust, [x + s2 * 2.7, H - 0.55, 0], [Math.PI / 2, 0, 0]);
+        deco(new THREE.CylinderGeometry(0.14, 0.14, 29, 8), M.darkSteel, [x + s2 * 2.7, H - 1.05, 0], [Math.PI / 2, 0, 0]);
+      });
+      // Waist-high cover inside so the corridor is not a pure shooting gallery.
+      [-5, 5].forEach(z => {
+        solid(x + (z > 0 ? 1.4 : -1.4), 0.6, z, 1.6, 1.2, 0.6, M.panel, 'concrete');
+        result.minimap.walls.push({ x: x + (z > 0 ? 1.4 : -1.4), z, w: 1.6, d: 0.6, h: 1.2 });
+      });
+      result.ambientEmitters.push({ pos: new THREE.Vector3(x, 1.6, 0), sound: 'vent_hiss', interval: 6.5 });
+      result.minimap.walls.push({ x: x - 3.4, z: 0, w: 0.8, d: 30, h: H });
+      result.minimap.walls.push({ x: x + 3.4, z: 0, w: 0.8, d: 30, h: H });
     }
-    tunnel(-1);
-    tunnel(1);
+    corridor(-1);
+    corridor(1);
 
     /* ================================================================== *
      * 5. PLAZA COVER + OBJECTIVE
      * ================================================================== */
-    // Core dais
+    // Core dais, with a gentle ramp on each side so reaching the objective
+    // is a movement decision, not a jump you can fail.
     solid(0, 0.35, 0, 7.0, 0.7, 7.0, M.panel, 'metal');
+    ramp(0, 0.06, -4.6, 5.0, 2.4, 0.64, 'z', false, M.panel, 'metal');
+    ramp(0, 0.06, 4.6, 5.0, 2.4, 0.64, 'z', true, M.panel, 'metal');
+    ramp(-4.6, 0.06, 0, 2.4, 5.0, 0.64, 'x', true, M.panel, 'metal');
+    ramp(4.6, 0.06, 0, 2.4, 5.0, 0.64, 'x', false, M.panel, 'metal');
     solid(0, 0.85, 0, 5.2, 0.35, 5.2, M.steel, 'metal');
     deco(new THREE.TorusGeometry(2.9, 0.10, 8, 40), Mats.additive(0x9b6bff, 0.9), [0, 1.06, 0], [Math.PI / 2, 0, 0]);
     for (let i = 0; i < 4; i++) {
@@ -9281,6 +9343,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
       const results = [];
       const pellets = def.pellets || 1;
+      let connected = false;
+      let criticalHit = false;
       for (let p = 0; p < pellets; p++) {
         const shotDir = new THREE.Vector3().copy(_dir);
         if (spread > 0) {
@@ -9292,8 +9356,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           shotDir.normalize();
         }
         if (def.projectile) {
+          // The hit happens later; the projectile credits this component.
           ctx.spawnProjectile({
-            owner, weapon: def, origin: muzzlePos.clone(), direction: shotDir,
+            owner, weapon: def, ownerWeapon: W,
+            origin: muzzlePos.clone(), direction: shotDir,
             speed: def.projectile.speed, config: def.projectile
           });
         } else if (def.melee) {
@@ -9306,7 +9372,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
             HC.VFX.tracer(muzzlePos, endPoint, W.tracerColor || def.vfx.tracer,
               def.vfx.tracerWidth || 0.03, 240);
           }
-          if (hit) applyHit(hit, shotDir, origin);
+          if (hit && applyHit(hit, shotDir, origin)) {
+            connected = true;
+            if (hit.zone === 'head') criticalHit = true;
+          }
         }
       }
 
@@ -9315,7 +9384,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           owner, weapon: def, origin, direction: _dir,
           range: def.meleeRange, arc: def.meleeArc
         });
-        sweep.forEach(h => applyHit(h, _dir, origin, true));
+        sweep.forEach(h => { if (applyHit(h, _dir, origin, true)) connected = true; });
         W.events.emit('melee', sweep);
       }
 
@@ -9349,6 +9418,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       W.recoilYaw += horiz * aimDamp * U.DEG * 10;
       W.recoilPatternIndex++;
 
+      if (connected) W.stats.shotsHit++;
+      if (criticalHit) W.stats.crits++;
+
       W.bloom = Math.min(def.spread.max, W.bloom + def.spread.bloomPerShot);
 
       W.events.emit('fired', {
@@ -9370,13 +9442,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           point: hit.point, direction: dir, source: 'weapon', weaponId: def.id
         });
         HC.VFX.impact(hit.point, hit.normal || dir.clone().negate(), 'shield', 1.0);
-        W.stats.shotsHit++;
-        return;
+        return true;
       }
       if (!hit.actor) {
         HC.VFX.impact(hit.point, hit.normal, hit.surface || 'concrete', isMelee ? 1.4 : 1.0);
         HC.Audio.play(surfaceSound(hit.surface), { position: hit.point, scale: 1 });
-        return;
+        return false;
       }
       const dist = hit.distance;
       const falloff = isMelee ? 1 : WM.falloff(def, dist);
@@ -9392,13 +9463,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         weaponId: def.id, knockback: isMelee ? 4 : 0.6
       });
 
-      if (result && result.applied > 0) {
-        W.stats.shotsHit++;
-        W.stats.damage += result.applied;
-        if (critical) W.stats.crits++;
-      }
+      if (result && result.applied > 0) W.stats.damage += result.applied;
       HC.VFX.impact(hit.point, hit.normal || dir.clone().negate(),
         result && result.hitShield ? 'shield' : 'flesh', critical ? 1.5 : 1.0);
+      return !!(result && result.applied > 0);
     }
 
     function surfaceSound(surface) {
@@ -9460,6 +9528,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         p.velocity = (p.velocity || new THREE.Vector3()).copy(o.direction).multiplyScalar(o.speed);
         p.owner = o.owner;
         p.weapon = o.weapon;
+        p.ownerWeapon = o.ownerWeapon || null;
+        p.counted = false;
         p.config = cfg;
         p.life = cfg.life;
         p.fuse = cfg.fuse > 0 ? cfg.fuse : -1;
@@ -9580,6 +9650,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     function detonate(p, position, normal, directHit) {
       const cfg = p.config;
       const splash = cfg.splash;
+      let landed = false;
+      const credit = (r) => { if (r && r.applied > 0) landed = true; };
       HC.VFX.explosion(position, splash ? splash.radius : 2, cfg.color, {
         groundY: position.y - 0.2, coreColor: 0xffffff
       });
@@ -9587,20 +9659,26 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         { position, scale: splash ? splash.radius / 5 : 0.5, important: true, reverb: 0.35 });
 
       if (directHit) {
-        ctx.damage({
+        credit(ctx.damage({
           target: directHit, amount: p.weapon.damage, type: p.weapon.damageType,
           attacker: p.owner, critical: false, point: position,
           direction: _d.copy(p.velocity).normalize(), source: 'projectile',
           weaponId: p.weapon.id, knockback: splash ? splash.knockback * 0.4 : 0
-        });
+        }));
       }
       if (splash) {
-        ctx.explode({
+        const hits = ctx.explode({
           center: position, radius: splash.radius, innerRadius: splash.innerRadius,
           damage: p.weapon.damage, minFraction: splash.minFrac, type: p.weapon.damageType,
           attacker: p.owner, knockback: splash.knockback, selfKnockback: splash.selfKnockback,
           weaponId: p.weapon.id, exclude: directHit
         });
+        // One connected shot, however many people were caught in it.
+        if (hits && hits.some(h => h.actor !== p.owner && h.result.applied > 0)) landed = true;
+      }
+      if (landed && p.ownerWeapon && !p.counted) {
+        p.counted = true;
+        p.ownerWeapon.stats.shotsHit++;
       }
       ctx.notify && ctx.notify('explosion', { position, radius: splash ? splash.radius : 2 });
     }
@@ -12991,6 +13069,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         if (!actor.health.alive && actor.respawnTimer <= 0 && A.state === 'active') A.respawn(actor);
       }
 
+      enforceBounds();
+
       // Soft body separation so players never stand inside each other.
       resolveActorOverlap(dt);
 
@@ -13023,6 +13103,37 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
       if (A.state === 'active') checkEnd();
     };
+
+    /**
+     * Anything that leaves the playable volume dies and respawns. This is a
+     * safety net, not a substitute for solid geometry: a hole in the map is
+     * still a bug, but it must never strand a player outside the match.
+     */
+    const _bounds = A.map.bounds || { minX: -60, maxX: 60, minZ: -60, maxZ: 60 };
+    const _margin = CFG.combat.outOfBoundsMargin;
+    function enforceBounds() {
+      for (let i = 0; i < A.actors.length; i++) {
+        const a = A.actors[i];
+        if (!a.health.alive) continue;
+        const p = a.position;
+        const out = p.y < CFG.combat.killPlaneY ||
+          p.x < _bounds.minX - _margin || p.x > _bounds.maxX + _margin ||
+          p.z < _bounds.minZ - _margin || p.z > _bounds.maxZ + _margin ||
+          !isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z);
+        if (!out) continue;
+        HC.Log.warn('Arena', a.name + ' left the playable area at ' +
+          p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ' — recovering.');
+        a.health.applyDamage({
+          amount: a.health.totalMax() * 10, type: 'physical',
+          attacker: null, source: 'environment', direction: _v.set(0, 1, 0)
+        });
+        // Park the body somewhere sane so the death cam is not in the void.
+        const sp = A.spawnPointFor(a);
+        a.position.copy(sp.position);
+        a.velocity.set(0, 0, 0);
+        a.model.root.position.copy(a.position);
+      }
+    }
 
     function resolveActorOverlap(dt) {
       for (let i = 0; i < A.actors.length; i++) {

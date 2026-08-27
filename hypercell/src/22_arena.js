@@ -447,6 +447,8 @@
         if (!actor.health.alive && actor.respawnTimer <= 0 && A.state === 'active') A.respawn(actor);
       }
 
+      enforceBounds();
+
       // Soft body separation so players never stand inside each other.
       resolveActorOverlap(dt);
 
@@ -479,6 +481,37 @@
 
       if (A.state === 'active') checkEnd();
     };
+
+    /**
+     * Anything that leaves the playable volume dies and respawns. This is a
+     * safety net, not a substitute for solid geometry: a hole in the map is
+     * still a bug, but it must never strand a player outside the match.
+     */
+    const _bounds = A.map.bounds || { minX: -60, maxX: 60, minZ: -60, maxZ: 60 };
+    const _margin = CFG.combat.outOfBoundsMargin;
+    function enforceBounds() {
+      for (let i = 0; i < A.actors.length; i++) {
+        const a = A.actors[i];
+        if (!a.health.alive) continue;
+        const p = a.position;
+        const out = p.y < CFG.combat.killPlaneY ||
+          p.x < _bounds.minX - _margin || p.x > _bounds.maxX + _margin ||
+          p.z < _bounds.minZ - _margin || p.z > _bounds.maxZ + _margin ||
+          !isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z);
+        if (!out) continue;
+        HC.Log.warn('Arena', a.name + ' left the playable area at ' +
+          p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ' — recovering.');
+        a.health.applyDamage({
+          amount: a.health.totalMax() * 10, type: 'physical',
+          attacker: null, source: 'environment', direction: _v.set(0, 1, 0)
+        });
+        // Park the body somewhere sane so the death cam is not in the void.
+        const sp = A.spawnPointFor(a);
+        a.position.copy(sp.position);
+        a.velocity.set(0, 0, 0);
+        a.model.root.position.copy(a.position);
+      }
+    }
 
     function resolveActorOverlap(dt) {
       for (let i = 0; i < A.actors.length; i++) {

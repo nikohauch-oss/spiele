@@ -168,6 +168,8 @@
         melee:     { shield: 1.00, health: 1.15, armor: 0.85 }
       },
 
+      killPlaneY: -22,               // below this you are out of the world
+      outOfBoundsMargin: 14,         // metres past the map bounds
       friendlyFire: false,
       selfDamageScale: 0.38,         // rocket / blast jumping
       knockbackSelfScale: 1.0

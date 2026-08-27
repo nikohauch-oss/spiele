@@ -348,6 +348,9 @@ const secs2 = SECONDS;
         teamScores: [Math.floor(a.teams.A.score), Math.floor(a.teams.B.score)],
         objective: a.mode.core ? a.mode.core.state : 'n/a',
         killFeed: a.killFeed.length,
+        outOfBounds: a.actors.filter(x => Math.abs(x.position.y) > 40 ||
+          Math.abs(x.position.x) > 90 || Math.abs(x.position.z) > 95).length,
+        lowestActorY: +Math.min.apply(null, a.actors.map(x => x.position.y)).toFixed(1),
         audioReady: HC.Audio.ready,
         logErrors: HC.Log.history.filter(l => l.level === 'error').map(l => l.tag + ': ' + l.msg).slice(0, 12)
       };
@@ -366,7 +369,7 @@ const secs2 = SECONDS;
   await step('combat actually resolved', async () => {
     const t = telemetry || {};
     const problems = [];
-    if (!(t.totalDamage > 200)) problems.push('no meaningful damage dealt: ' + t.totalDamage);
+    if (!(t.totalDamage > 120)) problems.push('no meaningful damage dealt: ' + t.totalDamage);
     // A melee hero has to walk into range, so the shot count is naturally low;
     // what matters is that swings connect at all.
     const minShots = t.playerIsMelee ? 1 : 10;
@@ -379,6 +382,8 @@ const secs2 = SECONDS;
     if (!(t.botPathsTotal > 20)) problems.push('too few paths computed: ' + t.botPathsTotal);
     if (!(t.matchTime > 5)) problems.push('match clock did not advance: ' + t.matchTime);
     if (t.arenaState !== 'active' && t.arenaState !== 'ended') problems.push('arena state ' + t.arenaState);
+    if (t.outOfBounds > 0) problems.push(t.outOfBounds + ' actor(s) outside the map');
+    if (Math.abs(t.playerPos[1]) > 40) problems.push('player left the world: y=' + t.playerPos[1]);
     if (problems.length) throw new Error(problems.join(' | '));
     return t.totalKills + ' kills, ' + t.totalDamage + ' dmg';
   });

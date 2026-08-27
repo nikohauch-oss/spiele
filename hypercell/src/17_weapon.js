@@ -275,6 +275,8 @@
 
       const results = [];
       const pellets = def.pellets || 1;
+      let connected = false;
+      let criticalHit = false;
       for (let p = 0; p < pellets; p++) {
         const shotDir = new THREE.Vector3().copy(_dir);
         if (spread > 0) {
@@ -286,8 +288,10 @@
           shotDir.normalize();
         }
         if (def.projectile) {
+          // The hit happens later; the projectile credits this component.
           ctx.spawnProjectile({
-            owner, weapon: def, origin: muzzlePos.clone(), direction: shotDir,
+            owner, weapon: def, ownerWeapon: W,
+            origin: muzzlePos.clone(), direction: shotDir,
             speed: def.projectile.speed, config: def.projectile
           });
         } else if (def.melee) {
@@ -300,7 +304,10 @@
             HC.VFX.tracer(muzzlePos, endPoint, W.tracerColor || def.vfx.tracer,
               def.vfx.tracerWidth || 0.03, 240);
           }
-          if (hit) applyHit(hit, shotDir, origin);
+          if (hit && applyHit(hit, shotDir, origin)) {
+            connected = true;
+            if (hit.zone === 'head') criticalHit = true;
+          }
         }
       }
 
@@ -309,7 +316,7 @@
           owner, weapon: def, origin, direction: _dir,
           range: def.meleeRange, arc: def.meleeArc
         });
-        sweep.forEach(h => applyHit(h, _dir, origin, true));
+        sweep.forEach(h => { if (applyHit(h, _dir, origin, true)) connected = true; });
         W.events.emit('melee', sweep);
       }
 
@@ -343,6 +350,9 @@
       W.recoilYaw += horiz * aimDamp * U.DEG * 10;
       W.recoilPatternIndex++;
 
+      if (connected) W.stats.shotsHit++;
+      if (criticalHit) W.stats.crits++;
+
       W.bloom = Math.min(def.spread.max, W.bloom + def.spread.bloomPerShot);
 
       W.events.emit('fired', {
@@ -364,13 +374,12 @@
           point: hit.point, direction: dir, source: 'weapon', weaponId: def.id
         });
         HC.VFX.impact(hit.point, hit.normal || dir.clone().negate(), 'shield', 1.0);
-        W.stats.shotsHit++;
-        return;
+        return true;
       }
       if (!hit.actor) {
         HC.VFX.impact(hit.point, hit.normal, hit.surface || 'concrete', isMelee ? 1.4 : 1.0);
         HC.Audio.play(surfaceSound(hit.surface), { position: hit.point, scale: 1 });
-        return;
+        return false;
       }
       const dist = hit.distance;
       const falloff = isMelee ? 1 : WM.falloff(def, dist);
@@ -386,13 +395,10 @@
         weaponId: def.id, knockback: isMelee ? 4 : 0.6
       });
 
-      if (result && result.applied > 0) {
-        W.stats.shotsHit++;
-        W.stats.damage += result.applied;
-        if (critical) W.stats.crits++;
-      }
+      if (result && result.applied > 0) W.stats.damage += result.applied;
       HC.VFX.impact(hit.point, hit.normal || dir.clone().negate(),
         result && result.hitShield ? 'shield' : 'flesh', critical ? 1.5 : 1.0);
+      return !!(result && result.applied > 0);
     }
 
     function surfaceSound(surface) {
@@ -454,6 +460,8 @@
         p.velocity = (p.velocity || new THREE.Vector3()).copy(o.direction).multiplyScalar(o.speed);
         p.owner = o.owner;
         p.weapon = o.weapon;
+        p.ownerWeapon = o.ownerWeapon || null;
+        p.counted = false;
         p.config = cfg;
         p.life = cfg.life;
         p.fuse = cfg.fuse > 0 ? cfg.fuse : -1;
@@ -574,6 +582,8 @@
     function detonate(p, position, normal, directHit) {
       const cfg = p.config;
       const splash = cfg.splash;
+      let landed = false;
+      const credit = (r) => { if (r && r.applied > 0) landed = true; };
       HC.VFX.explosion(position, splash ? splash.radius : 2, cfg.color, {
         groundY: position.y - 0.2, coreColor: 0xffffff
       });
@@ -581,20 +591,26 @@
         { position, scale: splash ? splash.radius / 5 : 0.5, important: true, reverb: 0.35 });
 
       if (directHit) {
-        ctx.damage({
+        credit(ctx.damage({
           target: directHit, amount: p.weapon.damage, type: p.weapon.damageType,
           attacker: p.owner, critical: false, point: position,
           direction: _d.copy(p.velocity).normalize(), source: 'projectile',
           weaponId: p.weapon.id, knockback: splash ? splash.knockback * 0.4 : 0
-        });
+        }));
       }
       if (splash) {
-        ctx.explode({
+        const hits = ctx.explode({
           center: position, radius: splash.radius, innerRadius: splash.innerRadius,
           damage: p.weapon.damage, minFraction: splash.minFrac, type: p.weapon.damageType,
           attacker: p.owner, knockback: splash.knockback, selfKnockback: splash.selfKnockback,
           weaponId: p.weapon.id, exclude: directHit
         });
+        // One connected shot, however many people were caught in it.
+        if (hits && hits.some(h => h.actor !== p.owner && h.result.applied > 0)) landed = true;
+      }
+      if (landed && p.ownerWeapon && !p.counted) {
+        p.counted = true;
+        p.ownerWeapon.stats.shotsHit++;
       }
       ctx.notify && ctx.notify('explosion', { position, radius: splash ? splash.radius : 2 });
     }
