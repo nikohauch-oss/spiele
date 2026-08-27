@@ -35,6 +35,7 @@ const SOURCE_ORDER = [
   '12_vfx.js',
   '13_physics.js',
   '14_nav.js',
+  '14a_kit.js',
   '15_map_nova_district.js',
   '16_health.js',
   '17_weapon.js',

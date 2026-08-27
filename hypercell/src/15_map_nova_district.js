@@ -137,6 +137,42 @@
       }
     }
 
+    /**
+     * Places a prop from the imported CC0 kit.
+     *
+     * Kit geometries are shared and `push()` bakes the transform straight
+     * into whatever it is handed, so every placement gets a clone. Each piece
+     * arrives centred on its footprint with its base at y = 0, which means
+     * `y` here is simply the ground the prop stands on.
+     *
+     * opts: { scale, collide, surface, blocksProjectiles }
+     */
+    function prop(name, x, y, z, ry, mat, opts) {
+      opts = opts || {};
+      const src = HC.Kit.geometry(name);
+      const size = HC.Kit.size(name);
+      if (!src || !size) return null;
+      let sc = opts.scale === undefined ? 1 : opts.scale;
+      if (typeof sc === 'number') sc = [sc, sc, sc];
+      ry = ry || 0;
+      push(src.clone(), mat, [x, y, z], [opts.pitch || 0, ry, 0], sc);
+
+      if (opts.collide) {
+        // Footprint projected onto the world axes, so a rotated railing still
+        // gets a collision box that matches what the player can see.
+        const c = Math.abs(Math.cos(ry)), sn = Math.abs(Math.sin(ry));
+        const w = size[0] * sc[0] * c + size[2] * sc[2] * sn;
+        const d = size[0] * sc[0] * sn + size[2] * sc[2] * c;
+        const h = size[1] * sc[1];
+        world.addBox(
+          { x: x - w / 2, y: y, z: z - d / 2 },
+          { x: x + w / 2, y: y + h, z: z + d / 2 },
+          opts.surface || 'metal', opts);
+        result.minimap.walls.push({ x, z, w, d, h });
+      }
+      return size;
+    }
+
     /** Visual-only geometry (no collision) — trim, signage, cables. */
     function deco(geo, mat, pos, rot, scale) { push(geo, mat, pos, rot, scale); }
 
@@ -313,6 +349,10 @@
             solid(cx - (doorW / 2 + side / 2), h / 2, zc, side, h, t, wallMat, 'concrete');
             solid(cx + (doorW / 2 + side / 2), h / 2, zc, side, h, t, wallMat, 'concrete');
             solid(cx, h - 1.2, zc, doorW, 2.4, t, wallMat, 'concrete');
+            // Kit door frame around the opening: a modelled reveal reads as a
+            // way in, where a hole punched in a slab reads as a mistake.
+            prop('doorTallSlim', cx, 0, zc + sz * 0.06, 0, M.darkSteel,
+              { scale: [doorW / 2, (h - 2.4) / 3, 1.1] });
           } else {
             solid(cx, h / 2, zc, w, h, t, wallMat, 'concrete');
           }
@@ -325,6 +365,8 @@
             solid(xc, h / 2, cz - (doorW / 2 + side / 2), t, h, side, wallMat, 'concrete');
             solid(xc, h / 2, cz + (doorW / 2 + side / 2), t, h, side, wallMat, 'concrete');
             solid(xc, h - 1.2, cz, t, 2.4, doorW, wallMat, 'concrete');
+            prop('doorTallSlim', xc + sx * 0.06, 0, cz, Math.PI / 2, M.darkSteel,
+              { scale: [doorW / 2, (h - 2.4) / 3, 1.1] });
           } else {
             solid(xc, h / 2, cz, t, h, d, wallMat, 'concrete');
           }
@@ -381,7 +423,12 @@
           [cx + ox, h + 0.62 + ch, cz + oz], [Math.PI / 2, 0, 0]);
       }
       if (rnd() > 0.4) {
-        solid(cx + (rnd() - 0.5) * (w - 5), h + 2.4, cz + (rnd() - 0.5) * (d - 5), 2.6, 3.0, 2.6, M.rust, 'metal');
+        const tx = cx + (rnd() - 0.5) * (w - 5), tz = cz + (rnd() - 0.5) * (d - 5);
+        solid(tx, h + 2.4, tz, 2.6, 3.0, 2.6, M.rust, 'metal');
+        // Service ladder up the tank. Decoration, not a route: it starts on
+        // the roof and ends at the tank lid, both of which are already
+        // reachable on foot.
+        prop('ladder', tx, h + 0.9, tz + 1.36, 0, M.steel, { scale: [0.55, 1.5, 1] });
       }
       for (let i = 0; i < 2; i++) {
         const ax = cx + (rnd() - 0.5) * (w - 2), az = cz + (rnd() - 0.5) * (d - 2);
@@ -440,19 +487,28 @@
       solid(sx * 34.5, 6.85, -22, 5.5, 0.4, 4.0, M.panel, 'metal');
       solid(sx * 34.5, 6.85, 22, 5.5, 0.4, 4.0, M.panel, 'metal');
     });
-    // Catwalks joining the shop roofs across the side streets
+    // Catwalks joining the shop roofs across the side streets. The rails are
+    // kit railings rather than a thin slab: a walkway you can see through
+    // reads as a walkway, and a solid parapet at this height read as a wall.
     [-1, 1].forEach(sx => {
       solid(sx * 30, 7.5, 0, 4.0, 0.35, 30, M.darkSteel, 'grate');
-      [-1, 1].forEach(sz => solid(sx * 30 + sz * 2.05, 8.1, 0, 0.14, 1.3, 30, M.steel, 'metal', { blocksProjectiles: false }));
-      for (let z = -14; z <= 14; z += 4) {
-        deco(new THREE.CylinderGeometry(0.09, 0.09, 1.3, 6), M.steel, [sx * 30 - 2.05, 8.1, z]);
-        deco(new THREE.CylinderGeometry(0.09, 0.09, 1.3, 6), M.steel, [sx * 30 + 2.05, 8.1, z]);
-      }
+      [-1, 1].forEach(sz => {
+        // The collision stays a clean invisible slab; only the visual changes.
+        solid(sx * 30 + sz * 2.05, 8.1, 0, 0.14, 1.3, 30, null, 'metal',
+          { blocksProjectiles: false });
+        for (let z = -14; z <= 14; z += 4) {
+          prop('railing', sx * 30 + sz * 2.05, 7.68, z, Math.PI / 2, M.steel,
+            { scale: [1, 0.65, 0.7] });
+        }
+      });
     });
     // Plaza-facing balconies overlooking the core
     [-1, 1].forEach(sx => {
       solid(sx * 21.5, 7.5, 0, 5, 0.4, 12, M.panel, 'metal');
-      solid(sx * 19.2, 8.2, 0, 0.4, 1.2, 12, M.darkSteel, 'metal', { blocksProjectiles: false });
+      solid(sx * 19.2, 8.2, 0, 0.4, 1.2, 12, null, 'metal', { blocksProjectiles: false });
+      for (let z = -4; z <= 4; z += 4) {
+        prop('railing', sx * 19.2, 7.7, z, Math.PI / 2, M.darkSteel, { scale: [1, 0.62, 0.9] });
+      }
       stairs(sx * 25.8, -8.5, 0.18, 7.5, 4.4, 12, 'z', 1, M.panel, 'metal');
       solid(sx * 25.8, 7.35, -1.6, 4.4, 0.4, 3.0, M.panel, 'metal');
     });
