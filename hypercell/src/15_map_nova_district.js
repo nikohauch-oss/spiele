@@ -304,7 +304,6 @@
       const lit = roll > 0.40;
       const glassMat = lit ? (rnd() > 0.55 ? M.windowCool : M.windowLit) : M.glass;
       const frameT = 0.09;                      // frame bar thickness
-      const inset = 0.10;                       // how far the glass sits back
       const box = (bw, bh, bd) => new THREE.BoxGeometry(bw, bh, bd);
       const at = (ox, oy, depth) => axis === 'z'
         ? [x + ox, y + oy, z + sg * depth]
@@ -312,9 +311,11 @@
       const dims = (bw, bh, bd) => axis === 'z' ? box(bw, bh, bd) : box(bd, bh, bw);
 
       // Reveal: a dark recess so the opening reads as depth, not a sticker.
-      deco(dims(ww, hh, 0.06), M.rubberMat, at(0, 0, -inset * 0.5));
+      // It has to clear the façade it sits in front of by more than a
+      // millimetre, or the two surfaces fight for the depth buffer.
+      deco(dims(ww, hh, 0.10), M.rubberMat, at(0, 0, 0.02));
       // Glass, set back inside the reveal.
-      deco(dims(ww - frameT * 2, hh - frameT * 2, 0.05), glassMat, at(0, 0, -inset * 0.25));
+      deco(dims(ww - frameT * 2, hh - frameT * 2, 0.05), glassMat, at(0, 0, 0.055));
       // Frame: two verticals, two horizontals, standing proud of the wall.
       [-1, 1].forEach(k => {
         deco(dims(frameT, hh + frameT, 0.13), M.darkSteel, at(k * (ww / 2 - frameT / 2), 0, 0.04));
@@ -326,7 +327,7 @@
       // Sill, angled out to shed water like the real thing.
       deco(dims(ww + frameT * 2, 0.10, 0.24), M.panel, at(0, -hh / 2 - 0.09, 0.09));
       // Interior glow slab behind lit glass: gives the window a depth cue.
-      if (lit) deco(dims(ww - frameT * 3, hh - frameT * 3, 0.04), M.interiorGlow, at(0, 0, -inset));
+      if (lit) deco(dims(ww - frameT * 3, hh - frameT * 3, 0.04), M.interiorGlow, at(0, 0, 0.035));
     }
 
     /**
@@ -351,8 +352,8 @@
             solid(cx, h - 1.2, zc, doorW, 2.4, t, wallMat, 'concrete');
             // Kit door frame around the opening: a modelled reveal reads as a
             // way in, where a hole punched in a slab reads as a mistake.
-            prop('doorTallSlim', cx, 0, zc + sz * 0.06, 0, M.darkSteel,
-              { scale: [doorW / 2, (h - 2.4) / 3, 1.1] });
+            prop('doorTallSlim', cx, 0, zc, 0, M.darkSteel,
+              { scale: [doorW / 2, (h - 2.4) / 3, 1.55] });
           } else {
             solid(cx, h / 2, zc, w, h, t, wallMat, 'concrete');
           }
@@ -365,8 +366,8 @@
             solid(xc, h / 2, cz - (doorW / 2 + side / 2), t, h, side, wallMat, 'concrete');
             solid(xc, h / 2, cz + (doorW / 2 + side / 2), t, h, side, wallMat, 'concrete');
             solid(xc, h - 1.2, cz, t, 2.4, doorW, wallMat, 'concrete');
-            prop('doorTallSlim', xc + sx * 0.06, 0, cz, Math.PI / 2, M.darkSteel,
-              { scale: [doorW / 2, (h - 2.4) / 3, 1.1] });
+            prop('doorTallSlim', xc, 0, cz, Math.PI / 2, M.darkSteel,
+              { scale: [doorW / 2, (h - 2.4) / 3, 1.55] });
           } else {
             solid(xc, h / 2, cz, t, h, d, wallMat, 'concrete');
           }

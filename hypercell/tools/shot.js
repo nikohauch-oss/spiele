@@ -84,6 +84,16 @@ const H = parseInt(arg('h', '675'), 10);
 
   const DEBUG = arg('debug', '');
   const HIDE_HUD = process.argv.indexOf('--nohud') >= 0;
+  if (DEBUG === 'nossao' || DEBUG === 'nobloom' || DEBUG === 'nofxaa') {
+    await page.evaluate((mode) => {
+      const g = window.HYPERCELL;
+      if (mode === 'nossao') g.CFG ? (g.CFG.gfx.ssao = false) : (window.HC.CFG.gfx.ssao = false);
+      if (mode === 'nobloom') window.HC.CFG.gfx.bloom = false;
+      if (mode === 'nofxaa') window.HC.CFG.gfx.fxaa = false;
+      g.resize();
+    }, DEBUG);
+    await new Promise(r => setTimeout(r, 3000));
+  }
   if (DEBUG === 'ao') {
     await page.evaluate(() => { window.HYPERCELL.postfx.debugAO = true; });
     await new Promise(r => setTimeout(r, 2500));

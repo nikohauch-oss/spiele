@@ -21,6 +21,8 @@
   const Mats = HC.Mats = {
     _tex: new Map(),
     _mats: new Map(),
+    // Raised to the hardware maximum at boot; 4 left every wall shimmering
+    // when you stood close to it and looked along its length.
     anisotropy: 4,
     disposables: []
   };

@@ -81,7 +81,16 @@
       vec3 col = base + bloom * uStrength;
 
       // Subtle filmic S-curve keeps highlights from flattening out.
-      col = mix(col, col * col * (3.0 - 2.0 * col), uGrade * 0.35);
+      //
+      // smoothstep's polynomial is only well behaved on [0,1]: at col = 2 it
+      // evaluates to -4, and a negative channel clipped to zero is how a
+      // bright light came out with a red core and a green fringe. Curve the
+      // in-range part and let overbright energy pass through untouched, so a
+      // blown highlight ends up white instead of coloured.
+      vec3 low = clamp(col, 0.0, 1.0);
+      vec3 over = max(col - 1.0, 0.0);
+      vec3 curved = low * low * (3.0 - 2.0 * low) + over;
+      col = mix(col, curved, uGrade * 0.35);
       col *= uTint;
 
       vec2 d = vUv - 0.5;

@@ -49,6 +49,11 @@
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = CFG.gfx.exposure;
+      // Textures are built before any of them is sampled at a grazing angle,
+      // so this has to be set before the material cache warms up.
+      try {
+        HC.Mats.anisotropy = Math.max(4, renderer.capabilities.getMaxAnisotropy());
+      } catch (e) { /* keep the conservative default */ }
       if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.autoClear = true;
       renderer.info.autoReset = false;
