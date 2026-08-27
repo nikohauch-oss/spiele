@@ -465,6 +465,10 @@ html, body {
   letter-spacing: 0.16em; line-height: 1;
   text-shadow: 0 6px 34px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6);
 }
+/* In-match callouts sit above the action instead of across it. */
+#hc-banner.notice { top: 17%; }
+#hc-banner.notice .big { font-size: clamp(20px, 2.6vw, 40px); letter-spacing: 0.24em; }
+#hc-banner.notice .small { font-size: 0.78em; letter-spacing: 0.34em; margin-top: 0.35em; }
 #hc-banner .small { font-family: var(--font-display); letter-spacing: 0.42em; font-size: 1.0em; color: var(--text-dim); margin-top: 0.6em; text-transform: uppercase; }
 
 #hc-death {
@@ -666,7 +670,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /*! HYPERCELL — a stylised 3D hero shooter.
- *  Built 2026-08-27T04:53:04.984Z
+ *  Built 2026-08-27T05:03:53.690Z
  *  All geometry, textures, animation and audio are generated at runtime.
  *  Bundled: three.js r160 (MIT).
  */
@@ -14266,8 +14270,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     /* --- banners --- */
     let bannerTimer = 0;
-    H.showBanner = function (big, small, duration, color) {
+    /**
+     * @param level 'notice' for in-match callouts (small, high on screen)
+     *              or 'result' for match verdicts (full size).
+     */
+    H.showBanner = function (big, small, duration, color, level) {
       banner.classList.remove('hc-hidden');
+      banner.classList.toggle('notice', level !== 'result');
       const b = banner.querySelector('.big');
       b.textContent = big;
       b.style.color = color || 'var(--text)';
@@ -16030,7 +16039,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
       G.hud.showBanner(draw ? 'DRAW' : (won ? 'VICTORY' : 'DEFEAT'),
         teamBased ? G.arena.teams.A.score + ' — ' + G.arena.teams.B.score : '',
-        4.0, draw ? 'var(--armor)' : (won ? 'var(--accent)' : 'var(--team-b)'));
+        4.0, draw ? 'var(--armor)' : (won ? 'var(--accent)' : 'var(--team-b)'), 'result');
       HC.Audio.ui(won ? 'match_victory' : 'match_defeat');
       HC.Music.setState(won ? 'victory' : 'defeat');
 
@@ -16205,13 +16214,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         G.countdown -= dt;
         const after = Math.ceil(G.countdown);
         if (after !== before && after > 0) {
-          G.hud.showBanner(String(after), '', 0.9, 'var(--accent)');
+          G.hud.showBanner(String(after), '', 0.9, 'var(--accent)', 'result');
           HC.Audio.ui('countdown_tick', { pitch: 1 + (CFG.match.countdownFrom - after) * 0.12 });
         }
         if (G.countdown <= 0) {
           G.state = 'match';
           G.arena.start();
-          G.hud.showBanner('GO', '', 1.0, 'var(--health)');
+          G.hud.showBanner('GO', '', 1.0, 'var(--health)', 'result');
           HC.Audio.ui('countdown_go');
           HC.Music.setState('match_calm');
         }

@@ -709,8 +709,13 @@
 
     /* --- banners --- */
     let bannerTimer = 0;
-    H.showBanner = function (big, small, duration, color) {
+    /**
+     * @param level 'notice' for in-match callouts (small, high on screen)
+     *              or 'result' for match verdicts (full size).
+     */
+    H.showBanner = function (big, small, duration, color, level) {
       banner.classList.remove('hc-hidden');
+      banner.classList.toggle('notice', level !== 'result');
       const b = banner.querySelector('.big');
       b.textContent = big;
       b.style.color = color || 'var(--text)';

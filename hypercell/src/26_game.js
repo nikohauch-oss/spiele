@@ -348,7 +348,7 @@
 
       G.hud.showBanner(draw ? 'DRAW' : (won ? 'VICTORY' : 'DEFEAT'),
         teamBased ? G.arena.teams.A.score + ' — ' + G.arena.teams.B.score : '',
-        4.0, draw ? 'var(--armor)' : (won ? 'var(--accent)' : 'var(--team-b)'));
+        4.0, draw ? 'var(--armor)' : (won ? 'var(--accent)' : 'var(--team-b)'), 'result');
       HC.Audio.ui(won ? 'match_victory' : 'match_defeat');
       HC.Music.setState(won ? 'victory' : 'defeat');
 
@@ -523,13 +523,13 @@
         G.countdown -= dt;
         const after = Math.ceil(G.countdown);
         if (after !== before && after > 0) {
-          G.hud.showBanner(String(after), '', 0.9, 'var(--accent)');
+          G.hud.showBanner(String(after), '', 0.9, 'var(--accent)', 'result');
           HC.Audio.ui('countdown_tick', { pitch: 1 + (CFG.match.countdownFrom - after) * 0.12 });
         }
         if (G.countdown <= 0) {
           G.state = 'match';
           G.arena.start();
-          G.hud.showBanner('GO', '', 1.0, 'var(--health)');
+          G.hud.showBanner('GO', '', 1.0, 'var(--health)', 'result');
           HC.Audio.ui('countdown_go');
           HC.Music.setState('match_calm');
         }

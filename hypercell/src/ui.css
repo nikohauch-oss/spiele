@@ -453,6 +453,10 @@ html, body {
   letter-spacing: 0.16em; line-height: 1;
   text-shadow: 0 6px 34px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6);
 }
+/* In-match callouts sit above the action instead of across it. */
+#hc-banner.notice { top: 17%; }
+#hc-banner.notice .big { font-size: clamp(20px, 2.6vw, 40px); letter-spacing: 0.24em; }
+#hc-banner.notice .small { font-size: 0.78em; letter-spacing: 0.34em; margin-top: 0.35em; }
 #hc-banner .small { font-family: var(--font-display); letter-spacing: 0.42em; font-size: 1.0em; color: var(--text-dim); margin-top: 0.6em; text-transform: uppercase; }
 
 #hc-death {
