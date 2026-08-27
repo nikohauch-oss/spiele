@@ -259,7 +259,14 @@ const secs2 = SECONDS;
           // what makes the melee path (Nyx's blades) actually get exercised.
           c.moveY = 1; c.moveX = 0; c.sprint = bestD > reach * 3;
         }
-        c.fire = bestD < reach * 1.05;
+        const inRange = bestD < reach * 1.05;
+        // Semi-automatic weapons need a fresh trigger press per shot, exactly
+        // as a player would tap. Holding the button fires once, by design.
+        const semi = wdef.fireMode === 'semi';
+        c.fire = inRange && (!semi || Math.floor(t * 3) % 2 === 0);
+        // Aim when the target is far enough that hip-fire spread would decide
+        // the outcome instead of the aim itself.
+        c.aim = inRange && !wdef.melee && bestD > 8;
       };
       const mk = (t) => {
         const c = HC.blankCommands();
