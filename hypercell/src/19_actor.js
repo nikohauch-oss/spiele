@@ -23,7 +23,7 @@
       jump: false, jumpPressed: false, sprint: false, crouch: false,
       dodgePressed: false, fire: false, aim: false, reloadPressed: false,
       swapPressed: false, ability1: false, ability2: false, ultimate: false,
-      meleePressed: false, holdBreath: false
+      meleePressed: false, holdBreath: false, emotePressed: false
     };
   }
   HC.blankCommands = blankCommands;
@@ -135,11 +135,11 @@
       const socket = A.model.bones.weaponSocket;
       socket.add(slot.model.root);
       slot.model.root.position.set(0, 0, 0);
-      slot.model.root.rotation.set(-Math.PI / 2 + 0.10, 0, 0);
+      slot.model.root.rotation.set(Math.PI * 0.5, 0, 0);
       if (slot.offModel) {
         A.model.bones.offhandSocket.add(slot.offModel.root);
         slot.offModel.root.position.set(0, 0, 0);
-        slot.offModel.root.rotation.set(-Math.PI / 2 + 0.10, 0, 0);
+        slot.offModel.root.rotation.set(Math.PI * 0.5, 0, 0);
       }
       A.weapon.equip(slot.id, { model: slot.model });
       A.weapon.tracerColor = A.model.vfxColors.tracer;
@@ -579,6 +579,7 @@
       A.weapon.holdingBreath = !!effective.holdBreath;
       if (effective.reloadPressed) A.weapon.startReload();
       if (effective.swapPressed) A.swapWeapon();
+      if (effective.emotePressed) A.playEmote();
 
       A.weapon.update(dt, {
         eye: A.eyePosition(_v3),
@@ -651,18 +652,48 @@
       A.model.root.rotation.y = A.yaw;
       applyRootTilt();
 
-      /* weapon aiming: point the held weapon along the aim direction */
-      const slot = A.weaponSlots[A.weaponIndex];
-      if (slot && slot.model && !slot.def.melee) {
-        const pitchBlend = U.lerp(0.55, 1.0, A.weapon.aim);
-        slot.model.root.rotation.x = -Math.PI / 2 + 0.10 - A.pitch * pitchBlend * 0.55;
-      }
+      /* Weapon aiming. Rather than guessing a fixed offset in the hand's
+       * frame, solve it: take the world aim direction, express it in the
+       * socket's local space, and rotate the weapon's +Z onto it. The muzzle
+       * then provably points at the crosshair — which is also where the
+       * tracer originates, so the two can never disagree. */
+      aimHeldWeapon();
 
       /* marked state decays */
       if (A.markedUntil > 0 && A._time > A.markedUntil) { A.markedUntil = 0; A.markedBy = null; }
 
       A.cameraKick = Math.max(0, A.cameraKick - dt * 4);
     };
+
+    const _aimM = new THREE.Matrix4();
+    const _aimLocal = new THREE.Vector3();
+    const FORWARD_Z = new THREE.Vector3(0, 0, 1);
+    const MELEE_REST = new THREE.Euler(Math.PI * 0.5, 0, 0);
+
+    function orientToAim(model, bone) {
+      bone.updateWorldMatrix(true, false);
+      _aimM.copy(bone.matrixWorld).invert();
+      _aimLocal.copy(A.aimDirection(_v3)).transformDirection(_aimM);
+      if (_aimLocal.lengthSq() < 1e-8) return;
+      _aimLocal.normalize();
+      model.root.quaternion.setFromUnitVectors(FORWARD_Z, _aimLocal);
+    }
+
+    function aimHeldWeapon() {
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (!slot || !slot.model) return;
+
+      if (slot.def.melee) {
+        // Blades follow the hand — pointing them at the crosshair looks wrong.
+        slot.model.root.rotation.copy(MELEE_REST);
+        return;
+      }
+
+      orientToAim(slot.model, A.model.bones.weaponSocket);
+      // Sprinting drops the muzzle into a low-ready carry.
+      if (A.sprinting || A.sliding) slot.model.root.rotateX(0.62);
+      if (slot.offModel) orientToAim(slot.offModel, A.model.bones.offhandSocket);
+    }
 
     function applyRootTilt() {
       const rt = A.animator.current.rootTilt;
@@ -688,6 +719,18 @@
     };
 
     A.setPoseOverride = function (pose) { A.animator.setPoseOverride(pose); };
+
+    /** Character-expression emote. Cancelled by anything that matters. */
+    const EMOTES = ['wave', 'flex', 'taunt', 'point'];
+    A.playEmote = function (kind) {
+      if (!A.alive || !A.grounded || A.planarSpeed > 1.2 || A.weapon.firing) return false;
+      const personality = charDef.personality || {};
+      const chosen = kind || (personality.tauntPose ? 'taunt' : U.pick(Math.random, EMOTES));
+      A.animator.playAction('emote', 1.5, { kind: chosen });
+      HC.Audio.play('ui_click', { position: A.position, pitch: charDef.voice.pitch, volume: 0.5 });
+      A.events.emit('emote', chosen);
+      return true;
+    };
 
     A.dispose = function () {
       A.weaponSlots.forEach(s => {

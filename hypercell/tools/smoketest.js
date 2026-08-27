@@ -46,7 +46,12 @@ const secs2 = SECONDS;
   const step = async (label, fn) => {
     process.stdout.write('  ' + label.padEnd(34, '.'));
     try { const r = await fn(); console.log(' ok' + (r ? ' (' + r + ')' : '')); return r; }
-    catch (e) { console.log(' FAIL'); errors.push(label + ': ' + e.message); return null; }
+    catch (e) {
+      console.log(' FAIL');
+      console.log('      -> ' + String(e.message || e).split('\n').slice(0, 4).join('\n         '));
+      errors.push(label + ': ' + e.message);
+      return null;
+    }
   };
 
   console.log('HYPERCELL smoke test — mode=' + MODE + ' hero=' + HERO);
@@ -165,7 +170,44 @@ const secs2 = SECONDS;
   // Headless simulation: exercises combat, AI and objectives at full tick
   // rate without waiting on a software rasteriser.
   const sim = await step('headless sim ' + SECONDS + 's', async () => {
-    return await page.evaluate((secs) => {
+    let total = { ticks: 0, simSeconds: 0, wallMs: 0 };
+    const CHUNK = 4;
+    for (let done = 0; done < SECONDS; done += CHUNK) {
+      const r = await simChunk(Math.min(CHUNK, SECONDS - done), done);
+      if (r && r.error) throw new Error(r.error);
+      if (!r) throw new Error('simulate returned nothing');
+      total.ticks += r.ticks; total.simSeconds += r.simSeconds; total.wallMs += r.wallMs;
+    }
+    return total.ticks + ' ticks / ' + total.simSeconds.toFixed(1) + 's sim in ' + total.wallMs + 'ms';
+  });
+
+  async function simChunk(secs, offset) {
+    return await page.evaluate(([secs, offset]) => {
+      const arena = window.HYPERCELL.arena;
+      const player = arena.player;
+      const V = new THREE.Vector3();
+      // Point the player at the nearest hostile so hit registration, crits
+      // and kills are genuinely exercised rather than shot into the sky.
+      const aimAtEnemy = (c) => {
+        let best = null, bestD = Infinity;
+        for (const a of arena.actors) {
+          if (a === player || !a.health.alive) continue;
+          if (arena.modeDef.teamBased && a.team === player.team) continue;
+          const d = a.position.distanceTo(player.position);
+          if (d < bestD) { bestD = d; best = a; }
+        }
+        if (!best) return;
+        a: {
+          const eye = player.eyePosition(new THREE.Vector3());
+          const to = best.centerPosition(V).clone().sub(eye);
+          const flat = Math.hypot(to.x, to.z);
+          const yaw = Math.atan2(to.x, to.z);
+          const pitch = -Math.atan2(to.y, flat);
+          c.lookYaw = -HC.Util.shortAngle(player.yaw, yaw) * 0.35;
+          c.lookPitch = (pitch - player.pitch) * 0.35;
+          c.fire = bestD < 60;
+        }
+      };
       const mk = (t) => {
         const c = HC.blankCommands();
         c.moveY = Math.sin(t * 0.7) > 0 ? 1 : -0.6;
@@ -175,7 +217,7 @@ const secs2 = SECONDS;
         c.fire = (t % 2.2) < 1.3;
         c.aim = (t % 5) < 2;
         c.sprint = (t % 7) < 2.2;
-        c.jumpPressed = Math.abs(t % 4.0) < 0.01;
+        c.jumpPressed = Math.abs(t % 4.0) < 0.009;
         c.dodgePressed = Math.abs(t % 6.5) < 0.01;
         c.crouch = (t % 11) < 1.4;
         c.ability1 = Math.abs(t % 5.5) < 0.01;
@@ -183,11 +225,12 @@ const secs2 = SECONDS;
         c.ultimate = Math.abs(t % 12.0) < 0.01;
         c.reloadPressed = Math.abs(t % 9.0) < 0.01;
         c.swapPressed = Math.abs(t % 14.0) < 0.01;
+        aimAtEnemy(c);
         return c;
       };
-      return window.HYPERCELL._debug.simulate(secs, mk);
-    }, secs2);
-  });
+      return window.HYPERCELL._debug.simulate(secs, (t) => mk(t + offset));
+    }, [secs, offset]);
+  }
 
   // Then a short real-time slice so the render path is exercised too.
   await step('live frames', async () => {
@@ -261,6 +304,20 @@ const secs2 = SECONDS;
   console.log('\n  telemetry:');
   Object.entries(telemetry || {}).forEach(([k, v]) => {
     console.log('    ' + k.padEnd(16) + ' ' + JSON.stringify(v));
+  });
+
+  await step('combat actually resolved', async () => {
+    const t = telemetry || {};
+    const problems = [];
+    if (!(t.totalDamage > 200)) problems.push('no meaningful damage dealt: ' + t.totalDamage);
+    if (!(t.playerShots > 10)) problems.push('player barely fired: ' + t.playerShots);
+    if (!(t.playerHits > 0)) problems.push('player never landed a shot');
+    if (!(t.botShots > 10)) problems.push('bots barely fired: ' + t.botShots);
+    if (!(t.botsWithPath > 3)) problems.push('bots are not pathing: ' + t.botsWithPath);
+    if (!(t.matchTime > 5)) problems.push('match clock did not advance: ' + t.matchTime);
+    if (t.arenaState !== 'active' && t.arenaState !== 'ended') problems.push('arena state ' + t.arenaState);
+    if (problems.length) throw new Error(problems.join(' | '));
+    return t.totalKills + ' kills, ' + t.totalDamage + ' dmg';
   });
 
   await step('scoreboard renders', async () => {

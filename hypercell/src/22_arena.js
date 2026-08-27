@@ -183,15 +183,27 @@
         const target = info.target;
         if (!target) return null;
 
-        // Deployables take damage but are not combatants.
-        if (target.maxHealth !== undefined && !target.health) {
-          target.health -= info.amount;
-          HC.VFX.impact(info.point || target.position, info.direction ? info.direction.clone().negate() : _v.set(0, 1, 0), 'energy', 0.8);
-          if (target.health <= 0) target.kill();
-          if (info.attacker && info.attacker.isPlayer) A.events.emit('hitmarker', { critical: false, shield: true, killed: target.health <= 0 });
-          return { applied: info.amount, hitShield: true, killed: target.health <= 0 };
+        // Deployables carry a plain numeric health; combatants carry a
+        // HealthComponent. Discriminate on the type, not on truthiness —
+        // a deployable at 0 HP is falsy and would take the wrong branch.
+        if (typeof target.health === 'number') {
+          if (!target.alive) return null;
+          const before = target.health;
+          target.health = Math.max(0, target.health - info.amount);
+          const applied = before - target.health;
+          HC.VFX.impact(info.point || target.position,
+            info.direction ? info.direction.clone().negate() : _v.set(0, 1, 0), 'energy', 0.8);
+          const killed = target.health <= 0;
+          if (killed) target.kill();
+          if (applied > 0 && info.attacker && info.attacker.isPlayer) {
+            A.events.emit('hitmarker', { critical: false, shield: true, killed });
+          }
+          return { applied, toShield: applied, toHealth: 0, toArmor: 0, hitShield: true, killed, critical: false };
         }
-        if (!target.health) return null;
+        if (!target.health || typeof target.health.applyDamage !== 'function') {
+          HC.Log.warn('Arena', 'damage() called on a target with no health component');
+          return null;
+        }
 
         const before = target.health.alive;
         const result = target.health.applyDamage(info);
@@ -407,6 +419,7 @@
     /* ================================================================== *
      * Update
      * ================================================================== */
+    let shadowCullTimer = 0;
     A.setCamera = function (rig) { A.camera = rig; };
 
     A.start = function () {
@@ -437,6 +450,22 @@
 
       // Soft body separation so players never stand inside each other.
       resolveActorOverlap(dt);
+
+      // Shadow budget: the sun re-renders every caster each frame, so only
+      // actors close enough for their shadow to read keep casting one.
+      shadowCullTimer -= dt;
+      if (shadowCullTimer <= 0) {
+        shadowCullTimer = 0.35;
+        const ref = A.camera && A.camera.camera ? A.camera.camera.position
+          : (A.player ? A.player.position : null);
+        if (ref) {
+          for (let i = 0; i < A.actors.length; i++) {
+            const a = A.actors[i];
+            const near = a.position.distanceTo(ref) < 34;
+            if (a._castsShadow !== near) { a._castsShadow = near; a.model.setCastShadow(near); }
+          }
+        }
+      }
 
       // Deployables
       for (let i = A.deployables.length - 1; i >= 0; i--) {

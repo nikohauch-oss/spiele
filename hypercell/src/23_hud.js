@@ -163,6 +163,11 @@
     const subtitles = el('div'); subtitles.id = 'hc-subtitles';
     layer.appendChild(subtitles);
 
+    const capture = el('div', 'hc-hidden'); capture.id = 'hc-capture';
+    capture.innerHTML = '<div class="box"><div class="t">Click to Play</div>' +
+      '<div class="s" data-capture-sub>Captures the mouse · ESC to release</div></div>';
+    layer.appendChild(capture);
+
     const perf = el('div'); perf.id = 'hc-perf';
     layer.appendChild(perf);
 
@@ -192,7 +197,9 @@
       arena.events.on('killFeed', addKillFeedRow);
       arena.events.on('hitmarker', onHitMarker);
       arena.events.on('playerDamaged', onPlayerDamaged);
-      arena.events.on('feed', (e) => H.toast(e.text));
+      // Only surface callouts the local player caused — otherwise nine bots
+      // spam the toast stack with their own ability chatter.
+      arena.events.on('feed', (e) => { if (!e.actor || e.actor === arena.player) H.toast(e.text); });
       arena.events.on('objective', onObjectiveEvent);
       arena.events.on('overtime', () => H.showBanner('OVERTIME', 'SUDDEN DEATH', 2.4, 'var(--armor)'));
       setupAbilityIcons();
@@ -243,6 +250,24 @@
       updateToasts(dt);
       updateBanner(dt);
       updateLowHealth(p);
+      // In drag-look mode the prompt is only needed until the first drag.
+      const needPrompt = H.wantCapture && !HC.Input.locked &&
+        !(HC.Input.dragLook && H._hasDragged);
+      if (HC.Input.dragLook && HC.Input.dragging) H._hasDragged = true;
+      if (HC.Input.dragLook && capture.dataset.mode !== 'drag') {
+        capture.dataset.mode = 'drag';
+        capture.querySelector('.t').textContent = 'Hold & Drag to Aim';
+        capture.querySelector('[data-capture-sub]').textContent =
+          'Mouse capture is blocked here · WASD to move · hold the left button to aim and fire';
+      }
+      capture.classList.toggle('hc-hidden', !needPrompt);
+    };
+
+    /** The game sets this while a match is live and unpaused. */
+    H.wantCapture = false;
+    H.setWantCapture = function (v) {
+      H.wantCapture = !!v;
+      if (!v) capture.classList.add('hc-hidden');
     };
 
     /* --- vitals --- */

@@ -25,7 +25,6 @@
     interact: ['KeyE'],
     scoreboard: ['Tab'],
     emote: ['KeyB'],
-    ping: ['KeyZ'],
     swapShoulder: ['KeyV'],
     pause: ['Escape'],
     fire: ['Mouse0'],
@@ -47,6 +46,13 @@
     _element: null,
     _listeners: [],
     events: null,
+    /** Pointer lock is unavailable in some embeds (sandboxed iframes without
+     *  allow="pointer-lock"). When we detect that, the game falls back to
+     *  drag-to-look so it stays fully playable instead of feeling broken. */
+    lockAvailable: true,
+    lockDenied: false,
+    dragLook: false,
+    dragging: false,
     /** Set true while a text field / menu has focus so gameplay ignores keys. */
     uiCapture: false
   };
@@ -78,21 +84,31 @@
     add(window, 'blur', () => Input.clear());
 
     add(element, 'mousedown', (e) => {
-      if (!Input.locked) return;
+      if (!Input.locked && !Input.dragLook) return;
       Input.mouse.buttons[e.button] = true;
       Input.keys['Mouse' + e.button] = true;
       Input.pressed['Mouse' + e.button] = true;
+      if (Input.dragLook) {
+        Input.dragging = true;
+        Input._lastX = e.clientX; Input._lastY = e.clientY;
+      }
       e.preventDefault();
     });
     add(window, 'mouseup', (e) => {
       Input.mouse.buttons[e.button] = false;
       Input.keys['Mouse' + e.button] = false;
       Input.released['Mouse' + e.button] = true;
+      if (!Input.mouse.buttons[0] && !Input.mouse.buttons[2]) Input.dragging = false;
     });
     add(window, 'mousemove', (e) => {
-      if (!Input.locked) return;
-      Input.mouse.dx += e.movementX || 0;
-      Input.mouse.dy += e.movementY || 0;
+      if (Input.locked) {
+        Input.mouse.dx += e.movementX || 0;
+        Input.mouse.dy += e.movementY || 0;
+      } else if (Input.dragLook && Input.dragging) {
+        Input.mouse.dx += e.clientX - Input._lastX;
+        Input.mouse.dy += e.clientY - Input._lastY;
+        Input._lastX = e.clientX; Input._lastY = e.clientY;
+      }
     });
     add(element, 'wheel', (e) => { if (Input.locked) { Input.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); } }, { passive: false });
     add(element, 'contextmenu', (e) => e.preventDefault());
@@ -102,7 +118,11 @@
       Input.events.emit('lockchange', Input.locked);
       if (!Input.locked) Input.clearMouseButtons();
     });
-    add(document, 'pointerlockerror', () => HC.Log.warn('Input', 'pointer lock request failed'));
+    add(document, 'pointerlockerror', () => {
+      Input.lockDenied = true;
+      Input.setDragLook(true);
+      HC.Log.warn('Input', 'pointer lock denied — falling back to drag-to-look');
+    });
 
     add(window, 'gamepadconnected', (e) => {
       Input.gamepadIndex = e.gamepad.index;
@@ -127,8 +147,26 @@
 
   Input.requestLock = function () {
     if (!Input._element || Input.locked) return;
-    const p = Input._element.requestPointerLock && Input._element.requestPointerLock();
-    if (p && p.catch) p.catch(() => {});
+    if (!Input._element.requestPointerLock) {
+      Input.lockAvailable = false;
+      Input.setDragLook(true);
+      return;
+    }
+    if (Input.lockDenied) return;   // don't spam a request the host refuses
+    try {
+      const p = Input._element.requestPointerLock();
+      if (p && p.catch) p.catch(() => { Input.lockDenied = true; Input.setDragLook(true); });
+    } catch (e) {
+      Input.lockDenied = true;
+      Input.setDragLook(true);
+    }
+  };
+
+  Input.setDragLook = function (on) {
+    if (Input.dragLook === on) return;
+    Input.dragLook = on;
+    Input.dragging = false;
+    Input.events.emit('draglook', on);
   };
   Input.releaseLock = function () {
     if (document.pointerLockElement) document.exitPointerLock();
@@ -142,6 +180,7 @@
   Input.clearMouseButtons = function () {
     Input.mouse.buttons[0] = Input.mouse.buttons[1] = Input.mouse.buttons[2] = false;
     Input.keys.Mouse0 = Input.keys.Mouse1 = Input.keys.Mouse2 = false;
+    Input.dragging = false;
   };
 
   /* ---- action queries -------------------------------------------------- */
@@ -236,7 +275,7 @@
 
   /** Look delta in radians for this frame. */
   Input.lookDelta = function (dt, sensScale) {
-    const s = CFG.input.mouseSensitivity * (sensScale || 1);
+    const s = CFG.input.mouseSensitivity * (sensScale || 1) * (Input.dragLook ? 1.45 : 1);
     let dx = Input.mouse.dx * s;
     let dy = Input.mouse.dy * s;
     const g = Input.gamepad;

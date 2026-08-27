@@ -29,10 +29,14 @@
     varying vec3 vColor;
     uniform float uScale;
     void main() {
-      vAlpha = aAlpha;
       vColor = aColor;
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = aSize * uScale / max(0.001, -mv.z);
+      // Fade particles out as they approach the near plane — otherwise a
+      // muzzle puff a metre away smears across the whole screen.
+      vAlpha = aAlpha * smoothstep(0.30, 1.60, -mv.z);
+      // Perspective-correct size, clamped so a particle a metre from the
+      // camera cannot swallow the entire screen.
+      gl_PointSize = clamp(aSize * uScale / max(0.05, -mv.z), 1.0, 165.0);
       gl_Position = projectionMatrix * mv;
     }`;
 
@@ -60,7 +64,7 @@
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
 
     const mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: texture }, uScale: { value: 620 } },
+      uniforms: { uMap: { value: texture }, uScale: { value: 460 } },
       vertexShader: PARTICLE_VS, fragmentShader: PARTICLE_FS,
       transparent: true, depthWrite: false,
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending
@@ -235,8 +239,11 @@
 
     VFX._emitters.length = 0;
     VFX._time = 0;
+    VFX._viewportHeight = window.innerHeight;
     VFX.ready = true;
   };
+
+  VFX.setViewportHeight = function (h) { VFX._viewportHeight = h; };
 
   VFX.dispose = function () {
     if (!VFX.ready) return;
@@ -303,10 +310,10 @@
       });
     }
     VFX.smoke.spawn({
-      x: pos.x + dir.x * 0.2, y: pos.y + dir.y * 0.2, z: pos.z + dir.z * 0.2,
+      x: pos.x + dir.x * 0.25, y: pos.y + dir.y * 0.25, z: pos.z + dir.z * 0.25,
       vx: dir.x * 2.4 + jitter(0.5), vy: 0.55 + jitter(0.3), vz: dir.z * 2.4 + jitter(0.5),
-      life: 0.42, size0: 0.14 * scale, size1: 0.52 * scale,
-      color0: 0x9aa3ad, color1: 0x30343c, alpha: 0.26, drag: 2.6, gravity: -0.4, turbulence: 0.5
+      life: 0.34, size0: 0.06 * scale, size1: 0.20 * scale,
+      color0: 0x9aa3ad, color1: 0x30343c, alpha: 0.16, drag: 3.4, gravity: -0.4, turbulence: 0.5
     });
   };
 
@@ -379,9 +386,9 @@
       VFX.smoke.spawn({
         x: pos.x + jitter(0.08), y: pos.y + jitter(0.08), z: pos.z + jitter(0.08),
         vx: normal.x * 1.6 + jitter(0.9), vy: normal.y * 1.6 + jitter(0.9) + 0.5, vz: normal.z * 1.6 + jitter(0.9),
-        life: 0.45 + Math.random() * 0.4,
-        size0: 0.10 * scale, size1: 0.55 * scale,
-        color0: 0xb8b2a6, color1: 0x4a463f, alpha: 0.34, drag: 2.4, gravity: -0.5, turbulence: 0.6
+        life: 0.40 + Math.random() * 0.35,
+        size0: 0.05 * scale, size1: 0.26 * scale,
+        color0: 0xb8b2a6, color1: 0x4a463f, alpha: 0.24, drag: 2.8, gravity: -0.5, turbulence: 0.6
       });
     }
 
@@ -504,7 +511,7 @@
         vx: Math.cos(a) * (1.4 + Math.random() * 2.6), vy: 0.5 + Math.random() * 1.0,
         vz: Math.sin(a) * (1.4 + Math.random() * 2.6),
         life: 0.55 + Math.random() * 0.6,
-        size0: 0.20, size1: 1.05,
+        size0: 0.12, size1: 0.62,
         color0: color === undefined ? 0xb0a89a : color, color1: 0x3f3c36,
         alpha: 0.38, drag: 2.2, gravity: -0.4, turbulence: 0.7
       });
@@ -533,6 +540,13 @@
   VFX.update = function (dt) {
     if (!VFX.ready) return;
     VFX._time += dt;
+
+    // Point size must track the viewport and FOV or particles change size
+    // when the window resizes or the player aims down sights.
+    const h = VFX._viewportHeight || 720;
+    const scale = h / (2 * Math.tan(VFX.camera.fov * 0.5 * U.DEG));
+    VFX.sparks.points.material.uniforms.uScale.value = scale;
+    VFX.smoke.points.material.uniforms.uScale.value = scale;
 
     // Trail emitters
     for (let i = VFX._emitters.length - 1; i >= 0; i--) {

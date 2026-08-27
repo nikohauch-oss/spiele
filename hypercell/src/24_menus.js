@@ -68,17 +68,22 @@
     (function setupStage() {
       const s = stage.scene;
       s.background = null;
-      const key = new THREE.DirectionalLight(0xdfeaff, 2.1);
+      // Three-point showcase lighting: a bright key, a cool rim to cut the
+      // silhouette out of the background, and a warm kicker on the far side.
+      const key = new THREE.DirectionalLight(0xf2f7ff, 3.6);
       key.position.set(2.6, 4.2, 3.4);
       s.add(key);
-      const rim = new THREE.DirectionalLight(0x58a8ff, 2.6);
+      const rim = new THREE.DirectionalLight(0x6ab8ff, 4.2);
       rim.position.set(-3.2, 2.6, -3.0);
       s.add(rim);
-      const warm = new THREE.PointLight(0xff8a4a, 12, 12, 2);
-      warm.position.set(2.4, 1.2, -2.2);
+      const warm = new THREE.PointLight(0xff8a4a, 160, 14, 2);
+      warm.position.set(2.4, 1.4, -2.2);
       s.add(warm);
-      s.add(new THREE.AmbientLight(0x2a3c58, 1.3));
-      s.add(new THREE.HemisphereLight(0x3a5a86, 0x0a0d14, 0.7));
+      const fillLight = new THREE.PointLight(0x88c8ff, 90, 12, 2);
+      fillLight.position.set(-2.2, 1.0, 2.6);
+      s.add(fillLight);
+      s.add(new THREE.AmbientLight(0x5d7a9e, 1.5));
+      s.add(new THREE.HemisphereLight(0x6a94c8, 0x1a2230, 1.4));
 
       // Stage floor: a lit disc so the hero is not floating in a void.
       const discGeo = new THREE.CylinderGeometry(1.35, 1.5, 0.10, 48);
@@ -121,7 +126,7 @@
         glowColor: stage.model.vfxColors.muzzle
       });
       stage.model.bones.weaponSocket.add(stage.weapon.root);
-      stage.weapon.root.rotation.set(-Math.PI / 2 + 0.10, 0, 0);
+      stage.weapon.root.rotation.set(Math.PI * 0.5, 0, 0);
       stage.animator.setWeaponShape(!!HC.Weapons.get(charDef.weapon).akimbo, !!HC.Weapons.get(charDef.weapon).melee);
 
       // Frame the hero: taller heroes get pushed back a little.
@@ -131,6 +136,13 @@
       stage.ring.material.color.set(charDef.palette.accent);
     };
 
+    // Same solve the actor uses in-match: express the model's forward axis in
+    // the hand socket's frame and rotate the weapon's +Z onto it, so the
+    // showcase pose matches what you get in the arena.
+    const _stageM = new THREE.Matrix4();
+    const _stageDir = new THREE.Vector3();
+    const STAGE_FORWARD = new THREE.Vector3(0, 0, 1);
+
     stage.update = function (dt) {
       if (!stage.enabled || !stage.model) return;
       stage.time += dt;
@@ -138,6 +150,17 @@
       stage.model.root.rotation.y = stage.rotation + Math.sin(stage.time * 0.4) * 0.06;
       stage.ring.rotation.z += dt * 0.4;
       stage.animator.update(dt);
+
+      if (stage.weapon && !stage.weapon.melee) {
+        const socket = stage.model.bones.weaponSocket;
+        socket.updateWorldMatrix(true, false);
+        _stageDir.copy(STAGE_FORWARD).applyQuaternion(stage.model.root.quaternion);
+        _stageM.copy(socket.matrixWorld).invert();
+        _stageDir.transformDirection(_stageM);
+        if (_stageDir.lengthSq() > 1e-8) {
+          stage.weapon.root.quaternion.setFromUnitVectors(STAGE_FORWARD, _stageDir.normalize());
+        }
+      }
     };
 
     stage.render = function () {

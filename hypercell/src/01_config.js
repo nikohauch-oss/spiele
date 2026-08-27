@@ -103,6 +103,9 @@
       collisionRadius: 0.34,
       collisionPullRate: 34.0,
       collisionReturnRate: 6.5,
+      minDistance: 1.55,            // never end up inside the character
+      fadeStartDistance: 2.9,       // dissolve the local model below this
+      fadeEndDistance: 1.5,
 
       shakeDecay: 5.5,
       shakeMax: 1.0,
@@ -201,8 +204,8 @@
       bloomThreshold: 0.72,
       bloomRadius: 0.85,
       fogEnabled: true,
-      fogNear: 34,
-      fogFar: 300,
+      fogNear: 55,
+      fogFar: 420,
       viewDistance: 1.0,
       particleBudget: 2600,
       decalBudget: 96,
@@ -210,7 +213,7 @@
       motionBlur: false,
       antialias: true,
       textureQuality: 2,             // 0 low / 1 med / 2 high
-      exposure: 1.06
+      exposure: 1.18
     },
 
     /* ---------------- audio ---------------- */

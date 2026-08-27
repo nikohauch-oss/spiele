@@ -335,7 +335,7 @@
       // Reset per-tick edge-triggered inputs.
       cmd.jumpPressed = false; cmd.dodgePressed = false; cmd.reloadPressed = false;
       cmd.swapPressed = false; cmd.ability1 = false; cmd.ability2 = false;
-      cmd.ultimate = false; cmd.meleePressed = false;
+      cmd.ultimate = false; cmd.meleePressed = false; cmd.emotePressed = false;
 
       if (!actor.health.alive) {
         cmd.moveX = cmd.moveY = 0; cmd.fire = false; cmd.aim = false;

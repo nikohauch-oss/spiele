@@ -143,9 +143,17 @@
       window.addEventListener('pointerdown', unlock);
       window.addEventListener('keydown', unlock);
 
-      G.renderer.domElement.addEventListener('click', () => {
-        if (G.state === 'match' && !G.paused && !HC.Input.locked) HC.Input.requestLock();
-      });
+      // Any click inside the viewport re-arms mouse capture. Browsers refuse
+      // pointer lock outside a user gesture, so the deploy-time request often
+      // fails and this is the recovery path.
+      const grab = () => {
+        if ((G.state === 'match' || G.state === 'countdown') && !G.paused &&
+            !G.menus.current && !HC.Input.locked) {
+          HC.Input.requestLock();
+        }
+      };
+      G.renderer.domElement.addEventListener('mousedown', grab);
+      container.addEventListener('mousedown', (e) => { if (e.target === container) grab(); });
 
       window.addEventListener('error', (e) => {
         HC.Log.error('Runtime', e.message, e.filename + ':' + e.lineno);
@@ -459,6 +467,7 @@
       }
 
       G.frame++;
+      G.lastFrameDt = dt;
       trackFps(dt);
 
       try {
@@ -542,12 +551,14 @@
 
       G.arena.playerCommands = G.controller.update(dt);
       stepWorld(scaled, false);
+      fadeLocalModel();
 
       musicTimer -= dt;
       if (musicTimer <= 0) { musicTimer = 1.0; updateMusicIntensity(); }
       HC.Music.update(dt);
 
       if (G.scoreboardOpen) G.hud.setScoreboard(true);
+      G.hud.setWantCapture(!G.paused && !G.menus.current);
       G.hud.update(dt);
 
       if (G.frame % 24 === 0) {
@@ -582,6 +593,28 @@
       updateAmbience(dt);
     }
 
+    /**
+     * When cover forces the camera in tight, dissolve the local player so
+     * they never become a wall between the crosshair and the fight.
+     */
+    let lastLocalFade = -1;
+    function fadeLocalModel() {
+      const p = G.arena && G.arena.player;
+      if (!p || !G.rig) return;
+      const d = G.rig.distanceToTarget === undefined ? CFG.camera.distance : G.rig.distanceToTarget;
+      const a = CFG.camera.fadeEndDistance, b = CFG.camera.fadeStartDistance;
+      let fade = U.clamp01((d - a) / Math.max(0.01, b - a));
+      // Cloak already owns the model's opacity; don't fight it.
+      if (p.cloakBlend > 0.02) fade = 1;
+      fade = Math.max(fade, 0.06);
+      if (Math.abs(fade - lastLocalFade) < 0.01) return;
+      lastLocalFade = fade;
+      if (p.cloakBlend <= 0.02) {
+        p.model.setOpacity(fade);
+        p.weaponSlots.forEach(s => s.model.setOpacity(Math.max(fade, 0.35)));
+      }
+    }
+
     let ambienceTimer = 0;
     function updateAmbience(dt) {
       ambienceTimer -= dt;
@@ -605,6 +638,7 @@
     function render() {
       const r = G.renderer;
       r.info.reset();
+      G.postfx.updateMotion(G.camera, G.lastFrameDt || 0);
       r.setViewport(0, 0, G.width, G.height);
       if (G.scene && (G.state === 'match' || G.state === 'countdown' ||
           G.state === 'intro' || G.state === 'ending')) {
@@ -629,6 +663,7 @@
       G.camera.updateProjectionMatrix();
       const dpr = G.renderer.getPixelRatio();
       G.postfx.setSize(Math.floor(w * dpr), Math.floor(h * dpr));
+      HC.VFX.setViewportHeight(Math.floor(h * dpr));
       G.menus.onResize();
     };
 

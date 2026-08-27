@@ -199,9 +199,10 @@ html, body {
 .hc-profile-card .lvl { color: var(--accent); font-size: 0.8em; letter-spacing: 0.2em; margin-top: 0.15em; }
 .hc-xpbar { height: 5px; background: rgba(255,255,255,0.09); margin-top: 0.75em; overflow: hidden; }
 .hc-xpbar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
-.hc-profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35em 1em; margin-top: 0.95em; font-size: 0.78em; }
-.hc-profile-stats span { color: var(--text-faint); letter-spacing: 0.08em; text-transform: uppercase; }
-.hc-profile-stats b { float: right; color: var(--text); font-family: var(--font-mono); font-weight: 500; }
+.hc-profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4em 1.4em; margin-top: 0.95em; font-size: 0.76em; }
+.hc-profile-stats > div { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6em; }
+.hc-profile-stats span { color: var(--text-faint); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.hc-profile-stats b { color: var(--text); font-family: var(--font-mono); font-weight: 500; white-space: nowrap; }
 
 /* ---------- generic sub-screen layout ---------- */
 .hc-sub-header {
@@ -252,9 +253,12 @@ html, body {
 .hc-bar { height: 6px; background: rgba(255,255,255,0.08); overflow: hidden; }
 .hc-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .4s cubic-bezier(.2,.9,.3,1); }
 
-.hc-ability-cards { display: flex; gap: 0.7em; margin-top: 1.2em; flex-wrap: wrap; }
+.hc-ability-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 0.6em; margin-top: 1.1em;
+}
 .hc-ability-card {
-  width: 180px; padding: 0.8em 0.9em; background: rgba(12,19,31,0.72);
+  padding: 0.7em 0.8em; background: rgba(12,19,31,0.72);
   border: 1px solid var(--line); border-top: 2px solid var(--accent);
   transition: transform .16s ease, box-shadow .16s ease;
 }
@@ -265,7 +269,7 @@ html, body {
   font-family: var(--font-mono); font-size: 0.68em; border: 1px solid var(--line-strong); color: var(--accent);
 }
 .hc-ability-card .an { font-family: var(--font-display); letter-spacing: 0.1em; margin-top: 0.45em; font-size: 1.0em; }
-.hc-ability-card .ad { font-size: 0.76em; color: var(--text-dim); line-height: 1.42; margin-top: 0.35em; }
+.hc-ability-card .ad { font-size: 0.73em; color: var(--text-dim); line-height: 1.38; margin-top: 0.3em; }
 .hc-ability-card .cd { font-size: 0.68em; color: var(--text-faint); margin-top: 0.5em; letter-spacing: 0.12em; }
 .hc-ability-card svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.6; }
 .hc-ability-card.ult svg { stroke: var(--accent-2); }
@@ -434,13 +438,13 @@ html, body {
 
 /* status banners */
 #hc-banner {
-  position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%);
-  text-align: center; z-index: 30;
+  position: absolute; left: 50%; top: 25%; transform: translate(-50%, -50%);
+  text-align: center; z-index: 30; pointer-events: none;
 }
 #hc-banner .big {
-  font-family: var(--font-display); font-size: clamp(46px, 8vw, 128px); font-weight: 700;
+  font-family: var(--font-display); font-size: clamp(38px, 6.2vw, 96px); font-weight: 700;
   letter-spacing: 0.16em; line-height: 1;
-  text-shadow: 0 6px 34px rgba(0,0,0,0.75);
+  text-shadow: 0 6px 34px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6);
 }
 #hc-banner .small { font-family: var(--font-display); letter-spacing: 0.42em; font-size: 1.0em; color: var(--text-dim); margin-top: 0.6em; text-transform: uppercase; }
 
@@ -590,11 +594,29 @@ html, body {
   text-align: center; max-width: 60ch; font-size: 0.92em; color: var(--text);
   text-shadow: 0 2px 6px #000; letter-spacing: 0.06em;
 }
-#hc-toast { position: absolute; left: 50%; top: 12vh; transform: translateX(-50%); display: flex; flex-direction: column; gap: 0.4em; align-items: center; }
+#hc-toast { position: absolute; left: 50%; top: 36vh; transform: translateX(-50%); display: flex; flex-direction: column; gap: 0.4em; align-items: center; pointer-events: none; }
 .hc-toast-item {
   padding: 0.5em 1.2em; background: rgba(8,13,22,0.86); border-left: 3px solid var(--accent);
   font-size: 0.86em; letter-spacing: 0.14em; animation: hcFadeUp .3s ease both; text-transform: uppercase;
 }
+
+/* pointer-lock prompt — browsers only grant mouse capture on a gesture,
+   so without this the game reads as "the mouse is broken" */
+#hc-capture {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  z-index: 27; pointer-events: none;
+}
+#hc-capture .box {
+  padding: 1.1em 2.2em; text-align: center;
+  background: rgba(6,10,18,0.82); border: 1px solid var(--line-strong);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  animation: hcFadeUp .3s ease both;
+}
+#hc-capture .t {
+  font-family: var(--font-display); font-size: 1.5em; letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+#hc-capture .s { font-size: 0.82em; letter-spacing: 0.16em; color: var(--text-dim); margin-top: 0.45em; }
 
 /* fps / debug */
 #hc-perf {
@@ -623,7 +645,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /*! HYPERCELL — a stylised 3D hero shooter.
- *  Built 2026-08-27T04:27:37.832Z
+ *  Built 2026-08-27T04:41:55.475Z
  *  All geometry, textures, animation and audio are generated at runtime.
  *  Bundled: three.js r160 (MIT).
  */
@@ -955,6 +977,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       collisionRadius: 0.34,
       collisionPullRate: 34.0,
       collisionReturnRate: 6.5,
+      minDistance: 1.55,            // never end up inside the character
+      fadeStartDistance: 2.9,       // dissolve the local model below this
+      fadeEndDistance: 1.5,
 
       shakeDecay: 5.5,
       shakeMax: 1.0,
@@ -1053,8 +1078,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       bloomThreshold: 0.72,
       bloomRadius: 0.85,
       fogEnabled: true,
-      fogNear: 34,
-      fogFar: 300,
+      fogNear: 55,
+      fogFar: 420,
       viewDistance: 1.0,
       particleBudget: 2600,
       decalBudget: 96,
@@ -1062,7 +1087,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       motionBlur: false,
       antialias: true,
       textureQuality: 2,             // 0 low / 1 med / 2 high
-      exposure: 1.06
+      exposure: 1.18
     },
 
     /* ---------------- audio ---------------- */
@@ -2865,7 +2890,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     interact: ['KeyE'],
     scoreboard: ['Tab'],
     emote: ['KeyB'],
-    ping: ['KeyZ'],
     swapShoulder: ['KeyV'],
     pause: ['Escape'],
     fire: ['Mouse0'],
@@ -2887,6 +2911,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     _element: null,
     _listeners: [],
     events: null,
+    /** Pointer lock is unavailable in some embeds (sandboxed iframes without
+     *  allow="pointer-lock"). When we detect that, the game falls back to
+     *  drag-to-look so it stays fully playable instead of feeling broken. */
+    lockAvailable: true,
+    lockDenied: false,
+    dragLook: false,
+    dragging: false,
     /** Set true while a text field / menu has focus so gameplay ignores keys. */
     uiCapture: false
   };
@@ -2918,21 +2949,31 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     add(window, 'blur', () => Input.clear());
 
     add(element, 'mousedown', (e) => {
-      if (!Input.locked) return;
+      if (!Input.locked && !Input.dragLook) return;
       Input.mouse.buttons[e.button] = true;
       Input.keys['Mouse' + e.button] = true;
       Input.pressed['Mouse' + e.button] = true;
+      if (Input.dragLook) {
+        Input.dragging = true;
+        Input._lastX = e.clientX; Input._lastY = e.clientY;
+      }
       e.preventDefault();
     });
     add(window, 'mouseup', (e) => {
       Input.mouse.buttons[e.button] = false;
       Input.keys['Mouse' + e.button] = false;
       Input.released['Mouse' + e.button] = true;
+      if (!Input.mouse.buttons[0] && !Input.mouse.buttons[2]) Input.dragging = false;
     });
     add(window, 'mousemove', (e) => {
-      if (!Input.locked) return;
-      Input.mouse.dx += e.movementX || 0;
-      Input.mouse.dy += e.movementY || 0;
+      if (Input.locked) {
+        Input.mouse.dx += e.movementX || 0;
+        Input.mouse.dy += e.movementY || 0;
+      } else if (Input.dragLook && Input.dragging) {
+        Input.mouse.dx += e.clientX - Input._lastX;
+        Input.mouse.dy += e.clientY - Input._lastY;
+        Input._lastX = e.clientX; Input._lastY = e.clientY;
+      }
     });
     add(element, 'wheel', (e) => { if (Input.locked) { Input.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); } }, { passive: false });
     add(element, 'contextmenu', (e) => e.preventDefault());
@@ -2942,7 +2983,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       Input.events.emit('lockchange', Input.locked);
       if (!Input.locked) Input.clearMouseButtons();
     });
-    add(document, 'pointerlockerror', () => HC.Log.warn('Input', 'pointer lock request failed'));
+    add(document, 'pointerlockerror', () => {
+      Input.lockDenied = true;
+      Input.setDragLook(true);
+      HC.Log.warn('Input', 'pointer lock denied — falling back to drag-to-look');
+    });
 
     add(window, 'gamepadconnected', (e) => {
       Input.gamepadIndex = e.gamepad.index;
@@ -2967,8 +3012,26 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   Input.requestLock = function () {
     if (!Input._element || Input.locked) return;
-    const p = Input._element.requestPointerLock && Input._element.requestPointerLock();
-    if (p && p.catch) p.catch(() => {});
+    if (!Input._element.requestPointerLock) {
+      Input.lockAvailable = false;
+      Input.setDragLook(true);
+      return;
+    }
+    if (Input.lockDenied) return;   // don't spam a request the host refuses
+    try {
+      const p = Input._element.requestPointerLock();
+      if (p && p.catch) p.catch(() => { Input.lockDenied = true; Input.setDragLook(true); });
+    } catch (e) {
+      Input.lockDenied = true;
+      Input.setDragLook(true);
+    }
+  };
+
+  Input.setDragLook = function (on) {
+    if (Input.dragLook === on) return;
+    Input.dragLook = on;
+    Input.dragging = false;
+    Input.events.emit('draglook', on);
   };
   Input.releaseLock = function () {
     if (document.pointerLockElement) document.exitPointerLock();
@@ -2982,6 +3045,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   Input.clearMouseButtons = function () {
     Input.mouse.buttons[0] = Input.mouse.buttons[1] = Input.mouse.buttons[2] = false;
     Input.keys.Mouse0 = Input.keys.Mouse1 = Input.keys.Mouse2 = false;
+    Input.dragging = false;
   };
 
   /* ---- action queries -------------------------------------------------- */
@@ -3076,7 +3140,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   /** Look delta in radians for this frame. */
   Input.lookDelta = function (dt, sensScale) {
-    const s = CFG.input.mouseSensitivity * (sensScale || 1);
+    const s = CFG.input.mouseSensitivity * (sensScale || 1) * (Input.dragLook ? 1.45 : 1);
     let dx = Input.mouse.dx * s;
     let dy = Input.mouse.dy * s;
     const g = Input.gamepad;
@@ -4127,9 +4191,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   }
 
   /** Lathe profile builder for torsos, helmets, hair shells. */
-  function lathe(points, seg, phiLength) {
+  function lathe(points, seg, phiLength, phiStart) {
     const v = points.map(p => new THREE.Vector2(Math.max(0.0001, p[0]), p[1]));
-    return new THREE.LatheGeometry(v, seg || SEG.mid, 0, phiLength === undefined ? U.TAU : phiLength);
+    return new THREE.LatheGeometry(v, seg || SEG.mid, phiStart || 0,
+      phiLength === undefined ? U.TAU : phiLength);
   }
 
   function sphere(r, seg) { return new THREE.SphereGeometry(r, seg || SEG.mid, Math.max(6, (seg || SEG.mid) / 2)); }
@@ -4292,7 +4357,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const hipHeight = footH + shinLen + thighLen;
     const headR = H * 0.078 * b.headScale;
     const neckLen = H * 0.045 * b.neckLength;
-    const spineLen = H - hipHeight - neckLen - headR * 2.05;
+    // The chest bone sits at `spineLen` above the hips and the neck a further
+    // `spineLen * 0.36` above that, so solve the chain for a head crown that
+    // lands exactly on H — otherwise the model overshoots its own capsule.
+    const spineLen = (H - hipHeight - neckLen - headR * 1.15) / 1.36;
     const chestW = H * 0.115 * b.shoulderWidth;
     const chestDepth = H * 0.070 * b.chestDepth;
     const upperArmLen = H * 0.163 * b.armLength;
@@ -4632,56 +4700,101 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       }
     }
 
-    /* --- hair --- */
+    /* --- hair ------------------------------------------------------------
+     * A full lathe would revolve straight across the face. Hair is therefore
+     * built as a crown (above the brow, all the way round) plus a back-and-
+     * sides skirt that stops short of the face, leaving a real hairline.
+     * LatheGeometry measures phi from +Z, so the gap is centred on the front. */
     const hairStyle = gear.hair;
     if (hairStyle && hairStyle !== 'none' && !sealed) {
+      const FACE_GAP = 1.55;                       // radians left open at the front
+      const BACK_START = FACE_GAP * 0.5;
+      const BACK_LEN = U.TAU - FACE_GAP;
+
+      /** Skull cap sitting above the brow — safe to revolve fully. */
+      function crown(lift, thick) {
+        C.add('head', lathe([
+          [r * (1.01 + thick), r * (0.30 + lift)],
+          [r * (1.03 + thick), r * (0.58 + lift)],
+          [r * (0.70 + thick), r * (1.00 + lift)],
+          [0.001, r * (1.12 + lift)]
+        ], SEG.high), M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+      }
+
+      /** Back and sides, dropping to `bottom` (in head radii). */
+      function skirt(bottom, thick) {
+        C.add('head', lathe([
+          [r * (1.02 + thick), r * bottom],
+          [r * (1.05 + thick), r * 0.10],
+          [r * (1.04 + thick), r * 0.44]
+        ], SEG.high, BACK_LEN, BACK_START), M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+      }
+
+      /** Fringe swept across the forehead. */
+      function fringe(drop, sweep) {
+        C.add('head', plate(r * 1.34, r * drop, r * 0.20, r * 0.16, 1.0), M.hair,
+          { pos: [0, r * (0.48 - drop * 0.35), r * 0.74], rot: [-0.28, 0, sweep || 0] });
+      }
+
       switch (hairStyle) {
         case 'buzz':
-          C.add('head', lathe([[r * 0.98, r * 0.05], [r * 0.92, r * 0.55], [r * 0.50, r * 1.02], [0.001, r * 1.10]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.04] });
+          crown(-0.06, -0.01);
+          skirt(-0.06, -0.015);
           break;
+
         case 'short_fade':
-          C.add('head', lathe([[r * 1.02, -r * 0.10], [r * 1.05, r * 0.42], [r * 0.72, r * 0.95], [0.001, r * 1.14]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, -r * 0.02], scale: [1.02, 1, 1.05] });
-          C.add('head', plate(r * 1.0, r * 0.26, r * 0.28, r * 0.12, 0.9), M.hair,
-            { pos: [0, r * 0.72, r * 0.66], rot: [-0.3, 0, 0] });
+          crown(0, 0);
+          skirt(-0.16, -0.01);
+          fringe(0.30, 0.10);
           break;
+
         case 'messy':
-          C.add('head', lathe([[r * 1.06, -r * 0.05], [r * 1.10, r * 0.45], [r * 0.70, r * 1.0], [0.001, r * 1.16]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.04, 1, 1.06] });
+          crown(0.02, 0.03);
+          skirt(-0.12, 0.02);
+          fringe(0.34, -0.14);
           for (let i = 0; i < 6; i++) {
             const a = (i / 6) * U.TAU;
-            C.add('head', cone(r * 0.16, r * 0.44, 5), M.hair,
-              { pos: [Math.cos(a) * r * 0.62, r * 1.02, Math.sin(a) * r * 0.62], rot: [Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7] });
+            C.add('head', cone(r * 0.15, r * 0.42, 5), M.hair,
+              { pos: [Math.cos(a) * r * 0.58, r * 1.06, Math.sin(a) * r * 0.58],
+                rot: [Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7] });
           }
           break;
+
         case 'high_ponytail':
-          C.add('head', lathe([[r * 1.02, -r * 0.05], [r * 1.06, r * 0.45], [r * 0.66, r * 1.02], [0.001, r * 1.12]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+          crown(0, 0);
+          skirt(-0.10, -0.01);
+          fringe(0.26, 0.18);
           C.add('headTop', capsule(r * 0.24, r * 1.5, SEG.low), M.hair,
             { pos: [0, r * 0.05, -r * 0.95], rot: [1.15, 0, 0] });
           C.add('headTop', capsule(r * 0.15, r * 0.9, SEG.low), M.hair,
             { pos: [r * 0.16, -r * 0.35, -r * 1.5], rot: [1.45, 0, 0.2] });
           break;
+
         case 'undercut_long':
-          C.add('head', lathe([[r * 1.0, r * 0.0], [r * 1.08, r * 0.5], [r * 0.62, r * 1.04], [0.001, r * 1.12]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
-          [-1, 1].forEach(s => C.add('head', plate(r * 0.34, r * 1.5, r * 0.26, r * 0.14, 0.5), M.hair,
-            { pos: [s * r * 0.86, -r * 0.30, r * 0.12], rot: [0, 0, s * 0.10] }));
+          crown(0.02, 0.01);
+          skirt(-0.30, 0.0);
+          fringe(0.42, -0.24);
+          [-1, 1].forEach(s => C.add('head', plate(r * 0.30, r * 1.4, r * 0.24, r * 0.13, 0.5), M.hair,
+            { pos: [s * r * 0.88, -r * 0.34, r * 0.06], rot: [0, 0, s * 0.10] }));
           break;
+
         case 'braids':
-          C.add('head', lathe([[r * 1.02, -r * 0.02], [r * 1.06, r * 0.48], [r * 0.66, r * 1.02], [0.001, r * 1.12]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0] });
+          crown(0, 0);
+          skirt(-0.14, -0.01);
+          fringe(0.24, 0);
           [-1, 1].forEach(s => {
             for (let i = 0; i < 4; i++) {
               C.add('head', sphere(r * 0.16, SEG.low), M.hair,
-                { pos: [s * r * 0.72, -r * (0.15 + i * 0.34), -r * (0.2 + i * 0.12)], scale: [0.9, 0.8, 1.1] });
+                { pos: [s * r * 0.72, -r * (0.15 + i * 0.34), -r * (0.2 + i * 0.12)],
+                  scale: [0.9, 0.8, 1.1] });
             }
           });
           break;
+
         case 'long_flow': case 'void_flow': case 'void_veil': case 'mane': case 'prism_crest':
-          C.add('head', lathe([[r * 1.03, -r * 0.05], [r * 1.10, r * 0.5], [r * 0.66, r * 1.05], [0.001, r * 1.14]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.03, 1, 1.06] });
+          crown(0.02, 0.02);
+          skirt(-0.34, 0.01);
+          fringe(0.40, 0.16);
           for (let i = 0; i < 7; i++) {
             const a = -Math.PI * 0.5 + (i / 6) * Math.PI;
             C.add('head', capsule(r * 0.17, r * (1.4 + (i % 2) * 0.5), SEG.low), M.hair,
@@ -4689,9 +4802,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
                 rot: [0.12, 0, Math.cos(a) * 0.22] });
           }
           break;
+
         default:
-          C.add('head', lathe([[r * 1.02, 0], [r * 1.04, r * 0.5], [r * 0.66, r * 1.02], [0.001, r * 1.12]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0] });
+          crown(0, 0);
+          skirt(-0.12, 0);
+          fringe(0.28, 0);
       }
     }
   }
@@ -5874,20 +5989,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     /* --- static poses for menus / results -------------------------------- */
     const POSES = {
       lobby(P, t, w) {
-        addPose(P, 'spine', 0.03, -0.10, 0, w); addPose(P, 'chest', 0.02, -0.14, 0, w);
-        addPose(P, 'armUpperR', -0.55, -0.15, -0.30, w); addPose(P, 'armLowerR', -0.65, 0, 0, w);
-        addPose(P, 'armUpperL', -0.42, 0.15, 0.34, w); addPose(P, 'armLowerL', -0.60, 0, 0, w);
+        addPose(P, 'spine', 0.03, -0.12, 0, w); addPose(P, 'chest', 0.02, -0.16, 0, w);
+        addPose(P, 'armUpperR', -0.62, -0.16, -0.16, w); addPose(P, 'armLowerR', -0.78, 0, 0, w);
+        addPose(P, 'armUpperL', -0.48, 0.16, 0.20, w); addPose(P, 'armLowerL', -0.72, 0, 0, w);
         addPose(P, 'thighL', 0, 0, 0.09, w); addPose(P, 'thighR', -0.10, 0, -0.12, w);
         addPose(P, 'head', 0, 0.08, 0, w);
       },
       select(P, t, w) {
+        // A confident weapon-ready showcase: elbows in, weapon across the body.
         const k = U.pulse(U.clamp01(t * 1.6), 0.35);
-        addPose(P, 'chest', -0.10 * k, -0.20, 0, w); addPose(P, 'spine', -0.06 * k, -0.08, 0, w);
-        addPose(P, 'armUpperR', -0.95 - k * 0.55, -0.24, -0.34, w);
-        addPose(P, 'armLowerR', -0.85, 0, 0.1, w);
-        addPose(P, 'armUpperL', -1.15, 0.42, 0.48, w); addPose(P, 'armLowerL', -1.25, 0, -0.28, w);
-        addPose(P, 'head', -0.06, -0.10, 0, w);
-        addPose(P, 'thighR', -0.14, 0, -0.14, w); addPose(P, 'shinR', 0.10, 0, 0, w);
+        addPose(P, 'chest', -0.08 * k, -0.26, 0, w); addPose(P, 'spine', -0.05 * k, -0.10, 0, w);
+        addPose(P, 'armUpperR', -0.98 - k * 0.30, -0.20, -0.18, w);
+        addPose(P, 'armLowerR', -0.92, 0, 0.08, w);
+        addPose(P, 'armUpperL', -1.18, 0.40, 0.30, w); addPose(P, 'armLowerL', -1.34, 0, -0.22, w);
+        addPose(P, 'head', -0.05, -0.12, 0, w);
+        addPose(P, 'thighR', -0.12, 0, -0.11, w); addPose(P, 'shinR', 0.10, 0, 0, w);
+        addPose(P, 'thighL', 0.04, 0, 0.09, w);
       },
       victory(P, t, w) {
         const pose = A.model.overrides.victoryPose || personality.victoryPose || 'salute_rifle';
@@ -6204,10 +6321,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     varying vec3 vColor;
     uniform float uScale;
     void main() {
-      vAlpha = aAlpha;
       vColor = aColor;
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = aSize * uScale / max(0.001, -mv.z);
+      // Fade particles out as they approach the near plane — otherwise a
+      // muzzle puff a metre away smears across the whole screen.
+      vAlpha = aAlpha * smoothstep(0.30, 1.60, -mv.z);
+      // Perspective-correct size, clamped so a particle a metre from the
+      // camera cannot swallow the entire screen.
+      gl_PointSize = clamp(aSize * uScale / max(0.05, -mv.z), 1.0, 165.0);
       gl_Position = projectionMatrix * mv;
     }`;
 
@@ -6235,7 +6356,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
 
     const mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: texture }, uScale: { value: 620 } },
+      uniforms: { uMap: { value: texture }, uScale: { value: 460 } },
       vertexShader: PARTICLE_VS, fragmentShader: PARTICLE_FS,
       transparent: true, depthWrite: false,
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending
@@ -6410,8 +6531,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     VFX._emitters.length = 0;
     VFX._time = 0;
+    VFX._viewportHeight = window.innerHeight;
     VFX.ready = true;
   };
+
+  VFX.setViewportHeight = function (h) { VFX._viewportHeight = h; };
 
   VFX.dispose = function () {
     if (!VFX.ready) return;
@@ -6478,10 +6602,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       });
     }
     VFX.smoke.spawn({
-      x: pos.x + dir.x * 0.2, y: pos.y + dir.y * 0.2, z: pos.z + dir.z * 0.2,
+      x: pos.x + dir.x * 0.25, y: pos.y + dir.y * 0.25, z: pos.z + dir.z * 0.25,
       vx: dir.x * 2.4 + jitter(0.5), vy: 0.55 + jitter(0.3), vz: dir.z * 2.4 + jitter(0.5),
-      life: 0.42, size0: 0.14 * scale, size1: 0.52 * scale,
-      color0: 0x9aa3ad, color1: 0x30343c, alpha: 0.26, drag: 2.6, gravity: -0.4, turbulence: 0.5
+      life: 0.34, size0: 0.06 * scale, size1: 0.20 * scale,
+      color0: 0x9aa3ad, color1: 0x30343c, alpha: 0.16, drag: 3.4, gravity: -0.4, turbulence: 0.5
     });
   };
 
@@ -6554,9 +6678,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       VFX.smoke.spawn({
         x: pos.x + jitter(0.08), y: pos.y + jitter(0.08), z: pos.z + jitter(0.08),
         vx: normal.x * 1.6 + jitter(0.9), vy: normal.y * 1.6 + jitter(0.9) + 0.5, vz: normal.z * 1.6 + jitter(0.9),
-        life: 0.45 + Math.random() * 0.4,
-        size0: 0.10 * scale, size1: 0.55 * scale,
-        color0: 0xb8b2a6, color1: 0x4a463f, alpha: 0.34, drag: 2.4, gravity: -0.5, turbulence: 0.6
+        life: 0.40 + Math.random() * 0.35,
+        size0: 0.05 * scale, size1: 0.26 * scale,
+        color0: 0xb8b2a6, color1: 0x4a463f, alpha: 0.24, drag: 2.8, gravity: -0.5, turbulence: 0.6
       });
     }
 
@@ -6679,7 +6803,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         vx: Math.cos(a) * (1.4 + Math.random() * 2.6), vy: 0.5 + Math.random() * 1.0,
         vz: Math.sin(a) * (1.4 + Math.random() * 2.6),
         life: 0.55 + Math.random() * 0.6,
-        size0: 0.20, size1: 1.05,
+        size0: 0.12, size1: 0.62,
         color0: color === undefined ? 0xb0a89a : color, color1: 0x3f3c36,
         alpha: 0.38, drag: 2.2, gravity: -0.4, turbulence: 0.7
       });
@@ -6708,6 +6832,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   VFX.update = function (dt) {
     if (!VFX.ready) return;
     VFX._time += dt;
+
+    // Point size must track the viewport and FOV or particles change size
+    // when the window resizes or the player aims down sights.
+    const h = VFX._viewportHeight || 720;
+    const scale = h / (2 * Math.tan(VFX.camera.fov * 0.5 * U.DEG));
+    VFX.sparks.points.material.uniforms.uScale.value = scale;
+    VFX.smoke.points.material.uniforms.uScale.value = scale;
 
     // Trail emitters
     for (let i = VFX._emitters.length - 1; i >= 0; i--) {
@@ -7660,25 +7791,25 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     /* ---- material palette -------------------------------------------- */
     const M = {
-      asphalt: Mats.make({ kind: 'asphalt', color: 0x24272e, roughness: 0.94, metalness: 0.02,
+      asphalt: Mats.make({ kind: 'asphalt', color: 0x3d434e, roughness: 0.90, metalness: 0.04,
         repeat: 26, seed: 3, rim: { color: 0x2a3a52, strength: 0.10, power: 4.0 } }),
-      sidewalk: Mats.make({ kind: 'concrete', color: 0x3c4049, roughness: 0.90, repeat: 14, seed: 5,
+      sidewalk: Mats.make({ kind: 'concrete', color: 0x5f6675, roughness: 0.86, repeat: 14, seed: 5,
         rim: { color: 0x33506e, strength: 0.12, power: 4.0 } }),
-      plaza: Mats.make({ kind: 'concrete', color: 0x494f5c, roughness: 0.72, repeat: 12, seed: 9,
+      plaza: Mats.make({ kind: 'concrete', color: 0x6d7688, roughness: 0.68, repeat: 12, seed: 9,
         rim: { color: 0x3a6a94, strength: 0.14, power: 3.6 } }),
-      wallLight: Mats.make({ kind: 'concrete', color: 0x6a7180, roughness: 0.82, repeat: 5, seed: 11,
+      wallLight: Mats.make({ kind: 'concrete', color: 0x97a1b2, roughness: 0.78, repeat: 5, seed: 11,
         rim: { color: 0x4a7ba8, strength: 0.16, power: 3.4 } }),
-      wallDark: Mats.make({ kind: 'concrete', color: 0x2e333d, roughness: 0.86, repeat: 5, seed: 13,
+      wallDark: Mats.make({ kind: 'concrete', color: 0x4c5568, roughness: 0.84, repeat: 5, seed: 13,
         rim: { color: 0x3f6a92, strength: 0.16, power: 3.4 } }),
-      wallWarm: Mats.make({ kind: 'concrete', color: 0x5a4a44, roughness: 0.84, repeat: 5, seed: 17,
+      wallWarm: Mats.make({ kind: 'concrete', color: 0x8a6f60, roughness: 0.80, repeat: 5, seed: 17,
         rim: { color: 0x8a6a4a, strength: 0.14, power: 3.4 } }),
-      panel: Mats.make({ kind: 'plate', color: 0x39404d, roughness: 0.52, metalness: 0.62, repeat: 3, seed: 19,
+      panel: Mats.make({ kind: 'plate', color: 0x5b6577, roughness: 0.46, metalness: 0.62, repeat: 3, seed: 19,
         rim: { color: 0x6ab0e0, strength: 0.22, power: 3.0 } }),
       steel: Mats.make({ kind: 'metal', color: 0x7d8695, roughness: 0.38, metalness: 0.92, repeat: 4, seed: 23,
         rim: { color: 0xa8d4ff, strength: 0.22, power: 3.2 } }),
-      darkSteel: Mats.make({ kind: 'metal', color: 0x363c47, roughness: 0.46, metalness: 0.88, repeat: 4, seed: 29,
+      darkSteel: Mats.make({ kind: 'metal', color: 0x565f6d, roughness: 0.42, metalness: 0.88, repeat: 4, seed: 29,
         rim: { color: 0x5f9ad0, strength: 0.20, power: 3.2 } }),
-      rust: Mats.make({ kind: 'metal', color: 0x6b4530, roughness: 0.78, metalness: 0.55, repeat: 3, seed: 31,
+      rust: Mats.make({ kind: 'metal', color: 0x8d5e42, roughness: 0.74, metalness: 0.55, repeat: 3, seed: 31,
         rim: { color: 0x9a6a4a, strength: 0.16, power: 3.4 } }),
       glass: Mats.make({ kind: 'glass', color: 0x8fc4e8, opacity: 0.22, roughness: 0.05, metalness: 0.2 }),
       windowLit: Mats.make({ kind: 'plate', color: 0x1a2230, emissive: 0xffca7a, emissiveIntensity: 1.35,
@@ -7690,19 +7821,19 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       neonC: Mats.additive(0xb46bff, 0.95),
       neonD: Mats.additive(0x3fe0a0, 0.95),
       neonE: Mats.additive(0xffb02e, 0.95),
-      grass: Mats.make({ kind: 'fabric', color: 0x35502f, roughness: 0.96, repeat: 8, seed: 43,
+      grass: Mats.make({ kind: 'fabric', color: 0x4e7444, roughness: 0.94, repeat: 8, seed: 43,
         rim: { color: 0x5a8a4a, strength: 0.14, power: 3.6 } }),
-      foliage: Mats.make({ kind: 'fabric', color: 0x2f5c33, roughness: 0.92, repeat: 3, seed: 47, flatShading: true,
+      foliage: Mats.make({ kind: 'fabric', color: 0x46864b, roughness: 0.90, repeat: 3, seed: 47, flatShading: true,
         rim: { color: 0x6ab06a, strength: 0.22, power: 2.8 } }),
-      wood: Mats.make({ kind: 'leather', color: 0x6a4a2c, roughness: 0.86, repeat: 3, seed: 53,
+      wood: Mats.make({ kind: 'leather', color: 0x936a44, roughness: 0.84, repeat: 3, seed: 53,
         rim: { color: 0x9a7a4a, strength: 0.14, power: 3.4 } }),
-      paintA: Mats.make({ kind: 'plate', color: 0x1f5a86, roughness: 0.48, metalness: 0.3, repeat: 2, seed: 59,
+      paintA: Mats.make({ kind: 'plate', color: 0x2f7fb8, roughness: 0.44, metalness: 0.3, repeat: 2, seed: 59,
         rim: { color: 0x6ab0e0, strength: 0.20, power: 3.0 } }),
-      paintB: Mats.make({ kind: 'plate', color: 0x8a2f2a, roughness: 0.48, metalness: 0.3, repeat: 2, seed: 61,
+      paintB: Mats.make({ kind: 'plate', color: 0xb8443c, roughness: 0.44, metalness: 0.3, repeat: 2, seed: 61,
         rim: { color: 0xe08a6a, strength: 0.20, power: 3.0 } }),
       paintC: Mats.make({ kind: 'plate', color: 0xc7b24a, roughness: 0.50, metalness: 0.25, repeat: 2, seed: 67,
         rim: { color: 0xf0e0a0, strength: 0.20, power: 3.0 } }),
-      rubberMat: Mats.make({ kind: 'rubber', color: 0x14161a, roughness: 0.96, repeat: 4, seed: 71, rim: false }),
+      rubberMat: Mats.make({ kind: 'rubber', color: 0x24272d, roughness: 0.94, repeat: 4, seed: 71, rim: false }),
       teamA: Mats.make({ kind: 'plate', color: HC.PALETTE.teamA, emissive: HC.PALETTE.teamA,
         emissiveIntensity: 0.85, roughness: 0.45, metalness: 0.4, repeat: 2, seed: 73, rim: false }),
       teamB: Mats.make({ kind: 'plate', color: HC.PALETTE.teamB, emissive: HC.PALETTE.teamB,
@@ -7924,8 +8055,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       return { cx, cz, w, d, h, roofY: h + 0.6 };
     }
 
+    // three uses inverse-square falloff (decay 2), so intensity is closer to
+    // candela than to a 0..1 dimmer. A value of 1 is invisible past a metre —
+    // everything here is scaled into a range that actually lights the street.
+    const LIGHT_SCALE = 26;
     function makePointLight(x, y, z, color, intensity, distance) {
-      const l = new THREE.PointLight(color, intensity, distance, 2);
+      const l = new THREE.PointLight(color, intensity * LIGHT_SCALE, distance, 2);
       l.position.set(x, y, z);
       result.root.add(l);
       return l;
@@ -8290,8 +8425,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     });
 
     // Distant skyline — silhouettes only, no collision, big depth payoff.
-    const skyMat = Mats.make({ kind: 'plate', color: 0x0d1420, roughness: 0.9, metalness: 0.1, rim: false });
-    const skyWin = Mats.make({ kind: 'plate', color: 0x101a28, emissive: 0x4a7ab8, emissiveIntensity: 0.65, rim: false });
+    const skyMat = Mats.make({ kind: 'plate', color: 0x1b273c, roughness: 0.9, metalness: 0.1, rim: false });
+    const skyWin = Mats.make({ kind: 'plate', color: 0x142032, emissive: 0x74a8e8, emissiveIntensity: 1.4, rim: false });
     for (let i = 0; i < 68; i++) {
       const a = (i / 68) * U.TAU + rnd() * 0.05;
       const dist = 96 + rnd() * 74;
@@ -8341,10 +8476,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       world.shapeCount + ' collision shapes, ' + lights.length + ' point lights');
 
     /* --- key lighting --- */
-    const hemi = new THREE.HemisphereLight(0x2e4a72, 0x14161c, 0.55);
+    const hemi = new THREE.HemisphereLight(0x4a7ab8, 0x2a2f38, 1.15);
     result.root.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xbfd4ff, 1.35);
+    const sun = new THREE.DirectionalLight(0xcfe0ff, 2.35);
     sun.position.set(-42, 58, -28);
     sun.target.position.set(0, 0, 6);
     sun.castShadow = CFG.gfx.shadows;
@@ -8363,12 +8498,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     result.hemi = hemi;
 
     // Warm fill from the opposite side keeps characters readable in shadow.
-    const fill = new THREE.DirectionalLight(0xff9a6a, 0.42);
+    const fill = new THREE.DirectionalLight(0xff9a6a, 0.85);
     fill.position.set(48, 26, 40);
     result.root.add(fill);
 
     // Ambient bounce so nothing ever goes fully black.
-    const amb = new THREE.AmbientLight(0x384a68, 0.42);
+    const amb = new THREE.AmbientLight(0x4d6288, 0.85);
     result.root.add(amb);
 
     /* --- sky dome + fog --- */
@@ -8376,9 +8511,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const skyMatDome = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        uTop: { value: new THREE.Color(0x060b16) },
-        uMid: { value: new THREE.Color(0x16294a) },
-        uBottom: { value: new THREE.Color(0x3a2a3e) }
+        uTop: { value: new THREE.Color(0x0d1830) },
+        uMid: { value: new THREE.Color(0x27467c) },
+        uBottom: { value: new THREE.Color(0x6b4468) }
       },
       vertexShader: 'varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader:
@@ -8393,7 +8528,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     result.root.add(skyMesh);
     disposables.push(skyGeo, skyMatDome);
 
-    scene.fog = CFG.gfx.fogEnabled ? new THREE.Fog(0x101a2e, CFG.gfx.fogNear, CFG.gfx.fogFar * CFG.gfx.viewDistance) : null;
+    scene.fog = CFG.gfx.fogEnabled
+      ? new THREE.Fog(0x24365c, CFG.gfx.fogNear, CFG.gfx.fogFar * CFG.gfx.viewDistance) : null;
     scene.background = null;
 
     scene.add(result.root);
@@ -10700,7 +10836,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       jump: false, jumpPressed: false, sprint: false, crouch: false,
       dodgePressed: false, fire: false, aim: false, reloadPressed: false,
       swapPressed: false, ability1: false, ability2: false, ultimate: false,
-      meleePressed: false, holdBreath: false
+      meleePressed: false, holdBreath: false, emotePressed: false
     };
   }
   HC.blankCommands = blankCommands;
@@ -10812,11 +10948,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const socket = A.model.bones.weaponSocket;
       socket.add(slot.model.root);
       slot.model.root.position.set(0, 0, 0);
-      slot.model.root.rotation.set(-Math.PI / 2 + 0.10, 0, 0);
+      slot.model.root.rotation.set(Math.PI * 0.5, 0, 0);
       if (slot.offModel) {
         A.model.bones.offhandSocket.add(slot.offModel.root);
         slot.offModel.root.position.set(0, 0, 0);
-        slot.offModel.root.rotation.set(-Math.PI / 2 + 0.10, 0, 0);
+        slot.offModel.root.rotation.set(Math.PI * 0.5, 0, 0);
       }
       A.weapon.equip(slot.id, { model: slot.model });
       A.weapon.tracerColor = A.model.vfxColors.tracer;
@@ -11256,6 +11392,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       A.weapon.holdingBreath = !!effective.holdBreath;
       if (effective.reloadPressed) A.weapon.startReload();
       if (effective.swapPressed) A.swapWeapon();
+      if (effective.emotePressed) A.playEmote();
 
       A.weapon.update(dt, {
         eye: A.eyePosition(_v3),
@@ -11328,18 +11465,48 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       A.model.root.rotation.y = A.yaw;
       applyRootTilt();
 
-      /* weapon aiming: point the held weapon along the aim direction */
-      const slot = A.weaponSlots[A.weaponIndex];
-      if (slot && slot.model && !slot.def.melee) {
-        const pitchBlend = U.lerp(0.55, 1.0, A.weapon.aim);
-        slot.model.root.rotation.x = -Math.PI / 2 + 0.10 - A.pitch * pitchBlend * 0.55;
-      }
+      /* Weapon aiming. Rather than guessing a fixed offset in the hand's
+       * frame, solve it: take the world aim direction, express it in the
+       * socket's local space, and rotate the weapon's +Z onto it. The muzzle
+       * then provably points at the crosshair — which is also where the
+       * tracer originates, so the two can never disagree. */
+      aimHeldWeapon();
 
       /* marked state decays */
       if (A.markedUntil > 0 && A._time > A.markedUntil) { A.markedUntil = 0; A.markedBy = null; }
 
       A.cameraKick = Math.max(0, A.cameraKick - dt * 4);
     };
+
+    const _aimM = new THREE.Matrix4();
+    const _aimLocal = new THREE.Vector3();
+    const FORWARD_Z = new THREE.Vector3(0, 0, 1);
+    const MELEE_REST = new THREE.Euler(Math.PI * 0.5, 0, 0);
+
+    function orientToAim(model, bone) {
+      bone.updateWorldMatrix(true, false);
+      _aimM.copy(bone.matrixWorld).invert();
+      _aimLocal.copy(A.aimDirection(_v3)).transformDirection(_aimM);
+      if (_aimLocal.lengthSq() < 1e-8) return;
+      _aimLocal.normalize();
+      model.root.quaternion.setFromUnitVectors(FORWARD_Z, _aimLocal);
+    }
+
+    function aimHeldWeapon() {
+      const slot = A.weaponSlots[A.weaponIndex];
+      if (!slot || !slot.model) return;
+
+      if (slot.def.melee) {
+        // Blades follow the hand — pointing them at the crosshair looks wrong.
+        slot.model.root.rotation.copy(MELEE_REST);
+        return;
+      }
+
+      orientToAim(slot.model, A.model.bones.weaponSocket);
+      // Sprinting drops the muzzle into a low-ready carry.
+      if (A.sprinting || A.sliding) slot.model.root.rotateX(0.62);
+      if (slot.offModel) orientToAim(slot.offModel, A.model.bones.offhandSocket);
+    }
 
     function applyRootTilt() {
       const rt = A.animator.current.rootTilt;
@@ -11365,6 +11532,18 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     };
 
     A.setPoseOverride = function (pose) { A.animator.setPoseOverride(pose); };
+
+    /** Character-expression emote. Cancelled by anything that matters. */
+    const EMOTES = ['wave', 'flex', 'taunt', 'point'];
+    A.playEmote = function (kind) {
+      if (!A.alive || !A.grounded || A.planarSpeed > 1.2 || A.weapon.firing) return false;
+      const personality = charDef.personality || {};
+      const chosen = kind || (personality.tauntPose ? 'taunt' : U.pick(Math.random, EMOTES));
+      A.animator.playAction('emote', 1.5, { kind: chosen });
+      HC.Audio.play('ui_click', { position: A.position, pitch: charDef.voice.pitch, volume: 0.5 });
+      A.events.emit('emote', chosen);
+      return true;
+    };
 
     A.dispose = function () {
       A.weaponSlots.forEach(s => {
@@ -11722,7 +11901,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       // Reset per-tick edge-triggered inputs.
       cmd.jumpPressed = false; cmd.dodgePressed = false; cmd.reloadPressed = false;
       cmd.swapPressed = false; cmd.ability1 = false; cmd.ability2 = false;
-      cmd.ultimate = false; cmd.meleePressed = false;
+      cmd.ultimate = false; cmd.meleePressed = false; cmd.emotePressed = false;
 
       if (!actor.health.alive) {
         cmd.moveX = cmd.moveY = 0; cmd.fire = false; cmd.aim = false;
@@ -11983,7 +12162,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       if (camDist > 0.01) {
         toCam.multiplyScalar(1 / camDist);
         const hit = world.raycast(pivot, toCam, camDist + CFG.camera.collisionRadius, null, 'movement');
-        if (hit) allowed = Math.max(0.35, hit.distance - CFG.camera.collisionRadius);
+        if (hit) allowed = Math.max(CFG.camera.minDistance, hit.distance - CFG.camera.collisionRadius);
       }
       // Pull in fast, ease back out slowly — snapping outwards looks broken.
       const rate = allowed < R.currentDistance ? CFG.camera.collisionPullRate : CFG.camera.collisionReturnRate;
@@ -12014,6 +12193,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         R.smoothPos.z = U.damp(R.smoothPos.z, R.position.z, follow, dt);
       }
       camera.position.copy(R.smoothPos);
+      R.distanceToTarget = R.smoothPos.distanceTo(pivot);
 
       R.lookPoint.copy(pivot).addScaledVector(_dir, 40);
       camera.lookAt(R.lookPoint);
@@ -12064,7 +12244,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       // Reset edge triggers each frame.
       cmd.jumpPressed = false; cmd.dodgePressed = false; cmd.reloadPressed = false;
       cmd.swapPressed = false; cmd.ability1 = false; cmd.ability2 = false;
-      cmd.ultimate = false; cmd.meleePressed = false;
+      cmd.ultimate = false; cmd.meleePressed = false; cmd.emotePressed = false;
 
       if (!P.enabled || !a) {
         cmd.moveX = cmd.moveY = 0; cmd.lookYaw = cmd.lookPitch = 0;
@@ -12126,6 +12306,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       cmd.ultimate = I.wasPressed('ultimate') || (I.gamepad.buttons[9] && !P._padUlt);
       P._padUlt = !!I.gamepad.buttons[9];
 
+      cmd.emotePressed = I.wasPressed('emote');
       if (I.wasPressed('swapShoulder')) rig.toggleShoulder();
 
       return cmd;
@@ -12328,15 +12509,27 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         const target = info.target;
         if (!target) return null;
 
-        // Deployables take damage but are not combatants.
-        if (target.maxHealth !== undefined && !target.health) {
-          target.health -= info.amount;
-          HC.VFX.impact(info.point || target.position, info.direction ? info.direction.clone().negate() : _v.set(0, 1, 0), 'energy', 0.8);
-          if (target.health <= 0) target.kill();
-          if (info.attacker && info.attacker.isPlayer) A.events.emit('hitmarker', { critical: false, shield: true, killed: target.health <= 0 });
-          return { applied: info.amount, hitShield: true, killed: target.health <= 0 };
+        // Deployables carry a plain numeric health; combatants carry a
+        // HealthComponent. Discriminate on the type, not on truthiness —
+        // a deployable at 0 HP is falsy and would take the wrong branch.
+        if (typeof target.health === 'number') {
+          if (!target.alive) return null;
+          const before = target.health;
+          target.health = Math.max(0, target.health - info.amount);
+          const applied = before - target.health;
+          HC.VFX.impact(info.point || target.position,
+            info.direction ? info.direction.clone().negate() : _v.set(0, 1, 0), 'energy', 0.8);
+          const killed = target.health <= 0;
+          if (killed) target.kill();
+          if (applied > 0 && info.attacker && info.attacker.isPlayer) {
+            A.events.emit('hitmarker', { critical: false, shield: true, killed });
+          }
+          return { applied, toShield: applied, toHealth: 0, toArmor: 0, hitShield: true, killed, critical: false };
         }
-        if (!target.health) return null;
+        if (!target.health || typeof target.health.applyDamage !== 'function') {
+          HC.Log.warn('Arena', 'damage() called on a target with no health component');
+          return null;
+        }
 
         const before = target.health.alive;
         const result = target.health.applyDamage(info);
@@ -12552,6 +12745,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     /* ================================================================== *
      * Update
      * ================================================================== */
+    let shadowCullTimer = 0;
     A.setCamera = function (rig) { A.camera = rig; };
 
     A.start = function () {
@@ -12582,6 +12776,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
       // Soft body separation so players never stand inside each other.
       resolveActorOverlap(dt);
+
+      // Shadow budget: the sun re-renders every caster each frame, so only
+      // actors close enough for their shadow to read keep casting one.
+      shadowCullTimer -= dt;
+      if (shadowCullTimer <= 0) {
+        shadowCullTimer = 0.35;
+        const ref = A.camera && A.camera.camera ? A.camera.camera.position
+          : (A.player ? A.player.position : null);
+        if (ref) {
+          for (let i = 0; i < A.actors.length; i++) {
+            const a = A.actors[i];
+            const near = a.position.distanceTo(ref) < 34;
+            if (a._castsShadow !== near) { a._castsShadow = near; a.model.setCastShadow(near); }
+          }
+        }
+      }
 
       // Deployables
       for (let i = A.deployables.length - 1; i >= 0; i--) {
@@ -13288,6 +13498,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const subtitles = el('div'); subtitles.id = 'hc-subtitles';
     layer.appendChild(subtitles);
 
+    const capture = el('div', 'hc-hidden'); capture.id = 'hc-capture';
+    capture.innerHTML = '<div class="box"><div class="t">Click to Play</div>' +
+      '<div class="s" data-capture-sub>Captures the mouse · ESC to release</div></div>';
+    layer.appendChild(capture);
+
     const perf = el('div'); perf.id = 'hc-perf';
     layer.appendChild(perf);
 
@@ -13317,7 +13532,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       arena.events.on('killFeed', addKillFeedRow);
       arena.events.on('hitmarker', onHitMarker);
       arena.events.on('playerDamaged', onPlayerDamaged);
-      arena.events.on('feed', (e) => H.toast(e.text));
+      // Only surface callouts the local player caused — otherwise nine bots
+      // spam the toast stack with their own ability chatter.
+      arena.events.on('feed', (e) => { if (!e.actor || e.actor === arena.player) H.toast(e.text); });
       arena.events.on('objective', onObjectiveEvent);
       arena.events.on('overtime', () => H.showBanner('OVERTIME', 'SUDDEN DEATH', 2.4, 'var(--armor)'));
       setupAbilityIcons();
@@ -13368,6 +13585,24 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       updateToasts(dt);
       updateBanner(dt);
       updateLowHealth(p);
+      // In drag-look mode the prompt is only needed until the first drag.
+      const needPrompt = H.wantCapture && !HC.Input.locked &&
+        !(HC.Input.dragLook && H._hasDragged);
+      if (HC.Input.dragLook && HC.Input.dragging) H._hasDragged = true;
+      if (HC.Input.dragLook && capture.dataset.mode !== 'drag') {
+        capture.dataset.mode = 'drag';
+        capture.querySelector('.t').textContent = 'Hold & Drag to Aim';
+        capture.querySelector('[data-capture-sub]').textContent =
+          'Mouse capture is blocked here · WASD to move · hold the left button to aim and fire';
+      }
+      capture.classList.toggle('hc-hidden', !needPrompt);
+    };
+
+    /** The game sets this while a match is live and unpaused. */
+    H.wantCapture = false;
+    H.setWantCapture = function (v) {
+      H.wantCapture = !!v;
+      if (!v) capture.classList.add('hc-hidden');
     };
 
     /* --- vitals --- */
@@ -14032,17 +14267,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     (function setupStage() {
       const s = stage.scene;
       s.background = null;
-      const key = new THREE.DirectionalLight(0xdfeaff, 2.1);
+      // Three-point showcase lighting: a bright key, a cool rim to cut the
+      // silhouette out of the background, and a warm kicker on the far side.
+      const key = new THREE.DirectionalLight(0xf2f7ff, 3.6);
       key.position.set(2.6, 4.2, 3.4);
       s.add(key);
-      const rim = new THREE.DirectionalLight(0x58a8ff, 2.6);
+      const rim = new THREE.DirectionalLight(0x6ab8ff, 4.2);
       rim.position.set(-3.2, 2.6, -3.0);
       s.add(rim);
-      const warm = new THREE.PointLight(0xff8a4a, 12, 12, 2);
-      warm.position.set(2.4, 1.2, -2.2);
+      const warm = new THREE.PointLight(0xff8a4a, 160, 14, 2);
+      warm.position.set(2.4, 1.4, -2.2);
       s.add(warm);
-      s.add(new THREE.AmbientLight(0x2a3c58, 1.3));
-      s.add(new THREE.HemisphereLight(0x3a5a86, 0x0a0d14, 0.7));
+      const fillLight = new THREE.PointLight(0x88c8ff, 90, 12, 2);
+      fillLight.position.set(-2.2, 1.0, 2.6);
+      s.add(fillLight);
+      s.add(new THREE.AmbientLight(0x5d7a9e, 1.5));
+      s.add(new THREE.HemisphereLight(0x6a94c8, 0x1a2230, 1.4));
 
       // Stage floor: a lit disc so the hero is not floating in a void.
       const discGeo = new THREE.CylinderGeometry(1.35, 1.5, 0.10, 48);
@@ -14085,7 +14325,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         glowColor: stage.model.vfxColors.muzzle
       });
       stage.model.bones.weaponSocket.add(stage.weapon.root);
-      stage.weapon.root.rotation.set(-Math.PI / 2 + 0.10, 0, 0);
+      stage.weapon.root.rotation.set(Math.PI * 0.5, 0, 0);
       stage.animator.setWeaponShape(!!HC.Weapons.get(charDef.weapon).akimbo, !!HC.Weapons.get(charDef.weapon).melee);
 
       // Frame the hero: taller heroes get pushed back a little.
@@ -14095,6 +14335,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       stage.ring.material.color.set(charDef.palette.accent);
     };
 
+    // Same solve the actor uses in-match: express the model's forward axis in
+    // the hand socket's frame and rotate the weapon's +Z onto it, so the
+    // showcase pose matches what you get in the arena.
+    const _stageM = new THREE.Matrix4();
+    const _stageDir = new THREE.Vector3();
+    const STAGE_FORWARD = new THREE.Vector3(0, 0, 1);
+
     stage.update = function (dt) {
       if (!stage.enabled || !stage.model) return;
       stage.time += dt;
@@ -14102,6 +14349,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       stage.model.root.rotation.y = stage.rotation + Math.sin(stage.time * 0.4) * 0.06;
       stage.ring.rotation.z += dt * 0.4;
       stage.animator.update(dt);
+
+      if (stage.weapon && !stage.weapon.melee) {
+        const socket = stage.model.bones.weaponSocket;
+        socket.updateWorldMatrix(true, false);
+        _stageDir.copy(STAGE_FORWARD).applyQuaternion(stage.model.root.quaternion);
+        _stageM.copy(socket.matrixWorld).invert();
+        _stageDir.transformDirection(_stageM);
+        if (_stageDir.lengthSq() > 1e-8) {
+          stage.weapon.root.quaternion.setFromUnitVectors(STAGE_FORWARD, _stageDir.normalize());
+        }
+      }
     };
 
     stage.render = function () {
@@ -14989,6 +15247,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       gl_FragColor = vec4(col, 1.0);
     }`;
 
+  const BLEND_FS = `
+    uniform sampler2D tCurrent;
+    uniform sampler2D tHistory;
+    uniform float uAmount;
+    varying vec2 vUv;
+    void main() {
+      vec3 cur = texture2D(tCurrent, vUv).rgb;
+      vec3 his = texture2D(tHistory, vUv).rgb;
+      gl_FragColor = vec4(mix(cur, his, uAmount), 1.0);
+    }`;
+
+  const COPY_FS = `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main() { gl_FragColor = vec4(texture2D(tDiffuse, vUv).rgb, 1.0); }`;
+
   HC.PostFX = function PostFX(renderer) {
     const P = {
       renderer, enabled: true, width: 1, height: 1,
@@ -15033,6 +15307,32 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       vertexShader: QUAD_VS, fragmentShader: COMPOSITE_FS, depthTest: false, depthWrite: false
     });
 
+    const blendMat = new THREE.ShaderMaterial({
+      uniforms: { tCurrent: { value: null }, tHistory: { value: null }, uAmount: { value: 0 } },
+      vertexShader: QUAD_VS, fragmentShader: BLEND_FS, depthTest: false, depthWrite: false
+    });
+    const copyMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: QUAD_VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false
+    });
+
+    /* Motion blur is a temporal smear whose weight follows how fast the
+     * camera is actually turning, so it only appears when you whip the view
+     * around — never as a permanent softening of the image. */
+    P.motionAmount = 0;
+    const _prevQuat = new THREE.Quaternion();
+    let _hasPrevQuat = false;
+
+    P.updateMotion = function (camera, dt) {
+      if (!CFG.gfx.motionBlur || dt <= 0) { P.motionAmount = 0; _hasPrevQuat = false; return; }
+      if (!_hasPrevQuat) { _prevQuat.copy(camera.quaternion); _hasPrevQuat = true; P.motionAmount = 0; return; }
+      const angle = 2 * Math.acos(Math.min(1, Math.abs(_prevQuat.dot(camera.quaternion))));
+      _prevQuat.copy(camera.quaternion);
+      const rate = angle / dt;                       // radians per second
+      const target = U.clamp01((rate - 0.6) / 5.0) * 0.55;
+      P.motionAmount = U.damp(P.motionAmount, target, 22, dt);
+    };
+
     P.setSize = function (width, height) {
       P.width = width; P.height = height;
       if (P._targets) P._targets.forEach(t => t.dispose());
@@ -15053,7 +15353,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         P.levels.push({ a: makeTarget(w, h), b: makeTarget(w, h), w, h });
         w /= 2; h /= 2;
       }
-      P._targets = [P.bright].concat(P.levels.reduce((acc, l) => acc.concat([l.a, l.b]), []));
+      P.post = makeTarget(width, height);
+      P.history = [makeTarget(width, height), makeTarget(width, height)];
+      P.historyIndex = 0;
+      P.historyValid = false;
+
+      P._targets = [P.bright, P.post, P.history[0], P.history[1]]
+        .concat(P.levels.reduce((acc, l) => acc.concat([l.a, l.b]), []));
     };
 
     function draw(material, target) {
@@ -15101,14 +15407,39 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       compositeMat.uniforms.tBloom1.value = P.levels[1].b.texture;
       compositeMat.uniforms.tBloom2.value = P.levels[2].b.texture;
       compositeMat.uniforms.uStrength.value = CFG.gfx.bloomStrength * (CFG.access.reduceFlashing ? 0.6 : 1);
-      draw(compositeMat, null);
+
+      const blurAmount = CFG.gfx.motionBlur ? P.motionAmount : 0;
+      if (blurAmount <= 0.004) {
+        draw(compositeMat, null);
+        P.historyValid = false;
+        return;
+      }
+
+      // composite -> post, blend with history -> next history, then to screen.
+      draw(compositeMat, P.post);
+      const prev = P.history[P.historyIndex];
+      const next = P.history[1 - P.historyIndex];
+
+      blendMat.uniforms.tCurrent.value = P.post.texture;
+      blendMat.uniforms.tHistory.value = P.historyValid ? prev.texture : P.post.texture;
+      blendMat.uniforms.uAmount.value = P.historyValid ? blurAmount : 0;
+      draw(blendMat, next);
+
+      copyMat.uniforms.tDiffuse.value = next.texture;
+      draw(copyMat, null);
+
+      P.historyIndex = 1 - P.historyIndex;
+      P.historyValid = true;
     };
 
     P.dispose = function () {
       if (P._targets) P._targets.forEach(t => t.dispose());
       if (P.sceneTarget) P.sceneTarget.dispose();
+      if (P.post) P.post.dispose();
+      if (P.history) P.history.forEach(t => t.dispose());
       quadGeo.dispose();
       brightMat.dispose(); blurMat.dispose(); compositeMat.dispose();
+      blendMat.dispose(); copyMat.dispose();
     };
 
     return P;
@@ -15263,9 +15594,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       window.addEventListener('pointerdown', unlock);
       window.addEventListener('keydown', unlock);
 
-      G.renderer.domElement.addEventListener('click', () => {
-        if (G.state === 'match' && !G.paused && !HC.Input.locked) HC.Input.requestLock();
-      });
+      // Any click inside the viewport re-arms mouse capture. Browsers refuse
+      // pointer lock outside a user gesture, so the deploy-time request often
+      // fails and this is the recovery path.
+      const grab = () => {
+        if ((G.state === 'match' || G.state === 'countdown') && !G.paused &&
+            !G.menus.current && !HC.Input.locked) {
+          HC.Input.requestLock();
+        }
+      };
+      G.renderer.domElement.addEventListener('mousedown', grab);
+      container.addEventListener('mousedown', (e) => { if (e.target === container) grab(); });
 
       window.addEventListener('error', (e) => {
         HC.Log.error('Runtime', e.message, e.filename + ':' + e.lineno);
@@ -15579,6 +15918,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       }
 
       G.frame++;
+      G.lastFrameDt = dt;
       trackFps(dt);
 
       try {
@@ -15662,12 +16002,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
       G.arena.playerCommands = G.controller.update(dt);
       stepWorld(scaled, false);
+      fadeLocalModel();
 
       musicTimer -= dt;
       if (musicTimer <= 0) { musicTimer = 1.0; updateMusicIntensity(); }
       HC.Music.update(dt);
 
       if (G.scoreboardOpen) G.hud.setScoreboard(true);
+      G.hud.setWantCapture(!G.paused && !G.menus.current);
       G.hud.update(dt);
 
       if (G.frame % 24 === 0) {
@@ -15702,6 +16044,28 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       updateAmbience(dt);
     }
 
+    /**
+     * When cover forces the camera in tight, dissolve the local player so
+     * they never become a wall between the crosshair and the fight.
+     */
+    let lastLocalFade = -1;
+    function fadeLocalModel() {
+      const p = G.arena && G.arena.player;
+      if (!p || !G.rig) return;
+      const d = G.rig.distanceToTarget === undefined ? CFG.camera.distance : G.rig.distanceToTarget;
+      const a = CFG.camera.fadeEndDistance, b = CFG.camera.fadeStartDistance;
+      let fade = U.clamp01((d - a) / Math.max(0.01, b - a));
+      // Cloak already owns the model's opacity; don't fight it.
+      if (p.cloakBlend > 0.02) fade = 1;
+      fade = Math.max(fade, 0.06);
+      if (Math.abs(fade - lastLocalFade) < 0.01) return;
+      lastLocalFade = fade;
+      if (p.cloakBlend <= 0.02) {
+        p.model.setOpacity(fade);
+        p.weaponSlots.forEach(s => s.model.setOpacity(Math.max(fade, 0.35)));
+      }
+    }
+
     let ambienceTimer = 0;
     function updateAmbience(dt) {
       ambienceTimer -= dt;
@@ -15725,6 +16089,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     function render() {
       const r = G.renderer;
       r.info.reset();
+      G.postfx.updateMotion(G.camera, G.lastFrameDt || 0);
       r.setViewport(0, 0, G.width, G.height);
       if (G.scene && (G.state === 'match' || G.state === 'countdown' ||
           G.state === 'intro' || G.state === 'ending')) {
@@ -15749,6 +16114,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       G.camera.updateProjectionMatrix();
       const dpr = G.renderer.getPixelRatio();
       G.postfx.setSize(Math.floor(w * dpr), Math.floor(h * dpr));
+      HC.VFX.setViewportHeight(Math.floor(h * dpr));
       G.menus.onResize();
     };
 

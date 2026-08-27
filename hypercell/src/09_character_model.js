@@ -104,9 +104,10 @@
   }
 
   /** Lathe profile builder for torsos, helmets, hair shells. */
-  function lathe(points, seg, phiLength) {
+  function lathe(points, seg, phiLength, phiStart) {
     const v = points.map(p => new THREE.Vector2(Math.max(0.0001, p[0]), p[1]));
-    return new THREE.LatheGeometry(v, seg || SEG.mid, 0, phiLength === undefined ? U.TAU : phiLength);
+    return new THREE.LatheGeometry(v, seg || SEG.mid, phiStart || 0,
+      phiLength === undefined ? U.TAU : phiLength);
   }
 
   function sphere(r, seg) { return new THREE.SphereGeometry(r, seg || SEG.mid, Math.max(6, (seg || SEG.mid) / 2)); }
@@ -612,56 +613,101 @@
       }
     }
 
-    /* --- hair --- */
+    /* --- hair ------------------------------------------------------------
+     * A full lathe would revolve straight across the face. Hair is therefore
+     * built as a crown (above the brow, all the way round) plus a back-and-
+     * sides skirt that stops short of the face, leaving a real hairline.
+     * LatheGeometry measures phi from +Z, so the gap is centred on the front. */
     const hairStyle = gear.hair;
     if (hairStyle && hairStyle !== 'none' && !sealed) {
+      const FACE_GAP = 1.55;                       // radians left open at the front
+      const BACK_START = FACE_GAP * 0.5;
+      const BACK_LEN = U.TAU - FACE_GAP;
+
+      /** Skull cap sitting above the brow — safe to revolve fully. */
+      function crown(lift, thick) {
+        C.add('head', lathe([
+          [r * (1.01 + thick), r * (0.30 + lift)],
+          [r * (1.03 + thick), r * (0.58 + lift)],
+          [r * (0.70 + thick), r * (1.00 + lift)],
+          [0.001, r * (1.12 + lift)]
+        ], SEG.high), M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+      }
+
+      /** Back and sides, dropping to `bottom` (in head radii). */
+      function skirt(bottom, thick) {
+        C.add('head', lathe([
+          [r * (1.02 + thick), r * bottom],
+          [r * (1.05 + thick), r * 0.10],
+          [r * (1.04 + thick), r * 0.44]
+        ], SEG.high, BACK_LEN, BACK_START), M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+      }
+
+      /** Fringe swept across the forehead. */
+      function fringe(drop, sweep) {
+        C.add('head', plate(r * 1.34, r * drop, r * 0.20, r * 0.16, 1.0), M.hair,
+          { pos: [0, r * (0.48 - drop * 0.35), r * 0.74], rot: [-0.28, 0, sweep || 0] });
+      }
+
       switch (hairStyle) {
         case 'buzz':
-          C.add('head', lathe([[r * 0.98, r * 0.05], [r * 0.92, r * 0.55], [r * 0.50, r * 1.02], [0.001, r * 1.10]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.04] });
+          crown(-0.06, -0.01);
+          skirt(-0.06, -0.015);
           break;
+
         case 'short_fade':
-          C.add('head', lathe([[r * 1.02, -r * 0.10], [r * 1.05, r * 0.42], [r * 0.72, r * 0.95], [0.001, r * 1.14]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, -r * 0.02], scale: [1.02, 1, 1.05] });
-          C.add('head', plate(r * 1.0, r * 0.26, r * 0.28, r * 0.12, 0.9), M.hair,
-            { pos: [0, r * 0.72, r * 0.66], rot: [-0.3, 0, 0] });
+          crown(0, 0);
+          skirt(-0.16, -0.01);
+          fringe(0.30, 0.10);
           break;
+
         case 'messy':
-          C.add('head', lathe([[r * 1.06, -r * 0.05], [r * 1.10, r * 0.45], [r * 0.70, r * 1.0], [0.001, r * 1.16]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.04, 1, 1.06] });
+          crown(0.02, 0.03);
+          skirt(-0.12, 0.02);
+          fringe(0.34, -0.14);
           for (let i = 0; i < 6; i++) {
             const a = (i / 6) * U.TAU;
-            C.add('head', cone(r * 0.16, r * 0.44, 5), M.hair,
-              { pos: [Math.cos(a) * r * 0.62, r * 1.02, Math.sin(a) * r * 0.62], rot: [Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7] });
+            C.add('head', cone(r * 0.15, r * 0.42, 5), M.hair,
+              { pos: [Math.cos(a) * r * 0.58, r * 1.06, Math.sin(a) * r * 0.58],
+                rot: [Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7] });
           }
           break;
+
         case 'high_ponytail':
-          C.add('head', lathe([[r * 1.02, -r * 0.05], [r * 1.06, r * 0.45], [r * 0.66, r * 1.02], [0.001, r * 1.12]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+          crown(0, 0);
+          skirt(-0.10, -0.01);
+          fringe(0.26, 0.18);
           C.add('headTop', capsule(r * 0.24, r * 1.5, SEG.low), M.hair,
             { pos: [0, r * 0.05, -r * 0.95], rot: [1.15, 0, 0] });
           C.add('headTop', capsule(r * 0.15, r * 0.9, SEG.low), M.hair,
             { pos: [r * 0.16, -r * 0.35, -r * 1.5], rot: [1.45, 0, 0.2] });
           break;
+
         case 'undercut_long':
-          C.add('head', lathe([[r * 1.0, r * 0.0], [r * 1.08, r * 0.5], [r * 0.62, r * 1.04], [0.001, r * 1.12]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
-          [-1, 1].forEach(s => C.add('head', plate(r * 0.34, r * 1.5, r * 0.26, r * 0.14, 0.5), M.hair,
-            { pos: [s * r * 0.86, -r * 0.30, r * 0.12], rot: [0, 0, s * 0.10] }));
+          crown(0.02, 0.01);
+          skirt(-0.30, 0.0);
+          fringe(0.42, -0.24);
+          [-1, 1].forEach(s => C.add('head', plate(r * 0.30, r * 1.4, r * 0.24, r * 0.13, 0.5), M.hair,
+            { pos: [s * r * 0.88, -r * 0.34, r * 0.06], rot: [0, 0, s * 0.10] }));
           break;
+
         case 'braids':
-          C.add('head', lathe([[r * 1.02, -r * 0.02], [r * 1.06, r * 0.48], [r * 0.66, r * 1.02], [0.001, r * 1.12]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0] });
+          crown(0, 0);
+          skirt(-0.14, -0.01);
+          fringe(0.24, 0);
           [-1, 1].forEach(s => {
             for (let i = 0; i < 4; i++) {
               C.add('head', sphere(r * 0.16, SEG.low), M.hair,
-                { pos: [s * r * 0.72, -r * (0.15 + i * 0.34), -r * (0.2 + i * 0.12)], scale: [0.9, 0.8, 1.1] });
+                { pos: [s * r * 0.72, -r * (0.15 + i * 0.34), -r * (0.2 + i * 0.12)],
+                  scale: [0.9, 0.8, 1.1] });
             }
           });
           break;
+
         case 'long_flow': case 'void_flow': case 'void_veil': case 'mane': case 'prism_crest':
-          C.add('head', lathe([[r * 1.03, -r * 0.05], [r * 1.10, r * 0.5], [r * 0.66, r * 1.05], [0.001, r * 1.14]], SEG.high),
-            M.hair, { pos: [0, r * 0.10, 0], scale: [1.03, 1, 1.06] });
+          crown(0.02, 0.02);
+          skirt(-0.34, 0.01);
+          fringe(0.40, 0.16);
           for (let i = 0; i < 7; i++) {
             const a = -Math.PI * 0.5 + (i / 6) * Math.PI;
             C.add('head', capsule(r * 0.17, r * (1.4 + (i % 2) * 0.5), SEG.low), M.hair,
@@ -669,9 +715,11 @@
                 rot: [0.12, 0, Math.cos(a) * 0.22] });
           }
           break;
+
         default:
-          C.add('head', lathe([[r * 1.02, 0], [r * 1.04, r * 0.5], [r * 0.66, r * 1.02], [0.001, r * 1.12]], SEG.mid),
-            M.hair, { pos: [0, r * 0.10, 0] });
+          crown(0, 0);
+          skirt(-0.12, 0);
+          fringe(0.28, 0);
       }
     }
   }

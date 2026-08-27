@@ -150,7 +150,7 @@
       if (camDist > 0.01) {
         toCam.multiplyScalar(1 / camDist);
         const hit = world.raycast(pivot, toCam, camDist + CFG.camera.collisionRadius, null, 'movement');
-        if (hit) allowed = Math.max(0.35, hit.distance - CFG.camera.collisionRadius);
+        if (hit) allowed = Math.max(CFG.camera.minDistance, hit.distance - CFG.camera.collisionRadius);
       }
       // Pull in fast, ease back out slowly — snapping outwards looks broken.
       const rate = allowed < R.currentDistance ? CFG.camera.collisionPullRate : CFG.camera.collisionReturnRate;
@@ -181,6 +181,7 @@
         R.smoothPos.z = U.damp(R.smoothPos.z, R.position.z, follow, dt);
       }
       camera.position.copy(R.smoothPos);
+      R.distanceToTarget = R.smoothPos.distanceTo(pivot);
 
       R.lookPoint.copy(pivot).addScaledVector(_dir, 40);
       camera.lookAt(R.lookPoint);
@@ -231,7 +232,7 @@
       // Reset edge triggers each frame.
       cmd.jumpPressed = false; cmd.dodgePressed = false; cmd.reloadPressed = false;
       cmd.swapPressed = false; cmd.ability1 = false; cmd.ability2 = false;
-      cmd.ultimate = false; cmd.meleePressed = false;
+      cmd.ultimate = false; cmd.meleePressed = false; cmd.emotePressed = false;
 
       if (!P.enabled || !a) {
         cmd.moveX = cmd.moveY = 0; cmd.lookYaw = cmd.lookPitch = 0;
@@ -293,6 +294,7 @@
       cmd.ultimate = I.wasPressed('ultimate') || (I.gamepad.buttons[9] && !P._padUlt);
       P._padUlt = !!I.gamepad.buttons[9];
 
+      cmd.emotePressed = I.wasPressed('emote');
       if (I.wasPressed('swapShoulder')) rig.toggleShoulder();
 
       return cmd;

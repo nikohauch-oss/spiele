@@ -72,9 +72,15 @@ Läuft der Rechner ohne GPU-Beschleunigung, in den Einstellungen
 | `R` | Nachladen · `X` Waffenwechsel |
 | `E` | Fähigkeit 1 · `F` Fähigkeit 2 · `G` Ultimate |
 | `V` | Schulterwechsel |
+| `B` | Emote |
 | `Tab` | Scoreboard (halten) |
 | `Esc` | Pause |
 | Gamepad | Vollständig unterstützt (Deadzone + Kurve einstellbar) |
+
+Das Spiel fängt die Maus per Pointer-Lock ein (einmal ins Bild klicken).
+Ist Pointer-Lock blockiert — etwa in einem eingebetteten Fenster — schaltet
+das Spiel automatisch auf **Ziehen zum Zielen** um: linke Maustaste halten und
+ziehen. Es bleibt also in jedem Kontext spielbar.
 
 Alle Tasten sind im Menü unter **Settings → Controls** frei belegbar.
 
@@ -251,6 +257,9 @@ Ehrlichkeit vor Feature-Liste (§61, §63):
 * **Nur eine Karte.** NOVA DISTRICT ist vollständig ausgebaut; weitere Karten
   wären neue Dateien nach demselben Muster.
 * **Kein Shop / Battle Pass.** In der Vorgabe als „optional später" markiert.
+* **Kein EXIT-Knopf im Hauptmenü.** Ein Browser-Tab kann sich nicht selbst
+  schließen. Ein Knopf, der nichts tut, wäre genau die Art von Schein-System,
+  die §63 verbietet — deshalb fehlt er bewusst.
 
 Alles andere aus dem Master-Prompt ist implementiert und funktioniert —
 insbesondere gibt es kein System, das nur so aussieht, als täte es etwas.

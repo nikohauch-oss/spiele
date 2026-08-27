@@ -45,25 +45,25 @@
 
     /* ---- material palette -------------------------------------------- */
     const M = {
-      asphalt: Mats.make({ kind: 'asphalt', color: 0x24272e, roughness: 0.94, metalness: 0.02,
+      asphalt: Mats.make({ kind: 'asphalt', color: 0x3d434e, roughness: 0.90, metalness: 0.04,
         repeat: 26, seed: 3, rim: { color: 0x2a3a52, strength: 0.10, power: 4.0 } }),
-      sidewalk: Mats.make({ kind: 'concrete', color: 0x3c4049, roughness: 0.90, repeat: 14, seed: 5,
+      sidewalk: Mats.make({ kind: 'concrete', color: 0x5f6675, roughness: 0.86, repeat: 14, seed: 5,
         rim: { color: 0x33506e, strength: 0.12, power: 4.0 } }),
-      plaza: Mats.make({ kind: 'concrete', color: 0x494f5c, roughness: 0.72, repeat: 12, seed: 9,
+      plaza: Mats.make({ kind: 'concrete', color: 0x6d7688, roughness: 0.68, repeat: 12, seed: 9,
         rim: { color: 0x3a6a94, strength: 0.14, power: 3.6 } }),
-      wallLight: Mats.make({ kind: 'concrete', color: 0x6a7180, roughness: 0.82, repeat: 5, seed: 11,
+      wallLight: Mats.make({ kind: 'concrete', color: 0x97a1b2, roughness: 0.78, repeat: 5, seed: 11,
         rim: { color: 0x4a7ba8, strength: 0.16, power: 3.4 } }),
-      wallDark: Mats.make({ kind: 'concrete', color: 0x2e333d, roughness: 0.86, repeat: 5, seed: 13,
+      wallDark: Mats.make({ kind: 'concrete', color: 0x4c5568, roughness: 0.84, repeat: 5, seed: 13,
         rim: { color: 0x3f6a92, strength: 0.16, power: 3.4 } }),
-      wallWarm: Mats.make({ kind: 'concrete', color: 0x5a4a44, roughness: 0.84, repeat: 5, seed: 17,
+      wallWarm: Mats.make({ kind: 'concrete', color: 0x8a6f60, roughness: 0.80, repeat: 5, seed: 17,
         rim: { color: 0x8a6a4a, strength: 0.14, power: 3.4 } }),
-      panel: Mats.make({ kind: 'plate', color: 0x39404d, roughness: 0.52, metalness: 0.62, repeat: 3, seed: 19,
+      panel: Mats.make({ kind: 'plate', color: 0x5b6577, roughness: 0.46, metalness: 0.62, repeat: 3, seed: 19,
         rim: { color: 0x6ab0e0, strength: 0.22, power: 3.0 } }),
       steel: Mats.make({ kind: 'metal', color: 0x7d8695, roughness: 0.38, metalness: 0.92, repeat: 4, seed: 23,
         rim: { color: 0xa8d4ff, strength: 0.22, power: 3.2 } }),
-      darkSteel: Mats.make({ kind: 'metal', color: 0x363c47, roughness: 0.46, metalness: 0.88, repeat: 4, seed: 29,
+      darkSteel: Mats.make({ kind: 'metal', color: 0x565f6d, roughness: 0.42, metalness: 0.88, repeat: 4, seed: 29,
         rim: { color: 0x5f9ad0, strength: 0.20, power: 3.2 } }),
-      rust: Mats.make({ kind: 'metal', color: 0x6b4530, roughness: 0.78, metalness: 0.55, repeat: 3, seed: 31,
+      rust: Mats.make({ kind: 'metal', color: 0x8d5e42, roughness: 0.74, metalness: 0.55, repeat: 3, seed: 31,
         rim: { color: 0x9a6a4a, strength: 0.16, power: 3.4 } }),
       glass: Mats.make({ kind: 'glass', color: 0x8fc4e8, opacity: 0.22, roughness: 0.05, metalness: 0.2 }),
       windowLit: Mats.make({ kind: 'plate', color: 0x1a2230, emissive: 0xffca7a, emissiveIntensity: 1.35,
@@ -75,19 +75,19 @@
       neonC: Mats.additive(0xb46bff, 0.95),
       neonD: Mats.additive(0x3fe0a0, 0.95),
       neonE: Mats.additive(0xffb02e, 0.95),
-      grass: Mats.make({ kind: 'fabric', color: 0x35502f, roughness: 0.96, repeat: 8, seed: 43,
+      grass: Mats.make({ kind: 'fabric', color: 0x4e7444, roughness: 0.94, repeat: 8, seed: 43,
         rim: { color: 0x5a8a4a, strength: 0.14, power: 3.6 } }),
-      foliage: Mats.make({ kind: 'fabric', color: 0x2f5c33, roughness: 0.92, repeat: 3, seed: 47, flatShading: true,
+      foliage: Mats.make({ kind: 'fabric', color: 0x46864b, roughness: 0.90, repeat: 3, seed: 47, flatShading: true,
         rim: { color: 0x6ab06a, strength: 0.22, power: 2.8 } }),
-      wood: Mats.make({ kind: 'leather', color: 0x6a4a2c, roughness: 0.86, repeat: 3, seed: 53,
+      wood: Mats.make({ kind: 'leather', color: 0x936a44, roughness: 0.84, repeat: 3, seed: 53,
         rim: { color: 0x9a7a4a, strength: 0.14, power: 3.4 } }),
-      paintA: Mats.make({ kind: 'plate', color: 0x1f5a86, roughness: 0.48, metalness: 0.3, repeat: 2, seed: 59,
+      paintA: Mats.make({ kind: 'plate', color: 0x2f7fb8, roughness: 0.44, metalness: 0.3, repeat: 2, seed: 59,
         rim: { color: 0x6ab0e0, strength: 0.20, power: 3.0 } }),
-      paintB: Mats.make({ kind: 'plate', color: 0x8a2f2a, roughness: 0.48, metalness: 0.3, repeat: 2, seed: 61,
+      paintB: Mats.make({ kind: 'plate', color: 0xb8443c, roughness: 0.44, metalness: 0.3, repeat: 2, seed: 61,
         rim: { color: 0xe08a6a, strength: 0.20, power: 3.0 } }),
       paintC: Mats.make({ kind: 'plate', color: 0xc7b24a, roughness: 0.50, metalness: 0.25, repeat: 2, seed: 67,
         rim: { color: 0xf0e0a0, strength: 0.20, power: 3.0 } }),
-      rubberMat: Mats.make({ kind: 'rubber', color: 0x14161a, roughness: 0.96, repeat: 4, seed: 71, rim: false }),
+      rubberMat: Mats.make({ kind: 'rubber', color: 0x24272d, roughness: 0.94, repeat: 4, seed: 71, rim: false }),
       teamA: Mats.make({ kind: 'plate', color: HC.PALETTE.teamA, emissive: HC.PALETTE.teamA,
         emissiveIntensity: 0.85, roughness: 0.45, metalness: 0.4, repeat: 2, seed: 73, rim: false }),
       teamB: Mats.make({ kind: 'plate', color: HC.PALETTE.teamB, emissive: HC.PALETTE.teamB,
@@ -309,8 +309,12 @@
       return { cx, cz, w, d, h, roofY: h + 0.6 };
     }
 
+    // three uses inverse-square falloff (decay 2), so intensity is closer to
+    // candela than to a 0..1 dimmer. A value of 1 is invisible past a metre —
+    // everything here is scaled into a range that actually lights the street.
+    const LIGHT_SCALE = 26;
     function makePointLight(x, y, z, color, intensity, distance) {
-      const l = new THREE.PointLight(color, intensity, distance, 2);
+      const l = new THREE.PointLight(color, intensity * LIGHT_SCALE, distance, 2);
       l.position.set(x, y, z);
       result.root.add(l);
       return l;
@@ -675,8 +679,8 @@
     });
 
     // Distant skyline — silhouettes only, no collision, big depth payoff.
-    const skyMat = Mats.make({ kind: 'plate', color: 0x0d1420, roughness: 0.9, metalness: 0.1, rim: false });
-    const skyWin = Mats.make({ kind: 'plate', color: 0x101a28, emissive: 0x4a7ab8, emissiveIntensity: 0.65, rim: false });
+    const skyMat = Mats.make({ kind: 'plate', color: 0x1b273c, roughness: 0.9, metalness: 0.1, rim: false });
+    const skyWin = Mats.make({ kind: 'plate', color: 0x142032, emissive: 0x74a8e8, emissiveIntensity: 1.4, rim: false });
     for (let i = 0; i < 68; i++) {
       const a = (i / 68) * U.TAU + rnd() * 0.05;
       const dist = 96 + rnd() * 74;
@@ -726,10 +730,10 @@
       world.shapeCount + ' collision shapes, ' + lights.length + ' point lights');
 
     /* --- key lighting --- */
-    const hemi = new THREE.HemisphereLight(0x2e4a72, 0x14161c, 0.55);
+    const hemi = new THREE.HemisphereLight(0x4a7ab8, 0x2a2f38, 1.15);
     result.root.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xbfd4ff, 1.35);
+    const sun = new THREE.DirectionalLight(0xcfe0ff, 2.35);
     sun.position.set(-42, 58, -28);
     sun.target.position.set(0, 0, 6);
     sun.castShadow = CFG.gfx.shadows;
@@ -748,12 +752,12 @@
     result.hemi = hemi;
 
     // Warm fill from the opposite side keeps characters readable in shadow.
-    const fill = new THREE.DirectionalLight(0xff9a6a, 0.42);
+    const fill = new THREE.DirectionalLight(0xff9a6a, 0.85);
     fill.position.set(48, 26, 40);
     result.root.add(fill);
 
     // Ambient bounce so nothing ever goes fully black.
-    const amb = new THREE.AmbientLight(0x384a68, 0.42);
+    const amb = new THREE.AmbientLight(0x4d6288, 0.85);
     result.root.add(amb);
 
     /* --- sky dome + fog --- */
@@ -761,9 +765,9 @@
     const skyMatDome = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        uTop: { value: new THREE.Color(0x060b16) },
-        uMid: { value: new THREE.Color(0x16294a) },
-        uBottom: { value: new THREE.Color(0x3a2a3e) }
+        uTop: { value: new THREE.Color(0x0d1830) },
+        uMid: { value: new THREE.Color(0x27467c) },
+        uBottom: { value: new THREE.Color(0x6b4468) }
       },
       vertexShader: 'varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader:
@@ -778,7 +782,8 @@
     result.root.add(skyMesh);
     disposables.push(skyGeo, skyMatDome);
 
-    scene.fog = CFG.gfx.fogEnabled ? new THREE.Fog(0x101a2e, CFG.gfx.fogNear, CFG.gfx.fogFar * CFG.gfx.viewDistance) : null;
+    scene.fog = CFG.gfx.fogEnabled
+      ? new THREE.Fog(0x24365c, CFG.gfx.fogNear, CFG.gfx.fogFar * CFG.gfx.viewDistance) : null;
     scene.background = null;
 
     scene.add(result.root);

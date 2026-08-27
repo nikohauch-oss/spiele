@@ -86,6 +86,22 @@
       gl_FragColor = vec4(col, 1.0);
     }`;
 
+  const BLEND_FS = `
+    uniform sampler2D tCurrent;
+    uniform sampler2D tHistory;
+    uniform float uAmount;
+    varying vec2 vUv;
+    void main() {
+      vec3 cur = texture2D(tCurrent, vUv).rgb;
+      vec3 his = texture2D(tHistory, vUv).rgb;
+      gl_FragColor = vec4(mix(cur, his, uAmount), 1.0);
+    }`;
+
+  const COPY_FS = `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main() { gl_FragColor = vec4(texture2D(tDiffuse, vUv).rgb, 1.0); }`;
+
   HC.PostFX = function PostFX(renderer) {
     const P = {
       renderer, enabled: true, width: 1, height: 1,
@@ -130,6 +146,32 @@
       vertexShader: QUAD_VS, fragmentShader: COMPOSITE_FS, depthTest: false, depthWrite: false
     });
 
+    const blendMat = new THREE.ShaderMaterial({
+      uniforms: { tCurrent: { value: null }, tHistory: { value: null }, uAmount: { value: 0 } },
+      vertexShader: QUAD_VS, fragmentShader: BLEND_FS, depthTest: false, depthWrite: false
+    });
+    const copyMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: QUAD_VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false
+    });
+
+    /* Motion blur is a temporal smear whose weight follows how fast the
+     * camera is actually turning, so it only appears when you whip the view
+     * around — never as a permanent softening of the image. */
+    P.motionAmount = 0;
+    const _prevQuat = new THREE.Quaternion();
+    let _hasPrevQuat = false;
+
+    P.updateMotion = function (camera, dt) {
+      if (!CFG.gfx.motionBlur || dt <= 0) { P.motionAmount = 0; _hasPrevQuat = false; return; }
+      if (!_hasPrevQuat) { _prevQuat.copy(camera.quaternion); _hasPrevQuat = true; P.motionAmount = 0; return; }
+      const angle = 2 * Math.acos(Math.min(1, Math.abs(_prevQuat.dot(camera.quaternion))));
+      _prevQuat.copy(camera.quaternion);
+      const rate = angle / dt;                       // radians per second
+      const target = U.clamp01((rate - 0.6) / 5.0) * 0.55;
+      P.motionAmount = U.damp(P.motionAmount, target, 22, dt);
+    };
+
     P.setSize = function (width, height) {
       P.width = width; P.height = height;
       if (P._targets) P._targets.forEach(t => t.dispose());
@@ -150,7 +192,13 @@
         P.levels.push({ a: makeTarget(w, h), b: makeTarget(w, h), w, h });
         w /= 2; h /= 2;
       }
-      P._targets = [P.bright].concat(P.levels.reduce((acc, l) => acc.concat([l.a, l.b]), []));
+      P.post = makeTarget(width, height);
+      P.history = [makeTarget(width, height), makeTarget(width, height)];
+      P.historyIndex = 0;
+      P.historyValid = false;
+
+      P._targets = [P.bright, P.post, P.history[0], P.history[1]]
+        .concat(P.levels.reduce((acc, l) => acc.concat([l.a, l.b]), []));
     };
 
     function draw(material, target) {
@@ -198,14 +246,39 @@
       compositeMat.uniforms.tBloom1.value = P.levels[1].b.texture;
       compositeMat.uniforms.tBloom2.value = P.levels[2].b.texture;
       compositeMat.uniforms.uStrength.value = CFG.gfx.bloomStrength * (CFG.access.reduceFlashing ? 0.6 : 1);
-      draw(compositeMat, null);
+
+      const blurAmount = CFG.gfx.motionBlur ? P.motionAmount : 0;
+      if (blurAmount <= 0.004) {
+        draw(compositeMat, null);
+        P.historyValid = false;
+        return;
+      }
+
+      // composite -> post, blend with history -> next history, then to screen.
+      draw(compositeMat, P.post);
+      const prev = P.history[P.historyIndex];
+      const next = P.history[1 - P.historyIndex];
+
+      blendMat.uniforms.tCurrent.value = P.post.texture;
+      blendMat.uniforms.tHistory.value = P.historyValid ? prev.texture : P.post.texture;
+      blendMat.uniforms.uAmount.value = P.historyValid ? blurAmount : 0;
+      draw(blendMat, next);
+
+      copyMat.uniforms.tDiffuse.value = next.texture;
+      draw(copyMat, null);
+
+      P.historyIndex = 1 - P.historyIndex;
+      P.historyValid = true;
     };
 
     P.dispose = function () {
       if (P._targets) P._targets.forEach(t => t.dispose());
       if (P.sceneTarget) P.sceneTarget.dispose();
+      if (P.post) P.post.dispose();
+      if (P.history) P.history.forEach(t => t.dispose());
       quadGeo.dispose();
       brightMat.dispose(); blurMat.dispose(); compositeMat.dispose();
+      blendMat.dispose(); copyMat.dispose();
     };
 
     return P;
