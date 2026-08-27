@@ -439,15 +439,31 @@
       pistol: 0.34, melee: 0.62, rifle: 0.92
     }[wdef.archetype] || 0.8);
 
+    /* The archetypes model a weapon around its receiver, but the hand holds
+     * it by the pistol grip. Building into an inner group and then sliding
+     * that group so the grip socket sits on the root origin puts the hand on
+     * the grip — otherwise the weapon floats with the fist buried in the
+     * middle of the receiver. Everything (sockets, animated parts, meshes)
+     * lives in the group, so the offset survives aiming and recoil. */
+    const body = new THREE.Object3D();
+    body.name = 'weaponBody';
+    root.add(body);
+    out.body = body;
+
     const builder = ARCH[wdef.archetype] || ARCH.assault_rifle;
     const B = Builder(M);
-    builder(B, M, L, out, root);
-    B.finish(root, out);
+    builder(B, M, L, out, body);
+    B.finish(body, out);
+
+    if (out.sockets.grip) {
+      const g = out.sockets.grip.position;
+      body.position.set(-g.x, -g.y, -g.z);
+    }
 
     // Guarantee a muzzle socket exists even if an archetype forgot one.
     if (!out.sockets.muzzle) {
       HC.Log.warn('WeaponModel', wdef.id + ' has no muzzle socket — inserting default.');
-      out.sockets.muzzle = socket(root, 'muzzle', [0, 0, L * 0.6]);
+      out.sockets.muzzle = socket(body, 'muzzle', [0, 0, L * 0.6]);
     }
     out.length = L;
 

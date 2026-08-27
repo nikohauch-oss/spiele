@@ -419,14 +419,46 @@
         P.hipsOffset[1] += Math.sin(A.time * 1.2) * 0.006 * w;
       },
       select(P, t, w) {
-        // The combat stance, squared up to camera, with a settle on entry.
+        /* Showcase stance, not a combat stance.
+         *
+         * Holding the weapon up at the chest crossed both arms in front of
+         * the torso, hid the hands behind the chest rig, and left the rifle
+         * looking detached. A hero card wants the opposite: weight on one
+         * leg, shoulders open, weapon carried low at the hip where the whole
+         * silhouette — face, chest, weapon — reads at once. */
         const k = U.pulse(U.clamp01(t * 1.6), 0.35);
-        poseWeaponReady(P, w, 0.35, A.akimbo, A.melee);
-        addPose(P, 'chest', -0.06 * k, 0, 0, w); addPose(P, 'spine', -0.04 * k, 0, 0, w);
-        addPose(P, 'head', -0.04, 0.06, 0, w);
-        addPose(P, 'thighR', -0.12, 0, -0.11, w); addPose(P, 'shinR', 0.10, 0, 0, w);
-        addPose(P, 'thighL', 0.04, 0, 0.09, w);
-        P.hipsOffset[1] += Math.sin(A.time * 1.5) * 0.005 * w;
+        const breathe = Math.sin(A.time * 1.1);
+
+        if (A.melee) {
+          // Blades ride low and out, away from the body line.
+          addPose(P, 'armUpperR', 0.12, 0, -0.34, w);
+          addPose(P, 'armLowerR', -0.42, 0, 0, w);
+          addPose(P, 'armUpperL', 0.06, 0, 0.34, w);
+          addPose(P, 'armLowerL', -0.38, 0, 0, w);
+        } else if (A.akimbo) {
+          // Two sidearms, both carried low and symmetrical.
+          addPose(P, 'armUpperR', 0.16, -0.06, -0.20, w);
+          addPose(P, 'armLowerR', -0.52, 0, 0.08, w);
+          addPose(P, 'armUpperL', 0.16, 0.06, 0.20, w);
+          addPose(P, 'armLowerL', -0.52, 0, -0.08, w);
+        } else {
+          // Weapon hand low at the hip, off hand relaxed at the side.
+          addPose(P, 'armUpperR', 0.22, -0.10, -0.16, w);
+          addPose(P, 'armLowerR', -0.48, 0, 0.10, w);
+          addPose(P, 'handR', 0.10, 0, 0, w);
+          addPose(P, 'armUpperL', 0.04, 0.06, 0.17, w);
+          addPose(P, 'armLowerL', -0.30, 0, -0.06, w);
+          addPose(P, 'handL', 0.06, 0, 0.10, w);
+        }
+
+        // Contrapposto: weight on the right leg, left leg eased forward.
+        addPose(P, 'hips', 0, 0.10, -0.045, w);
+        addPose(P, 'spine', 0.02, -0.12, 0.03, w);
+        addPose(P, 'chest', -0.05 * k, -0.16, 0.02, w);
+        addPose(P, 'head', -0.03, 0.20, -0.02, w);
+        addPose(P, 'thighR', -0.03, 0, -0.055, w); addPose(P, 'shinR', 0.05, 0, 0, w);
+        addPose(P, 'thighL', 0.16, 0, 0.09, w); addPose(P, 'shinL', -0.14, 0, 0, w);
+        P.hipsOffset[1] += breathe * 0.006 * w;
       },
       victory(P, t, w) {
         const pose = A.model.overrides.victoryPose || personality.victoryPose || 'salute_rifle';

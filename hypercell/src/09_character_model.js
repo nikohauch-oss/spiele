@@ -456,9 +456,11 @@
     // The chest bone sits at `spineLen` above the hips and the neck a further
     // `spineLen * 0.36` above that, so solve the chain for a head crown that
     // lands exactly on H — otherwise the model overshoots its own capsule.
-    const spineLen = (H - hipHeight - neckLen - headR * 1.15) / 1.36;
-    const chestW = H * 0.150 * b.shoulderWidth;
-    const chestDepth = H * 0.077 * b.chestDepth;
+    const spineLen = (H - hipHeight - neckLen - headR * 1.32) / 1.36;
+    // Half-widths. 0.150 gave a 60cm-wide chest on a 1.86m body — a barrel
+    // that made the head look tiny and the legs look like sticks.
+    const chestW = H * 0.118 * b.shoulderWidth;
+    const chestDepth = H * 0.072 * b.chestDepth;
     const upperArmLen = H * 0.163 * b.armLength;
     const lowerArmLen = H * 0.150 * b.armLength;
     return {
@@ -467,17 +469,19 @@
       chestTop: spineLen * 0.36,
       chestW, chestDepth,
       // Hips must be wider than the waist or the torso reads as a pipe.
-      hipW: H * 0.092 * b.hipWidth,
-      hipX: H * 0.053 * b.hipWidth,
-      shoulderX: chestW,
+      hipW: H * 0.098 * b.hipWidth,
+      hipX: H * 0.055 * b.hipWidth,
+      shoulderX: chestW * 0.90,
       shoulderY: spineLen * 0.30,
       upperArmLen, lowerArmLen,
       handLen: H * 0.058 * b.handScale,
       handW: H * 0.036 * b.handScale,
       footLen: H * 0.088 * b.footScale,
       footW: H * 0.042 * b.footScale,
-      limbR: H * 0.032 * b.bulk,
-      armR: H * 0.033 * b.bulk,
+      // Limbs carry the figure's weight; too thin and the torso reads as a
+      // costume the character is standing inside.
+      limbR: H * 0.040 * b.bulk,
+      armR: H * 0.036 * b.bulk,
       bulk: b.bulk,
       taper: b.torsoTaper,
       posture: b.posture
@@ -517,9 +521,9 @@
         roughness: 0.74, metalness: 0.0, repeat: 2.2, normalScale: 0.75,
         rim: { color: 0xd8e4f4, strength: 0.26, power: 2.6 } }),
       leather: Mats.make({ unique: true, kind: 'leather', color: pal.leather, seed: seed + 7,
-        roughness: 0.66, repeat: 3.2, normalScale: 0.55, wear, rim: rimTeam }),
+        roughness: 0.66, repeat: 6.5, normalScale: 0.55, wear, rim: rimTeam }),
       rubber: Mats.make({ unique: true, kind: 'rubber', color: pal.rubber, seed: seed + 8,
-        roughness: 0.92, repeat: 3.4, normalScale: 0.50,
+        roughness: 0.92, repeat: 6.0, normalScale: 0.50,
         rim: { color: 0x88a0c0, strength: 0.18, power: 3.2 } }),
       trim: Mats.make({ unique: true, kind: 'metal', color: pal.trim, seed: seed + 9,
         roughness: skinMat.goldTrim ? 0.18 : 0.30, metalness: skinMat.goldTrim ? 1.0 : 0.85,
@@ -656,11 +660,16 @@
       { y: m.neckLen * 1.15, rx: m.headR * 0.46, rz: m.headR * 0.46 }
     ], SEG.mid, 10), M.skin, {});
     if (gear.collar) {
+      // A standing collar that actually reaches the jaw. The old one stopped
+      // at the base of the neck and left a bare column above the shoulders.
       C.add('chest', loft([
-        { y: 0, rx: m.headR * 0.66, rz: m.headR * 0.62 },
+        { y: -m.neckLen * 0.10, rx: m.headR * 0.78, rz: m.headR * 0.74 },
         { y: m.neckLen * 0.55, rx: m.headR * 0.74, rz: m.headR * 0.70 },
-        { y: m.neckLen * 0.95, rx: m.headR * 0.62, rz: m.headR * 0.58 }
-      ], SEG.mid, 10), M.primary, { pos: [0, m.chestTop * 0.86, 0] });
+        { y: m.neckLen * 1.05, rx: m.headR * 0.70, rz: m.headR * 0.66 },
+        { y: m.neckLen * 1.35, rx: m.headR * 0.66, rz: m.headR * 0.62 }
+      ], SEG.mid, 12), M.primary, { pos: [0, m.chestTop * 0.86, 0] });
+      C.add('chest', torus(m.headR * 0.69, m.headR * 0.040, SEG.high), M.accent,
+        { pos: [0, m.chestTop * 0.86 + m.neckLen * 1.30, 0], rot: [Math.PI / 2, 0, 0] });
     }
 
     /* --- ARMS -------------------------------------------------------------
@@ -683,14 +692,14 @@
         { y: -m.upperArmLen * 0.28, rx: ar * 1.16, rz: ar * 1.12 },
         { y: -m.upperArmLen * 0.62, rx: ar * 0.98, rz: ar * 0.96 },
         { y: -m.upperArmLen * 1.02, rx: ar * 0.86, rz: ar * 0.88 }
-      ], R, 16), M.cloth, {});
+      ], R, 16), M.secondary, {});
 
       C.add('armLower' + side, loft([
         { y: ar * 0.18, rx: ar * 0.92, rz: ar * 0.94 },
         { y: -m.lowerArmLen * 0.26, rx: ar * 0.96, rz: ar * 0.98 },
         { y: -m.lowerArmLen * 0.66, rx: ar * 0.76, rz: ar * 0.78 },
         { y: -m.lowerArmLen * 1.02, rx: ar * 0.60, rz: ar * 0.64 }
-      ], R, 16, { capBottom: true, capRound: 0.4 }), M.cloth, {});
+      ], R, 16, { capBottom: true, capRound: 0.4 }), M.secondary, {});
 
       // Forearm guard, wrapped to the limb.
       const guardMat = (gear.gloves === 'gauntlet' || gear.gloves === 'armored') ? M.metal : M.darkMetal;
@@ -730,14 +739,14 @@
         { y: -m.thighLen * 0.24, rx: lr * 1.44, rz: lr * 1.38 },
         { y: -m.thighLen * 0.62, rx: lr * 1.18, rz: lr * 1.16 },
         { y: -m.thighLen * 1.02, rx: lr * 0.98, rz: lr * 1.00 }
-      ], R, 18, { capTop: true }), M.cloth, {});
+      ], R, 18, { capTop: true }), M.secondary, {});
 
       C.add('shin' + side, loft([
         { y: lr * 0.14, rx: lr * 1.02, rz: lr * 1.04 },
         { y: -m.shinLen * 0.22, rx: lr * 1.10, rz: lr * 1.18 },
         { y: -m.shinLen * 0.58, rx: lr * 0.82, rz: lr * 0.90 },
         { y: -m.shinLen * 1.00, rx: lr * 0.58, rz: lr * 0.62 }
-      ], R, 18), M.cloth, {});
+      ], R, 18), M.secondary, {});
 
       if (gear.kneePads) {
         C.add('shin' + side, plate(lr * 2.0, lr * 1.9, lr * 0.6, lr * 0.8, 1.1),
@@ -760,7 +769,7 @@
         { y: fl * 0.66, rx: fw * 0.30, rz: m.footH * 1.1 }
       ], SEG.mid, 16, { capBottom: true, capTop: true, capRound: 0.4 });
       // Loft builds along Y; rotate it to lie along the foot's forward axis.
-      C.add('foot' + side, boot, M.leather,
+      C.add('foot' + side, boot, M.secondary,
         { pos: [0, m.footH * 1.5, fl * 0.06], rot: [Math.PI / 2, 0, 0] });
       // Sole.
       C.add('foot' + side, plate(fw * 1.02, fl * 0.94, m.footH * 1.1, fw * 0.3, 0.2),
@@ -800,17 +809,18 @@
      * whole difference between a face and a pile of eggs. */
     const RADIAL = 48, STEPS = 44;
     const skull = loft([
-      { y: -r * 0.94, rx: r * 0.36, rz: r * 0.42, dz: r * 0.14 },   // chin
-      { y: -r * 0.76, rx: r * 0.58, rz: r * 0.68, dz: r * 0.12 },   // jaw
-      { y: -r * 0.50, rx: r * 0.75, rz: r * 0.84, dz: r * 0.08 },   // mouth line
+      { y: -r * 0.94, rx: r * 0.32, rz: r * 0.38, dz: r * 0.14 },   // chin
+      { y: -r * 0.76, rx: r * 0.53, rz: r * 0.64, dz: r * 0.12 },   // jaw
+      { y: -r * 0.50, rx: r * 0.70, rz: r * 0.80, dz: r * 0.08 },   // mouth line
       { y: -r * 0.20, rx: r * 0.86, rz: r * 0.93, dz: r * 0.035 },  // cheekbone
       { y: r * 0.10, rx: r * 0.90, rz: r * 0.97, dz: 0 },           // eye line
       { y: r * 0.38, rx: r * 0.92, rz: r * 0.98, dz: -r * 0.02 },   // brow / temple
       { y: r * 0.64, rx: r * 0.90, rz: r * 0.95, dz: -r * 0.04 },   // forehead
       { y: r * 0.86, rx: r * 0.81, rz: r * 0.86, dz: -r * 0.05 },   // upper cranium
-      { y: r * 1.02, rx: r * 0.60, rz: r * 0.64, dz: -r * 0.06 },   // crown shoulder
-      { y: r * 1.10, rx: r * 0.28, rz: r * 0.30, dz: -r * 0.06 }    // crown
-    ], RADIAL, STEPS, { capTop: true, capBottom: true, capRound: 0.85 });
+      { y: r * 1.00, rx: r * 0.62, rz: r * 0.66, dz: -r * 0.06 },   // crown shoulder
+      { y: r * 1.12, rx: r * 0.34, rz: r * 0.36, dz: -r * 0.06 },   // crown
+      { y: r * 1.18, rx: r * 0.12, rz: r * 0.13, dz: -r * 0.06 }    // closure
+    ], RADIAL, STEPS, { capTop: true, capBottom: true, capRound: 0.5 });
 
     if (!sealed) {
       const F = r;   // every feature is expressed in head radii
@@ -821,18 +831,18 @@
         { p: [ F * 0.30, F * 0.13, F * 0.90], s: [F * 0.27, F * 0.21, F * 0.42], amp: -F * 0.130 },
         { p: [-F * 0.30, F * 0.13, F * 0.90], s: [F * 0.27, F * 0.21, F * 0.42], amp: -F * 0.130 },
         // Nose bridge running down from between the brows...
-        { p: [0, F * 0.22, F * 0.92], s: [F * 0.12, F * 0.28, F * 0.32], amp: F * 0.080 },
+        { p: [0, F * 0.16, F * 0.92], s: [F * 0.13, F * 0.24, F * 0.30], amp: F * 0.055 },
         // ...into the tip, which is the part that actually protrudes.
-        { p: [0, -F * 0.02, F * 0.94], s: [F * 0.14, F * 0.16, F * 0.28], amp: F * 0.160 },
+        { p: [0, -F * 0.06, F * 0.90], s: [F * 0.16, F * 0.16, F * 0.28], amp: F * 0.175 },
         // Nostril wings either side of it.
-        { p: [ F * 0.10, -F * 0.09, F * 0.90], s: [F * 0.10, F * 0.10, F * 0.22], amp: F * 0.080 },
-        { p: [-F * 0.10, -F * 0.09, F * 0.90], s: [F * 0.10, F * 0.10, F * 0.22], amp: F * 0.080 },
+        { p: [ F * 0.11, -F * 0.14, F * 0.88], s: [F * 0.10, F * 0.09, F * 0.20], amp: F * 0.055 },
+        { p: [-F * 0.11, -F * 0.14, F * 0.88], s: [F * 0.10, F * 0.09, F * 0.20], amp: F * 0.055 },
         // Cheekbones: broad, high, and pulled outward rather than forward.
-        { p: [ F * 0.62, -F * 0.06, F * 0.56], s: [F * 0.42, F * 0.30, F * 0.54], amp: F * 0.075 },
-        { p: [-F * 0.62, -F * 0.06, F * 0.56], s: [F * 0.42, F * 0.30, F * 0.54], amp: F * 0.075 },
+        { p: [ F * 0.66, F * 0.00, F * 0.44], s: [F * 0.38, F * 0.24, F * 0.50], amp: F * 0.060 },
+        { p: [-F * 0.66, F * 0.00, F * 0.44], s: [F * 0.38, F * 0.24, F * 0.50], amp: F * 0.060 },
         // Hollow below them, which is what reads as a jawline.
-        { p: [ F * 0.58, -F * 0.46, F * 0.48], s: [F * 0.34, F * 0.26, F * 0.46], amp: -F * 0.045 },
-        { p: [-F * 0.58, -F * 0.46, F * 0.48], s: [F * 0.34, F * 0.26, F * 0.46], amp: -F * 0.045 },
+        { p: [ F * 0.56, -F * 0.42, F * 0.52], s: [F * 0.32, F * 0.28, F * 0.48], amp: -F * 0.070 },
+        { p: [-F * 0.56, -F * 0.42, F * 0.52], s: [F * 0.32, F * 0.28, F * 0.48], amp: -F * 0.070 },
         // Mouth: an upper and lower lip mass with a crease between them.
         { p: [0, -F * 0.36, F * 0.88], s: [F * 0.30, F * 0.11, F * 0.28], amp: F * 0.055 },
         { p: [0, -F * 0.53, F * 0.86], s: [F * 0.28, F * 0.12, F * 0.28], amp: F * 0.050 },
@@ -849,6 +859,11 @@
     }
     C.add('head', skull, headMat, { pos: [0, r * 0.12, 0] });
 
+    // The skull mesh is lifted by this much inside the head bone, so every
+    // feature placed separately has to be lifted with it — otherwise the eyes,
+    // mouth and ears sit a tenth of a head below the sockets sculpted for them.
+    const HY = r * 0.12;
+
     if (!sealed) {
       /* Eyes.
        *
@@ -857,17 +872,17 @@
        * These are the only parts of the face that stay separate geometry,
        * because in a real head they are separate objects. */
       [-1, 1].forEach(sg => {
-        const ex = sg * r * 0.30, ey = r * 0.13;
+        const ex = sg * r * 0.315, ey = HY + r * 0.13;
         // These sit in the socket the sculpt carved, so their depth is tied to
         // the carve: too far back and the whole eye disappears into the skull.
-        const ez = r * 0.845;
+        const ez = r * 0.830;
         // Sclera — matte, never metallic.
-        C.add('head', sphere(r * 0.094, SEG.mid), M.sclera,
+        C.add('head', sphere(r * 0.100, SEG.mid), M.sclera,
           { pos: [ex, ey, ez], scale: [1.0, 0.86, 0.72] });
         // Iris and pupil: the dark mass that makes a face look at you.
-        C.add('head', sphere(r * 0.052, SEG.mid), M.iris,
+        C.add('head', sphere(r * 0.056, SEG.mid), M.iris,
           { pos: [ex + sg * r * 0.004, ey, ez + r * 0.055], scale: [1.0, 1.0, 0.44] });
-        C.add('head', sphere(r * 0.026, SEG.low), M.pupil,
+        C.add('head', sphere(r * 0.028, SEG.low), M.pupil,
           { pos: [ex + sg * r * 0.004, ey, ez + r * 0.066], scale: [1.0, 1.0, 0.42] });
         // Catchlight — small, offset, and the only bright thing in the eye.
         C.add('head', sphere(r * 0.014, SEG.low), M.catchlight,
@@ -882,22 +897,34 @@
         // the character looks like it is wearing stage make-up.
         C.add('head', sphere(r * 0.108, SEG.mid), M.lash,
           { pos: [ex, ey + r * 0.060, ez + r * 0.010], scale: [1.06, 0.075, 0.34] });
-        // Eyebrow: sits up on the brow ridge, well clear of the lid.
-        C.add('head', sphere(r * 0.160, SEG.mid), M.hair,
-          { pos: [sg * r * 0.30, r * 0.325, ez + r * 0.030], scale: [1.20, 0.15, 0.22],
+        // Eyebrow: sits on the sculpted brow ridge, which the sculpt pushed
+        // out to about 0.98r — placing it off the un-sculpted radius buries it.
+        C.add('head', sphere(r * 0.175, SEG.mid), M.hair,
+          { pos: [sg * r * 0.305, HY + r * 0.315, r * 0.945], scale: [1.25, 0.15, 0.30],
             rot: [0, 0, sg * 0.17] });
       });
 
-      /* Mouth line: a thin shadow in the crease the sculpt already carved. */
-      C.add('head', plate(r * 0.36, r * 0.026, r * 0.05, r * 0.011, 0.7), M.mouthLine,
-        { pos: [0, -r * 0.32, r * 0.955] });
+      /* Mouth: a shadow line in the crease the sculpt already carved, plus the
+       * two small shadows that actually make a mouth read — the philtrum
+       * groove above it and the dark under the nose. */
+      C.add('head', plate(r * 0.42, r * 0.034, r * 0.07, r * 0.014, 0.8), M.mouthLine,
+        { pos: [0, HY - r * 0.44, r * 0.918] });
+      C.add('head', sphere(r * 0.055, SEG.low), M.eyeSocket,
+        { pos: [0, HY - r * 0.26, r * 0.930], scale: [0.55, 1.0, 0.30] });
+      C.add('head', sphere(r * 0.10, SEG.low), M.eyeSocket,
+        { pos: [0, HY - r * 0.185, r * 0.930], scale: [1.0, 0.28, 0.26] });
+      // Nostrils: two small dark pockets under the tip. Without them the nose
+      // is a ridge that just stops.
+      [-1, 1].forEach(sg => C.add('head', sphere(r * 0.046, SEG.low), M.eyeSocket,
+        { pos: [sg * r * 0.058, HY - r * 0.150, r * 0.985], scale: [0.75, 0.50, 0.55],
+          rot: [0, 0, sg * 0.35] }));
 
       /* Ears */
       [-1, 1].forEach(sg => {
         C.add('head', sphere(r * 0.19, SEG.mid), M.skin,
-          { pos: [sg * r * 0.90, r * 0.10, -r * 0.02], scale: [0.30, 0.98, 0.62] });
+          { pos: [sg * r * 0.90, HY + r * 0.06, -r * 0.02], scale: [0.30, 0.98, 0.62] });
         C.add('head', sphere(r * 0.11, SEG.low), M.eyeSocket,
-          { pos: [sg * r * 0.94, r * 0.06, -r * 0.02], scale: [0.16, 0.66, 0.46] });
+          { pos: [sg * r * 0.94, HY + r * 0.02, -r * 0.02], scale: [0.16, 0.66, 0.46] });
       });
     }
 
@@ -1017,23 +1044,25 @@
       // A generous opening at the front. The old 89-degree window left only a
       // slot for the face and turned every hairstyle into a helmet.
       const FACE_GAP = 2.55;
+      let lift0 = 0;   // set by crown(), so the fringe follows the hairline
       const BACK_START = FACE_GAP * 0.5;
       const BACK_LEN = U.TAU - FACE_GAP;
 
       /** Skull cap sitting above the brow — safe to revolve fully. */
       function crown(lift, thick) {
+        lift0 = lift;
         // Sits above the hairline, follows the skull section, and closes at
         // the top — the old version stopped at a 0.22r ring and left a hole
         // right where everyone looks first.
-        const t = 0.045 + thick;
+        const t = 0.030 + thick;
         C.add('head', loft([
-          { y: r * (0.58 + lift), rx: r * (0.94 + t), rz: r * (1.00 + t), dz: -r * 0.02 },
+          { y: r * (0.50 + lift), rx: r * (0.94 + t), rz: r * (1.00 + t), dz: -r * 0.02 },
           { y: r * (0.78 + lift), rx: r * (0.90 + t), rz: r * (0.95 + t), dz: -r * 0.04 },
           { y: r * (0.96 + lift), rx: r * (0.79 + t), rz: r * (0.84 + t), dz: -r * 0.05 },
-          { y: r * (1.10 + lift), rx: r * (0.56 + t), rz: r * (0.60 + t), dz: -r * 0.06 },
-          { y: r * (1.19 + lift), rx: r * (0.26 + t), rz: r * (0.28 + t), dz: -r * 0.06 },
-          { y: r * (1.23 + lift), rx: r * 0.06, rz: r * 0.06, dz: -r * 0.06 }
-        ], SEG.high, 18, { capTop: true, capRound: 0.9 }), M.hair, { pos: [0, r * 0.12, 0] });
+          { y: r * (1.12 + lift), rx: r * (0.58 + t), rz: r * (0.62 + t), dz: -r * 0.06 },
+          { y: r * (1.23 + lift), rx: r * (0.30 + t), rz: r * (0.32 + t), dz: -r * 0.06 },
+          { y: r * (1.30 + lift), rx: r * 0.08, rz: r * 0.08, dz: -r * 0.06 }
+        ], SEG.high, 18, { capTop: true, capRound: 0.6 }), M.hair, { pos: [0, r * 0.12, 0] });
       }
 
       /** Back and sides, dropping to `bottom` (in head radii). */
@@ -1041,7 +1070,7 @@
         // Back and sides only, stopping above the cheekbone so the face,
         // ears and jaw all stay visible. It overlaps the crown so the two
         // never show a seam where they meet.
-        const t = 0.045 + thick;
+        const t = 0.030 + thick;
         C.add('head', lathe([
           [r * (0.92 + t), r * bottom],
           [r * (0.97 + t), r * 0.22],
@@ -1052,28 +1081,38 @@
 
       /** Fringe swept across the forehead. */
       /**
-       * Fringe: a shell of hair over the forehead, revolved around the same
-       * axis as the crown so it follows the skull instead of hovering in
-       * front of it. A flat plate here read as a sticker taped to the head.
+       * Fringe: overlapping locks laid along the hairline arc.
+       *
+       * A revolved shell gave a dead-straight hairline with square notches
+       * where the sweep ended — a helmet brim. Individual locks blend into
+       * each other and into the crown, and their varying length is what
+       * reads as hair rather than moulded plastic.
+       */
+      /**
+       * Fringe: one continuous shell over the forehead, spanning exactly the
+       * face gap so its ends meet the back skirt and no square notch shows.
+       *
+       * Individual sphere "locks" were tried here and read as a row of
+       * sausages; at this scale a clean hairline beats fake strands.
        */
       function fringe(drop, sweep) {
-        const FRONT_LEN = FACE_GAP * 0.92;
-        const yLow = r * (0.50 - drop * 0.30);
+        const t = 0.032;
+        const sw = sweep || 0;
+        const yLow = r * (0.50 + lift0 - drop * 0.16);
         C.add('head', lathe([
-          [r * 0.97, yLow],
-          [r * 1.02, yLow + r * 0.16],
-          [r * 1.01, yLow + r * 0.34],
-          [r * 0.94, yLow + r * 0.50]
-        ], SEG.high, FRONT_LEN, -FRONT_LEN / 2), M.hair,
-          { pos: [0, r * 0.12, 0], rot: [0, 0, (sweep || 0) * 0.55], scale: [1, 1, 1.03] });
-        // A heavier sweep on one side, so the hairline is not symmetrical.
-        const side = (sweep || 0) >= 0 ? 1 : -1;
+          [r * (0.94 + t), yLow],
+          [r * (0.99 + t), yLow + r * 0.10],
+          [r * (1.00 + t), yLow + r * 0.26],
+          [r * (0.96 + t), yLow + r * 0.42]
+        ], SEG.high, FACE_GAP, -FACE_GAP / 2), M.hair,
+          { pos: [0, r * 0.12, 0], rot: [0, 0, sw * 0.30], scale: [1, 1, 1.02] });
+        // A thicker swept section on one side breaks the symmetry.
         C.add('head', lathe([
-          [r * 0.99, yLow - r * 0.09],
-          [r * 1.04, yLow + r * 0.12],
-          [r * 1.00, yLow + r * 0.30]
-        ], SEG.high, FRONT_LEN * 0.42, side * FRONT_LEN * 0.06), M.hair,
-          { pos: [0, r * 0.12, 0], rot: [0, 0, (sweep || 0) * 0.9], scale: [1, 1, 1.04] });
+          [r * (0.97 + t), yLow - r * (0.06 + drop * 0.10)],
+          [r * (1.02 + t), yLow + r * 0.12],
+          [r * (0.99 + t), yLow + r * 0.30]
+        ], SEG.high, FACE_GAP * 0.40, (sw >= 0 ? 0.04 : -0.44) * FACE_GAP), M.hair,
+          { pos: [0, r * 0.12, 0], rot: [0, 0, sw * 0.55], scale: [1, 1, 1.03] });
       }
 
       switch (hairStyle) {
@@ -1161,9 +1200,9 @@
     const padStyle = gear.shoulderPads || 'none';
     const padSpec = {
       none: null,
-      light: { w: 1.15, h: 0.95, d: 0.55, sides: 'both' },
-      heavy: { w: 1.75, h: 1.45, d: 0.85, sides: 'both' },
-      asym: { w: 1.55, h: 1.25, d: 0.75, sides: 'left' },
+      light: { w: 0.98, h: 0.80, d: 0.50, sides: 'both' },
+      heavy: { w: 1.50, h: 1.22, d: 0.76, sides: 'both' },
+      asym: { w: 1.34, h: 1.06, d: 0.68, sides: 'left' },
       warlord: { w: 1.85, h: 1.55, d: 0.95, sides: 'both', spikes: 3 },
       titan: { w: 2.05, h: 1.70, d: 1.05, sides: 'both', spikes: 2 },
       sovereign: { w: 1.80, h: 1.50, d: 0.90, sides: 'both', trim: true },
@@ -1220,6 +1259,19 @@
         { y: -m.spineLen * 0.10, rx: cw * 0.70 * pad, rz: cd * 0.84 * pad },
         { y: m.spineLen * 0.34, rx: cw * 0.86 * pad, rz: cd * 1.00 * pad }
       ], SEG.mid, 14, { capBottom: true, capRound: 0.15 }), M.cloth, {});
+      /* Chest plate: the one hard, light-valued mass on a soft-jacket hero.
+       * Without it the whole figure is a single mid-blue shape and none of
+       * the armour palette ever reaches the screen. */
+      C.add('chest', plate(cw * 1.22, m.spineLen * 0.54, cd * 0.28, cw * 0.24, 0.95),
+        M.primary, { pos: [0, -m.spineLen * 0.02, cd * 0.96] });
+      C.add('chest', plate(cw * 1.28, m.spineLen * 0.10, cd * 0.20, cw * 0.09, 0.95),
+        M.trim, { pos: [0, m.spineLen * 0.22, cd * 0.99] });
+      [-1, 1].forEach(sg => C.add('chest', plate(cw * 0.15, m.spineLen * 0.34, cd * 0.19, cw * 0.05, 0.6),
+        M.accent, { pos: [sg * cw * 0.50, -m.spineLen * 0.04, cd * 1.02] }));
+      // Upper-back plate, so the armour reads from behind too.
+      C.add('chest', plate(cw * 1.14, m.spineLen * 0.48, cd * 0.24, cw * 0.22, 0.95),
+        M.primary, { pos: [0, m.spineLen * 0.02, -cd * 0.96] });
+
       // A zip seam down the centre plus narrow lapels, rather than two
       // slabs hung off the chest.
       C.add('chest', plate(cw * 0.10, m.spineLen * 0.86, cd * 0.10, cw * 0.03, 0.5),

@@ -541,8 +541,8 @@
     plate:    { base: 0.94, cavity: 0.46, mottle: 0.15, grain: 0.030, wear: 0.24, scuffs: 18 },
     concrete: { base: 0.93, cavity: 0.42, mottle: 0.19, grain: 0.038, streaks: 30, tint: [1.0, 0.985, 0.955] },
     asphalt:  { base: 0.90, cavity: 0.34, mottle: 0.15, grain: 0.030, tint: [0.98, 0.985, 1.0] },
-    leather:  { base: 0.93, cavity: 0.52, mottle: 0.20, grain: 0.035, wear: 0.22, tint: [1.0, 0.98, 0.96] },
-    rubber:   { base: 0.90, cavity: 0.44, mottle: 0.12, grain: 0.030 },
+    leather:  { base: 0.94, cavity: 0.32, mottle: 0.13, grain: 0.030, wear: 0.18, tint: [1.0, 0.98, 0.96] },
+    rubber:   { base: 0.91, cavity: 0.30, mottle: 0.10, grain: 0.026 },
     hair:     { base: 0.96, cavity: 0.34, mottle: 0.14, grain: 0.022 }
   };
 

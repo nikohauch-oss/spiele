@@ -45,12 +45,15 @@
 
     /* ---- material palette -------------------------------------------- */
     const M = {
-      asphalt: Mats.make({ kind: 'asphalt', color: 0x3d434e, roughness: 0.90, metalness: 0.04,
-        repeat: 26, seed: 3, rim: { color: 0x2a3a52, strength: 0.10, power: 4.0 } }),
-      sidewalk: Mats.make({ kind: 'concrete', color: 0x5f6675, roughness: 0.86, repeat: 14, seed: 5,
-        rim: { color: 0x33506e, strength: 0.12, power: 4.0 } }),
-      plaza: Mats.make({ kind: 'concrete', color: 0x6d7688, roughness: 0.68, repeat: 12, seed: 9,
-        rim: { color: 0x3a6a94, strength: 0.14, power: 3.6 } }),
+      // Wet-looking asphalt: night streets read as expensive when the neon
+      // above them comes back off the ground. High roughness plus a dense
+      // normal map turned it into loose gravel instead.
+      asphalt: Mats.make({ kind: 'asphalt', color: 0x363c47, roughness: 0.62, metalness: 0.18,
+        repeat: 15, seed: 3, normalScale: 0.35, rim: { color: 0x2a3a52, strength: 0.10, power: 4.0 } }),
+      sidewalk: Mats.make({ kind: 'concrete', color: 0x5f6675, roughness: 0.78, repeat: 9, seed: 5,
+        normalScale: 0.55, rim: { color: 0x33506e, strength: 0.12, power: 4.0 } }),
+      plaza: Mats.make({ kind: 'concrete', color: 0x6d7688, roughness: 0.58, metalness: 0.10,
+        repeat: 8, seed: 9, normalScale: 0.5, rim: { color: 0x3a6a94, strength: 0.14, power: 3.6 } }),
       wallLight: Mats.make({ kind: 'concrete', color: 0x97a1b2, roughness: 0.78, repeat: 5, seed: 11,
         rim: { color: 0x4a7ba8, strength: 0.16, power: 3.4 } }),
       wallDark: Mats.make({ kind: 'concrete', color: 0x4c5568, roughness: 0.84, repeat: 5, seed: 13,
@@ -95,6 +98,16 @@
       teamB: Mats.make({ kind: 'plate', color: HC.PALETTE.teamB, emissive: HC.PALETTE.teamB,
         emissiveIntensity: 0.85, roughness: 0.45, metalness: 0.4, repeat: 2, seed: 79, rim: false })
     };
+
+    // Image-based lighting only reaches a material that asks for it. Ground
+    // and metal want the most: they are what shows a sky reflection.
+    Object.keys(M).forEach(k => {
+      const mat = M[k];
+      if (!mat || mat.envMapIntensity === undefined) return;
+      mat.envMapIntensity =
+        (k === 'asphalt' || k === 'plaza' || k === 'sidewalk') ? 0.85 :
+        (k === 'steel' || k === 'darkSteel' || k === 'panel' || k === 'glass') ? 1.25 : 0.55;
+    });
 
     /* ---- geometry accumulation --------------------------------------- */
     const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(),
@@ -828,10 +841,10 @@
       world.shapeCount + ' collision shapes, ' + lights.length + ' point lights');
 
     /* --- key lighting --- */
-    const hemi = new THREE.HemisphereLight(0x4a7ab8, 0x2a2f38, 1.15);
+    const hemi = new THREE.HemisphereLight(0x4a7ab8, 0x232830, 0.92);
     result.root.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xcfe0ff, 2.35);
+    const sun = new THREE.DirectionalLight(0xcfe0ff, 2.95);
     sun.position.set(-42, 58, -28);
     sun.target.position.set(0, 0, 6);
     sun.castShadow = CFG.gfx.shadows;
@@ -855,7 +868,7 @@
     result.root.add(fill);
 
     // Ambient bounce so nothing ever goes fully black.
-    const amb = new THREE.AmbientLight(0x4d6288, 0.85);
+    const amb = new THREE.AmbientLight(0x4d6288, 0.52);
     result.root.add(amb);
 
     /* --- sky dome + fog --- */

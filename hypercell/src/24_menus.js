@@ -83,7 +83,7 @@
       const rim = new THREE.DirectionalLight(0x7fc4ff, 5.4);
       rim.position.set(-3.0, 2.4, -3.4);
       s.add(rim);
-      const warm = new THREE.PointLight(0xff8a4a, 190, 14, 2);
+      const warm = new THREE.PointLight(0xff9a5e, 95, 12, 2);
       warm.position.set(2.6, 1.5, -2.2);
       s.add(warm);
       // Bounce fill: low, cool, and weak — it lifts the shadow side without
@@ -128,7 +128,8 @@
       stage.model.setCastShadow(false);
       stage.scene.add(stage.model.root);
       stage.animator = HC.Animator(stage.model, charDef);
-      stage.animator.setPoseOverride(pose || 'lobby');
+      stage.pose = pose || 'lobby';
+      stage.animator.setPoseOverride(stage.pose);
 
       const skinDef = HC.Skins.tryGet(skinId) || {};
       stage.weapon = HC.WeaponModel.build({
@@ -174,12 +175,14 @@
         if (_stageDir.lengthSq() > 1e-8) {
           stage.weapon.root.quaternion.setFromUnitVectors(STAGE_FORWARD, _stageDir.normalize());
         }
-        // Same two-handed solve the arena uses, so the off hand lands on the
-        // foregrip here too instead of hovering beside it.
-        const grip = stage.weapon.sockets && stage.weapon.sockets.foregrip;
-        if (grip && !stage.akimbo) {
-          stage.model.root.updateWorldMatrix(false, true);
-          HC.CharacterModel.solveGripIK(stage.model, grip, 1);
+        // The showcase pose carries the weapon low in one hand, so there is
+        // no foregrip to solve for; the arena keeps the two-handed IK.
+        if (stage.pose !== 'select') {
+          const grip = stage.weapon.sockets && stage.weapon.sockets.foregrip;
+          if (grip && !stage.akimbo) {
+            stage.model.root.updateWorldMatrix(false, true);
+            HC.CharacterModel.solveGripIK(stage.model, grip, 1);
+          }
         }
       }
     };
