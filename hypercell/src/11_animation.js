@@ -404,23 +404,29 @@
 
     /* --- static poses for menus / results -------------------------------- */
     const POSES = {
+      /* Lobby and select both start from the exact in-match weapon carriage
+       * so the hero you inspect is posed like the hero you play; only the
+       * stance and flourish differ. */
       lobby(P, t, w) {
-        addPose(P, 'spine', 0.03, -0.12, 0, w); addPose(P, 'chest', 0.02, -0.16, 0, w);
-        addPose(P, 'armUpperR', -0.62, -0.16, -0.16, w); addPose(P, 'armLowerR', -0.78, 0, 0, w);
-        addPose(P, 'armUpperL', -0.48, 0.16, 0.20, w); addPose(P, 'armLowerL', -0.72, 0, 0, w);
+        poseWeaponReady(P, w * 0.92, 0, A.akimbo, A.melee);
+        addPose(P, 'spine', 0.03, 0.02, 0, w); addPose(P, 'chest', 0.02, 0.04, 0, w);
+        addPose(P, 'armUpperR', 0.26, 0, 0.06, w);      // relax toward a low carry
+        addPose(P, 'armLowerR', 0.18, 0, 0, w);
+        addPose(P, 'armUpperL', 0.24, 0, -0.08, w);
+        addPose(P, 'armLowerL', 0.20, 0, 0, w);
         addPose(P, 'thighL', 0, 0, 0.09, w); addPose(P, 'thighR', -0.10, 0, -0.12, w);
-        addPose(P, 'head', 0, 0.08, 0, w);
+        addPose(P, 'head', 0, 0.10, 0, w);
+        P.hipsOffset[1] += Math.sin(A.time * 1.2) * 0.006 * w;
       },
       select(P, t, w) {
-        // A confident weapon-ready showcase: elbows in, weapon across the body.
+        // The combat stance, squared up to camera, with a settle on entry.
         const k = U.pulse(U.clamp01(t * 1.6), 0.35);
-        addPose(P, 'chest', -0.08 * k, -0.26, 0, w); addPose(P, 'spine', -0.05 * k, -0.10, 0, w);
-        addPose(P, 'armUpperR', -0.98 - k * 0.30, -0.20, -0.18, w);
-        addPose(P, 'armLowerR', -0.92, 0, 0.08, w);
-        addPose(P, 'armUpperL', -1.18, 0.40, 0.30, w); addPose(P, 'armLowerL', -1.34, 0, -0.22, w);
-        addPose(P, 'head', -0.05, -0.12, 0, w);
+        poseWeaponReady(P, w, 0.35, A.akimbo, A.melee);
+        addPose(P, 'chest', -0.06 * k, 0, 0, w); addPose(P, 'spine', -0.04 * k, 0, 0, w);
+        addPose(P, 'head', -0.04, 0.06, 0, w);
         addPose(P, 'thighR', -0.12, 0, -0.11, w); addPose(P, 'shinR', 0.10, 0, 0, w);
         addPose(P, 'thighL', 0.04, 0, 0.09, w);
+        P.hipsOffset[1] += Math.sin(A.time * 1.5) * 0.005 * w;
       },
       victory(P, t, w) {
         const pose = A.model.overrides.victoryPose || personality.victoryPose || 'salute_rifle';

@@ -141,6 +141,53 @@ const secs2 = SECONDS;
     return 'all 8 within 9cm';
   });
 
+  await step('weapon points where you aim', async () => {
+    const report = await page.evaluate(() => {
+      const out = [];
+      const scene = new THREE.Scene();
+      HC.roster().forEach(c => {
+        const wdef = HC.Weapons.get(c.weapon);
+        if (wdef.melee) return;                       // blades follow the hand
+        const model = HC.CharacterModel.build({ characterId: c.id, team: 'A' });
+        scene.add(model.root);
+        const anim = HC.Animator(model, c);
+        anim.setWeaponShape(!!wdef.akimbo, false);
+        const weapon = HC.WeaponModel.build({ weaponId: c.weapon, palette: c.palette });
+        model.bones.weaponSocket.add(weapon.root);
+
+        // Settle the ready pose, then aim dead ahead (+Z) like the actor does.
+        for (let i = 0; i < 240; i++) anim.update(1 / 120);
+        model.root.updateMatrixWorld(true);
+
+        const socket = model.bones.weaponSocket;
+        const m = new THREE.Matrix4().copy(socket.matrixWorld).invert();
+        const localAim = new THREE.Vector3(0, 0, 1).transformDirection(m).normalize();
+        weapon.root.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), localAim);
+        model.root.updateMatrixWorld(true);
+
+        const muzzle = weapon.sockets.muzzle.getWorldPosition(new THREE.Vector3());
+        const grip = weapon.root.getWorldPosition(new THREE.Vector3());
+        const chest = model.bones.chest.getWorldPosition(new THREE.Vector3());
+        const barrel = muzzle.clone().sub(grip).normalize();
+
+        const forwardDot = barrel.z;                  // should be ~1 (facing +Z)
+        const inFront = muzzle.z - chest.z;           // muzzle ahead of the body
+        const height = muzzle.y;
+
+        if (forwardDot < 0.97) out.push(c.id + ': barrel off-axis (dot ' + forwardDot.toFixed(2) + ')');
+        if (inFront < 0.25) out.push(c.id + ': muzzle not in front (' + inFront.toFixed(2) + 'm)');
+        if (height < 0.7 || height > 1.9) out.push(c.id + ': muzzle at odd height ' + height.toFixed(2));
+
+        scene.remove(model.root);
+        weapon.dispose();
+        model.dispose();
+      });
+      return out;
+    });
+    if (report.length) throw new Error(report.join(' | '));
+    return 'all ranged weapons aligned';
+  });
+
   await step('deploy into match', async () => {
     await page.evaluate(([mode, hero]) => window.HYPERCELL._debug.forceMatch(mode, hero), [MODE, HERO]);
     await page.waitForFunction(() => ['intro', 'countdown', 'match'].includes(window.HYPERCELL.state), { timeout: 60000 });
@@ -197,16 +244,22 @@ const secs2 = SECONDS;
           if (d < bestD) { bestD = d; best = a; }
         }
         if (!best) return;
-        a: {
-          const eye = player.eyePosition(new THREE.Vector3());
-          const to = best.centerPosition(V).clone().sub(eye);
-          const flat = Math.hypot(to.x, to.z);
-          const yaw = Math.atan2(to.x, to.z);
-          const pitch = -Math.atan2(to.y, flat);
-          c.lookYaw = -HC.Util.shortAngle(player.yaw, yaw) * 0.35;
-          c.lookPitch = (pitch - player.pitch) * 0.35;
-          c.fire = bestD < 60;
+        const eye = player.eyePosition(new THREE.Vector3());
+        const to = best.centerPosition(V).clone().sub(eye);
+        const flat = Math.hypot(to.x, to.z);
+        const yaw = Math.atan2(to.x, to.z);
+        const pitch = -Math.atan2(to.y, flat);
+        c.lookYaw = -HC.Util.shortAngle(player.yaw, yaw) * 0.35;
+        c.lookPitch = (pitch - player.pitch) * 0.35;
+
+        const wdef = player.weapon.def;
+        const reach = wdef.melee ? wdef.meleeRange : wdef.range.falloffEnd;
+        if (bestD > reach * 0.8) {
+          // Close the distance instead of shooting into the void — this is
+          // what makes the melee path (Nyx's blades) actually get exercised.
+          c.moveY = 1; c.moveX = 0; c.sprint = bestD > reach * 3;
         }
+        c.fire = bestD < reach * 1.05;
       };
       const mk = (t) => {
         const c = HC.blankCommands();
@@ -284,6 +337,10 @@ const secs2 = SECONDS;
         playerHits: p.weapon.stats.shotsHit,
         botsMoved: a.actors.filter(x => x.isBot && x.planarSpeed > 0.2).length,
         botsWithPath: a.actors.filter(x => x.isBot && x.brain.path.length > 0).length,
+        botsEverPathed: a.actors.filter(x => x.isBot && x.brain.pathsComputed > 0).length,
+        botPathsTotal: a.actors.reduce((n, x) => n + (x.isBot ? x.brain.pathsComputed : 0), 0),
+        playerWeapon: p.weapon.def.id,
+        playerIsMelee: !!p.weapon.def.melee,
         botShots: a.actors.filter(x => x.isBot).reduce((n, x) => n + x.weapon.stats.shotsFired, 0),
         deployables: a.deployables.length,
         projectiles: a.projectiles.count,
@@ -310,10 +367,16 @@ const secs2 = SECONDS;
     const t = telemetry || {};
     const problems = [];
     if (!(t.totalDamage > 200)) problems.push('no meaningful damage dealt: ' + t.totalDamage);
-    if (!(t.playerShots > 10)) problems.push('player barely fired: ' + t.playerShots);
-    if (!(t.playerHits > 0)) problems.push('player never landed a shot');
+    // A melee hero has to walk into range, so the shot count is naturally low;
+    // what matters is that swings connect at all.
+    const minShots = t.playerIsMelee ? 1 : 10;
+    if (!(t.playerShots >= minShots)) problems.push('player barely attacked: ' + t.playerShots);
+    if (!(t.playerHits > 0)) problems.push('player never landed a shot with ' + t.playerWeapon);
     if (!(t.botShots > 10)) problems.push('bots barely fired: ' + t.botShots);
-    if (!(t.botsWithPath > 3)) problems.push('bots are not pathing: ' + t.botsWithPath);
+    // Bots holding an angle deliberately stop pathing, so assert on the
+    // cumulative count rather than whichever instant we happened to sample.
+    if (!(t.botsEverPathed >= 5)) problems.push('bots never pathed: ' + t.botsEverPathed);
+    if (!(t.botPathsTotal > 20)) problems.push('too few paths computed: ' + t.botPathsTotal);
     if (!(t.matchTime > 5)) problems.push('match clock did not advance: ' + t.matchTime);
     if (t.arenaState !== 'active' && t.arenaState !== 'ended') problems.push('arena state ' + t.arenaState);
     if (problems.length) throw new Error(problems.join(' | '));

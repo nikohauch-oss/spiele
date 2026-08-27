@@ -35,6 +35,7 @@
       path: [], pathIndex: 0, repathTimer: 0, pathTarget: new THREE.Vector3(),
       goal: null, goalTimer: 0,
       strafeDir: rnd() > 0.5 ? 1 : -1, strafeTimer: 0,
+      pathsComputed: 0,
       burstTimer: 0, burstFiring: false,
       aimYaw: 0, aimPitch: 0, aimNoiseT: rnd() * 100,
       jumpTimer: 0, dodgeTimer: 0, abilityTimer: 1 + rnd() * 2,
@@ -131,7 +132,7 @@
         B.repathTimer = CFG.ai.repathInterval * (0.8 + rnd() * 0.5);
         B.pathTarget.copy(dest);
         const p = ctx.nav.findPath(actor.position, dest);
-        if (p && p.length) { B.path = p; B.pathIndex = 0; }
+        if (p && p.length) { B.path = p; B.pathIndex = 0; B.pathsComputed++; }
         else B.path.length = 0;
       }
       // Advance along the path.
