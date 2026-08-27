@@ -83,6 +83,10 @@
       G.camera = new THREE.PerspectiveCamera(CFG.camera.fov, 1, CFG.camera.near, CFG.camera.far);
       G.postfx = HC.PostFX(G.renderer);
 
+      // Image-based lighting must exist before any scene is built, or every
+      // metal surface in the game renders as flat black.
+      HC.Mats.buildEnvironment(G.renderer);
+
       G.hud = HC.HUD(container);
       G.menus = HC.Menus(container, G.renderer, G);
       G.clock = HC.StepClock(1 / CFG.sim.tickRate, CFG.sim.maxSubSteps);
@@ -184,6 +188,7 @@
         [0.10, 'BUILDING NOVA DISTRICT', () => {
           disposeArena();
           G.scene = new THREE.Scene();
+          HC.Mats.applyEnvironment(G.scene, CFG.gfx.envIntensity);
           HC.VFX.init(G.scene, G.camera);
           G.arena = HC.Arena({ scene: G.scene, mode: opts.mode, map: 'nova_district' });
         }],
@@ -593,7 +598,14 @@
       });
 
       HC.VFX.update(dt);
-      if (G.state !== 'intro') G.rig.update(dt);
+      if (G._freeCam) {
+        // Pinned camera for tooling and screenshots: the rig stays out of it.
+        G.camera.position.fromArray(G._freeCam.pos);
+        G.camera.lookAt(G._freeCam.look[0], G._freeCam.look[1], G._freeCam.look[2]);
+        if (G._freeCam.fov) { G.camera.fov = G._freeCam.fov; G.camera.updateProjectionMatrix(); }
+      } else if (G.state !== 'intro') {
+        G.rig.update(dt);
+      }
 
       // Audio listener follows the camera.
       G.camera.getWorldDirection(_v);
@@ -612,17 +624,24 @@
     function fadeLocalModel() {
       const p = G.arena && G.arena.player;
       if (!p || !G.rig) return;
-      const d = G.rig.distanceToTarget === undefined ? CFG.camera.distance : G.rig.distanceToTarget;
+      // A pinned tooling camera owns its own framing; never dissolve for it.
+      const d = G._freeCam ? 1e3
+        : (G.rig.distanceToTarget === undefined ? CFG.camera.distance : G.rig.distanceToTarget);
       const a = CFG.camera.fadeEndDistance, b = CFG.camera.fadeStartDistance;
       let fade = U.clamp01((d - a) / Math.max(0.01, b - a));
       // Cloak already owns the model's opacity; don't fight it.
       if (p.cloakBlend > 0.02) fade = 1;
-      fade = Math.max(fade, 0.06);
+      // A half-transparent character shows its own interior faces and reads as
+      // a broken wireframe, so the body is only ever lightly veiled or gone.
+      const HIDE_BELOW = 0.55;
+      fade = fade < HIDE_BELOW ? 0 : U.clamp01((fade - HIDE_BELOW) / (1 - HIDE_BELOW)) * 0.35 + 0.65;
       if (Math.abs(fade - lastLocalFade) < 0.01) return;
       lastLocalFade = fade;
       if (p.cloakBlend <= 0.02) {
-        p.model.setOpacity(fade);
-        p.weaponSlots.forEach(s => s.model.setOpacity(Math.max(fade, 0.35)));
+        const hidden = fade <= 0.001;
+        p.model.setBodyVisible(!hidden);
+        if (!hidden) p.model.setOpacity(fade);
+        p.weaponSlots.forEach(s => s.model.setOpacity(1));
       }
     }
 
@@ -721,7 +740,28 @@
         if (G.state === 'intro') { G.rig.cinematic = null; G.menus.hideIntro(); startCountdown(); }
         if (G.state === 'countdown') G.countdown = 0.01;
       },
-      state() { return G.state; }
+      state() { return G.state; },
+      /**
+       * Pins the camera for screenshot tooling. Pass null to hand control
+       * back to the rig.
+       */
+      freeCam(spec) {
+        if (!spec) { G._freeCam = null; return 'rig'; }
+        G._freeCam = {
+          pos: spec.pos || [0, 6, 18],
+          look: spec.look || [0, 2, 0],
+          fov: spec.fov || 0
+        };
+        return G._freeCam;
+      },
+      /** Moves the local player somewhere useful before a shot. */
+      placePlayer(x, y, z) {
+        const p = G.arena && G.arena.player;
+        if (!p) return false;
+        p.position.set(x, y, z);
+        if (p.velocity) p.velocity.set(0, 0, 0);
+        return true;
+      }
     };
 
     return G;

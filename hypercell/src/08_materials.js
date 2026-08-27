@@ -82,6 +82,116 @@
     return out;
   }
 
+  /**
+   * Derives an albedo (base-colour) map from a height field.
+   *
+   * Until now every surface in the game was a single flat colour lit by a
+   * normal map, which is exactly what makes untextured 3D read as cheap: real
+   * materials vary in *colour*, not only in relief. This builds that variation
+   * procedurally — cavity darkening from the height field, a low-frequency
+   * blotch field for large-scale tonal breakup, fine grain, and optional rain
+   * streaks or wear highlights. The result sits near white so it multiplies
+   * into the material colour without dimming it.
+   */
+  function albedoFromHeight(heightCanvas, o) {
+    o = o || {};
+    const size = heightCanvas.width;
+    const src = readCtx(heightCanvas).getImageData(0, 0, size, size).data;
+    const out = makeCanvas(size);
+    const ctx = out.getContext('2d');
+    const img = ctx.createImageData(size, size);
+    const rnd = U.rng(o.seed || 5);
+
+    // Normalise the height field so every generator gets the same treatment.
+    let lo = 1, hi = 0;
+    for (let i = 0; i < src.length; i += 4) {
+      const v = src[i] / 255;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    const span = Math.max(1e-3, hi - lo);
+
+    // Two octaves of value noise: the large one is the blotching you read as
+    // "this wall has history", the small one keeps it from looking like a
+    // gradient.
+    function noiseField(n) {
+      const grid = new Float32Array(n * n);
+      for (let i = 0; i < grid.length; i++) grid[i] = rnd();
+      return { n, grid };
+    }
+    const big = noiseField(4), small = noiseField(10);
+    function sample(F, x, y) {
+      const fx = x / size * F.n, fy = y / size * F.n;
+      const x0 = Math.floor(fx) % F.n, y0 = Math.floor(fy) % F.n;
+      const x1 = (x0 + 1) % F.n, y1 = (y0 + 1) % F.n;
+      const tx = U.smoothstep(fx - Math.floor(fx)), ty = U.smoothstep(fy - Math.floor(fy));
+      const a = U.lerp(F.grid[y0 * F.n + x0], F.grid[y0 * F.n + x1], tx);
+      const b = U.lerp(F.grid[y1 * F.n + x0], F.grid[y1 * F.n + x1], tx);
+      return U.lerp(a, b, ty);
+    }
+
+    const base = o.base === undefined ? 0.94 : o.base;
+    const cavity = o.cavity === undefined ? 0.42 : o.cavity;
+    const mottle = o.mottle === undefined ? 0.20 : o.mottle;
+    const grain = o.grain === undefined ? 0.045 : o.grain;
+    const wear = o.wear === undefined ? 0 : o.wear;
+    const tint = o.tint || [1, 1, 1];
+    const hue = o.hueJitter === undefined ? 0.03 : o.hueJitter;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (y * size + x) * 4;
+        const h = ((src[i] / 255) - lo) / span;
+
+        let v = base;
+        v *= 1 - cavity * (1 - h);                       // crevices go dark
+        v *= U.lerp(1 - mottle, 1 + mottle * 0.35, sample(big, x, y));
+        v *= U.lerp(1 - mottle * 0.45, 1 + mottle * 0.25, sample(small, x, y));
+        if (wear) v += wear * Math.pow(h, 3) * 0.35;     // polished high points
+        v += (rnd() - 0.5) * grain;
+        v = U.clamp01(v);
+
+        // A touch of per-pixel hue drift keeps large flats from banding.
+        const j = (sample(small, x + 31, y + 17) - 0.5) * hue;
+        img.data[i]     = U.clamp01(v * tint[0] * (1 + j)) * 255;
+        img.data[i + 1] = U.clamp01(v * tint[1]) * 255;
+        img.data[i + 2] = U.clamp01(v * tint[2] * (1 - j)) * 255;
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    // Rain streaks: vertical grime running down from ledges. Only vertical
+    // surfaces ask for these, and they are the single most recognisable
+    // "outdoor concrete" cue there is.
+    if (o.streaks) {
+      ctx.globalAlpha = 0.055;
+      ctx.fillStyle = '#4a4438';
+      for (let i = 0; i < o.streaks; i++) {
+        const x = rnd() * size;
+        const w = 1 + rnd() * (size / 42);
+        const y0 = rnd() * size * 0.6;
+        ctx.fillRect(x, y0, w, size - y0);
+      }
+      ctx.globalAlpha = 1;
+    }
+    // Scuffs: short bright abrasions, for metal and plate.
+    if (o.scuffs) {
+      ctx.globalAlpha = 0.18;
+      for (let i = 0; i < o.scuffs; i++) {
+        ctx.strokeStyle = rnd() > 0.5 ? '#ffffff' : '#2c2c30';
+        ctx.lineWidth = 0.6 + rnd() * 1.4;
+        const x = rnd() * size, y = rnd() * size, a = rnd() * U.TAU, l = size * (0.03 + rnd() * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    return out;
+  }
+
   /* ------------------------------------------------------------------ *
    * Height-field generators (greyscale canvases)
    * ------------------------------------------------------------------ */
@@ -91,14 +201,16 @@
       const c = makeCanvas(size), g = c.getContext('2d');
       const rnd = U.rng(seed);
       const img = g.createImageData(size, size);
-      const period = Math.max(3, size / 42);
+      // A coarse weave. The old fine period tiled into a moire screen at
+      // character scale, which read as cheap plastic mesh rather than cloth.
+      const period = Math.max(6, size / 14);
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
           const u = (x % period) / period, v = (y % period) / period;
           const over = ((Math.floor(x / period) + Math.floor(y / period)) % 2) === 0;
           const warp = Math.sin(u * Math.PI), weft = Math.sin(v * Math.PI);
           let h = over ? warp * 0.72 + weft * 0.24 : weft * 0.72 + warp * 0.24;
-          h = h * 0.5 + 0.42 + (rnd() - 0.5) * 0.10;
+          h = h * 0.30 + 0.55 + (rnd() - 0.5) * 0.07;
           const i = (y * size + x) * 4, val = U.clamp01(h) * 255;
           img.data[i] = img.data[i + 1] = img.data[i + 2] = val; img.data[i + 3] = 255;
         }
@@ -183,7 +295,7 @@
       const c = makeCanvas(size), g = c.getContext('2d');
       const rnd = U.rng(seed);
       g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, size, size);
-      const cells = 4;
+      const cells = 2;
       const cs = size / cells;
       for (let cy = 0; cy < cells; cy++) {
         for (let cx = 0; cx < cells; cx++) {
@@ -409,29 +521,44 @@
   /* ------------------------------------------------------------------ *
    * Cached texture accessors
    * ------------------------------------------------------------------ */
-  function cachedPair(key, gen, normalStrength) {
+  function cachedPair(key, gen, normalStrength, albedoOpts) {
     if (Mats._tex.has(key)) return Mats._tex.get(key);
     const s = texSize();
     const height = gen(s);
     const rough = finishTexture(height, 1, { srgb: false });
     const normal = finishTexture(normalFromHeight(height, normalStrength), 1, { srgb: false });
-    const pair = { rough, normal };
+    const albedo = finishTexture(albedoFromHeight(height, albedoOpts || {}), 1);
+    const pair = { rough, normal, albedo };
     Mats._tex.set(key, pair);
     return pair;
   }
 
+  /* Per-surface albedo character. These numbers are the difference between
+   * "a blue shape" and "a worn blue jacket". */
+  const ALBEDO = {
+    fabric:   { base: 0.95, cavity: 0.38, mottle: 0.16, grain: 0.030, hueJitter: 0.02 },
+    metal:    { base: 0.93, cavity: 0.30, mottle: 0.14, grain: 0.035, wear: 0.30, scuffs: 26, hueJitter: 0.015 },
+    plate:    { base: 0.94, cavity: 0.46, mottle: 0.15, grain: 0.030, wear: 0.24, scuffs: 18 },
+    concrete: { base: 0.93, cavity: 0.42, mottle: 0.19, grain: 0.038, streaks: 30, tint: [1.0, 0.985, 0.955] },
+    asphalt:  { base: 0.90, cavity: 0.34, mottle: 0.15, grain: 0.030, tint: [0.98, 0.985, 1.0] },
+    leather:  { base: 0.93, cavity: 0.52, mottle: 0.20, grain: 0.035, wear: 0.22, tint: [1.0, 0.98, 0.96] },
+    rubber:   { base: 0.90, cavity: 0.44, mottle: 0.12, grain: 0.030 },
+    hair:     { base: 0.96, cavity: 0.34, mottle: 0.14, grain: 0.022 }
+  };
+
   Mats.surface = function (kind, seed) {
     const key = kind + ':' + (seed || 0) + ':' + CFG.gfx.textureQuality;
+    const A = (k, extra) => Object.assign({ seed: (seed || 1) * 7 + 3 }, ALBEDO[k] || {}, extra || {});
     switch (kind) {
-      case 'fabric':   return cachedPair(key, s => HEIGHT.weave(s, seed || 11), 1.6);
-      case 'metal':    return cachedPair(key, s => HEIGHT.brushed(s, seed || 22), 1.0);
-      case 'plate':    return cachedPair(key, s => HEIGHT.panel(s, seed || 33), 2.6);
-      case 'concrete': return cachedPair(key, s => HEIGHT.concrete(s, seed || 44, true), 2.0);
-      case 'asphalt':  return cachedPair(key, s => HEIGHT.concrete(s, seed || 55, true), 2.6);
-      case 'leather':  return cachedPair(key, s => HEIGHT.leather(s, seed || 66), 2.2);
-      case 'rubber':   return cachedPair(key, s => HEIGHT.grip(s, seed || 77), 2.4);
-      case 'hair':     return cachedPair(key, s => HEIGHT.hair(s, seed || 88), 1.2);
-      default:         return cachedPair(key, s => HEIGHT.concrete(s, seed || 99, false), 1.4);
+      case 'fabric':   return cachedPair(key, s => HEIGHT.weave(s, seed || 11), 1.6, A('fabric'));
+      case 'metal':    return cachedPair(key, s => HEIGHT.brushed(s, seed || 22), 1.0, A('metal'));
+      case 'plate':    return cachedPair(key, s => HEIGHT.panel(s, seed || 33), 2.6, A('plate'));
+      case 'concrete': return cachedPair(key, s => HEIGHT.concrete(s, seed || 44, true), 2.0, A('concrete'));
+      case 'asphalt':  return cachedPair(key, s => HEIGHT.concrete(s, seed || 55, true), 2.6, A('asphalt'));
+      case 'leather':  return cachedPair(key, s => HEIGHT.leather(s, seed || 66), 2.2, A('leather'));
+      case 'rubber':   return cachedPair(key, s => HEIGHT.grip(s, seed || 77), 2.4, A('rubber'));
+      case 'hair':     return cachedPair(key, s => HEIGHT.hair(s, seed || 88), 1.2, A('hair'));
+      default:         return cachedPair(key, s => HEIGHT.concrete(s, seed || 99, false), 1.4, A('concrete', { streaks: 0 }));
     }
   };
 
@@ -509,7 +636,7 @@
     const kind = o.kind || 'plastic';
     const key = JSON.stringify([kind, o.color, o.roughness, o.metalness, o.emissive,
       o.emissiveIntensity, o.wear, o.repeat, o.opacity, o.seed, o.rim && o.rim.color,
-      o.rim && o.rim.strength, o.flatShading, CFG.gfx.textureQuality]);
+      o.rim && o.rim.strength, o.flatShading, o.albedo, CFG.gfx.textureQuality]);
     if (!o.unique && Mats._mats.has(key)) return Mats._mats.get(key);
 
     const params = {
@@ -566,6 +693,14 @@
           Mats.disposables.push(rough, norm);
           params.roughnessMap = rough;
           params.normalMap = norm;
+          if (o.albedo !== false && pair.albedo) {
+            const alb = pair.albedo.clone();
+            alb.repeat.set(rep, rep);
+            if ('colorSpace' in alb) alb.colorSpace = THREE.SRGBColorSpace;
+            alb.needsUpdate = true;
+            Mats.disposables.push(alb);
+            params.map = alb;
+          }
           params.normalScale = new THREE.Vector2(o.normalScale || 0.85, o.normalScale || 0.85);
           if (o.wear) {
             // Wear roughens the surface. (No aoMap: our procedural geometry
@@ -638,6 +773,102 @@
     if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
     Mats._tex.set('spark', t); Mats.disposables.push(t);
     return t;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Image-based lighting.
+   *
+   * This is the single most important material fix in the renderer: a
+   * MeshStandardMaterial with metalness near 1 and nothing to reflect
+   * renders BLACK. Every metal surface in the game — armour plating,
+   * weapons, railings, street furniture — was matte and lifeless purely
+   * because the scene had no environment to sample.
+   *
+   * We build a small equirectangular sky by hand (gradient + horizon glow +
+   * a few bright emitters for specular to catch), run it through PMREM so
+   * every roughness level gets a correctly pre-filtered mip, and hand it to
+   * the scene. three then uses it as the default envMap for all PBR
+   * materials automatically.
+   * ------------------------------------------------------------------ */
+  Mats.buildEnvironment = function (renderer, opts) {
+    opts = opts || {};
+    const W = 512, H = 256;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+
+    const zenith = opts.zenith || '#0e1c3a';
+    const horizon = opts.horizon || '#3d5f96';
+    const ground = opts.ground || '#241f2c';
+
+    // Vertical gradient: sky above the horizon line, ground below.
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0.00, zenith);
+    grad.addColorStop(0.42, horizon);
+    grad.addColorStop(0.52, opts.horizonGlow || '#7a6a8e');
+    grad.addColorStop(0.62, ground);
+    grad.addColorStop(1.00, opts.groundDark || '#14121a');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+
+    // Soft emitters. Metals need distinct bright spots or they read as flat
+    // paint; these become the specular highlights that sell "polished".
+    const blobs = opts.lights || [
+      { x: 0.18, y: 0.22, r: 0.30, color: 'rgba(200,225,255,0.95)' },
+      { x: 0.70, y: 0.34, r: 0.22, color: 'rgba(255,168,120,0.75)' },
+      { x: 0.44, y: 0.48, r: 0.30, color: 'rgba(110,190,255,0.45)' },
+      { x: 0.88, y: 0.46, r: 0.18, color: 'rgba(255,110,190,0.35)' }
+    ];
+    blobs.forEach(b => {
+      const rg = g.createRadialGradient(b.x * W, b.y * H, 0, b.x * W, b.y * H, b.r * H);
+      rg.addColorStop(0, b.color);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg;
+      g.fillRect(0, 0, W, H);
+    });
+
+    // A hint of city glow along the horizon band so reflections have structure.
+    const rnd = U.rng(9317);
+    g.globalAlpha = 0.5;
+    for (let i = 0; i < 90; i++) {
+      const x = rnd() * W;
+      const h = 2 + rnd() * 9;
+      g.fillStyle = rnd() > 0.5 ? 'rgba(255,214,150,0.7)' : 'rgba(140,205,255,0.6)';
+      g.fillRect(x, H * 0.52 - h, 1 + rnd() * 2, h);
+    }
+    g.globalAlpha = 1;
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+
+    let envTexture = null;
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      const rt = pmrem.fromEquirectangular(tex);
+      envTexture = rt.texture;
+      Mats._envRT = rt;
+      pmrem.dispose();
+      tex.dispose();
+    } catch (e) {
+      // Without PMREM the raw equirect still lights the scene, just less
+      // accurately at high roughness — better than a black metal world.
+      HC.Log.warn('Mats', 'PMREM unavailable (' + e.message + ') — using raw environment.');
+      envTexture = tex;
+      Mats.disposables.push(tex);
+    }
+    Mats.environment = envTexture;
+    return envTexture;
+  };
+
+  Mats.applyEnvironment = function (scene, intensity) {
+    if (!Mats.environment) return;
+    scene.environment = Mats.environment;
+    if (intensity !== undefined && 'environmentIntensity' in scene) {
+      scene.environmentIntensity = intensity;
+    }
   };
 
   /** Team-tinted variant of a base colour, honouring colour-blind settings. */

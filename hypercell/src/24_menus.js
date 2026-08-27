@@ -68,27 +68,39 @@
     (function setupStage() {
       const s = stage.scene;
       s.background = null;
-      // Three-point showcase lighting: a bright key, a cool rim to cut the
-      // silhouette out of the background, and a warm kicker on the far side.
-      const key = new THREE.DirectionalLight(0xf2f7ff, 3.6);
-      key.position.set(2.6, 4.2, 3.4);
+      HC.Mats.applyEnvironment(s, 1.15);
+      /* Three-point showcase lighting.
+       *
+       * The first version put a near-frontal key on top of a heavy ambient
+       * and hemisphere fill, and flat light is what makes sculpted forms — a
+       * brow, a nose, a cheekbone — disappear into a mask. The key now comes
+       * in high and well off-axis so the face has a lit side and a shadow
+       * side, and the ambient is a fraction of what it was. */
+      const key = new THREE.DirectionalLight(0xfff4e6, 4.6);
+      key.position.set(3.4, 4.0, 2.4);
+      key.castShadow = false;
       s.add(key);
-      const rim = new THREE.DirectionalLight(0x6ab8ff, 4.2);
-      rim.position.set(-3.2, 2.6, -3.0);
+      const rim = new THREE.DirectionalLight(0x7fc4ff, 5.4);
+      rim.position.set(-3.0, 2.4, -3.4);
       s.add(rim);
-      const warm = new THREE.PointLight(0xff8a4a, 160, 14, 2);
-      warm.position.set(2.4, 1.4, -2.2);
+      const warm = new THREE.PointLight(0xff8a4a, 190, 14, 2);
+      warm.position.set(2.6, 1.5, -2.2);
       s.add(warm);
-      const fillLight = new THREE.PointLight(0x88c8ff, 90, 12, 2);
-      fillLight.position.set(-2.2, 1.0, 2.6);
+      // Bounce fill: low, cool, and weak — it lifts the shadow side without
+      // erasing it.
+      const fillLight = new THREE.PointLight(0x7fb0e0, 46, 12, 2);
+      fillLight.position.set(-2.4, 0.5, 2.4);
       s.add(fillLight);
-      s.add(new THREE.AmbientLight(0x5d7a9e, 1.5));
-      s.add(new THREE.HemisphereLight(0x6a94c8, 0x1a2230, 1.4));
+      s.add(new THREE.AmbientLight(0x3c4e66, 0.55));
+      s.add(new THREE.HemisphereLight(0x5a80ae, 0x181f2c, 0.65));
 
       // Stage floor: a lit disc so the hero is not floating in a void.
       const discGeo = new THREE.CylinderGeometry(1.35, 1.5, 0.10, 48);
-      const discMat = HC.Mats.make({ kind: 'metal', color: 0x1b2534, roughness: 0.35, metalness: 0.85,
-        rim: { color: 0x54c8ff, strength: 0.6, power: 2.2 } });
+      // Brushed metal here streaked into bright radial stripes that pulled
+      // the eye straight off the hero. A dark, near-matte plate reads as a
+      // stage, which is all it needs to do.
+      const discMat = HC.Mats.make({ kind: 'plate', color: 0x131a25, roughness: 0.52, metalness: 0.35,
+        repeat: 2.5, normalScale: 0.35, rim: { color: 0x54c8ff, strength: 0.30, power: 2.8 } });
       const disc = new THREE.Mesh(discGeo, discMat);
       disc.position.y = -0.05;
       s.add(disc);
@@ -127,7 +139,9 @@
       });
       stage.model.bones.weaponSocket.add(stage.weapon.root);
       stage.weapon.root.rotation.set(Math.PI * 0.5, 0, 0);
-      stage.animator.setWeaponShape(!!HC.Weapons.get(charDef.weapon).akimbo, !!HC.Weapons.get(charDef.weapon).melee);
+      const wdef = HC.Weapons.get(charDef.weapon);
+      stage.akimbo = !!wdef.akimbo;
+      stage.animator.setWeaponShape(stage.akimbo, !!wdef.melee);
 
       // Frame the hero: taller heroes get pushed back a little.
       const h = stage.model.measure.height;
@@ -159,6 +173,13 @@
         _stageDir.transformDirection(_stageM);
         if (_stageDir.lengthSq() > 1e-8) {
           stage.weapon.root.quaternion.setFromUnitVectors(STAGE_FORWARD, _stageDir.normalize());
+        }
+        // Same two-handed solve the arena uses, so the off hand lands on the
+        // foregrip here too instead of hovering beside it.
+        const grip = stage.weapon.sockets && stage.weapon.sockets.foregrip;
+        if (grip && !stage.akimbo) {
+          stage.model.root.updateWorldMatrix(false, true);
+          HC.CharacterModel.solveGripIK(stage.model, grip, 1);
         }
       }
     };

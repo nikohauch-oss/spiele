@@ -765,6 +765,9 @@
        * tracer originates, so the two can never disagree. */
       aimHeldWeapon();
 
+      /* Off hand onto the foregrip, after the weapon has been aimed. */
+      updateGripIK(dt);
+
       /* marked state decays */
       if (A.markedUntil > 0 && A._time > A.markedUntil) { A.markedUntil = 0; A.markedBy = null; }
 
@@ -799,6 +802,25 @@
       // Sprinting drops the muzzle into a low-ready carry.
       if (A.sprinting || A.sliding) slot.model.root.rotateX(0.62);
       if (slot.offModel) orientToAim(slot.offModel, A.model.bones.offhandSocket);
+    }
+
+    /* Two-handed grip: the solve itself lives in the character model so the
+     * character-select stage can run exactly the same one. */
+    let _gripWeight = 0;
+
+    function updateGripIK(dt) {
+      const slot = A.weaponSlots[A.weaponIndex];
+      const socket = slot && slot.model && slot.model.sockets
+        ? (slot.model.sockets.foregrip || null) : null;
+
+      // Only weapons actually held in two hands, and only while the pose is
+      // not busy doing something else with that arm.
+      const twoHanded = !!socket && !slot.def.akimbo && !slot.def.melee;
+      const busy = A.weapon.reloading || A.weapon.swapping || A.dodging ||
+                   A.sliding || A.sprinting || !!A.animator.action;
+      const want = twoHanded && !busy && A.alive ? 1 : 0;
+      _gripWeight = U.damp(_gripWeight, want, 9, dt);
+      HC.CharacterModel.solveGripIK(A.model, socket, _gripWeight);
     }
 
     function applyRootTilt() {

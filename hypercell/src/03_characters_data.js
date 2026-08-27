@@ -22,16 +22,16 @@
     return {
       heightScale: 1.00, bulk: 1.00, shoulderWidth: 1.00, chestDepth: 1.00,
       hipWidth: 1.00, legLength: 1.00, armLength: 1.00, neckLength: 1.00,
-      headScale: 1.14, handScale: 1.22, footScale: 1.20, torsoTaper: 1.00,
+      headScale: 1.003, handScale: 1.22, footScale: 1.20, torsoTaper: 1.00,
       posture: 'upright'
     };
   };
   Characters._defaultPalette = function () {
     return {
-      primary: 0x2b3550, secondary: 0x1a2133, accent: 0x36c7ff, emissive: 0x36c7ff,
+      primary: 0x445780, secondary: 0x1a2133, accent: 0x36c7ff, emissive: 0x36c7ff,
       metal: 0x8d99ad, darkMetal: 0x3a4152, skin: 0xc98d6a, hair: 0x241c19,
-      visor: 0x0e2233, cloth: 0x394a63, leather: 0x4a3628, rubber: 0x1a1d24,
-      trim: 0xe8eef7
+      visor: 0x0e2233, cloth: 0x1d2430, leather: 0x4a3628, rubber: 0x1a1d24,
+      trim: 0xe8eef7, eye: 0x4a6a78
     };
   };
 
@@ -53,11 +53,11 @@
     weapon: 'pulse_rifle', secondary: null,
     abilities: ['combat_dash', 'overcharge'], ultimate: 'shock_rocket',
     difficulty: 1,
-    build: B({ bulk: 1.06, shoulderWidth: 1.10, chestDepth: 1.05, headScale: 1.12 }),
+    build: B({ bulk: 1.06, shoulderWidth: 1.10, chestDepth: 1.05, headScale: 0.986 }),
     palette: P({
-      primary: 0x2f4f6b, secondary: 0x1d2c3d, accent: 0x36c7ff, emissive: 0x4ad4ff,
+      primary: 0x4d7ba3, secondary: 0x1d2c3d, accent: 0x36c7ff, emissive: 0x4ad4ff,
       metal: 0x93a2b6, darkMetal: 0x333c4c, skin: 0xba7f5c, hair: 0x1f1a17,
-      cloth: 0x35526e, trim: 0xf0f5fb, leather: 0x4b3a2c
+      cloth: 0x1e2a36, trim: 0xf0f5fb, leather: 0x4b3a2c
     }),
     gear: {
       shoulderPads: 'light', helmet: 'none', hair: 'short_fade', jacket: 'bomber',
@@ -86,13 +86,13 @@
     difficulty: 2,
     build: B({
       heightScale: 0.955, bulk: 0.86, shoulderWidth: 0.92, chestDepth: 0.92, hipWidth: 1.03,
-      legLength: 1.07, armLength: 1.02, headScale: 1.16, handScale: 1.14, footScale: 1.12,
+      legLength: 1.07, armLength: 1.02, headScale: 1.021, handScale: 1.14, footScale: 1.12,
       posture: 'coiled'
     }),
     palette: P({
-      primary: 0x2b2f57, secondary: 0x181a33, accent: 0xff5ad0, emissive: 0xff6ee0,
+      primary: 0x474d8a, secondary: 0x181a33, accent: 0xff5ad0, emissive: 0xff6ee0,
       metal: 0xa9b3c9, darkMetal: 0x2d3145, skin: 0x8f5f43, hair: 0x1a1420,
-      cloth: 0x343a63, trim: 0xf6e9ff, rubber: 0x15171f
+      cloth: 0x1b1d2e, trim: 0xf6e9ff, rubber: 0x15171f
     }),
     gear: {
       shoulderPads: 'none', helmet: 'visor_light', hair: 'high_ponytail', jacket: 'cropped',
@@ -121,13 +121,13 @@
     difficulty: 1,
     build: B({
       heightScale: 1.16, bulk: 1.62, shoulderWidth: 1.72, chestDepth: 1.48, hipWidth: 1.34,
-      legLength: 0.90, armLength: 1.10, neckLength: 0.55, headScale: 1.02,
+      legLength: 0.90, armLength: 1.10, neckLength: 0.55, headScale: 0.898,
       handScale: 1.68, footScale: 1.55, torsoTaper: 1.22, posture: 'hunched'
     }),
     palette: P({
-      primary: 0x5c5f4a, secondary: 0x33361f, accent: 0xf2b23f, emissive: 0xffc24a,
+      primary: 0x8e9271, secondary: 0x33361f, accent: 0xf2b23f, emissive: 0xffc24a,
       metal: 0x7f8794, darkMetal: 0x2c2f34, skin: 0x7d5138, hair: 0x2b2b28,
-      cloth: 0x4a4c3a, trim: 0xd9c07a, rubber: 0x18191c, leather: 0x40301f
+      cloth: 0x26271d, trim: 0xd9c07a, rubber: 0x18191c, leather: 0x40301f
     }),
     gear: {
       shoulderPads: 'heavy', helmet: 'half_mask', hair: 'buzz', jacket: 'plated',
@@ -156,13 +156,13 @@
     difficulty: 3,
     build: B({
       heightScale: 1.02, bulk: 0.83, shoulderWidth: 0.94, chestDepth: 0.88, hipWidth: 0.98,
-      legLength: 1.10, armLength: 1.06, headScale: 1.10, handScale: 1.12, footScale: 1.08,
+      legLength: 1.10, armLength: 1.06, headScale: 0.968, handScale: 1.12, footScale: 1.08,
       torsoTaper: 0.92, posture: 'coiled'
     }),
     palette: P({
-      primary: 0x241d33, secondary: 0x120e1c, accent: 0xa964ff, emissive: 0xc06bff,
+      primary: 0x453a5e, secondary: 0x120e1c, accent: 0xa964ff, emissive: 0xc06bff,
       metal: 0x6f6a86, darkMetal: 0x1b1726, skin: 0xa9a5b8, hair: 0x0f0c15,
-      cloth: 0x1f1a2e, trim: 0xd6b8ff, visor: 0x2a0f4a, rubber: 0x120f18
+      cloth: 0x140f1c, trim: 0xd6b8ff, visor: 0x2a0f4a, rubber: 0x120f18
     }),
     gear: {
       shoulderPads: 'asym', helmet: 'mask_full', hair: 'undercut_long', jacket: 'wrap',
@@ -191,12 +191,12 @@
     difficulty: 2,
     build: B({
       heightScale: 0.98, bulk: 1.20, shoulderWidth: 1.14, chestDepth: 1.16, hipWidth: 1.10,
-      legLength: 0.95, headScale: 1.20, handScale: 1.34, footScale: 1.30, posture: 'upright'
+      legLength: 0.95, headScale: 1.056, handScale: 1.34, footScale: 1.30, posture: 'upright'
     }),
     palette: P({
-      primary: 0x8a5a1f, secondary: 0x3d2a12, accent: 0xffa02e, emissive: 0xff8c1a,
+      primary: 0xc08434, secondary: 0x3d2a12, accent: 0xffa02e, emissive: 0xff8c1a,
       metal: 0x9a8f78, darkMetal: 0x35302a, skin: 0xc48a5e, hair: 0x5c3a1c,
-      cloth: 0x6d4a20, trim: 0xffd79a, leather: 0x53381d, rubber: 0x1c1a17
+      cloth: 0x2f2114, trim: 0xffd79a, leather: 0x53381d, rubber: 0x1c1a17
     }),
     gear: {
       shoulderPads: 'asym', helmet: 'goggles', hair: 'messy', jacket: 'workwear',
@@ -225,12 +225,12 @@
     difficulty: 2,
     build: B({
       heightScale: 1.00, bulk: 0.90, shoulderWidth: 0.98, chestDepth: 0.94, hipWidth: 1.02,
-      legLength: 1.05, armLength: 1.03, headScale: 1.15, handScale: 1.16, footScale: 1.12
+      legLength: 1.05, armLength: 1.03, headScale: 1.012, handScale: 1.16, footScale: 1.12
     }),
     palette: P({
-      primary: 0x1f4a52, secondary: 0x0f2a30, accent: 0x3ff0c0, emissive: 0x66ffd9,
+      primary: 0x357e88, secondary: 0x0f2a30, accent: 0x3ff0c0, emissive: 0x66ffd9,
       metal: 0xa3bcc2, darkMetal: 0x1c3238, skin: 0xd8b49a, hair: 0xd8f2ee,
-      cloth: 0x246068, trim: 0xd9fff6, visor: 0x0a3a3f, rubber: 0x10191b
+      cloth: 0x0f2b30, trim: 0xd9fff6, visor: 0x0a3a3f, rubber: 0x10191b
     }),
     gear: {
       shoulderPads: 'light', helmet: 'crown', hair: 'long_flow', jacket: 'robe_tech',
@@ -259,12 +259,12 @@
     difficulty: 2,
     build: B({
       heightScale: 1.04, bulk: 1.12, shoulderWidth: 1.16, chestDepth: 1.08, hipWidth: 1.04,
-      legLength: 1.03, armLength: 1.05, headScale: 1.12, handScale: 1.26, footScale: 1.26
+      legLength: 1.03, armLength: 1.05, headScale: 0.986, handScale: 1.26, footScale: 1.26
     }),
     palette: P({
-      primary: 0x3d5136, secondary: 0x21301c, accent: 0xc8f24e, emissive: 0xd6ff5e,
+      primary: 0x647f57, secondary: 0x21301c, accent: 0xc8f24e, emissive: 0xd6ff5e,
       metal: 0x8d9483, darkMetal: 0x2b3128, skin: 0x8e5c3c, hair: 0x2a1d13,
-      cloth: 0x4a5c3d, trim: 0xe9f7c2, leather: 0x513a24, rubber: 0x16180f
+      cloth: 0x232c1d, trim: 0xe9f7c2, leather: 0x513a24, rubber: 0x16180f
     }),
     gear: {
       shoulderPads: 'asym', helmet: 'hood', hair: 'braids', jacket: 'pelt_tech',
@@ -293,13 +293,13 @@
     difficulty: 3,
     build: B({
       heightScale: 1.06, bulk: 1.22, shoulderWidth: 1.26, chestDepth: 1.18, hipWidth: 1.06,
-      legLength: 1.02, armLength: 1.04, neckLength: 0.75, headScale: 1.06,
+      legLength: 1.02, armLength: 1.04, neckLength: 0.75, headScale: 0.933,
       handScale: 1.30, footScale: 1.32
     }),
     palette: P({
       primary: 0xd8dee8, secondary: 0x8e97a6, accent: 0x2f7bff, emissive: 0x4f9bff,
       metal: 0xc3cbd8, darkMetal: 0x2a3140, skin: 0x9aa4b3, hair: 0x000000,
-      cloth: 0x39445a, trim: 0x0e1626, visor: 0x081a3a, rubber: 0x171b23
+      cloth: 0x1c222d, trim: 0x0e1626, visor: 0x081a3a, rubber: 0x171b23
     }),
     gear: {
       shoulderPads: 'heavy', helmet: 'full_sealed', hair: 'none', jacket: 'armor_suit',

@@ -670,7 +670,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /*! HYPERCELL — a stylised 3D hero shooter.
- *  Built 2026-08-27T05:33:43.051Z
+ *  Built 2026-08-27T10:57:56.230Z
  *  All geometry, textures, animation and audio are generated at runtime.
  *  Bundled: three.js r160 (MIT).
  */
@@ -1114,7 +1114,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       motionBlur: false,
       antialias: true,
       textureQuality: 2,             // 0 low / 1 med / 2 high
-      exposure: 1.18
+      exposure: 1.18,
+      envIntensity: 1.0,             // strength of image-based lighting
+      ssao: true,
+      ssaoRadius: 1.15,
+      ssaoIntensity: 1.30,
+      fxaa: true
     },
 
     /* ---------------- audio ---------------- */
@@ -1465,16 +1470,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     return {
       heightScale: 1.00, bulk: 1.00, shoulderWidth: 1.00, chestDepth: 1.00,
       hipWidth: 1.00, legLength: 1.00, armLength: 1.00, neckLength: 1.00,
-      headScale: 1.14, handScale: 1.22, footScale: 1.20, torsoTaper: 1.00,
+      headScale: 1.003, handScale: 1.22, footScale: 1.20, torsoTaper: 1.00,
       posture: 'upright'
     };
   };
   Characters._defaultPalette = function () {
     return {
-      primary: 0x2b3550, secondary: 0x1a2133, accent: 0x36c7ff, emissive: 0x36c7ff,
+      primary: 0x445780, secondary: 0x1a2133, accent: 0x36c7ff, emissive: 0x36c7ff,
       metal: 0x8d99ad, darkMetal: 0x3a4152, skin: 0xc98d6a, hair: 0x241c19,
-      visor: 0x0e2233, cloth: 0x394a63, leather: 0x4a3628, rubber: 0x1a1d24,
-      trim: 0xe8eef7
+      visor: 0x0e2233, cloth: 0x1d2430, leather: 0x4a3628, rubber: 0x1a1d24,
+      trim: 0xe8eef7, eye: 0x4a6a78
     };
   };
 
@@ -1496,11 +1501,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     weapon: 'pulse_rifle', secondary: null,
     abilities: ['combat_dash', 'overcharge'], ultimate: 'shock_rocket',
     difficulty: 1,
-    build: B({ bulk: 1.06, shoulderWidth: 1.10, chestDepth: 1.05, headScale: 1.12 }),
+    build: B({ bulk: 1.06, shoulderWidth: 1.10, chestDepth: 1.05, headScale: 0.986 }),
     palette: P({
-      primary: 0x2f4f6b, secondary: 0x1d2c3d, accent: 0x36c7ff, emissive: 0x4ad4ff,
+      primary: 0x4d7ba3, secondary: 0x1d2c3d, accent: 0x36c7ff, emissive: 0x4ad4ff,
       metal: 0x93a2b6, darkMetal: 0x333c4c, skin: 0xba7f5c, hair: 0x1f1a17,
-      cloth: 0x35526e, trim: 0xf0f5fb, leather: 0x4b3a2c
+      cloth: 0x1e2a36, trim: 0xf0f5fb, leather: 0x4b3a2c
     }),
     gear: {
       shoulderPads: 'light', helmet: 'none', hair: 'short_fade', jacket: 'bomber',
@@ -1529,13 +1534,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 2,
     build: B({
       heightScale: 0.955, bulk: 0.86, shoulderWidth: 0.92, chestDepth: 0.92, hipWidth: 1.03,
-      legLength: 1.07, armLength: 1.02, headScale: 1.16, handScale: 1.14, footScale: 1.12,
+      legLength: 1.07, armLength: 1.02, headScale: 1.021, handScale: 1.14, footScale: 1.12,
       posture: 'coiled'
     }),
     palette: P({
-      primary: 0x2b2f57, secondary: 0x181a33, accent: 0xff5ad0, emissive: 0xff6ee0,
+      primary: 0x474d8a, secondary: 0x181a33, accent: 0xff5ad0, emissive: 0xff6ee0,
       metal: 0xa9b3c9, darkMetal: 0x2d3145, skin: 0x8f5f43, hair: 0x1a1420,
-      cloth: 0x343a63, trim: 0xf6e9ff, rubber: 0x15171f
+      cloth: 0x1b1d2e, trim: 0xf6e9ff, rubber: 0x15171f
     }),
     gear: {
       shoulderPads: 'none', helmet: 'visor_light', hair: 'high_ponytail', jacket: 'cropped',
@@ -1564,13 +1569,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 1,
     build: B({
       heightScale: 1.16, bulk: 1.62, shoulderWidth: 1.72, chestDepth: 1.48, hipWidth: 1.34,
-      legLength: 0.90, armLength: 1.10, neckLength: 0.55, headScale: 1.02,
+      legLength: 0.90, armLength: 1.10, neckLength: 0.55, headScale: 0.898,
       handScale: 1.68, footScale: 1.55, torsoTaper: 1.22, posture: 'hunched'
     }),
     palette: P({
-      primary: 0x5c5f4a, secondary: 0x33361f, accent: 0xf2b23f, emissive: 0xffc24a,
+      primary: 0x8e9271, secondary: 0x33361f, accent: 0xf2b23f, emissive: 0xffc24a,
       metal: 0x7f8794, darkMetal: 0x2c2f34, skin: 0x7d5138, hair: 0x2b2b28,
-      cloth: 0x4a4c3a, trim: 0xd9c07a, rubber: 0x18191c, leather: 0x40301f
+      cloth: 0x26271d, trim: 0xd9c07a, rubber: 0x18191c, leather: 0x40301f
     }),
     gear: {
       shoulderPads: 'heavy', helmet: 'half_mask', hair: 'buzz', jacket: 'plated',
@@ -1599,13 +1604,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 3,
     build: B({
       heightScale: 1.02, bulk: 0.83, shoulderWidth: 0.94, chestDepth: 0.88, hipWidth: 0.98,
-      legLength: 1.10, armLength: 1.06, headScale: 1.10, handScale: 1.12, footScale: 1.08,
+      legLength: 1.10, armLength: 1.06, headScale: 0.968, handScale: 1.12, footScale: 1.08,
       torsoTaper: 0.92, posture: 'coiled'
     }),
     palette: P({
-      primary: 0x241d33, secondary: 0x120e1c, accent: 0xa964ff, emissive: 0xc06bff,
+      primary: 0x453a5e, secondary: 0x120e1c, accent: 0xa964ff, emissive: 0xc06bff,
       metal: 0x6f6a86, darkMetal: 0x1b1726, skin: 0xa9a5b8, hair: 0x0f0c15,
-      cloth: 0x1f1a2e, trim: 0xd6b8ff, visor: 0x2a0f4a, rubber: 0x120f18
+      cloth: 0x140f1c, trim: 0xd6b8ff, visor: 0x2a0f4a, rubber: 0x120f18
     }),
     gear: {
       shoulderPads: 'asym', helmet: 'mask_full', hair: 'undercut_long', jacket: 'wrap',
@@ -1634,12 +1639,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 2,
     build: B({
       heightScale: 0.98, bulk: 1.20, shoulderWidth: 1.14, chestDepth: 1.16, hipWidth: 1.10,
-      legLength: 0.95, headScale: 1.20, handScale: 1.34, footScale: 1.30, posture: 'upright'
+      legLength: 0.95, headScale: 1.056, handScale: 1.34, footScale: 1.30, posture: 'upright'
     }),
     palette: P({
-      primary: 0x8a5a1f, secondary: 0x3d2a12, accent: 0xffa02e, emissive: 0xff8c1a,
+      primary: 0xc08434, secondary: 0x3d2a12, accent: 0xffa02e, emissive: 0xff8c1a,
       metal: 0x9a8f78, darkMetal: 0x35302a, skin: 0xc48a5e, hair: 0x5c3a1c,
-      cloth: 0x6d4a20, trim: 0xffd79a, leather: 0x53381d, rubber: 0x1c1a17
+      cloth: 0x2f2114, trim: 0xffd79a, leather: 0x53381d, rubber: 0x1c1a17
     }),
     gear: {
       shoulderPads: 'asym', helmet: 'goggles', hair: 'messy', jacket: 'workwear',
@@ -1668,12 +1673,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 2,
     build: B({
       heightScale: 1.00, bulk: 0.90, shoulderWidth: 0.98, chestDepth: 0.94, hipWidth: 1.02,
-      legLength: 1.05, armLength: 1.03, headScale: 1.15, handScale: 1.16, footScale: 1.12
+      legLength: 1.05, armLength: 1.03, headScale: 1.012, handScale: 1.16, footScale: 1.12
     }),
     palette: P({
-      primary: 0x1f4a52, secondary: 0x0f2a30, accent: 0x3ff0c0, emissive: 0x66ffd9,
+      primary: 0x357e88, secondary: 0x0f2a30, accent: 0x3ff0c0, emissive: 0x66ffd9,
       metal: 0xa3bcc2, darkMetal: 0x1c3238, skin: 0xd8b49a, hair: 0xd8f2ee,
-      cloth: 0x246068, trim: 0xd9fff6, visor: 0x0a3a3f, rubber: 0x10191b
+      cloth: 0x0f2b30, trim: 0xd9fff6, visor: 0x0a3a3f, rubber: 0x10191b
     }),
     gear: {
       shoulderPads: 'light', helmet: 'crown', hair: 'long_flow', jacket: 'robe_tech',
@@ -1702,12 +1707,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 2,
     build: B({
       heightScale: 1.04, bulk: 1.12, shoulderWidth: 1.16, chestDepth: 1.08, hipWidth: 1.04,
-      legLength: 1.03, armLength: 1.05, headScale: 1.12, handScale: 1.26, footScale: 1.26
+      legLength: 1.03, armLength: 1.05, headScale: 0.986, handScale: 1.26, footScale: 1.26
     }),
     palette: P({
-      primary: 0x3d5136, secondary: 0x21301c, accent: 0xc8f24e, emissive: 0xd6ff5e,
+      primary: 0x647f57, secondary: 0x21301c, accent: 0xc8f24e, emissive: 0xd6ff5e,
       metal: 0x8d9483, darkMetal: 0x2b3128, skin: 0x8e5c3c, hair: 0x2a1d13,
-      cloth: 0x4a5c3d, trim: 0xe9f7c2, leather: 0x513a24, rubber: 0x16180f
+      cloth: 0x232c1d, trim: 0xe9f7c2, leather: 0x513a24, rubber: 0x16180f
     }),
     gear: {
       shoulderPads: 'asym', helmet: 'hood', hair: 'braids', jacket: 'pelt_tech',
@@ -1736,13 +1741,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     difficulty: 3,
     build: B({
       heightScale: 1.06, bulk: 1.22, shoulderWidth: 1.26, chestDepth: 1.18, hipWidth: 1.06,
-      legLength: 1.02, armLength: 1.04, neckLength: 0.75, headScale: 1.06,
+      legLength: 1.02, armLength: 1.04, neckLength: 0.75, headScale: 0.933,
       handScale: 1.30, footScale: 1.32
     }),
     palette: P({
       primary: 0xd8dee8, secondary: 0x8e97a6, accent: 0x2f7bff, emissive: 0x4f9bff,
       metal: 0xc3cbd8, darkMetal: 0x2a3140, skin: 0x9aa4b3, hair: 0x000000,
-      cloth: 0x39445a, trim: 0x0e1626, visor: 0x081a3a, rubber: 0x171b23
+      cloth: 0x1c222d, trim: 0x0e1626, visor: 0x081a3a, rubber: 0x171b23
     }),
     gear: {
       shoulderPads: 'heavy', helmet: 'full_sealed', hair: 'none', jacket: 'armor_suit',
@@ -3537,6 +3542,116 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     return out;
   }
 
+  /**
+   * Derives an albedo (base-colour) map from a height field.
+   *
+   * Until now every surface in the game was a single flat colour lit by a
+   * normal map, which is exactly what makes untextured 3D read as cheap: real
+   * materials vary in *colour*, not only in relief. This builds that variation
+   * procedurally — cavity darkening from the height field, a low-frequency
+   * blotch field for large-scale tonal breakup, fine grain, and optional rain
+   * streaks or wear highlights. The result sits near white so it multiplies
+   * into the material colour without dimming it.
+   */
+  function albedoFromHeight(heightCanvas, o) {
+    o = o || {};
+    const size = heightCanvas.width;
+    const src = readCtx(heightCanvas).getImageData(0, 0, size, size).data;
+    const out = makeCanvas(size);
+    const ctx = out.getContext('2d');
+    const img = ctx.createImageData(size, size);
+    const rnd = U.rng(o.seed || 5);
+
+    // Normalise the height field so every generator gets the same treatment.
+    let lo = 1, hi = 0;
+    for (let i = 0; i < src.length; i += 4) {
+      const v = src[i] / 255;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    const span = Math.max(1e-3, hi - lo);
+
+    // Two octaves of value noise: the large one is the blotching you read as
+    // "this wall has history", the small one keeps it from looking like a
+    // gradient.
+    function noiseField(n) {
+      const grid = new Float32Array(n * n);
+      for (let i = 0; i < grid.length; i++) grid[i] = rnd();
+      return { n, grid };
+    }
+    const big = noiseField(4), small = noiseField(10);
+    function sample(F, x, y) {
+      const fx = x / size * F.n, fy = y / size * F.n;
+      const x0 = Math.floor(fx) % F.n, y0 = Math.floor(fy) % F.n;
+      const x1 = (x0 + 1) % F.n, y1 = (y0 + 1) % F.n;
+      const tx = U.smoothstep(fx - Math.floor(fx)), ty = U.smoothstep(fy - Math.floor(fy));
+      const a = U.lerp(F.grid[y0 * F.n + x0], F.grid[y0 * F.n + x1], tx);
+      const b = U.lerp(F.grid[y1 * F.n + x0], F.grid[y1 * F.n + x1], tx);
+      return U.lerp(a, b, ty);
+    }
+
+    const base = o.base === undefined ? 0.94 : o.base;
+    const cavity = o.cavity === undefined ? 0.42 : o.cavity;
+    const mottle = o.mottle === undefined ? 0.20 : o.mottle;
+    const grain = o.grain === undefined ? 0.045 : o.grain;
+    const wear = o.wear === undefined ? 0 : o.wear;
+    const tint = o.tint || [1, 1, 1];
+    const hue = o.hueJitter === undefined ? 0.03 : o.hueJitter;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (y * size + x) * 4;
+        const h = ((src[i] / 255) - lo) / span;
+
+        let v = base;
+        v *= 1 - cavity * (1 - h);                       // crevices go dark
+        v *= U.lerp(1 - mottle, 1 + mottle * 0.35, sample(big, x, y));
+        v *= U.lerp(1 - mottle * 0.45, 1 + mottle * 0.25, sample(small, x, y));
+        if (wear) v += wear * Math.pow(h, 3) * 0.35;     // polished high points
+        v += (rnd() - 0.5) * grain;
+        v = U.clamp01(v);
+
+        // A touch of per-pixel hue drift keeps large flats from banding.
+        const j = (sample(small, x + 31, y + 17) - 0.5) * hue;
+        img.data[i]     = U.clamp01(v * tint[0] * (1 + j)) * 255;
+        img.data[i + 1] = U.clamp01(v * tint[1]) * 255;
+        img.data[i + 2] = U.clamp01(v * tint[2] * (1 - j)) * 255;
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    // Rain streaks: vertical grime running down from ledges. Only vertical
+    // surfaces ask for these, and they are the single most recognisable
+    // "outdoor concrete" cue there is.
+    if (o.streaks) {
+      ctx.globalAlpha = 0.055;
+      ctx.fillStyle = '#4a4438';
+      for (let i = 0; i < o.streaks; i++) {
+        const x = rnd() * size;
+        const w = 1 + rnd() * (size / 42);
+        const y0 = rnd() * size * 0.6;
+        ctx.fillRect(x, y0, w, size - y0);
+      }
+      ctx.globalAlpha = 1;
+    }
+    // Scuffs: short bright abrasions, for metal and plate.
+    if (o.scuffs) {
+      ctx.globalAlpha = 0.18;
+      for (let i = 0; i < o.scuffs; i++) {
+        ctx.strokeStyle = rnd() > 0.5 ? '#ffffff' : '#2c2c30';
+        ctx.lineWidth = 0.6 + rnd() * 1.4;
+        const x = rnd() * size, y = rnd() * size, a = rnd() * U.TAU, l = size * (0.03 + rnd() * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    return out;
+  }
+
   /* ------------------------------------------------------------------ *
    * Height-field generators (greyscale canvases)
    * ------------------------------------------------------------------ */
@@ -3546,14 +3661,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const c = makeCanvas(size), g = c.getContext('2d');
       const rnd = U.rng(seed);
       const img = g.createImageData(size, size);
-      const period = Math.max(3, size / 42);
+      // A coarse weave. The old fine period tiled into a moire screen at
+      // character scale, which read as cheap plastic mesh rather than cloth.
+      const period = Math.max(6, size / 14);
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
           const u = (x % period) / period, v = (y % period) / period;
           const over = ((Math.floor(x / period) + Math.floor(y / period)) % 2) === 0;
           const warp = Math.sin(u * Math.PI), weft = Math.sin(v * Math.PI);
           let h = over ? warp * 0.72 + weft * 0.24 : weft * 0.72 + warp * 0.24;
-          h = h * 0.5 + 0.42 + (rnd() - 0.5) * 0.10;
+          h = h * 0.30 + 0.55 + (rnd() - 0.5) * 0.07;
           const i = (y * size + x) * 4, val = U.clamp01(h) * 255;
           img.data[i] = img.data[i + 1] = img.data[i + 2] = val; img.data[i + 3] = 255;
         }
@@ -3638,7 +3755,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const c = makeCanvas(size), g = c.getContext('2d');
       const rnd = U.rng(seed);
       g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, size, size);
-      const cells = 4;
+      const cells = 2;
       const cs = size / cells;
       for (let cy = 0; cy < cells; cy++) {
         for (let cx = 0; cx < cells; cx++) {
@@ -3864,29 +3981,44 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   /* ------------------------------------------------------------------ *
    * Cached texture accessors
    * ------------------------------------------------------------------ */
-  function cachedPair(key, gen, normalStrength) {
+  function cachedPair(key, gen, normalStrength, albedoOpts) {
     if (Mats._tex.has(key)) return Mats._tex.get(key);
     const s = texSize();
     const height = gen(s);
     const rough = finishTexture(height, 1, { srgb: false });
     const normal = finishTexture(normalFromHeight(height, normalStrength), 1, { srgb: false });
-    const pair = { rough, normal };
+    const albedo = finishTexture(albedoFromHeight(height, albedoOpts || {}), 1);
+    const pair = { rough, normal, albedo };
     Mats._tex.set(key, pair);
     return pair;
   }
 
+  /* Per-surface albedo character. These numbers are the difference between
+   * "a blue shape" and "a worn blue jacket". */
+  const ALBEDO = {
+    fabric:   { base: 0.95, cavity: 0.38, mottle: 0.16, grain: 0.030, hueJitter: 0.02 },
+    metal:    { base: 0.93, cavity: 0.30, mottle: 0.14, grain: 0.035, wear: 0.30, scuffs: 26, hueJitter: 0.015 },
+    plate:    { base: 0.94, cavity: 0.46, mottle: 0.15, grain: 0.030, wear: 0.24, scuffs: 18 },
+    concrete: { base: 0.93, cavity: 0.42, mottle: 0.19, grain: 0.038, streaks: 30, tint: [1.0, 0.985, 0.955] },
+    asphalt:  { base: 0.90, cavity: 0.34, mottle: 0.15, grain: 0.030, tint: [0.98, 0.985, 1.0] },
+    leather:  { base: 0.93, cavity: 0.52, mottle: 0.20, grain: 0.035, wear: 0.22, tint: [1.0, 0.98, 0.96] },
+    rubber:   { base: 0.90, cavity: 0.44, mottle: 0.12, grain: 0.030 },
+    hair:     { base: 0.96, cavity: 0.34, mottle: 0.14, grain: 0.022 }
+  };
+
   Mats.surface = function (kind, seed) {
     const key = kind + ':' + (seed || 0) + ':' + CFG.gfx.textureQuality;
+    const A = (k, extra) => Object.assign({ seed: (seed || 1) * 7 + 3 }, ALBEDO[k] || {}, extra || {});
     switch (kind) {
-      case 'fabric':   return cachedPair(key, s => HEIGHT.weave(s, seed || 11), 1.6);
-      case 'metal':    return cachedPair(key, s => HEIGHT.brushed(s, seed || 22), 1.0);
-      case 'plate':    return cachedPair(key, s => HEIGHT.panel(s, seed || 33), 2.6);
-      case 'concrete': return cachedPair(key, s => HEIGHT.concrete(s, seed || 44, true), 2.0);
-      case 'asphalt':  return cachedPair(key, s => HEIGHT.concrete(s, seed || 55, true), 2.6);
-      case 'leather':  return cachedPair(key, s => HEIGHT.leather(s, seed || 66), 2.2);
-      case 'rubber':   return cachedPair(key, s => HEIGHT.grip(s, seed || 77), 2.4);
-      case 'hair':     return cachedPair(key, s => HEIGHT.hair(s, seed || 88), 1.2);
-      default:         return cachedPair(key, s => HEIGHT.concrete(s, seed || 99, false), 1.4);
+      case 'fabric':   return cachedPair(key, s => HEIGHT.weave(s, seed || 11), 1.6, A('fabric'));
+      case 'metal':    return cachedPair(key, s => HEIGHT.brushed(s, seed || 22), 1.0, A('metal'));
+      case 'plate':    return cachedPair(key, s => HEIGHT.panel(s, seed || 33), 2.6, A('plate'));
+      case 'concrete': return cachedPair(key, s => HEIGHT.concrete(s, seed || 44, true), 2.0, A('concrete'));
+      case 'asphalt':  return cachedPair(key, s => HEIGHT.concrete(s, seed || 55, true), 2.6, A('asphalt'));
+      case 'leather':  return cachedPair(key, s => HEIGHT.leather(s, seed || 66), 2.2, A('leather'));
+      case 'rubber':   return cachedPair(key, s => HEIGHT.grip(s, seed || 77), 2.4, A('rubber'));
+      case 'hair':     return cachedPair(key, s => HEIGHT.hair(s, seed || 88), 1.2, A('hair'));
+      default:         return cachedPair(key, s => HEIGHT.concrete(s, seed || 99, false), 1.4, A('concrete', { streaks: 0 }));
     }
   };
 
@@ -3964,7 +4096,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const kind = o.kind || 'plastic';
     const key = JSON.stringify([kind, o.color, o.roughness, o.metalness, o.emissive,
       o.emissiveIntensity, o.wear, o.repeat, o.opacity, o.seed, o.rim && o.rim.color,
-      o.rim && o.rim.strength, o.flatShading, CFG.gfx.textureQuality]);
+      o.rim && o.rim.strength, o.flatShading, o.albedo, CFG.gfx.textureQuality]);
     if (!o.unique && Mats._mats.has(key)) return Mats._mats.get(key);
 
     const params = {
@@ -4021,6 +4153,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           Mats.disposables.push(rough, norm);
           params.roughnessMap = rough;
           params.normalMap = norm;
+          if (o.albedo !== false && pair.albedo) {
+            const alb = pair.albedo.clone();
+            alb.repeat.set(rep, rep);
+            if ('colorSpace' in alb) alb.colorSpace = THREE.SRGBColorSpace;
+            alb.needsUpdate = true;
+            Mats.disposables.push(alb);
+            params.map = alb;
+          }
           params.normalScale = new THREE.Vector2(o.normalScale || 0.85, o.normalScale || 0.85);
           if (o.wear) {
             // Wear roughens the surface. (No aoMap: our procedural geometry
@@ -4093,6 +4233,102 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
     Mats._tex.set('spark', t); Mats.disposables.push(t);
     return t;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Image-based lighting.
+   *
+   * This is the single most important material fix in the renderer: a
+   * MeshStandardMaterial with metalness near 1 and nothing to reflect
+   * renders BLACK. Every metal surface in the game — armour plating,
+   * weapons, railings, street furniture — was matte and lifeless purely
+   * because the scene had no environment to sample.
+   *
+   * We build a small equirectangular sky by hand (gradient + horizon glow +
+   * a few bright emitters for specular to catch), run it through PMREM so
+   * every roughness level gets a correctly pre-filtered mip, and hand it to
+   * the scene. three then uses it as the default envMap for all PBR
+   * materials automatically.
+   * ------------------------------------------------------------------ */
+  Mats.buildEnvironment = function (renderer, opts) {
+    opts = opts || {};
+    const W = 512, H = 256;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+
+    const zenith = opts.zenith || '#0e1c3a';
+    const horizon = opts.horizon || '#3d5f96';
+    const ground = opts.ground || '#241f2c';
+
+    // Vertical gradient: sky above the horizon line, ground below.
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0.00, zenith);
+    grad.addColorStop(0.42, horizon);
+    grad.addColorStop(0.52, opts.horizonGlow || '#7a6a8e');
+    grad.addColorStop(0.62, ground);
+    grad.addColorStop(1.00, opts.groundDark || '#14121a');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+
+    // Soft emitters. Metals need distinct bright spots or they read as flat
+    // paint; these become the specular highlights that sell "polished".
+    const blobs = opts.lights || [
+      { x: 0.18, y: 0.22, r: 0.30, color: 'rgba(200,225,255,0.95)' },
+      { x: 0.70, y: 0.34, r: 0.22, color: 'rgba(255,168,120,0.75)' },
+      { x: 0.44, y: 0.48, r: 0.30, color: 'rgba(110,190,255,0.45)' },
+      { x: 0.88, y: 0.46, r: 0.18, color: 'rgba(255,110,190,0.35)' }
+    ];
+    blobs.forEach(b => {
+      const rg = g.createRadialGradient(b.x * W, b.y * H, 0, b.x * W, b.y * H, b.r * H);
+      rg.addColorStop(0, b.color);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg;
+      g.fillRect(0, 0, W, H);
+    });
+
+    // A hint of city glow along the horizon band so reflections have structure.
+    const rnd = U.rng(9317);
+    g.globalAlpha = 0.5;
+    for (let i = 0; i < 90; i++) {
+      const x = rnd() * W;
+      const h = 2 + rnd() * 9;
+      g.fillStyle = rnd() > 0.5 ? 'rgba(255,214,150,0.7)' : 'rgba(140,205,255,0.6)';
+      g.fillRect(x, H * 0.52 - h, 1 + rnd() * 2, h);
+    }
+    g.globalAlpha = 1;
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+
+    let envTexture = null;
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      const rt = pmrem.fromEquirectangular(tex);
+      envTexture = rt.texture;
+      Mats._envRT = rt;
+      pmrem.dispose();
+      tex.dispose();
+    } catch (e) {
+      // Without PMREM the raw equirect still lights the scene, just less
+      // accurately at high roughness — better than a black metal world.
+      HC.Log.warn('Mats', 'PMREM unavailable (' + e.message + ') — using raw environment.');
+      envTexture = tex;
+      Mats.disposables.push(tex);
+    }
+    Mats.environment = envTexture;
+    return envTexture;
+  };
+
+  Mats.applyEnvironment = function (scene, intensity) {
+    if (!Mats.environment) return;
+    scene.environment = Mats.environment;
+    if (intensity !== undefined && 'environmentIntensity' in scene) {
+      scene.environmentIntensity = intensity;
+    }
   };
 
   /** Team-tinted variant of a base colour, honouring colour-blind settings. */
@@ -4171,7 +4407,190 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   /* ------------------------------------------------------------------ *
    * Shape helpers — the stylised vocabulary of the game.
    * ------------------------------------------------------------------ */
-  const SEG = { low: 8, mid: 12, high: 16 };
+  const SEG = { low: 12, mid: 20, high: 32 };
+
+  /* ------------------------------------------------------------------ *
+   * Loft — the shape primitive the whole body is built from.
+   *
+   * A stack of elliptical rings, smoothly interpolated with Catmull-Rom and
+   * skinned into one continuous surface. This is the difference between a
+   * character and a pile of cylinders: a chest can be wide and shallow, a
+   * waist can pinch, a bicep can swell and taper into an elbow — all as a
+   * single unbroken surface with smooth normals and no seams at the joints.
+   *
+   * @param controls [{ y, rx, rz, dx, dz }] bottom→top; rz/dx/dz optional
+   * @param radial   segments around the ring
+   * @param steps    interpolated rings between the first and last control
+   * ------------------------------------------------------------------ */
+  function loft(controls, radial, steps, opts) {
+    opts = opts || {};
+    radial = radial || SEG.mid;
+    steps = steps || Math.max(controls.length * 4, 12);
+
+    const n = controls.length;
+    const get = (i, key, fallback) => {
+      const c = controls[U.clamp(i, 0, n - 1)];
+      const v = c[key];
+      return v === undefined ? (fallback === undefined ? 0 : (typeof fallback === 'function' ? fallback(c) : fallback)) : v;
+    };
+    // Catmull-Rom through the control values so few controls give a smooth form.
+    const spline = (i0, t, key, fallback) => {
+      const p0 = get(i0 - 1, key, fallback), p1 = get(i0, key, fallback);
+      const p2 = get(i0 + 1, key, fallback), p3 = get(i0 + 2, key, fallback);
+      const t2 = t * t, t3 = t2 * t;
+      return 0.5 * ((2 * p1) + (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+    };
+
+    const rings = [];
+    for (let s = 0; s <= steps; s++) {
+      const f = (s / steps) * (n - 1);
+      const i0 = Math.min(n - 2, Math.floor(f));
+      const t = f - i0;
+      rings.push({
+        y: spline(i0, t, 'y'),
+        rx: Math.max(0.0006, spline(i0, t, 'rx')),
+        rz: Math.max(0.0006, spline(i0, t, 'rz', (c) => c.rx)),
+        dx: spline(i0, t, 'dx'),
+        dz: spline(i0, t, 'dz'),
+        v: s / steps
+      });
+    }
+
+    // The seam column lands wherever the ring starts, so it defaults to the
+    // BACK of the part: a UV/normal discontinuity straight down the middle of
+    // a face is the one place you cannot afford it.
+    const phase = opts.phase === undefined ? Math.PI : opts.phase;
+    const cols = radial + 1;
+    const vertCount = rings.length * cols + (opts.capBottom ? 1 : 0) + (opts.capTop ? 1 : 0);
+    const pos = new Float32Array(vertCount * 3);
+    const uv = new Float32Array(vertCount * 2);
+    let p = 0, q = 0;
+    for (let r = 0; r < rings.length; r++) {
+      const R = rings[r];
+      for (let c = 0; c <= radial; c++) {
+        const a = phase + (c / radial) * U.TAU;
+        pos[p++] = Math.sin(a) * R.rx + R.dx;
+        pos[p++] = R.y;
+        pos[p++] = Math.cos(a) * R.rz + R.dz;
+        uv[q++] = c / radial;
+        uv[q++] = R.v;
+      }
+    }
+    const first = rings[0], last = rings[rings.length - 1];
+    let bottomIdx = -1, topIdx = -1;
+    if (opts.capBottom) {
+      bottomIdx = p / 3;
+      pos[p++] = first.dx; pos[p++] = first.y - first.rx * (opts.capRound || 0.55); pos[p++] = first.dz;
+      uv[q++] = 0.5; uv[q++] = 0;
+    }
+    if (opts.capTop) {
+      topIdx = p / 3;
+      pos[p++] = last.dx; pos[p++] = last.y + last.rx * (opts.capRound || 0.55); pos[p++] = last.dz;
+      uv[q++] = 0.5; uv[q++] = 1;
+    }
+
+    /* Winding matters: rings advance anticlockwise when viewed from +Y, so
+     * the outward face is (a0, a1, b0). Getting this backwards turns every
+     * lofted surface inside out — the renderer then culls the side you are
+     * looking at, shows you the far inner wall instead, and lights it with a
+     * normal pointing into the body. */
+    const idx = [];
+    for (let r = 0; r < rings.length - 1; r++) {
+      for (let c = 0; c < radial; c++) {
+        const a0 = r * cols + c, a1 = a0 + 1;
+        const b0 = (r + 1) * cols + c, b1 = b0 + 1;
+        idx.push(a0, a1, b0, a1, b1, b0);
+      }
+    }
+    if (opts.capBottom) {
+      for (let c = 0; c < radial; c++) idx.push(bottomIdx, c, c + 1);
+    }
+    if (opts.capTop) {
+      const base = (rings.length - 1) * cols;
+      for (let c = 0; c < radial; c++) idx.push(topIdx, base + c + 1, base + c);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Sculpts an existing lofted surface with smooth analytic bumps.
+   *
+   * Faces built by stacking spheres always look like faces built by stacking
+   * spheres: every primitive announces itself with a hard intersection line.
+   * The fix is to keep the head as ONE surface and push it around. Each bump
+   * is an anisotropic blob that displaces the surface along its own normal,
+   * so a brow, a nose and a cheek all melt into the skull the way real
+   * anatomy does.
+   *
+   * bumps: [{ p:[x,y,z], s:[sx,sy,sz], amp, along:[x,y,z] }]
+   *   p     centre of influence
+   *   s     falloff radii per axis (the blob's shape)
+   *   amp   displacement in metres; negative carves inward
+   *   along optional fixed push direction (defaults to the surface normal)
+   *
+   * `seamCols` is loft()'s duplicated seam column count, so the two copies of
+   * the seam can be welded back together before normals are recomputed.
+   */
+  function sculpt(geo, bumps, seamCols) {
+    const pos = geo.attributes.position;
+    const nrm = geo.attributes.normal;
+    const count = pos.count;
+    const px = new Float32Array(count), py = new Float32Array(count), pz = new Float32Array(count);
+    for (let i = 0; i < count; i++) { px[i] = pos.getX(i); py[i] = pos.getY(i); pz[i] = pos.getZ(i); }
+
+    for (let b = 0; b < bumps.length; b++) {
+      const B = bumps[b];
+      const cx = B.p[0], cy = B.p[1], cz = B.p[2];
+      const sx = B.s[0] || 1e-4, sy = B.s[1] || 1e-4, sz = B.s[2] || 1e-4;
+      const amp = B.amp;
+      for (let i = 0; i < count; i++) {
+        const dx = (px[i] - cx) / sx, dy = (py[i] - cy) / sy, dz = (pz[i] - cz) / sz;
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 >= 1) continue;
+        // Smooth compact support: zero value AND zero slope at the boundary,
+        // which is what keeps the bump from leaving a visible rim.
+        const t = 1 - d2;
+        const w = t * t * t;
+        let ax, ay, az;
+        if (B.along) { ax = B.along[0]; ay = B.along[1]; az = B.along[2]; }
+        else { ax = nrm.getX(i); ay = nrm.getY(i); az = nrm.getZ(i); }
+        const len = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
+        pos.setXYZ(i,
+          pos.getX(i) + (ax / len) * amp * w,
+          pos.getY(i) + (ay / len) * amp * w,
+          pos.getZ(i) + (az / len) * amp * w);
+      }
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+
+    // Weld the loft seam: the first and last column sit on top of each other,
+    // and un-averaged normals there show as a crease straight down the back.
+    if (seamCols) {
+      const n2 = geo.attributes.normal;
+      const rows = Math.floor(count / seamCols);
+      for (let r = 0; r < rows; r++) {
+        const a = r * seamCols, z = a + seamCols - 1;
+        if (z >= count) break;
+        const nx = (n2.getX(a) + n2.getX(z)) * 0.5;
+        const ny = (n2.getY(a) + n2.getY(z)) * 0.5;
+        const nz = (n2.getZ(a) + n2.getZ(z)) * 0.5;
+        const l = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+        n2.setXYZ(a, nx / l, ny / l, nz / l);
+        n2.setXYZ(z, nx / l, ny / l, nz / l);
+      }
+      n2.needsUpdate = true;
+    }
+    return geo;
+  }
 
   function capsule(radius, length, seg) {
     return new THREE.CapsuleGeometry(radius, Math.max(0.001, length), 4, seg || SEG.mid);
@@ -4388,8 +4807,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     // `spineLen * 0.36` above that, so solve the chain for a head crown that
     // lands exactly on H — otherwise the model overshoots its own capsule.
     const spineLen = (H - hipHeight - neckLen - headR * 1.15) / 1.36;
-    const chestW = H * 0.115 * b.shoulderWidth;
-    const chestDepth = H * 0.070 * b.chestDepth;
+    const chestW = H * 0.150 * b.shoulderWidth;
+    const chestDepth = H * 0.077 * b.chestDepth;
     const upperArmLen = H * 0.163 * b.armLength;
     const lowerArmLen = H * 0.150 * b.armLength;
     return {
@@ -4397,8 +4816,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       headR, neckLen, spineLen,
       chestTop: spineLen * 0.36,
       chestW, chestDepth,
-      hipW: H * 0.062 * b.hipWidth,
-      hipX: H * 0.052 * b.hipWidth,
+      // Hips must be wider than the waist or the torso reads as a pipe.
+      hipW: H * 0.092 * b.hipWidth,
+      hipX: H * 0.053 * b.hipWidth,
       shoulderX: chestW,
       shoulderY: spineLen * 0.30,
       upperArmLen, lowerArmLen,
@@ -4406,8 +4826,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       handW: H * 0.036 * b.handScale,
       footLen: H * 0.088 * b.footScale,
       footW: H * 0.042 * b.footScale,
-      limbR: H * 0.030 * b.bulk,
-      armR: H * 0.026 * b.bulk,
+      limbR: H * 0.032 * b.bulk,
+      armR: H * 0.033 * b.bulk,
       bulk: b.bulk,
       taper: b.torsoTaper,
       posture: b.posture
@@ -4420,46 +4840,82 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
    * ------------------------------------------------------------------ */
   function buildMaterials(pal, skinMat, teamColor) {
     const wear = skinMat.wear === undefined ? 0.3 : skinMat.wear;
-    const rimTeam = { color: teamColor, strength: 0.42, power: 2.7 };
+    // A heavy rim on every surface reads as cheap plastic, not as art
+    // direction. It is here to separate a silhouette from the background,
+    // which needs far less than it was doing.
+    const rimTeam = { color: teamColor, strength: 0.24, power: 3.0 };
     const seed = (pal.primary ^ pal.accent) & 0xffff;
 
     const set = {
       cloth: Mats.make({ unique: true, kind: 'fabric', color: pal.cloth, seed: seed + 1,
-        roughness: skinMat.fabricRough === undefined ? 0.88 : skinMat.fabricRough,
-        repeat: 3, wear, rim: rimTeam }),
+        roughness: skinMat.fabricRough === undefined ? 0.86 : skinMat.fabricRough,
+        repeat: 5.0, normalScale: 0.55, wear, rim: rimTeam }),
       primary: Mats.make({ unique: true, kind: 'plate', color: pal.primary, seed: seed + 2,
-        roughness: skinMat.metalRough === undefined ? 0.52 : skinMat.metalRough,
-        metalness: 0.45, repeat: 1.4, wear, rim: rimTeam }),
+        roughness: skinMat.metalRough === undefined ? 0.40 : skinMat.metalRough,
+        metalness: 0.38, repeat: 1.6, normalScale: 0.60, wear, rim: rimTeam }),
       secondary: Mats.make({ unique: true, kind: 'fabric', color: pal.secondary, seed: seed + 3,
-        roughness: 0.82, repeat: 2.4, wear, rim: rimTeam }),
+        roughness: 0.80, repeat: 4.5, normalScale: 0.50, wear, rim: rimTeam }),
       metal: Mats.make({ unique: true, kind: 'metal', color: pal.metal, seed: seed + 4,
-        roughness: skinMat.metalRough === undefined ? 0.38 : skinMat.metalRough * 0.8,
-        metalness: 0.92, repeat: 2, rim: { color: 0xffffff, strength: 0.24, power: 3.4 } }),
+        roughness: skinMat.metalRough === undefined ? 0.26 : skinMat.metalRough * 0.7,
+        metalness: 1.0, repeat: 2.4, normalScale: 0.45,
+        rim: { color: 0xffffff, strength: 0.24, power: 3.4 } }),
       darkMetal: Mats.make({ unique: true, kind: 'metal', color: pal.darkMetal, seed: seed + 5,
-        roughness: 0.58, metalness: 0.85, repeat: 2.2, rim: rimTeam }),
-      skin: Mats.make({ unique: true, kind: 'skin', color: pal.skin, roughness: 0.60,
+        roughness: 0.42, metalness: 0.95, repeat: 2.6, normalScale: 0.50, rim: rimTeam }),
+      skin: Mats.make({ unique: true, kind: 'skin', color: pal.skin, roughness: 0.58,
         rim: { color: 0xffd9c0, strength: 0.20, power: 3.6 } }),
       hair: Mats.make({ unique: true, kind: 'hair', color: pal.hair, seed: seed + 6,
-        roughness: 0.66, metalness: 0.05, repeat: 1.6, rim: { color: 0xffffff, strength: 0.30, power: 2.4 } }),
+        roughness: 0.74, metalness: 0.0, repeat: 2.2, normalScale: 0.75,
+        rim: { color: 0xd8e4f4, strength: 0.26, power: 2.6 } }),
       leather: Mats.make({ unique: true, kind: 'leather', color: pal.leather, seed: seed + 7,
-        roughness: 0.72, repeat: 2.6, wear, rim: rimTeam }),
+        roughness: 0.66, repeat: 3.2, normalScale: 0.55, wear, rim: rimTeam }),
       rubber: Mats.make({ unique: true, kind: 'rubber', color: pal.rubber, seed: seed + 8,
-        roughness: 0.94, repeat: 3.2, rim: { color: 0x88a0c0, strength: 0.18, power: 3.2 } }),
+        roughness: 0.92, repeat: 3.4, normalScale: 0.50,
+        rim: { color: 0x88a0c0, strength: 0.18, power: 3.2 } }),
       trim: Mats.make({ unique: true, kind: 'metal', color: pal.trim, seed: seed + 9,
-        roughness: skinMat.goldTrim ? 0.26 : 0.42, metalness: skinMat.goldTrim ? 0.95 : 0.6,
-        repeat: 1.6, rim: { color: 0xffffff, strength: 0.30, power: 3.0 } }),
+        roughness: skinMat.goldTrim ? 0.18 : 0.30, metalness: skinMat.goldTrim ? 1.0 : 0.85,
+        repeat: 2.0, normalScale: 0.45, rim: { color: 0xffffff, strength: 0.22, power: 3.2 } }),
       visor: Mats.make({ unique: true, kind: 'glass', color: pal.visor, roughness: 0.07,
         metalness: 0.35, opacity: 0.55, emissive: pal.emissive, emissiveIntensity: 0.28,
         rim: { color: pal.emissive, strength: 0.6, power: 2.0 } }),
       glow: Mats.make({ unique: true, kind: 'energy', color: pal.emissive, emissive: pal.emissive,
         emissiveIntensity: skinMat.glowSeams ? 2.6 : 1.8, opacity: 0.92, depthWrite: true, rim: false }),
       accent: Mats.make({ unique: true, kind: 'plate', color: pal.accent, seed: seed + 10,
-        roughness: 0.44, metalness: 0.5, repeat: 1.2, emissive: pal.emissive,
+        roughness: 0.36, metalness: 0.44, repeat: 1.4, normalScale: 0.55, emissive: pal.emissive,
         emissiveIntensity: skinMat.glowSeams ? 0.55 : 0.22, rim: rimTeam }),
       team: Mats.make({ unique: true, kind: 'plate', color: teamColor, seed: seed + 11,
-        roughness: 0.40, metalness: 0.4, repeat: 1.2, emissive: teamColor,
+        roughness: 0.36, metalness: 0.35, repeat: 1.4, normalScale: 0.55, emissive: teamColor,
         emissiveIntensity: 0.55, rim: { color: teamColor, strength: 0.7, power: 2.2 } })
     };
+
+    /* Eye materials.
+     *
+     * These are deliberately not drawn from the palette: eyes are the one part
+     * of a character that must read the same on every skin, and a "trim" colour
+     * in the eye socket is what turns a face into a mannequin. */
+    set.eyeSocket = Mats.make({ unique: true, kind: 'skin', color: 0x7a4a35,
+      roughness: 0.86, rim: false, albedo: false });
+    set.sclera = Mats.make({ unique: true, kind: 'skin', color: 0xdcd8d2,
+      roughness: 0.22, rim: false, albedo: false });
+    set.iris = Mats.make({ unique: true, kind: 'skin', color: pal.eye === undefined ? 0x4a6a78 : pal.eye,
+      roughness: 0.14, rim: { color: 0xffffff, strength: 0.18, power: 4.0 }, albedo: false });
+    set.pupil = Mats.make({ unique: true, kind: 'skin', color: 0x07090c,
+      roughness: 0.10, rim: false, albedo: false });
+    set.lash = Mats.make({ unique: true, kind: 'skin', color: 0x2a1a14,
+      roughness: 0.7, rim: false, albedo: false });
+    set.mouthLine = Mats.make({ unique: true, kind: 'skin', color: 0x5b2f2a,
+      roughness: 0.55, rim: false, albedo: false });
+    set.catchlight = Mats.make({ unique: true, kind: 'energy', color: 0xffffff,
+      emissive: 0xffffff, emissiveIntensity: 1.1, opacity: 0.95, depthWrite: true, rim: false });
+
+    // With image-based lighting present, metals want a real envMap weight or
+    // they stay as flat as they were before the environment existed.
+    ['metal', 'darkMetal', 'trim', 'primary', 'accent', 'team'].forEach(k => {
+      if (set[k]) set[k].envMapIntensity = 1.35;
+    });
+    if (set.visor) set.visor.envMapIntensity = 2.0;
+    if (set.skin) set.skin.envMapIntensity = 0.55;
+    if (set.cloth) set.cloth.envMapIntensity = 0.45;
+    if (set.hair) set.hair.envMapIntensity = 0.35;
 
     if (skinMat.iridescent) {
       set.primary.metalness = 0.85; set.primary.roughness = 0.16;
@@ -4487,111 +4943,191 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
    * ------------------------------------------------------------------ */
   function buildBody(C, m, M, gear, pal, skinMat) {
     const t = m.taper;
-
-    /* --- hips / pelvis --- */
-    C.add('hips', lathe([
-      [m.hipW * 0.86, -m.hipW * 0.55], [m.hipW * 1.05, -m.hipW * 0.15],
-      [m.hipW * 1.02, m.hipW * 0.35], [m.hipW * 0.80, m.hipW * 0.75]
-    ], SEG.mid), M.cloth, { pos: [0, m.hipW * 0.1, 0], scale: [1, 1, 0.82] });
-
-    /* --- torso: stacked lathe rings give a shaped, non-tubular chest --- */
     const cw = m.chestW, cd = m.chestDepth;
-    C.add('spine', lathe([
-      [cw * 0.62, 0], [cw * 0.70, m.spineLen * 0.18], [cw * 0.76, m.spineLen * 0.36]
-    ], SEG.mid), M.cloth, { scale: [1, 1, cd / (cw * 0.7) * 0.92] });
+    const R = SEG.mid;
 
-    C.add('chest', lathe([
-      [cw * 0.78, -m.spineLen * 0.06], [cw * 0.92 * t, m.spineLen * 0.14],
-      [cw * 0.96 * t, m.spineLen * 0.28], [cw * 0.72, m.chestTop * 1.02]
-    ], SEG.mid), M.primary, { scale: [1, 1, cd / (cw * 0.9) * 1.0] });
+    /* --- TORSO ------------------------------------------------------------
+     * One continuous surface from hips to shoulders. The cross-sections are
+     * ellipses, wider than deep, and the waist pinches — that silhouette is
+     * what separates a body from a barrel. */
+    C.add('hips', loft([
+      { y: -m.hipW * 0.72, rx: m.hipW * 0.72, rz: m.hipW * 0.58 },
+      { y: -m.hipW * 0.30, rx: m.hipW * 1.00, rz: m.hipW * 0.76, dz: -m.hipW * 0.04 },
+      { y: m.hipW * 0.12, rx: m.hipW * 1.04, rz: m.hipW * 0.78 },
+      { y: m.hipW * 0.58, rx: m.hipW * 0.86, rz: m.hipW * 0.66 }
+    ], R, 18, { capBottom: true, capRound: 0.5 }), M.cloth, {});
 
-    // Chest centre plate — a readable focal point on every hero.
-    C.add('chest', plate(cw * 0.86, m.spineLen * 0.40, cd * 0.20, cw * 0.22, 0.55),
-      M.accent, { pos: [0, m.spineLen * 0.14, cd * 0.86] });
-    C.add('chest', plate(cw * 0.34, m.spineLen * 0.16, cd * 0.16, cw * 0.10, 0.3),
-      M.team, { pos: [0, m.spineLen * 0.26, cd * 0.96] });
+    // Spine section: waist tapering up out of the hips.
+    C.add('spine', loft([
+      { y: -m.spineLen * 0.16, rx: cw * 0.66, rz: cd * 0.82 },
+      { y: m.spineLen * 0.06, rx: cw * 0.62, rz: cd * 0.76 },
+      { y: m.spineLen * 0.30, rx: cw * 0.72, rz: cd * 0.86 },
+      { y: m.spineLen * 0.52, rx: cw * 0.82, rz: cd * 0.96 }
+    ], R, 16), M.cloth, {});
 
-    // Back plate + spine ridge
-    C.add('chest', plate(cw * 0.94, m.spineLen * 0.46, cd * 0.18, cw * 0.24, 0.6),
-      M.secondary, { pos: [0, m.spineLen * 0.12, -cd * 0.84], rot: [0, Math.PI, 0] });
+    // Chest: swells out of the waist, widest and deepest just under the
+    // shoulders, then flattens across the top where the collarbones sit.
+    C.add('chest', loft([
+      { y: -m.spineLen * 0.24, rx: cw * 0.80, rz: cd * 0.94 },
+      { y: -m.spineLen * 0.02, rx: cw * 0.94 * t, rz: cd * 1.10 },
+      { y: m.spineLen * 0.18, rx: cw * 1.00 * t, rz: cd * 1.06, dz: cd * 0.04 },
+      { y: m.chestTop * 0.72, rx: cw * 0.96, rz: cd * 0.86 },
+      { y: m.chestTop * 1.04, rx: cw * 0.70, rz: cd * 0.62 }
+    ], R, 20, { capTop: true, capRound: 0.35 }), M.primary, {});
 
-    /* --- neck --- */
-    C.add('neck', limb(m.headR * 0.40, m.headR * 0.46, m.neckLen * 1.25, SEG.low),
-      M.skin, { pos: [0, m.neckLen * 0.42, 0] });
+    // Trapezius wedges filling the neck-to-shoulder run.
+    [-1, 1].forEach(sgn => {
+      C.add('chest', loft([
+        { y: 0, rx: cw * 0.30, rz: cd * 0.52 },
+        { y: m.chestTop * 0.55, rx: cw * 0.22, rz: cd * 0.40 },
+        { y: m.chestTop * 0.95, rx: cw * 0.11, rz: cd * 0.22 }
+      ], SEG.low, 8, { capTop: true }), M.primary,
+        { pos: [sgn * cw * 0.52, m.spineLen * 0.24, 0] });
+    });
+
+    // Pectoral definition and the centre chest plate — the focal point.
+    [-1, 1].forEach(sgn => {
+      C.add('chest', sphere(cw * 0.36, SEG.mid), M.primary,
+        { pos: [sgn * cw * 0.36, m.spineLen * 0.10, cd * 0.62], scale: [1.0, 0.72, 0.46] });
+    });
+    C.add('chest', plate(cw * 0.74, m.spineLen * 0.36, cd * 0.20, cw * 0.24, 0.75),
+      M.accent, { pos: [0, m.spineLen * 0.10, cd * 0.94] });
+    C.add('chest', plate(cw * 0.30, m.spineLen * 0.14, cd * 0.14, cw * 0.09, 0.4),
+      M.team, { pos: [0, m.spineLen * 0.21, cd * 1.02] });
+
+    // Shoulder blades / back plate.
+    C.add('chest', plate(cw * 1.05, m.spineLen * 0.44, cd * 0.16, cw * 0.28, 0.85),
+      M.secondary, { pos: [0, m.spineLen * 0.10, -cd * 0.92], rot: [0, Math.PI, 0] });
+
+    /* --- NECK --- */
+    C.add('neck', loft([
+      { y: -m.neckLen * 0.35, rx: m.headR * 0.52, rz: m.headR * 0.50 },
+      { y: m.neckLen * 0.45, rx: m.headR * 0.42, rz: m.headR * 0.42 },
+      { y: m.neckLen * 1.15, rx: m.headR * 0.46, rz: m.headR * 0.46 }
+    ], SEG.mid, 10), M.skin, {});
     if (gear.collar) {
-      C.add('chest', lathe([
-        [m.headR * 0.52, 0], [m.headR * 0.72, m.neckLen * 0.5], [m.headR * 0.62, m.neckLen * 0.85]
-      ], SEG.mid), M.primary, { pos: [0, m.chestTop * 0.92, 0] });
+      C.add('chest', loft([
+        { y: 0, rx: m.headR * 0.66, rz: m.headR * 0.62 },
+        { y: m.neckLen * 0.55, rx: m.headR * 0.74, rz: m.headR * 0.70 },
+        { y: m.neckLen * 0.95, rx: m.headR * 0.62, rz: m.headR * 0.58 }
+      ], SEG.mid, 10), M.primary, { pos: [0, m.chestTop * 0.86, 0] });
     }
 
-    /* --- arms --- */
+    /* --- ARMS -------------------------------------------------------------
+     * Deltoid, bicep swell, elbow pinch, forearm swell, wrist pinch — each
+     * limb is one lofted surface so there is no seam where a joint would be. */
     ['L', 'R'].forEach(side => {
       const sgn = side === 'L' ? 1 : -1;
       const ar = m.armR;
-      C.add('armUpper' + side, limb(ar * 1.12, ar * 0.94, m.upperArmLen, SEG.mid),
-        M.cloth, { pos: [0, -m.upperArmLen * 0.5, 0] });
-      C.add('armUpper' + side, sphere(ar * 1.14, SEG.low), M.cloth, { pos: [0, 0, 0] });
-      C.add('armLower' + side, limb(ar * 0.96, ar * 0.76, m.lowerArmLen, SEG.mid),
-        M.cloth, { pos: [0, -m.lowerArmLen * 0.5, 0] });
-      C.add('armLower' + side, sphere(ar * 0.98, SEG.low), M.cloth, {});
 
-      // Forearm guard
-      const guardMat = gear.gloves === 'gauntlet' || gear.gloves === 'armored' ? M.metal : M.darkMetal;
-      C.add('armLower' + side, plate(ar * 2.0, m.lowerArmLen * 0.62, ar * 0.5, ar * 0.5, 0.8),
-        guardMat, { pos: [0, -m.lowerArmLen * 0.46, ar * 0.55] });
+      // Deltoid cap, lofted so it merges into the chest rather than floating.
+      C.add('shoulder' + side, loft([
+        { y: -ar * 1.5, rx: ar * 1.06, rz: ar * 1.02 },
+        { y: -ar * 0.4, rx: ar * 1.32, rz: ar * 1.24 },
+        { y: ar * 0.55, rx: ar * 1.18, rz: ar * 1.10 },
+        { y: ar * 1.05, rx: ar * 0.62, rz: ar * 0.60 }
+      ], R, 14, { capTop: true }), M.cloth, {});
 
-      // Hand
+      C.add('armUpper' + side, loft([
+        { y: 0, rx: ar * 1.20, rz: ar * 1.16 },
+        { y: -m.upperArmLen * 0.28, rx: ar * 1.16, rz: ar * 1.12 },
+        { y: -m.upperArmLen * 0.62, rx: ar * 0.98, rz: ar * 0.96 },
+        { y: -m.upperArmLen * 1.02, rx: ar * 0.86, rz: ar * 0.88 }
+      ], R, 16), M.cloth, {});
+
+      C.add('armLower' + side, loft([
+        { y: ar * 0.18, rx: ar * 0.92, rz: ar * 0.94 },
+        { y: -m.lowerArmLen * 0.26, rx: ar * 0.96, rz: ar * 0.98 },
+        { y: -m.lowerArmLen * 0.66, rx: ar * 0.76, rz: ar * 0.78 },
+        { y: -m.lowerArmLen * 1.02, rx: ar * 0.60, rz: ar * 0.64 }
+      ], R, 16, { capBottom: true, capRound: 0.4 }), M.cloth, {});
+
+      // Forearm guard, wrapped to the limb.
+      const guardMat = (gear.gloves === 'gauntlet' || gear.gloves === 'armored') ? M.metal : M.darkMetal;
+      C.add('armLower' + side, plate(ar * 1.7, m.lowerArmLen * 0.56, ar * 0.42, ar * 0.5, 1.0),
+        guardMat, { pos: [0, -m.lowerArmLen * 0.44, ar * 0.52] });
+
+      /* Hand: a lofted mitten with a separate thumb, instead of stacked
+       * plates that read as crumpled foil. */
       const hw = m.handW, hl = m.handLen;
       const handMat = (gear.gloves && gear.gloves !== 'none') ? M.leather : M.skin;
-      C.add('hand' + side, plate(hw * 1.7, hl * 0.95, hw * 0.95, hw * 0.42, 0.4),
-        handMat, { pos: [0, -hl * 0.42, 0] });
-      // thumb + finger block for a readable grip silhouette
-      C.add('hand' + side, capsule(hw * 0.30, hl * 0.34, SEG.low), handMat,
-        { pos: [sgn * hw * 0.72, -hl * 0.30, hw * 0.12], rot: [0, 0, sgn * 0.7] });
-      C.add('hand' + side, capsule(hw * 0.26, hl * 0.46, SEG.low), handMat,
-        { pos: [0, -hl * 0.86, hw * 0.10], rot: [0.35, 0, 0] });
+      C.add('hand' + side, loft([
+        { y: 0, rx: hw * 0.62, rz: hw * 0.44 },
+        { y: -hl * 0.30, rx: hw * 0.76, rz: hw * 0.50 },
+        { y: -hl * 0.72, rx: hw * 0.72, rz: hw * 0.46 },
+        { y: -hl * 1.00, rx: hw * 0.52, rz: hw * 0.36 }
+      ], SEG.mid, 12, { capBottom: true, capRound: 0.6 }), handMat, {});
+      // Thumb along the inside edge.
+      C.add('hand' + side, loft([
+        { y: 0, rx: hw * 0.24, rz: hw * 0.24 },
+        { y: -hl * 0.34, rx: hw * 0.20, rz: hw * 0.20 }
+      ], SEG.low, 6, { capBottom: true, capTop: true }), handMat,
+        { pos: [sgn * hw * 0.56, -hl * 0.26, hw * 0.10], rot: [0, 0, sgn * 0.85] });
+
       if (gear.gloves === 'blade_gauntlet') {
-        C.add('hand' + side, plate(hw * 1.2, hl * 0.5, hw * 0.4, hw * 0.2, 0),
-          M.glow, { pos: [0, -hl * 0.2, hw * 0.7] });
+        C.add('hand' + side, plate(hw * 1.0, hl * 0.44, hw * 0.3, hw * 0.16, 0),
+          M.glow, { pos: [0, -hl * 0.24, hw * 0.52] });
       }
     });
 
-    /* --- legs --- */
+    /* --- LEGS -------------------------------------------------------------
+     * Thigh swell, knee pinch, calf swell, ankle pinch. */
     ['L', 'R'].forEach(side => {
       const lr = m.limbR;
-      C.add('thigh' + side, limb(lr * 1.30, lr * 1.02, m.thighLen, SEG.mid),
-        M.cloth, { pos: [0, -m.thighLen * 0.5, 0] });
-      C.add('thigh' + side, sphere(lr * 1.30, SEG.low), M.cloth, {});
-      C.add('shin' + side, limb(lr * 1.04, lr * 0.72, m.shinLen, SEG.mid),
-        M.cloth, { pos: [0, -m.shinLen * 0.5, 0] });
-      C.add('shin' + side, sphere(lr * 1.05, SEG.low), M.cloth, {});
+
+      C.add('thigh' + side, loft([
+        { y: lr * 0.7, rx: lr * 1.30, rz: lr * 1.26 },
+        { y: -m.thighLen * 0.24, rx: lr * 1.44, rz: lr * 1.38 },
+        { y: -m.thighLen * 0.62, rx: lr * 1.18, rz: lr * 1.16 },
+        { y: -m.thighLen * 1.02, rx: lr * 0.98, rz: lr * 1.00 }
+      ], R, 18, { capTop: true }), M.cloth, {});
+
+      C.add('shin' + side, loft([
+        { y: lr * 0.14, rx: lr * 1.02, rz: lr * 1.04 },
+        { y: -m.shinLen * 0.22, rx: lr * 1.10, rz: lr * 1.18 },
+        { y: -m.shinLen * 0.58, rx: lr * 0.82, rz: lr * 0.90 },
+        { y: -m.shinLen * 1.00, rx: lr * 0.58, rz: lr * 0.62 }
+      ], R, 18), M.cloth, {});
 
       if (gear.kneePads) {
-        C.add('shin' + side, plate(lr * 2.2, lr * 2.1, lr * 0.7, lr * 0.8, 1.0),
-          M.darkMetal, { pos: [0, -lr * 0.18, lr * 0.85] });
+        C.add('shin' + side, plate(lr * 2.0, lr * 1.9, lr * 0.6, lr * 0.8, 1.1),
+          M.darkMetal, { pos: [0, -lr * 0.16, lr * 0.88] });
       }
       if (gear.legWrap) {
         for (let i = 0; i < 3; i++) {
-          C.add('shin' + side, torus(lr * (0.95 - i * 0.06), lr * 0.13, SEG.low),
+          C.add('shin' + side, torus(lr * (0.95 - i * 0.07), lr * 0.12, SEG.mid),
             M.leather, { pos: [0, -m.shinLen * (0.30 + i * 0.16), 0], rot: [Math.PI / 2, 0, 0] });
         }
       }
 
-      // Boot: sole + upper, sized by the hero's foot scale.
+      /* Boot: heel, arch and toe box as one lofted form along Z. */
       const fl = m.footLen, fw = m.footW;
-      C.add('foot' + side, plate(fw * 1.05, fl * 0.92, m.footH * 1.5, fw * 0.28, 0.25),
-        M.rubber, { pos: [0, m.footH * 0.42, fl * 0.16], rot: [Math.PI / 2, 0, 0] });
-      C.add('foot' + side, plate(fw * 0.98, fl * 0.72, m.footH * 2.4, fw * 0.30, 0.3),
-        M.leather, { pos: [0, m.footH * 1.35, fl * 0.10], rot: [Math.PI / 2, 0, 0] });
-      C.add('foot' + side, plate(fw * 0.90, fw * 1.35, m.footH * 1.5, fw * 0.30, 0.4),
-        M.leather, { pos: [0, m.footH * 2.0, -fl * 0.16] });
+      const boot = loft([
+        { y: -fl * 0.34, rx: fw * 0.40, rz: m.footH * 1.5, dz: 0 },
+        { y: -fl * 0.10, rx: fw * 0.50, rz: m.footH * 2.4 },
+        { y: fl * 0.26, rx: fw * 0.50, rz: m.footH * 2.2 },
+        { y: fl * 0.52, rx: fw * 0.44, rz: m.footH * 1.7 },
+        { y: fl * 0.66, rx: fw * 0.30, rz: m.footH * 1.1 }
+      ], SEG.mid, 16, { capBottom: true, capTop: true, capRound: 0.4 });
+      // Loft builds along Y; rotate it to lie along the foot's forward axis.
+      C.add('foot' + side, boot, M.leather,
+        { pos: [0, m.footH * 1.5, fl * 0.06], rot: [Math.PI / 2, 0, 0] });
+      // Sole.
+      C.add('foot' + side, plate(fw * 1.02, fl * 0.94, m.footH * 1.1, fw * 0.3, 0.2),
+        M.rubber, { pos: [0, m.footH * 0.5, fl * 0.08], rot: [Math.PI / 2, 0, 0] });
+      // Ankle collar tying the boot to the shin.
+      C.add('foot' + side, loft([
+        { y: m.footH * 1.6, rx: fw * 0.40, rz: fw * 0.36 },
+        { y: m.footH * 3.0, rx: fw * 0.34, rz: fw * 0.32 }
+      ], SEG.mid, 6), M.leather, { pos: [0, 0, -fl * 0.04] });
+
       if (gear.boots === 'stomper' || gear.boots === 'armored') {
-        C.add('foot' + side, plate(fw * 1.15, fl * 0.42, m.footH * 1.2, fw * 0.2, 0.2),
-          M.metal, { pos: [0, m.footH * 1.1, fl * 0.34], rot: [Math.PI / 2, 0, 0] });
+        C.add('foot' + side, plate(fw * 1.05, fl * 0.36, m.footH * 1.0, fw * 0.2, 0.3),
+          M.metal, { pos: [0, m.footH * 1.2, fl * 0.36], rot: [Math.PI / 2, 0, 0] });
       }
       if (gear.boots === 'levitator') {
-        C.add('foot' + side, torus(fw * 0.5, fw * 0.13, SEG.low), M.glow,
-          { pos: [0, m.footH * 0.32, fl * 0.05], rot: [Math.PI / 2, 0, 0] });
+        C.add('foot' + side, torus(fw * 0.46, fw * 0.12, SEG.mid), M.glow,
+          { pos: [0, m.footH * 0.35, fl * 0.05], rot: [Math.PI / 2, 0, 0] });
       }
     });
   }
@@ -4601,128 +5137,222 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
    * ------------------------------------------------------------------ */
   function buildHead(C, m, M, gear, pal) {
     const r = m.headR;
+    const R = SEG.high;
     const sealed = gear.helmet === 'full_sealed' || gear.helmet === 'sovereign_crown' ||
                    gear.helmet === 'titan_forge' || gear.helmet === 'warlord_mask' ||
                    gear.helmet === 'doomsday_rig' || gear.helmet === 'beast_skull';
+    const headMat = sealed ? M.primary : M.skin;
 
-    // Cranium — slightly egg-shaped, stylised proportions.
-    C.add('head', sphere(r, SEG.high), sealed ? M.primary : M.skin,
-      { pos: [0, r * 0.10, 0], scale: [1.0, 1.10, 1.02] });
-    // Jaw / chin wedge
-    C.add('head', plate(r * 1.28, r * 0.86, r * 1.30, r * 0.42, 0.7),
-      sealed ? M.primary : M.skin, { pos: [0, -r * 0.42, r * 0.10] });
-    // Ears
+    /* --- SKULL ------------------------------------------------------------
+     * One continuous lofted surface, then sculpted. Every facial feature —
+     * brow, nose, cheeks, lips, chin, eye sockets — is a displacement of this
+     * same mesh rather than a separate primitive glued on top, which is the
+     * whole difference between a face and a pile of eggs. */
+    const RADIAL = 48, STEPS = 44;
+    const skull = loft([
+      { y: -r * 0.94, rx: r * 0.36, rz: r * 0.42, dz: r * 0.14 },   // chin
+      { y: -r * 0.76, rx: r * 0.58, rz: r * 0.68, dz: r * 0.12 },   // jaw
+      { y: -r * 0.50, rx: r * 0.75, rz: r * 0.84, dz: r * 0.08 },   // mouth line
+      { y: -r * 0.20, rx: r * 0.86, rz: r * 0.93, dz: r * 0.035 },  // cheekbone
+      { y: r * 0.10, rx: r * 0.90, rz: r * 0.97, dz: 0 },           // eye line
+      { y: r * 0.38, rx: r * 0.92, rz: r * 0.98, dz: -r * 0.02 },   // brow / temple
+      { y: r * 0.64, rx: r * 0.90, rz: r * 0.95, dz: -r * 0.04 },   // forehead
+      { y: r * 0.86, rx: r * 0.81, rz: r * 0.86, dz: -r * 0.05 },   // upper cranium
+      { y: r * 1.02, rx: r * 0.60, rz: r * 0.64, dz: -r * 0.06 },   // crown shoulder
+      { y: r * 1.10, rx: r * 0.28, rz: r * 0.30, dz: -r * 0.06 }    // crown
+    ], RADIAL, STEPS, { capTop: true, capBottom: true, capRound: 0.85 });
+
     if (!sealed) {
-      [-1, 1].forEach(s => C.add('head', sphere(r * 0.20, SEG.low), M.skin,
-        { pos: [s * r * 0.94, r * 0.02, -r * 0.06], scale: [0.42, 1.0, 0.72] }));
+      const F = r;   // every feature is expressed in head radii
+      sculpt(skull, [
+        // Brow ridge: one bar across both eyes, heavier at the outer edge.
+        { p: [0, F * 0.33, F * 0.86], s: [F * 0.80, F * 0.22, F * 0.54], amp: F * 0.085 },
+        // Eye sockets carved back under it.
+        { p: [ F * 0.30, F * 0.13, F * 0.90], s: [F * 0.27, F * 0.21, F * 0.42], amp: -F * 0.130 },
+        { p: [-F * 0.30, F * 0.13, F * 0.90], s: [F * 0.27, F * 0.21, F * 0.42], amp: -F * 0.130 },
+        // Nose bridge running down from between the brows...
+        { p: [0, F * 0.22, F * 0.92], s: [F * 0.12, F * 0.28, F * 0.32], amp: F * 0.080 },
+        // ...into the tip, which is the part that actually protrudes.
+        { p: [0, -F * 0.02, F * 0.94], s: [F * 0.14, F * 0.16, F * 0.28], amp: F * 0.160 },
+        // Nostril wings either side of it.
+        { p: [ F * 0.10, -F * 0.09, F * 0.90], s: [F * 0.10, F * 0.10, F * 0.22], amp: F * 0.080 },
+        { p: [-F * 0.10, -F * 0.09, F * 0.90], s: [F * 0.10, F * 0.10, F * 0.22], amp: F * 0.080 },
+        // Cheekbones: broad, high, and pulled outward rather than forward.
+        { p: [ F * 0.62, -F * 0.06, F * 0.56], s: [F * 0.42, F * 0.30, F * 0.54], amp: F * 0.075 },
+        { p: [-F * 0.62, -F * 0.06, F * 0.56], s: [F * 0.42, F * 0.30, F * 0.54], amp: F * 0.075 },
+        // Hollow below them, which is what reads as a jawline.
+        { p: [ F * 0.58, -F * 0.46, F * 0.48], s: [F * 0.34, F * 0.26, F * 0.46], amp: -F * 0.045 },
+        { p: [-F * 0.58, -F * 0.46, F * 0.48], s: [F * 0.34, F * 0.26, F * 0.46], amp: -F * 0.045 },
+        // Mouth: an upper and lower lip mass with a crease between them.
+        { p: [0, -F * 0.36, F * 0.88], s: [F * 0.30, F * 0.11, F * 0.28], amp: F * 0.055 },
+        { p: [0, -F * 0.53, F * 0.86], s: [F * 0.28, F * 0.12, F * 0.28], amp: F * 0.050 },
+        { p: [0, -F * 0.44, F * 0.90], s: [F * 0.32, F * 0.050, F * 0.26], amp: -F * 0.060 },
+        // Chin ball and the crease above it.
+        { p: [0, -F * 0.76, F * 0.74], s: [F * 0.30, F * 0.24, F * 0.38], amp: F * 0.070 },
+        { p: [0, -F * 0.64, F * 0.82], s: [F * 0.22, F * 0.07, F * 0.24], amp: -F * 0.028 },
+        // Temples pinched in, so the cranium is not a perfect ovoid.
+        { p: [ F * 0.86, F * 0.44, F * 0.22], s: [F * 0.34, F * 0.34, F * 0.46], amp: -F * 0.040 },
+        { p: [-F * 0.86, F * 0.44, F * 0.22], s: [F * 0.34, F * 0.34, F * 0.46], amp: -F * 0.040 },
+        // Occiput: the back of a real skull bulges below the crown.
+        { p: [0, F * 0.30, -F * 0.86], s: [F * 0.60, F * 0.50, F * 0.40], amp: F * 0.035 }
+      ], RADIAL + 1);
     }
+    C.add('head', skull, headMat, { pos: [0, r * 0.12, 0] });
 
     if (!sealed) {
-      // Brow ridge
-      C.add('head', plate(r * 1.10, r * 0.20, r * 0.24, r * 0.09, 0.7), M.skin,
-        { pos: [0, r * 0.28, r * 0.86] });
-      // Eyes: socket, sclera, iris, pupil — enough for a readable gaze.
-      [-1, 1].forEach(s => {
-        C.add('head', sphere(r * 0.19, SEG.low), M.darkMetal,
-          { pos: [s * r * 0.36, r * 0.10, r * 0.80], scale: [1.05, 0.72, 0.5] });
-        C.add('head', sphere(r * 0.145, SEG.low), M.trim,
-          { pos: [s * r * 0.36, r * 0.10, r * 0.84], scale: [1.0, 0.78, 0.45] });
-        C.add('head', sphere(r * 0.075, SEG.low), M.visor,
-          { pos: [s * r * 0.36, r * 0.09, r * 0.90], scale: [1, 1, 0.5] });
-        // Brow hair
-        C.add('head', plate(r * 0.34, r * 0.07, r * 0.08, r * 0.03, 0.4), M.hair,
-          { pos: [s * r * 0.36, r * 0.29, r * 0.88], rot: [0, 0, s * 0.16] });
+      /* Eyes.
+       *
+       * A human eye reads as mostly *dark*: the iris and pupil cover half the
+       * visible aperture and the sclera is only ever a sliver either side.
+       * These are the only parts of the face that stay separate geometry,
+       * because in a real head they are separate objects. */
+      [-1, 1].forEach(sg => {
+        const ex = sg * r * 0.30, ey = r * 0.13;
+        // These sit in the socket the sculpt carved, so their depth is tied to
+        // the carve: too far back and the whole eye disappears into the skull.
+        const ez = r * 0.845;
+        // Sclera — matte, never metallic.
+        C.add('head', sphere(r * 0.094, SEG.mid), M.sclera,
+          { pos: [ex, ey, ez], scale: [1.0, 0.86, 0.72] });
+        // Iris and pupil: the dark mass that makes a face look at you.
+        C.add('head', sphere(r * 0.052, SEG.mid), M.iris,
+          { pos: [ex + sg * r * 0.004, ey, ez + r * 0.055], scale: [1.0, 1.0, 0.44] });
+        C.add('head', sphere(r * 0.026, SEG.low), M.pupil,
+          { pos: [ex + sg * r * 0.004, ey, ez + r * 0.066], scale: [1.0, 1.0, 0.42] });
+        // Catchlight — small, offset, and the only bright thing in the eye.
+        C.add('head', sphere(r * 0.014, SEG.low), M.catchlight,
+          { pos: [ex + sg * r * 0.020, ey + r * 0.024, ez + r * 0.073], scale: [1, 1, 0.6] });
+        // Lids: an upper lid that overhangs and a lower lid that lifts. Skin
+        // coloured, so they merge into the sculpted socket rather than ring it.
+        C.add('head', sphere(r * 0.136, SEG.mid), M.skin,
+          { pos: [ex, ey + r * 0.086, ez - r * 0.045], scale: [1.14, 0.48, 0.62] });
+        C.add('head', sphere(r * 0.124, SEG.mid), M.skin,
+          { pos: [ex, ey - r * 0.086, ez - r * 0.040], scale: [1.06, 0.40, 0.60] });
+        // Lash line: a thin dark edge, not a bar. Anything heavier here and
+        // the character looks like it is wearing stage make-up.
+        C.add('head', sphere(r * 0.108, SEG.mid), M.lash,
+          { pos: [ex, ey + r * 0.060, ez + r * 0.010], scale: [1.06, 0.075, 0.34] });
+        // Eyebrow: sits up on the brow ridge, well clear of the lid.
+        C.add('head', sphere(r * 0.160, SEG.mid), M.hair,
+          { pos: [sg * r * 0.30, r * 0.325, ez + r * 0.030], scale: [1.20, 0.15, 0.22],
+            rot: [0, 0, sg * 0.17] });
       });
-      // Nose + mouth line
-      C.add('head', cone(r * 0.14, r * 0.34, 6), M.skin,
-        { pos: [0, -r * 0.04, r * 0.94], rot: [Math.PI * 0.52, 0, 0], scale: [1, 1, 0.7] });
-      C.add('head', plate(r * 0.42, r * 0.08, r * 0.06, r * 0.03, 0.5), M.leather,
-        { pos: [0, -r * 0.44, r * 0.86] });
+
+      /* Mouth line: a thin shadow in the crease the sculpt already carved. */
+      C.add('head', plate(r * 0.36, r * 0.026, r * 0.05, r * 0.011, 0.7), M.mouthLine,
+        { pos: [0, -r * 0.32, r * 0.955] });
+
+      /* Ears */
+      [-1, 1].forEach(sg => {
+        C.add('head', sphere(r * 0.19, SEG.mid), M.skin,
+          { pos: [sg * r * 0.90, r * 0.10, -r * 0.02], scale: [0.30, 0.98, 0.62] });
+        C.add('head', sphere(r * 0.11, SEG.low), M.eyeSocket,
+          { pos: [sg * r * 0.94, r * 0.06, -r * 0.02], scale: [0.16, 0.66, 0.46] });
+      });
     }
 
-    /* --- headgear --- */
+    /* --- HEADGEAR --------------------------------------------------------- */
     const G = gear.helmet;
     const glowVisor = (yy, ww, hh) => C.add('head', plate(ww, hh, r * 0.22, hh * 0.42, 0.9),
       M.visor, { pos: [0, yy, r * 0.82] });
 
     if (G === 'visor_light') {
-      C.add('head', plate(r * 1.9, r * 0.34, r * 0.24, r * 0.15, 1.0), M.darkMetal,
-        { pos: [0, r * 0.22, r * 0.62] });
-      glowVisor(r * 0.22, r * 1.5, r * 0.22);
+      C.add('head', loft([
+        { y: 0, rx: r * 0.98, rz: r * 1.00 },
+        { y: r * 0.30, rx: r * 0.96, rz: r * 0.98 }
+      ], R, 6), M.darkMetal, { pos: [0, r * 0.30, 0] });
+      glowVisor(r * 0.34, r * 1.4, r * 0.20);
     } else if (G === 'goggles' || G === 'blast_hood') {
-      [-1, 1].forEach(s => {
-        C.add('head', new THREE.CylinderGeometry(r * 0.30, r * 0.34, r * 0.26, SEG.mid), M.metal,
-          { pos: [s * r * 0.38, r * 0.22, r * 0.78], rot: [Math.PI / 2, 0, 0] });
-        C.add('head', new THREE.CylinderGeometry(r * 0.23, r * 0.23, r * 0.10, SEG.mid), M.visor,
-          { pos: [s * r * 0.38, r * 0.22, r * 0.92], rot: [Math.PI / 2, 0, 0] });
+      [-1, 1].forEach(sg => {
+        C.add('head', new THREE.CylinderGeometry(r * 0.30, r * 0.34, r * 0.24, SEG.mid), M.metal,
+          { pos: [sg * r * 0.36, r * 0.30, r * 0.74], rot: [Math.PI / 2, 0, 0] });
+        C.add('head', new THREE.CylinderGeometry(r * 0.23, r * 0.23, r * 0.09, SEG.mid), M.visor,
+          { pos: [sg * r * 0.36, r * 0.30, r * 0.88], rot: [Math.PI / 2, 0, 0] });
       });
-      C.add('head', torus(r * 1.02, r * 0.09, SEG.mid), M.leather, { pos: [0, r * 0.22, 0], rot: [0, 0, 0] });
+      C.add('head', torus(r * 0.98, r * 0.085, SEG.high), M.leather, { pos: [0, r * 0.30, 0] });
     } else if (G === 'half_mask') {
-      C.add('head', plate(r * 1.30, r * 0.78, r * 1.10, r * 0.36, 0.85), M.darkMetal,
-        { pos: [0, -r * 0.40, r * 0.24] });
-      C.add('head', plate(r * 0.40, r * 0.18, r * 0.14, r * 0.07, 0.4), M.glow,
-        { pos: [0, -r * 0.44, r * 0.86] });
+      C.add('head', loft([
+        { y: -r * 0.92, rx: r * 0.36, rz: r * 0.40, dz: r * 0.18 },
+        { y: -r * 0.56, rx: r * 0.60, rz: r * 0.66, dz: r * 0.12 },
+        { y: -r * 0.18, rx: r * 0.78, rz: r * 0.84, dz: r * 0.06 }
+      ], R, 12, { capBottom: true }), M.darkMetal, { pos: [0, r * 0.12, r * 0.04] });
+      C.add('head', plate(r * 0.36, r * 0.16, r * 0.12, r * 0.06, 0.4), M.glow,
+        { pos: [0, -r * 0.34, r * 0.88] });
     } else if (G === 'mask_full' || G === 'empress_crown' || G === 'warlord_mask') {
-      C.add('head', plate(r * 1.42, r * 1.62, r * 1.26, r * 0.46, 0.9), M.primary,
-        { pos: [0, -r * 0.02, r * 0.18] });
-      C.add('head', plate(r * 1.05, r * 0.20, r * 0.16, r * 0.09, 0.9), M.glow,
-        { pos: [0, r * 0.16, r * 0.86] });
-      [-1, 1].forEach(s => C.add('head', plate(r * 0.14, r * 0.5, r * 0.12, r * 0.05, 0.3), M.trim,
-        { pos: [s * r * 0.52, -r * 0.36, r * 0.84] }));
+      C.add('head', loft([
+        { y: -r * 1.0, rx: r * 0.34, rz: r * 0.40, dz: r * 0.20 },
+        { y: -r * 0.50, rx: r * 0.74, rz: r * 0.82, dz: r * 0.12 },
+        { y: r * 0.20, rx: r * 0.94, rz: r * 0.98, dz: r * 0.02 },
+        { y: r * 0.80, rx: r * 0.86, rz: r * 0.90, dz: -r * 0.04 },
+        { y: r * 1.14, rx: r * 0.44, rz: r * 0.48 }
+      ], R, 22, { capTop: true, capBottom: true }), M.primary, { pos: [0, r * 0.12, 0] });
+      C.add('head', plate(r * 0.98, r * 0.18, r * 0.14, r * 0.08, 0.9), M.glow,
+        { pos: [0, r * 0.28, r * 0.90] });
+      [-1, 1].forEach(sg => C.add('head', plate(r * 0.12, r * 0.44, r * 0.10, r * 0.04, 0.3), M.trim,
+        { pos: [sg * r * 0.48, -r * 0.28, r * 0.86] }));
       if (G === 'empress_crown') {
         for (let i = -2; i <= 2; i++) {
-          C.add('head', cone(r * 0.11, r * (0.55 + Math.abs(i) * -0.10), 5), M.trim,
-            { pos: [i * r * 0.34, r * 1.02, -r * 0.10], rot: [-0.2, 0, i * 0.16] });
+          C.add('head', cone(r * 0.10, r * (0.58 - Math.abs(i) * 0.10), 6), M.trim,
+            { pos: [i * r * 0.32, r * 1.16, -r * 0.08], rot: [-0.2, 0, i * 0.16] });
         }
       }
       if (G === 'warlord_mask') {
-        [-1, 1].forEach(s => C.add('head', cone(r * 0.16, r * 0.95, 6), M.trim,
-          { pos: [s * r * 0.78, r * 0.72, -r * 0.10], rot: [-0.35, 0, s * 0.42] }));
+        [-1, 1].forEach(sg => C.add('head', cone(r * 0.15, r * 0.95, 7), M.trim,
+          { pos: [sg * r * 0.74, r * 0.86, -r * 0.10], rot: [-0.35, 0, sg * 0.42] }));
       }
     } else if (sealed) {
-      C.add('head', lathe([
-        [r * 0.30, -r * 0.95], [r * 0.94, -r * 0.55], [r * 1.10, r * 0.10],
-        [r * 0.92, r * 0.78], [r * 0.42, r * 1.10], [0.001, r * 1.16]
-      ], SEG.high), M.primary, { pos: [0, 0, 0], scale: [1, 1, 1.06] });
-      C.add('head', plate(r * 1.30, r * 0.42, r * 0.22, r * 0.18, 1.0), M.visor,
-        { pos: [0, r * 0.12, r * 0.86] });
-      C.add('head', plate(r * 0.9, r * 0.16, r * 0.14, r * 0.07, 0.8), M.glow,
-        { pos: [0, r * 0.12, r * 0.94] });
+      C.add('head', loft([
+        { y: -r * 1.00, rx: r * 0.40, rz: r * 0.46, dz: r * 0.14 },
+        { y: -r * 0.52, rx: r * 0.82, rz: r * 0.90, dz: r * 0.08 },
+        { y: r * 0.10, rx: r * 1.02, rz: r * 1.06 },
+        { y: r * 0.72, rx: r * 0.94, rz: r * 0.98, dz: -r * 0.04 },
+        { y: r * 1.16, rx: r * 0.44, rz: r * 0.48, dz: -r * 0.06 }
+      ], R, 24, { capTop: true, capBottom: true }), M.primary, { pos: [0, r * 0.12, 0] });
+      C.add('head', plate(r * 1.22, r * 0.40, r * 0.20, r * 0.17, 1.0), M.visor,
+        { pos: [0, r * 0.26, r * 0.90] });
+      C.add('head', plate(r * 0.84, r * 0.14, r * 0.12, r * 0.06, 0.8), M.glow,
+        { pos: [0, r * 0.26, r * 0.98] });
       if (G === 'sovereign_crown' || G === 'titan_forge') {
-        C.add('head', torus(r * 1.05, r * 0.10, SEG.high), M.trim, { pos: [0, r * 0.70, 0], rot: [Math.PI / 2, 0, 0] });
-        C.add('head', cone(r * 0.14, r * 0.62, 6), M.trim, { pos: [0, r * 1.30, 0] });
+        C.add('head', torus(r * 1.00, r * 0.09, SEG.high), M.trim, { pos: [0, r * 0.82, 0], rot: [Math.PI / 2, 0, 0] });
+        C.add('head', cone(r * 0.13, r * 0.60, 7), M.trim, { pos: [0, r * 1.42, 0] });
       }
       if (G === 'beast_skull') {
-        [-1, 1].forEach(s => C.add('head', cone(r * 0.20, r * 1.10, 6), M.trim,
-          { pos: [s * r * 0.82, r * 0.62, r * 0.10], rot: [0.2, 0, s * 0.85] }));
+        [-1, 1].forEach(sg => C.add('head', cone(r * 0.19, r * 1.10, 7), M.trim,
+          { pos: [sg * r * 0.80, r * 0.74, r * 0.08], rot: [0.2, 0, sg * 0.85] }));
       }
       if (G === 'doomsday_rig') {
-        [-1, 1].forEach(s => C.add('head', new THREE.CylinderGeometry(r * 0.13, r * 0.16, r * 0.9, 8), M.metal,
-          { pos: [s * r * 0.80, r * 0.60, -r * 0.35], rot: [0.3, 0, s * 0.3] }));
+        [-1, 1].forEach(sg => C.add('head', new THREE.CylinderGeometry(r * 0.12, r * 0.15, r * 0.9, 9), M.metal,
+          { pos: [sg * r * 0.78, r * 0.72, -r * 0.34], rot: [0.3, 0, sg * 0.3] }));
       }
     } else if (G === 'hood' || G === 'crown' || G === 'hardhat' || G === 'scrap_crown' ||
                G === 'singularity_crown' || G === 'prism_crest') {
       if (G === 'hood') {
-        C.add('head', lathe([
-          [r * 0.86, -r * 0.85], [r * 1.22, -r * 0.20], [r * 1.24, r * 0.55],
-          [r * 0.80, r * 1.05], [0.001, r * 1.20]
-        ], SEG.mid), M.cloth, { pos: [0, 0, -r * 0.10], scale: [1, 1, 1.12] });
-        C.add('head', plate(r * 1.6, r * 0.9, r * 0.3, r * 0.4, 1.1), M.cloth,
-          { pos: [0, r * 0.42, r * 0.66], rot: [-0.35, 0, 0] });
+        C.add('head', loft([
+          { y: -r * 0.90, rx: r * 0.86, rz: r * 0.92, dz: -r * 0.10 },
+          { y: -r * 0.20, rx: r * 1.16, rz: r * 1.22, dz: -r * 0.10 },
+          { y: r * 0.55, rx: r * 1.14, rz: r * 1.20, dz: -r * 0.12 },
+          { y: r * 1.06, rx: r * 0.72, rz: r * 0.78, dz: -r * 0.14 },
+          { y: r * 1.26, rx: r * 0.24, rz: r * 0.26, dz: -r * 0.16 }
+        ], R, 20, { capTop: true }), M.cloth, { pos: [0, r * 0.12, 0] });
+        C.add('head', plate(r * 1.5, r * 0.85, r * 0.26, r * 0.36, 1.1), M.cloth,
+          { pos: [0, r * 0.56, r * 0.66], rot: [-0.35, 0, 0] });
       } else if (G === 'hardhat') {
-        C.add('head', lathe([[r * 1.15, -r * 0.05], [r * 1.10, r * 0.35], [r * 0.75, r * 0.86], [0.001, r * 1.0]], SEG.mid),
-          M.accent, { pos: [0, r * 0.20, 0] });
-        C.add('head', plate(r * 1.5, r * 0.7, r * 0.10, r * 0.25, 0.9), M.accent,
-          { pos: [0, r * 0.22, r * 0.80], rot: [-0.15, 0, 0] });
+        C.add('head', loft([
+          { y: 0, rx: r * 1.12, rz: r * 1.16 },
+          { y: r * 0.40, rx: r * 1.06, rz: r * 1.10 },
+          { y: r * 0.88, rx: r * 0.70, rz: r * 0.74 },
+          { y: r * 1.06, rx: r * 0.22, rz: r * 0.24 }
+        ], R, 14, { capTop: true }), M.accent, { pos: [0, r * 0.34, 0] });
+        C.add('head', plate(r * 1.4, r * 0.62, r * 0.09, r * 0.24, 0.9), M.accent,
+          { pos: [0, r * 0.36, r * 0.84], rot: [-0.15, 0, 0] });
       } else {
-        // Crown-family: radiating spokes + ring
-        C.add('head', torus(r * 1.02, r * 0.075, SEG.high), M.trim, { pos: [0, r * 0.66, 0], rot: [Math.PI / 2, 0, 0] });
+        C.add('head', torus(r * 0.98, r * 0.07, SEG.high), M.trim, { pos: [0, r * 0.76, 0], rot: [Math.PI / 2, 0, 0] });
         const spokes = G === 'scrap_crown' ? 5 : 7;
         for (let i = 0; i < spokes; i++) {
           const a = (i / spokes) * Math.PI - Math.PI / 2;
-          C.add('head', cone(r * 0.09, r * (0.42 + Math.cos(a) * 0.34), 5),
+          C.add('head', cone(r * 0.085, r * (0.44 + Math.cos(a) * 0.34), 6),
             G === 'scrap_crown' ? M.metal : M.glow,
-            { pos: [Math.sin(a) * r * 0.94, r * 0.94, Math.cos(a) * r * 0.5], rot: [0, 0, Math.sin(a) * 0.5] });
+            { pos: [Math.sin(a) * r * 0.90, r * 1.04, Math.cos(a) * r * 0.48], rot: [0, 0, Math.sin(a) * 0.5] });
         }
       }
     }
@@ -4734,33 +5364,66 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
      * LatheGeometry measures phi from +Z, so the gap is centred on the front. */
     const hairStyle = gear.hair;
     if (hairStyle && hairStyle !== 'none' && !sealed) {
-      const FACE_GAP = 1.55;                       // radians left open at the front
+      // A generous opening at the front. The old 89-degree window left only a
+      // slot for the face and turned every hairstyle into a helmet.
+      const FACE_GAP = 2.55;
       const BACK_START = FACE_GAP * 0.5;
       const BACK_LEN = U.TAU - FACE_GAP;
 
       /** Skull cap sitting above the brow — safe to revolve fully. */
       function crown(lift, thick) {
-        C.add('head', lathe([
-          [r * (1.01 + thick), r * (0.30 + lift)],
-          [r * (1.03 + thick), r * (0.58 + lift)],
-          [r * (0.70 + thick), r * (1.00 + lift)],
-          [0.001, r * (1.12 + lift)]
-        ], SEG.high), M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+        // Sits above the hairline, follows the skull section, and closes at
+        // the top — the old version stopped at a 0.22r ring and left a hole
+        // right where everyone looks first.
+        const t = 0.045 + thick;
+        C.add('head', loft([
+          { y: r * (0.58 + lift), rx: r * (0.94 + t), rz: r * (1.00 + t), dz: -r * 0.02 },
+          { y: r * (0.78 + lift), rx: r * (0.90 + t), rz: r * (0.95 + t), dz: -r * 0.04 },
+          { y: r * (0.96 + lift), rx: r * (0.79 + t), rz: r * (0.84 + t), dz: -r * 0.05 },
+          { y: r * (1.10 + lift), rx: r * (0.56 + t), rz: r * (0.60 + t), dz: -r * 0.06 },
+          { y: r * (1.19 + lift), rx: r * (0.26 + t), rz: r * (0.28 + t), dz: -r * 0.06 },
+          { y: r * (1.23 + lift), rx: r * 0.06, rz: r * 0.06, dz: -r * 0.06 }
+        ], SEG.high, 18, { capTop: true, capRound: 0.9 }), M.hair, { pos: [0, r * 0.12, 0] });
       }
 
       /** Back and sides, dropping to `bottom` (in head radii). */
       function skirt(bottom, thick) {
+        // Back and sides only, stopping above the cheekbone so the face,
+        // ears and jaw all stay visible. It overlaps the crown so the two
+        // never show a seam where they meet.
+        const t = 0.045 + thick;
         C.add('head', lathe([
-          [r * (1.02 + thick), r * bottom],
-          [r * (1.05 + thick), r * 0.10],
-          [r * (1.04 + thick), r * 0.44]
-        ], SEG.high, BACK_LEN, BACK_START), M.hair, { pos: [0, r * 0.10, 0], scale: [1.02, 1, 1.05] });
+          [r * (0.92 + t), r * bottom],
+          [r * (0.97 + t), r * 0.22],
+          [r * (0.97 + t), r * 0.48],
+          [r * (0.95 + t), r * 0.66]
+        ], SEG.high, BACK_LEN, BACK_START), M.hair, { pos: [0, r * 0.12, -r * 0.03], scale: [1.0, 1, 1.04] });
       }
 
       /** Fringe swept across the forehead. */
+      /**
+       * Fringe: a shell of hair over the forehead, revolved around the same
+       * axis as the crown so it follows the skull instead of hovering in
+       * front of it. A flat plate here read as a sticker taped to the head.
+       */
       function fringe(drop, sweep) {
-        C.add('head', plate(r * 1.34, r * drop, r * 0.20, r * 0.16, 1.0), M.hair,
-          { pos: [0, r * (0.48 - drop * 0.35), r * 0.74], rot: [-0.28, 0, sweep || 0] });
+        const FRONT_LEN = FACE_GAP * 0.92;
+        const yLow = r * (0.50 - drop * 0.30);
+        C.add('head', lathe([
+          [r * 0.97, yLow],
+          [r * 1.02, yLow + r * 0.16],
+          [r * 1.01, yLow + r * 0.34],
+          [r * 0.94, yLow + r * 0.50]
+        ], SEG.high, FRONT_LEN, -FRONT_LEN / 2), M.hair,
+          { pos: [0, r * 0.12, 0], rot: [0, 0, (sweep || 0) * 0.55], scale: [1, 1, 1.03] });
+        // A heavier sweep on one side, so the hairline is not symmetrical.
+        const side = (sweep || 0) >= 0 ? 1 : -1;
+        C.add('head', lathe([
+          [r * 0.99, yLow - r * 0.09],
+          [r * 1.04, yLow + r * 0.12],
+          [r * 1.00, yLow + r * 0.30]
+        ], SEG.high, FRONT_LEN * 0.42, side * FRONT_LEN * 0.06), M.hair,
+          { pos: [0, r * 0.12, 0], rot: [0, 0, (sweep || 0) * 0.9], scale: [1, 1, 1.04] });
       }
 
       switch (hairStyle) {
@@ -4862,10 +5525,18 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       ['L', 'R'].forEach(side => {
         if (padSpec.sides === 'left' && side !== 'L') return;
         const sgn = side === 'L' ? 1 : -1;
-        const pw = m.armR * 2 * padSpec.w, ph = m.armR * 2 * padSpec.h, pd = m.armR * 2 * padSpec.d;
-        C.add('shoulder' + side, plate(pw, ph, pd, pw * 0.30, 1.15),
+        const pw = m.armR * padSpec.w, ph = m.armR * padSpec.h, pd = m.armR * padSpec.d;
+        // A domed pauldron: wide at the shoulder, tapering as it wraps down
+        // the arm. Flat plates were what made the shoulders look like boxes.
+        C.add('shoulder' + side, loft([
+          { y: -ph * 1.25, rx: pw * 0.72, rz: pd * 1.30 },
+          { y: -ph * 0.45, rx: pw * 1.16, rz: pd * 1.72 },
+          { y: ph * 0.35, rx: pw * 1.20, rz: pd * 1.66 },
+          { y: ph * 0.95, rx: pw * 0.86, rz: pd * 1.18 },
+          { y: ph * 1.25, rx: pw * 0.34, rz: pd * 0.48 }
+        ], SEG.mid, 18, { capTop: true, capRound: 0.4 }),
           padStyle === 'sovereign' || padStyle === 'warlord' ? M.trim : M.primary,
-          { pos: [sgn * m.armR * 0.34, m.armR * 0.24, 0], rot: [0, 0, sgn * -0.22] });
+          { pos: [sgn * m.armR * 0.30, m.armR * 0.10, 0], rot: [0, 0, sgn * -0.20] });
         if (padSpec.spikes) {
           for (let i = 0; i < padSpec.spikes; i++) {
             C.add('shoulder' + side, cone(m.armR * 0.24, m.armR * (0.9 - i * 0.14), 6), M.metal,
@@ -4874,8 +5545,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           }
         }
         // Team stripe on the pad — instant friend/foe read from behind.
-        C.add('shoulder' + side, plate(pw * 0.34, ph * 0.5, pd * 0.22, pw * 0.08, 0.6), M.team,
-          { pos: [sgn * m.armR * 0.30, m.armR * 0.24, pd * 0.52], rot: [0, 0, sgn * -0.22] });
+        C.add('shoulder' + side, plate(pw * 0.50, ph * 0.85, pd * 0.30, pw * 0.14, 0.9), M.team,
+          { pos: [sgn * m.armR * 0.30, m.armR * 0.05, pd * 1.55], rot: [0, 0, sgn * -0.20] });
       });
     }
 
@@ -4884,15 +5555,27 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     if (jacket === 'bomber' || jacket === 'cropped' || jacket === 'workwear' || jacket === 'wrap' ||
         jacket === 'parka' || jacket === 'pelt_tech' || jacket === 'beast_hide') {
       const len = jacket === 'cropped' ? 0.30 : (jacket === 'parka' ? 0.95 : 0.62);
-      C.add('chest', lathe([
-        [cw * 1.02, -m.spineLen * 0.10], [cw * 1.06, m.spineLen * 0.16], [cw * 0.86, m.chestTop]
-      ], SEG.mid), M.cloth, { scale: [1, 1, (cd * 1.15) / (cw * 1.0)] });
-      C.add('spine', lathe([
-        [cw * 0.92, -m.spineLen * len * 0.5], [cw * 1.0, 0], [cw * 1.04, m.spineLen * 0.3]
-      ], SEG.mid), M.cloth, { scale: [1, 1, (cd * 1.2) / (cw * 1.0)] });
-      // Open front panels
-      [-1, 1].forEach(s => C.add('chest', plate(cw * 0.5, m.spineLen * 0.7, cd * 0.14, cw * 0.14, 0.7),
-        M.secondary, { pos: [s * cw * 0.56, m.spineLen * 0.06, cd * 0.90], rot: [0, s * -0.28, 0] }));
+      const pad = 1.09;   // the shell sits just proud of the body beneath it
+      // Shell over the chest, echoing the torso's own section profile.
+      C.add('chest', loft([
+        { y: -m.spineLen * 0.26, rx: cw * 0.84 * pad, rz: cd * 0.98 * pad },
+        { y: -m.spineLen * 0.02, rx: cw * 0.96 * pad, rz: cd * 1.12 * pad },
+        { y: m.spineLen * 0.20, rx: cw * 1.00 * pad, rz: cd * 1.06 * pad },
+        { y: m.chestTop * 0.78, rx: cw * 0.92 * pad, rz: cd * 0.84 * pad },
+        { y: m.chestTop * 1.02, rx: cw * 0.66, rz: cd * 0.60 }
+      ], SEG.mid, 18), M.cloth, {});
+      // Skirt of the jacket falling over the waist.
+      C.add('spine', loft([
+        { y: -m.spineLen * len * 0.62, rx: cw * 0.74 * pad, rz: cd * 0.88 * pad },
+        { y: -m.spineLen * 0.10, rx: cw * 0.70 * pad, rz: cd * 0.84 * pad },
+        { y: m.spineLen * 0.34, rx: cw * 0.86 * pad, rz: cd * 1.00 * pad }
+      ], SEG.mid, 14, { capBottom: true, capRound: 0.15 }), M.cloth, {});
+      // A zip seam down the centre plus narrow lapels, rather than two
+      // slabs hung off the chest.
+      C.add('chest', plate(cw * 0.10, m.spineLen * 0.86, cd * 0.10, cw * 0.03, 0.5),
+        M.secondary, { pos: [0, m.spineLen * 0.02, cd * 1.08] });
+      [-1, 1].forEach(s => C.add('chest', plate(cw * 0.22, m.spineLen * 0.44, cd * 0.09, cw * 0.07, 0.9),
+        M.secondary, { pos: [s * cw * 0.34, m.spineLen * 0.22, cd * 1.04], rot: [0, s * -0.36, 0] }));
       if (jacket === 'pelt_tech' || jacket === 'beast_hide') {
         for (let i = 0; i < 5; i++) {
           C.add('chest', plate(cw * 0.30, m.spineLen * 0.34, cd * 0.10, cw * 0.10, 0.4), M.leather,
@@ -4900,12 +5583,19 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         }
       }
     } else if (jacket !== 'none') {
-      // Plated / armoured torso variants
-      C.add('chest', lathe([
-        [cw * 1.05, -m.spineLen * 0.08], [cw * 1.12, m.spineLen * 0.18], [cw * 0.84, m.chestTop * 1.05]
-      ], SEG.high), M.primary, { scale: [1, 1, (cd * 1.18) / (cw * 1.05)] });
-      C.add('chest', plate(cw * 1.5, m.spineLen * 0.22, cd * 0.16, cw * 0.2, 0.9), M.trim,
-        { pos: [0, m.spineLen * 0.32, cd * 0.88] });
+      // Plated / armoured torso variants: a hard shell that still follows the
+      // body's section profile, so the armour reads as fitted rather than worn
+      // over a cylinder.
+      const pad = 1.12;
+      C.add('chest', loft([
+        { y: -m.spineLen * 0.22, rx: cw * 0.86 * pad, rz: cd * 1.00 * pad },
+        { y: m.spineLen * 0.02, rx: cw * 1.00 * pad, rz: cd * 1.16 * pad },
+        { y: m.spineLen * 0.26, rx: cw * 1.02 * pad, rz: cd * 1.06 * pad },
+        { y: m.chestTop * 0.82, rx: cw * 0.90 * pad, rz: cd * 0.82 * pad },
+        { y: m.chestTop * 1.06, rx: cw * 0.62, rz: cd * 0.56 }
+      ], SEG.high, 20), M.primary, {});
+      C.add('chest', plate(cw * 1.3, m.spineLen * 0.20, cd * 0.14, cw * 0.18, 1.0), M.trim,
+        { pos: [0, m.spineLen * 0.34, cd * 0.96] });
     }
 
     if (gear.chestRig) {
@@ -5158,6 +5848,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     };
 
     out.setCastShadow = function (v) { out.meshes.forEach(mesh => { mesh.castShadow = v; }); };
+    /* Hides the body without hiding what is parented to its bones — the held
+     * weapon stays on screen when the camera is pushed inside the shoulder. */
+    out.setBodyVisible = function (v) { out.meshes.forEach(mesh => { mesh.visible = v; }); };
 
     out.dispose = function () {
       out.geometries.forEach(g => { try { g.dispose(); } catch (e) {} });
@@ -5171,6 +5864,74 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   /* Exposed for weapon/prop builders so they share the shape vocabulary. */
   CM.shapes = { capsule, limb, plate, lathe, sphere, box, cone, torus, mergeGeometries, SEG };
+
+  /* ------------------------------------------------------------------ *
+   * Two-handed grip IK
+   *
+   * A pose can only guess where the off hand should be, and a hand floating
+   * next to the weapon instead of on it is one of the loudest "this is a
+   * prototype" signals there is. This solves the left arm properly: a
+   * two-bone analytic solve that puts the hand on the weapon's foregrip
+   * socket, wherever pose and aim have moved it to.
+   *
+   * Lives here rather than in the actor so the character-select stage can
+   * use the identical solve — the hero you inspect grips its weapon exactly
+   * like the hero you play.
+   * ------------------------------------------------------------------ */
+  const _ikShoulder = new THREE.Vector3();
+  const _ikTarget = new THREE.Vector3();
+  const _ikDir = new THREE.Vector3();
+  const _ikLocal = new THREE.Vector3();
+  const _ikQuat = new THREE.Quaternion();
+  const _ikBend = new THREE.Quaternion();
+  const _ikMat = new THREE.Matrix3();
+  const IK_DOWN = new THREE.Vector3(0, -1, 0);
+  const IK_AXIS_X = new THREE.Vector3(1, 0, 0);
+
+  CM.solveGripIK = function (model, socket, weight) {
+    if (!model || !socket || weight < 0.02) return;
+    const bones = model.bones;
+    const shoulder = bones.shoulderL, upper = bones.armUpperL, lower = bones.armLowerL;
+    if (!shoulder || !upper || !lower) return;
+
+    shoulder.updateWorldMatrix(true, false);
+    socket.updateWorldMatrix(true, false);
+    _ikShoulder.setFromMatrixPosition(shoulder.matrixWorld);
+    _ikTarget.setFromMatrixPosition(socket.matrixWorld);
+
+    const L1 = model.measure.upperArmLen;
+    const L2 = model.measure.lowerArmLen;
+    _ikDir.copy(_ikTarget).sub(_ikShoulder);
+    let d = _ikDir.length();
+    if (d < 1e-4) return;
+    // Clamp into the arm's reachable band so acos never goes out of domain.
+    d = U.clamp(d, Math.abs(L1 - L2) + 1e-3, L1 + L2 - 1e-3);
+    _ikDir.multiplyScalar(1 / _ikDir.length());
+
+    // Direction into the shoulder bone's own frame.
+    _ikMat.setFromMatrix4(shoulder.matrixWorld).invert();
+    _ikLocal.copy(_ikDir).applyMatrix3(_ikMat).normalize();
+
+    // Law of cosines: shoulder offset from the straight line, elbow interior.
+    const shoulderOff = Math.acos(U.clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1));
+    const elbowIn = Math.acos(U.clamp((L1 * L1 + L2 * L2 - d * d) / (2 * L1 * L2), -1, 1));
+
+    _ikQuat.setFromUnitVectors(IK_DOWN, _ikLocal);
+    _ikBend.setFromAxisAngle(IK_AXIS_X, -shoulderOff);
+    _ikQuat.multiply(_ikBend);
+
+    // Blend in, so switching to and from the grip is never a pop.
+    upper.quaternion.slerp(_ikQuat, weight);
+    const bendX = -(Math.PI - elbowIn);
+    lower.rotation.x = U.lerp(lower.rotation.x, bendX, weight);
+    lower.rotation.y = U.lerp(lower.rotation.y, 0, weight);
+    lower.rotation.z = U.lerp(lower.rotation.z, 0, weight);
+
+    // Roll the hand so the palm faces the weapon rather than the sky.
+    const hand = bones.handL;
+    if (hand) hand.rotation.set(U.lerp(hand.rotation.x, 0.28, weight), 0,
+      U.lerp(hand.rotation.z, 0.22, weight));
+  };
 
 })(window.HC, window.THREE);
 
@@ -5194,21 +5955,28 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   function partSet(pal, skinMat, glowColor) {
     const s = (pal.primary ^ 0x5a5a) & 0xffff;
+    // Weapons are small objects seen close up: texture repeats above ~1 tile
+    // shatter into noise, and matte metal reads as grey plastic. Low repeat,
+    // low roughness, high metalness, and real environment reflections.
     return {
-      body: Mats.make({ unique: true, kind: 'plate', color: pal.darkMetal, seed: s + 1,
-        roughness: 0.44, metalness: 0.78, repeat: 1.6, rim: { color: 0xa8c8ff, strength: 0.3, power: 3.0 } }),
-      metal: Mats.make({ unique: true, kind: 'metal', color: pal.metal, seed: s + 2,
-        roughness: 0.32, metalness: 0.95, repeat: 2.0, rim: { color: 0xffffff, strength: 0.28, power: 3.2 } }),
+      body: Mats.make({ unique: true, kind: 'plate', color: 0x2c313b, seed: s + 1,
+        roughness: 0.36, metalness: 0.85, repeat: 0.35, normalScale: 0.45,
+        rim: { color: 0xa8c8ff, strength: 0.26, power: 3.2 } }),
+      metal: Mats.make({ unique: true, kind: 'metal', color: 0x9aa4b2, seed: s + 2,
+        roughness: 0.22, metalness: 1.0, repeat: 0.5, normalScale: 0.35,
+        rim: { color: 0xffffff, strength: 0.26, power: 3.2 } }),
       grip: Mats.make({ unique: true, kind: 'rubber', color: 0x14161c, seed: s + 3,
-        roughness: 0.95, repeat: 3.0, rim: { color: 0x7f98b8, strength: 0.18, power: 3.4 } }),
+        roughness: 0.88, metalness: 0.1, repeat: 1.2, normalScale: 0.5,
+        rim: { color: 0x7f98b8, strength: 0.16, power: 3.4 } }),
       accent: Mats.make({ unique: true, kind: 'plate', color: pal.accent, seed: s + 4,
-        roughness: 0.38, metalness: 0.55, repeat: 1.2, emissive: glowColor, emissiveIntensity: 0.35,
+        roughness: 0.30, metalness: 0.75, repeat: 0.3, normalScale: 0.4,
+        emissive: glowColor, emissiveIntensity: 0.32,
         rim: { color: glowColor, strength: 0.4, power: 2.6 } }),
       glow: Mats.make({ unique: true, kind: 'energy', color: glowColor, emissive: glowColor,
-        emissiveIntensity: 2.4, opacity: 0.95, depthWrite: true, rim: false }),
+        emissiveIntensity: 2.6, opacity: 0.95, depthWrite: true, rim: false }),
       trim: Mats.make({ unique: true, kind: 'metal', color: pal.trim, seed: s + 5,
-        roughness: skinMat.goldTrim ? 0.24 : 0.42, metalness: skinMat.goldTrim ? 0.96 : 0.62,
-        repeat: 1.4, rim: { color: 0xffffff, strength: 0.3, power: 3.0 } })
+        roughness: skinMat.goldTrim ? 0.16 : 0.30, metalness: skinMat.goldTrim ? 1.0 : 0.9,
+        repeat: 0.4, normalScale: 0.35, rim: { color: 0xffffff, strength: 0.3, power: 3.0 } })
     };
   }
 
@@ -5258,53 +6026,119 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const ARCH = {};
 
   ARCH.assault_rifle = function (B, M, L, out, root) {
-    const w = L * 0.11, h = L * 0.15;
-    B.add(plate(w, h, L * 0.62, w * 0.28, 0.2), M.body, { pos: [0, 0, L * 0.02] });
-    B.add(plate(w * 0.86, h * 0.62, L * 0.30, w * 0.2, 0.2), M.metal, { pos: [0, h * 0.10, L * 0.42] });
-    // barrel + shroud
-    B.add(new THREE.CylinderGeometry(w * 0.20, w * 0.20, L * 0.42, 10), M.metal,
-      { pos: [0, h * 0.06, L * 0.52], rot: [Math.PI / 2, 0, 0] });
+    const w = L * 0.085, h = L * 0.125;
+
+    /* Receiver — the spine of the weapon. Everything else hangs off it. */
+    B.add(plate(w * 1.0, h, L * 0.40, w * 0.22, 0.12), M.body, { pos: [0, 0, -L * 0.02] });
+    B.add(plate(w * 0.72, h * 0.34, L * 0.42, w * 0.14, 0), M.metal, { pos: [0, h * 0.44, -L * 0.02] });
+
+    /* Handguard — slimmer than the receiver, with vent slots so it does not
+     * read as one continuous slab. */
+    B.add(plate(w * 0.82, h * 0.66, L * 0.30, w * 0.20, 0.25), M.body, { pos: [0, h * 0.02, L * 0.34] });
     for (let i = 0; i < 4; i++) {
-      B.add(torus(w * 0.28, w * 0.05, 10), M.body, { pos: [0, h * 0.06, L * (0.40 + i * 0.09)], rot: [0, 0, 0] });
+      [-1, 1].forEach(sg => B.add(plate(w * 0.10, h * 0.30, L * 0.045, w * 0.03, 0), M.grip,
+        { pos: [sg * w * 0.42, h * 0.02, L * (0.24 + i * 0.055)] }));
     }
-    // stock
-    B.add(plate(w * 0.75, h * 0.75, L * 0.26, w * 0.2, 0.2), M.body, { pos: [0, -h * 0.02, -L * 0.36] });
-    B.add(plate(w * 0.7, h * 0.95, L * 0.06, w * 0.18, 0.2), M.grip, { pos: [0, -h * 0.05, -L * 0.48] });
-    // grip + magazine + trigger guard
-    B.add(plate(w * 0.66, h * 0.95, L * 0.11, w * 0.16, 0.2), M.grip, { pos: [0, -h * 0.72, -L * 0.10], rot: [0.28, 0, 0] });
-    B.add(plate(w * 0.78, h * 1.15, L * 0.09, w * 0.16, 0.15), M.body, { pos: [0, -h * 0.82, L * 0.06], rot: [-0.12, 0, 0] });
-    B.add(torus(w * 0.34, w * 0.06, 10), M.metal, { pos: [0, -h * 0.36, L * 0.0], rot: [0, Math.PI / 2, 0] });
-    // rail + optic
-    B.add(plate(w * 0.5, h * 0.14, L * 0.44, w * 0.06, 0), M.metal, { pos: [0, h * 0.56, L * 0.14] });
-    B.add(plate(w * 0.62, h * 0.42, L * 0.14, w * 0.12, 0.2), M.body, { pos: [0, h * 0.80, L * 0.14] });
-    B.add(new THREE.CylinderGeometry(w * 0.22, w * 0.22, L * 0.02, 12), M.glow,
-      { pos: [0, h * 0.80, L * 0.21], rot: [Math.PI / 2, 0, 0] });
-    // energy cell + seams
-    B.add(plate(w * 0.42, h * 0.30, L * 0.16, w * 0.08, 0), M.glow, { pos: [w * 0.58, 0, -L * 0.06] });
-    B.add(plate(w * 0.42, h * 0.30, L * 0.16, w * 0.08, 0), M.glow, { pos: [-w * 0.58, 0, -L * 0.06] });
-    B.add(plate(w * 0.30, h * 0.10, L * 0.34, w * 0.04, 0), M.accent, { pos: [0, -h * 0.28, L * 0.30] });
-    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.06, L * 0.74]);
-    out.sockets.eject = socket(root, 'eject', [w * 0.6, h * 0.12, L * 0.12]);
-    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.9, L * 0.06]);
-    out.sockets.foregrip = socket(root, 'foregrip', [0, -h * 0.42, L * 0.34]);
-    out.sockets.grip = socket(root, 'grip', [0, -h * 0.5, -L * 0.08]);
+
+    /* Barrel + muzzle device. */
+    B.add(new THREE.CylinderGeometry(w * 0.13, w * 0.13, L * 0.30, 14), M.metal,
+      { pos: [0, h * 0.04, L * 0.60], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.22, w * 0.19, L * 0.10, 14), M.body,
+      { pos: [0, h * 0.04, L * 0.74], rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 3; i++) {
+      B.add(torus(w * 0.23, w * 0.035, 14), M.metal, { pos: [0, h * 0.04, L * (0.71 + i * 0.028)] });
+    }
+
+    /* Stock — a distinct shape with a visible gap, not a continuation. */
+    B.add(plate(w * 0.34, h * 0.42, L * 0.16, w * 0.10, 0), M.metal, { pos: [0, h * 0.06, -L * 0.28] });
+    B.add(plate(w * 0.78, h * 0.86, L * 0.14, w * 0.22, 0.2), M.body, { pos: [0, -h * 0.04, -L * 0.42] });
+    B.add(plate(w * 0.80, h * 1.00, L * 0.05, w * 0.20, 0.2), M.grip, { pos: [0, -h * 0.04, -L * 0.50] });
+    B.add(plate(w * 0.60, h * 0.26, L * 0.20, w * 0.08, 0), M.grip, { pos: [0, h * 0.44, -L * 0.34] });
+
+    /* Pistol grip, trigger guard, magazine — angled, clearly separate. */
+    B.add(plate(w * 0.60, h * 0.92, L * 0.10, w * 0.18, 0.25), M.grip,
+      { pos: [0, -h * 0.66, -L * 0.14], rot: [0.30, 0, 0] });
+    B.add(torus(w * 0.30, w * 0.055, 12), M.metal, { pos: [0, -h * 0.34, -L * 0.04], rot: [0, Math.PI / 2, 0] });
+    B.add(plate(w * 0.62, h * 1.05, L * 0.085, w * 0.14, 0.1), M.body,
+      { pos: [0, -h * 0.74, L * 0.08], rot: [-0.16, 0, 0] });
+    B.add(plate(w * 0.50, h * 0.22, L * 0.07, w * 0.06, 0), M.accent,
+      { pos: [0, -h * 1.18, L * 0.10], rot: [-0.16, 0, 0] });
+
+    /* Optic on the rail. */
+    B.add(plate(w * 0.46, h * 0.24, L * 0.10, w * 0.10, 0), M.metal, { pos: [0, h * 0.60, L * 0.10] });
+    B.add(new THREE.CylinderGeometry(w * 0.24, w * 0.24, L * 0.14, 16), M.body,
+      { pos: [0, h * 0.84, L * 0.10], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.20, w * 0.20, L * 0.012, 16), M.glow,
+      { pos: [0, h * 0.84, L * 0.175], rot: [Math.PI / 2, 0, 0] });
+
+    /* Energy cell + seam lighting — the hero read at a glance. */
+    [-1, 1].forEach(sg => B.add(plate(w * 0.16, h * 0.34, L * 0.18, w * 0.05, 0), M.glow,
+      { pos: [sg * w * 0.52, -h * 0.06, -L * 0.06] }));
+    B.add(plate(w * 0.26, h * 0.08, L * 0.26, w * 0.03, 0), M.accent, { pos: [0, -h * 0.36, L * 0.34] });
+
+    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.04, L * 0.82]);
+    out.sockets.eject = socket(root, 'eject', [w * 0.55, h * 0.10, L * 0.06]);
+    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.92, L * 0.08]);
+    out.sockets.foregrip = socket(root, 'foregrip', [0, -h * 0.30, L * 0.36]);
+    out.sockets.grip = socket(root, 'grip', [0, -h * 0.48, -L * 0.12]);
   };
 
   ARCH.smg = function (B, M, L, out, root) {
-    const w = L * 0.13, h = L * 0.17;
-    B.add(plate(w, h, L * 0.52, w * 0.3, 0.2), M.body, { pos: [0, 0, L * 0.04] });
-    B.add(new THREE.CylinderGeometry(w * 0.19, w * 0.19, L * 0.30, 10), M.metal,
-      { pos: [0, h * 0.08, L * 0.42], rot: [Math.PI / 2, 0, 0] });
-    B.add(plate(w * 0.9, h * 0.5, L * 0.16, w * 0.2, 0.2), M.accent, { pos: [0, h * 0.12, L * 0.34] });
-    B.add(plate(w * 0.60, h * 0.90, L * 0.10, w * 0.16, 0.2), M.grip, { pos: [0, -h * 0.70, -L * 0.06], rot: [0.24, 0, 0] });
-    B.add(plate(w * 0.70, h * 1.00, L * 0.08, w * 0.14, 0.15), M.body, { pos: [0, -h * 0.78, L * 0.10], rot: [-0.1, 0, 0] });
-    B.add(plate(w * 0.4, h * 0.12, L * 0.34, w * 0.05, 0), M.metal, { pos: [0, h * 0.58, L * 0.10] });
-    B.add(plate(w * 0.34, h * 0.24, L * 0.20, w * 0.06, 0), M.glow, { pos: [w * 0.54, -h * 0.05, 0] });
-    B.add(plate(w * 0.34, h * 0.24, L * 0.20, w * 0.06, 0), M.glow, { pos: [-w * 0.54, -h * 0.05, 0] });
-    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.08, L * 0.60]);
-    out.sockets.eject = socket(root, 'eject', [w * 0.55, h * 0.14, L * 0.10]);
-    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.85, L * 0.10]);
-    out.sockets.grip = socket(root, 'grip', [0, -h * 0.45, -L * 0.05]);
+    const w = L * 0.125, h = L * 0.165;
+
+    /* Receiver: a squat, wide body with a raised deck the rail sits on. */
+    B.add(plate(w, h * 0.94, L * 0.46, w * 0.26, 0.18), M.body, { pos: [0, 0, L * 0.02] });
+    B.add(plate(w * 0.74, h * 0.30, L * 0.50, w * 0.14, 0), M.metal, { pos: [0, h * 0.52, L * 0.02] });
+    // Ejection port, cut as a recessed dark panel.
+    B.add(plate(w * 0.10, h * 0.34, L * 0.14, w * 0.03, 0), M.grip, { pos: [w * 0.50, h * 0.18, L * 0.06] });
+    // Charging handle.
+    B.add(new THREE.CylinderGeometry(w * 0.07, w * 0.07, L * 0.10, 8), M.metal,
+      { pos: [w * 0.52, h * 0.36, -L * 0.10], rot: [0, 0, Math.PI / 2] });
+
+    /* Handguard with cooling slots, then the suppressed barrel. */
+    B.add(plate(w * 0.80, h * 0.56, L * 0.24, w * 0.18, 0.22), M.body, { pos: [0, h * 0.04, L * 0.34] });
+    for (let i = 0; i < 3; i++) {
+      [-1, 1].forEach(sg => B.add(plate(w * 0.09, h * 0.24, L * 0.04, w * 0.03, 0), M.grip,
+        { pos: [sg * w * 0.41, h * 0.04, L * (0.27 + i * 0.06)] }));
+    }
+    B.add(new THREE.CylinderGeometry(w * 0.14, w * 0.14, L * 0.16, 12), M.metal,
+      { pos: [0, h * 0.08, L * 0.50], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.25, w * 0.23, L * 0.20, 14), M.body,
+      { pos: [0, h * 0.08, L * 0.62], rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 4; i++) {
+      B.add(torus(w * 0.26, w * 0.028, 14), M.metal, { pos: [0, h * 0.08, L * (0.56 + i * 0.035)] });
+    }
+
+    /* Folding stock stub and sling loop — reads as a compact PDW. */
+    B.add(plate(w * 0.30, h * 0.36, L * 0.14, w * 0.08, 0), M.metal, { pos: [0, h * 0.10, -L * 0.28] });
+    B.add(plate(w * 0.66, h * 0.62, L * 0.06, w * 0.14, 0.2), M.grip, { pos: [0, h * 0.02, -L * 0.36] });
+    B.add(torus(w * 0.16, w * 0.035, 10), M.metal, { pos: [-w * 0.44, -h * 0.24, -L * 0.24], rot: [0, Math.PI / 2, 0] });
+
+    /* Grip, trigger guard, angled magazine. */
+    B.add(plate(w * 0.56, h * 0.88, L * 0.10, w * 0.16, 0.24), M.grip,
+      { pos: [0, -h * 0.66, -L * 0.08], rot: [0.26, 0, 0] });
+    B.add(torus(w * 0.28, w * 0.05, 12), M.metal, { pos: [0, -h * 0.32, L * 0.02], rot: [0, Math.PI / 2, 0] });
+    B.add(plate(w * 0.58, h * 1.00, L * 0.085, w * 0.13, 0.12), M.body,
+      { pos: [0, -h * 0.76, L * 0.12], rot: [-0.14, 0, 0] });
+    B.add(plate(w * 0.48, h * 0.20, L * 0.07, w * 0.05, 0), M.accent,
+      { pos: [0, -h * 1.16, L * 0.14], rot: [-0.14, 0, 0] });
+
+    /* Compact reflex sight. */
+    B.add(plate(w * 0.42, h * 0.20, L * 0.09, w * 0.08, 0), M.metal, { pos: [0, h * 0.66, L * 0.08] });
+    B.add(plate(w * 0.40, h * 0.42, L * 0.03, w * 0.06, 0), M.metal, { pos: [0, h * 0.90, L * 0.04] });
+    B.add(plate(w * 0.34, h * 0.34, L * 0.012, w * 0.04, 0), M.glow, { pos: [0, h * 0.90, L * 0.055] });
+
+    /* Charge cells down both flanks — the family read shared with the rifle. */
+    [-1, 1].forEach(sg => {
+      B.add(plate(w * 0.14, h * 0.30, L * 0.20, w * 0.05, 0), M.glow, { pos: [sg * w * 0.52, -h * 0.10, -L * 0.02] });
+      B.add(plate(w * 0.16, h * 0.10, L * 0.24, w * 0.04, 0), M.accent, { pos: [sg * w * 0.50, h * 0.30, L * 0.32] });
+    });
+
+    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.08, L * 0.72]);
+    out.sockets.eject = socket(root, 'eject', [w * 0.55, h * 0.18, L * 0.06]);
+    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.95, L * 0.13]);
+    out.sockets.foregrip = socket(root, 'foregrip', [0, -h * 0.26, L * 0.34]);
+    out.sockets.grip = socket(root, 'grip', [0, -h * 0.46, -L * 0.06]);
   };
 
   ARCH.minigun = function (B, M, L, out, root) {
@@ -5450,16 +6284,46 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   ARCH.pistol = function (B, M, L, out, root) {
     const w = L * 0.16, h = L * 0.26;
-    B.add(plate(w, h * 0.62, L * 0.60, w * 0.24, 0.2), M.body, { pos: [0, h * 0.10, L * 0.06] });
-    B.add(new THREE.CylinderGeometry(w * 0.16, w * 0.16, L * 0.30, 8), M.metal,
-      { pos: [0, h * 0.08, L * 0.34], rot: [Math.PI / 2, 0, 0] });
-    B.add(new THREE.CylinderGeometry(w * 0.30, w * 0.30, L * 0.26, 10), M.body,
-      { pos: [0, h * 0.08, L * 0.50], rot: [Math.PI / 2, 0, 0] });   // suppressor
-    B.add(plate(w * 0.66, h * 0.9, L * 0.14, w * 0.16, 0.2), M.grip, { pos: [0, -h * 0.45, -L * 0.10], rot: [0.30, 0, 0] });
-    B.add(plate(w * 0.3, h * 0.10, L * 0.22, w * 0.05, 0), M.glow, { pos: [0, h * 0.34, L * 0.06] });
-    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.08, L * 0.66]);
-    out.sockets.eject = socket(root, 'eject', [w * 0.5, h * 0.18, L * 0.02]);
-    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.6, -L * 0.06]);
+
+    /* Slide over frame: two clearly separate masses with a visible rail gap,
+     * which is what makes a handgun read as a handgun. */
+    B.add(plate(w * 0.94, h * 0.34, L * 0.58, w * 0.20, 0.12), M.metal, { pos: [0, h * 0.26, L * 0.08] });
+    B.add(plate(w, h * 0.30, L * 0.54, w * 0.22, 0.18), M.body, { pos: [0, h * 0.02, L * 0.06] });
+    // Slide serrations.
+    for (let i = 0; i < 5; i++) {
+      [-1, 1].forEach(sg => B.add(plate(w * 0.06, h * 0.22, L * 0.02, w * 0.02, 0), M.grip,
+        { pos: [sg * w * 0.48, h * 0.26, L * (-0.10 - i * 0.035)] }));
+    }
+    // Ejection port.
+    B.add(plate(w * 0.08, h * 0.18, L * 0.12, w * 0.02, 0), M.grip, { pos: [w * 0.47, h * 0.30, L * 0.14] });
+
+    /* Barrel and screw-on suppressor. */
+    B.add(new THREE.CylinderGeometry(w * 0.15, w * 0.15, L * 0.14, 10), M.metal,
+      { pos: [0, h * 0.24, L * 0.40], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.29, w * 0.27, L * 0.30, 14), M.body,
+      { pos: [0, h * 0.24, L * 0.58], rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 5; i++) {
+      B.add(torus(w * 0.30, w * 0.030, 14), M.metal, { pos: [0, h * 0.24, L * (0.48 + i * 0.045)] });
+    }
+
+    /* Grip with checkering, trigger guard, magazine base plate. */
+    B.add(plate(w * 0.62, h * 0.86, L * 0.13, w * 0.15, 0.22), M.grip,
+      { pos: [0, -h * 0.46, -L * 0.10], rot: [0.30, 0, 0] });
+    for (let i = 0; i < 4; i++) {
+      B.add(plate(w * 0.48, h * 0.05, L * 0.10, w * 0.02, 0), M.body,
+        { pos: [0, -h * (0.22 + i * 0.16), -L * (0.06 + i * 0.036)], rot: [0.30, 0, 0] });
+    }
+    B.add(torus(w * 0.26, w * 0.045, 12), M.metal, { pos: [0, -h * 0.20, L * 0.02], rot: [0, Math.PI / 2, 0] });
+    B.add(plate(w * 0.58, h * 0.08, L * 0.14, w * 0.04, 0), M.accent, { pos: [0, -h * 0.86, -L * 0.20], rot: [0.30, 0, 0] });
+
+    /* Sights and a charge window along the frame. */
+    B.add(plate(w * 0.16, h * 0.12, L * 0.04, w * 0.03, 0), M.metal, { pos: [0, h * 0.46, L * 0.30] });
+    B.add(plate(w * 0.30, h * 0.12, L * 0.04, w * 0.03, 0), M.metal, { pos: [0, h * 0.46, -L * 0.16] });
+    B.add(plate(w * 0.26, h * 0.09, L * 0.22, w * 0.04, 0), M.glow, { pos: [0, h * 0.06, L * 0.04] });
+
+    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.24, L * 0.76]);
+    out.sockets.eject = socket(root, 'eject', [w * 0.5, h * 0.32, L * 0.14]);
+    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.8, -L * 0.16]);
     out.sockets.grip = socket(root, 'grip', [0, -h * 0.28, -L * 0.08]);
   };
 
@@ -7938,6 +8802,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         roughness: 0.4, metalness: 0.2, repeat: 1, seed: 37, rim: false }),
       windowCool: Mats.make({ kind: 'plate', color: 0x121a26, emissive: 0x62d6ff, emissiveIntensity: 1.15,
         roughness: 0.4, metalness: 0.2, repeat: 1, seed: 41, rim: false }),
+      interiorGlow: Mats.make({ kind: 'plate', color: 0x2a2418, emissive: 0xffbe72,
+        emissiveIntensity: 0.85, roughness: 0.9, metalness: 0.0, repeat: 1, seed: 43, rim: false }),
       neonA: Mats.additive(0x36c7ff, 0.95),
       neonB: Mats.additive(0xff5a3c, 0.95),
       neonC: Mats.additive(0xb46bff, 0.95),
@@ -8108,6 +8974,45 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
      * 3. BUILDINGS
      * ================================================================== */
     /**
+     * One window: recessed glass, a dark frame, a mullion cross and a sill.
+     *
+     * A flat emissive rectangle is the loudest "untextured 3D" cue a building
+     * facade can give off — real windows are a hole with a frame around it and
+     * something visible behind the glass. Six thin boxes buy all of that.
+     *
+     * `axis` is the facade normal ('z' or 'x'); `sg` its sign.
+     */
+    function windowUnit(x, y, z, ww, hh, axis, sg) {
+      const roll = rnd();
+      const lit = roll > 0.40;
+      const glassMat = lit ? (rnd() > 0.55 ? M.windowCool : M.windowLit) : M.glass;
+      const frameT = 0.09;                      // frame bar thickness
+      const inset = 0.10;                       // how far the glass sits back
+      const box = (bw, bh, bd) => new THREE.BoxGeometry(bw, bh, bd);
+      const at = (ox, oy, depth) => axis === 'z'
+        ? [x + ox, y + oy, z + sg * depth]
+        : [x + sg * depth, y + oy, z + ox];
+      const dims = (bw, bh, bd) => axis === 'z' ? box(bw, bh, bd) : box(bd, bh, bw);
+
+      // Reveal: a dark recess so the opening reads as depth, not a sticker.
+      deco(dims(ww, hh, 0.06), M.rubberMat, at(0, 0, -inset * 0.5));
+      // Glass, set back inside the reveal.
+      deco(dims(ww - frameT * 2, hh - frameT * 2, 0.05), glassMat, at(0, 0, -inset * 0.25));
+      // Frame: two verticals, two horizontals, standing proud of the wall.
+      [-1, 1].forEach(k => {
+        deco(dims(frameT, hh + frameT, 0.13), M.darkSteel, at(k * (ww / 2 - frameT / 2), 0, 0.04));
+        deco(dims(ww + frameT, frameT, 0.13), M.darkSteel, at(0, k * (hh / 2 - frameT / 2), 0.04));
+      });
+      // Mullion cross — the detail your eye actually resolves at range.
+      deco(dims(frameT * 0.62, hh - frameT * 2, 0.10), M.darkSteel, at(0, 0, 0.02));
+      if (roll > 0.6) deco(dims(ww - frameT * 2, frameT * 0.62, 0.10), M.darkSteel, at(0, hh * 0.10, 0.02));
+      // Sill, angled out to shed water like the real thing.
+      deco(dims(ww + frameT * 2, 0.10, 0.24), M.panel, at(0, -hh / 2 - 0.09, 0.09));
+      // Interior glow slab behind lit glass: gives the window a depth cue.
+      if (lit) deco(dims(ww - frameT * 3, hh - frameT * 3, 0.04), M.interiorGlow, at(0, 0, -inset));
+    }
+
+    /**
      * A building block with a lit facade, roof lip, roof access and
      * optional walk-through interior.
      */
@@ -8168,23 +9073,20 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           const cols = Math.max(1, Math.floor(w / 3.0));
           for (let c = 0; c < cols; c++) {
             const x = cx - w / 2 + (c + 0.5) * (w / cols);
-            const lit = rnd() > 0.42;
-            deco(new THREE.BoxGeometry(w / cols * 0.62, 1.5, 0.12),
-              lit ? (rnd() > 0.55 ? M.windowCool : M.windowLit) : M.glass, [x, y, zc]);
-            deco(new THREE.BoxGeometry(w / cols * 0.70, 0.16, 0.22), M.darkSteel, [x, y - 0.86, zc]);
+            windowUnit(x, y, zc, w / cols * 0.68, 1.55, 'z', sz);
           }
           deco(new THREE.BoxGeometry(w, 0.26, 0.28), M.panel, [cx, y + 1.05, zc]);
+          deco(new THREE.BoxGeometry(w, 0.10, 0.40), M.darkSteel, [cx, y + 1.20, zc + sz * 0.06]);
         });
         [-1, 1].forEach(sx => {
           const xc = cx + sx * (w / 2 + 0.06);
           const cols = Math.max(1, Math.floor(d / 3.0));
           for (let c = 0; c < cols; c++) {
             const z = cz - d / 2 + (c + 0.5) * (d / cols);
-            const lit = rnd() > 0.5;
-            deco(new THREE.BoxGeometry(0.12, 1.5, d / cols * 0.62),
-              lit ? (rnd() > 0.5 ? M.windowCool : M.windowLit) : M.glass, [xc, y, z]);
+            windowUnit(xc, y, z, d / cols * 0.68, 1.55, 'x', sx);
           }
           deco(new THREE.BoxGeometry(0.28, 0.26, d), M.panel, [xc, y + 1.05, cz]);
+          deco(new THREE.BoxGeometry(0.40, 0.10, d), M.darkSteel, [xc + sx * 0.06, y + 1.20, cz]);
         });
       }
 
@@ -8693,17 +9595,62 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const skyMatDome = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        uTop: { value: new THREE.Color(0x0d1830) },
-        uMid: { value: new THREE.Color(0x27467c) },
-        uBottom: { value: new THREE.Color(0x6b4468) }
+        uTop: { value: new THREE.Color(0x08111f) },
+        uMid: { value: new THREE.Color(0x1d3560) },
+        uBottom: { value: new THREE.Color(0x5c3a5e) },
+        uGlow: { value: new THREE.Color(0xff9a5c) },
+        uMoon: { value: new THREE.Vector3(-0.42, 0.46, -0.78).normalize() }
       },
-      vertexShader: 'varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader:
-        'uniform vec3 uTop; uniform vec3 uMid; uniform vec3 uBottom; varying vec3 vPos;' +
-        'void main(){ float h = normalize(vPos).y;' +
-        ' vec3 c = mix(uBottom, uMid, smoothstep(-0.22, 0.16, h));' +
-        ' c = mix(c, uTop, smoothstep(0.10, 0.72, h));' +
-        ' gl_FragColor = vec4(c, 1.0); }'
+      vertexShader:
+        'varying vec3 vPos; void main(){ vPos = position;' +
+        ' gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      /* A flat two-stop gradient is what makes a night sky look like a
+       * coloured wall. This adds the four things that sell a real one:
+       * stars, thin cloud banding, a moon with a halo, and the sodium glow a
+       * city throws onto its own horizon. */
+      fragmentShader: [
+        'uniform vec3 uTop; uniform vec3 uMid; uniform vec3 uBottom; uniform vec3 uGlow;',
+        'uniform vec3 uMoon; varying vec3 vPos;',
+        'float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }',
+        'float vnoise(vec3 p){',
+        '  vec3 i = floor(p), f = fract(p);',
+        '  f = f * f * (3.0 - 2.0 * f);',
+        '  float n000 = hash(i), n100 = hash(i + vec3(1,0,0));',
+        '  float n010 = hash(i + vec3(0,1,0)), n110 = hash(i + vec3(1,1,0));',
+        '  float n001 = hash(i + vec3(0,0,1)), n101 = hash(i + vec3(1,0,1));',
+        '  float n011 = hash(i + vec3(0,1,1)), n111 = hash(i + vec3(1,1,1));',
+        '  return mix(mix(mix(n000,n100,f.x), mix(n010,n110,f.x), f.y),',
+        '             mix(mix(n001,n101,f.x), mix(n011,n111,f.x), f.y), f.z);',
+        '}',
+        'float fbm(vec3 p){',
+        '  float a = 0.5, s = 0.0;',
+        '  for (int i = 0; i < 4; i++) { s += vnoise(p) * a; p *= 2.03; a *= 0.5; }',
+        '  return s;',
+        '}',
+        'void main(){',
+        '  vec3 d = normalize(vPos);',
+        '  float h = d.y;',
+        '  vec3 c = mix(uBottom, uMid, smoothstep(-0.22, 0.16, h));',
+        '  c = mix(c, uTop, smoothstep(0.10, 0.72, h));',
+        // Stars: a sparse grid hash, brighter high up, gently twinkling in size.
+        '  vec3 sp = d * 260.0;',
+        '  float star = hash(floor(sp));',
+        '  float mask = smoothstep(0.9955, 0.9995, star);',
+        '  float tw = 0.55 + 0.45 * hash(floor(sp) + 3.1);',
+        '  c += vec3(0.85, 0.90, 1.0) * mask * tw * smoothstep(0.02, 0.42, h);',
+        // Thin high cloud, lit from below by the city.
+        '  float cl = fbm(d * 2.6 + vec3(0.0, 0.0, 1.7));',
+        '  cl = smoothstep(0.48, 0.86, cl) * smoothstep(0.02, 0.35, h);',
+        '  c = mix(c, mix(vec3(0.16, 0.20, 0.31), uGlow * 0.35, 0.45), cl * 0.55);',
+        // Moon with a soft halo.
+        '  float md = dot(d, normalize(uMoon));',
+        '  c += vec3(0.95, 0.96, 0.92) * smoothstep(0.9992, 0.9997, md);',
+        '  c += vec3(0.42, 0.52, 0.70) * pow(max(md, 0.0), 220.0) * 0.55;',
+        // Sodium haze the district throws back at its own sky.
+        '  c += uGlow * 0.20 * pow(1.0 - clamp(abs(h) * 3.4, 0.0, 1.0), 2.4);',
+        '  gl_FragColor = vec4(c, 1.0);',
+        '}'
+      ].join('\n')
     });
     const skyMesh = new THREE.Mesh(skyGeo, skyMatDome);
     skyMesh.frustumCulled = false;
@@ -11800,6 +12747,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
        * tracer originates, so the two can never disagree. */
       aimHeldWeapon();
 
+      /* Off hand onto the foregrip, after the weapon has been aimed. */
+      updateGripIK(dt);
+
       /* marked state decays */
       if (A.markedUntil > 0 && A._time > A.markedUntil) { A.markedUntil = 0; A.markedBy = null; }
 
@@ -11834,6 +12784,25 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       // Sprinting drops the muzzle into a low-ready carry.
       if (A.sprinting || A.sliding) slot.model.root.rotateX(0.62);
       if (slot.offModel) orientToAim(slot.offModel, A.model.bones.offhandSocket);
+    }
+
+    /* Two-handed grip: the solve itself lives in the character model so the
+     * character-select stage can run exactly the same one. */
+    let _gripWeight = 0;
+
+    function updateGripIK(dt) {
+      const slot = A.weaponSlots[A.weaponIndex];
+      const socket = slot && slot.model && slot.model.sockets
+        ? (slot.model.sockets.foregrip || null) : null;
+
+      // Only weapons actually held in two hands, and only while the pose is
+      // not busy doing something else with that arm.
+      const twoHanded = !!socket && !slot.def.akimbo && !slot.def.melee;
+      const busy = A.weapon.reloading || A.weapon.swapping || A.dodging ||
+                   A.sliding || A.sprinting || !!A.animator.action;
+      const want = twoHanded && !busy && A.alive ? 1 : 0;
+      _gripWeight = U.damp(_gripWeight, want, 9, dt);
+      HC.CharacterModel.solveGripIK(A.model, socket, _gripWeight);
     }
 
     function applyRootTilt() {
@@ -14641,27 +15610,39 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     (function setupStage() {
       const s = stage.scene;
       s.background = null;
-      // Three-point showcase lighting: a bright key, a cool rim to cut the
-      // silhouette out of the background, and a warm kicker on the far side.
-      const key = new THREE.DirectionalLight(0xf2f7ff, 3.6);
-      key.position.set(2.6, 4.2, 3.4);
+      HC.Mats.applyEnvironment(s, 1.15);
+      /* Three-point showcase lighting.
+       *
+       * The first version put a near-frontal key on top of a heavy ambient
+       * and hemisphere fill, and flat light is what makes sculpted forms — a
+       * brow, a nose, a cheekbone — disappear into a mask. The key now comes
+       * in high and well off-axis so the face has a lit side and a shadow
+       * side, and the ambient is a fraction of what it was. */
+      const key = new THREE.DirectionalLight(0xfff4e6, 4.6);
+      key.position.set(3.4, 4.0, 2.4);
+      key.castShadow = false;
       s.add(key);
-      const rim = new THREE.DirectionalLight(0x6ab8ff, 4.2);
-      rim.position.set(-3.2, 2.6, -3.0);
+      const rim = new THREE.DirectionalLight(0x7fc4ff, 5.4);
+      rim.position.set(-3.0, 2.4, -3.4);
       s.add(rim);
-      const warm = new THREE.PointLight(0xff8a4a, 160, 14, 2);
-      warm.position.set(2.4, 1.4, -2.2);
+      const warm = new THREE.PointLight(0xff8a4a, 190, 14, 2);
+      warm.position.set(2.6, 1.5, -2.2);
       s.add(warm);
-      const fillLight = new THREE.PointLight(0x88c8ff, 90, 12, 2);
-      fillLight.position.set(-2.2, 1.0, 2.6);
+      // Bounce fill: low, cool, and weak — it lifts the shadow side without
+      // erasing it.
+      const fillLight = new THREE.PointLight(0x7fb0e0, 46, 12, 2);
+      fillLight.position.set(-2.4, 0.5, 2.4);
       s.add(fillLight);
-      s.add(new THREE.AmbientLight(0x5d7a9e, 1.5));
-      s.add(new THREE.HemisphereLight(0x6a94c8, 0x1a2230, 1.4));
+      s.add(new THREE.AmbientLight(0x3c4e66, 0.55));
+      s.add(new THREE.HemisphereLight(0x5a80ae, 0x181f2c, 0.65));
 
       // Stage floor: a lit disc so the hero is not floating in a void.
       const discGeo = new THREE.CylinderGeometry(1.35, 1.5, 0.10, 48);
-      const discMat = HC.Mats.make({ kind: 'metal', color: 0x1b2534, roughness: 0.35, metalness: 0.85,
-        rim: { color: 0x54c8ff, strength: 0.6, power: 2.2 } });
+      // Brushed metal here streaked into bright radial stripes that pulled
+      // the eye straight off the hero. A dark, near-matte plate reads as a
+      // stage, which is all it needs to do.
+      const discMat = HC.Mats.make({ kind: 'plate', color: 0x131a25, roughness: 0.52, metalness: 0.35,
+        repeat: 2.5, normalScale: 0.35, rim: { color: 0x54c8ff, strength: 0.30, power: 2.8 } });
       const disc = new THREE.Mesh(discGeo, discMat);
       disc.position.y = -0.05;
       s.add(disc);
@@ -14700,7 +15681,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       });
       stage.model.bones.weaponSocket.add(stage.weapon.root);
       stage.weapon.root.rotation.set(Math.PI * 0.5, 0, 0);
-      stage.animator.setWeaponShape(!!HC.Weapons.get(charDef.weapon).akimbo, !!HC.Weapons.get(charDef.weapon).melee);
+      const wdef = HC.Weapons.get(charDef.weapon);
+      stage.akimbo = !!wdef.akimbo;
+      stage.animator.setWeaponShape(stage.akimbo, !!wdef.melee);
 
       // Frame the hero: taller heroes get pushed back a little.
       const h = stage.model.measure.height;
@@ -14732,6 +15715,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         _stageDir.transformDirection(_stageM);
         if (_stageDir.lengthSq() > 1e-8) {
           stage.weapon.root.quaternion.setFromUnitVectors(STAGE_FORWARD, _stageDir.normalize());
+        }
+        // Same two-handed solve the arena uses, so the off hand lands on the
+        // foregrip here too instead of hovering beside it.
+        const grip = stage.weapon.sockets && stage.weapon.sockets.foregrip;
+        if (grip && !stage.akimbo) {
+          stage.model.root.updateWorldMatrix(false, true);
+          HC.CharacterModel.solveGripIK(stage.model, grip, 1);
         }
       }
     };
@@ -15591,6 +16581,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     uniform sampler2D tBloom0;
     uniform sampler2D tBloom1;
     uniform sampler2D tBloom2;
+    uniform sampler2D tAO;
+    uniform float uAOEnabled;
     uniform float uStrength;
     uniform float uVignette;
     uniform float uGrade;
@@ -15598,6 +16590,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     varying vec2 vUv;
     void main() {
       vec3 base = texture2D(tDiffuse, vUv).rgb;
+      if (uAOEnabled > 1.5) {
+        // Debug view: the raw occlusion term, for tuning radius/intensity.
+        gl_FragColor = vec4(vec3(texture2D(tAO, vUv).r), 1.0);
+        return;
+      }
+      if (uAOEnabled > 0.5) {
+        // Occlusion darkens ambient response; bloom is added after so bright
+        // emissive surfaces are never dimmed by a crease behind them.
+        base *= mix(1.0, texture2D(tAO, vUv).r, 0.85);
+      }
       vec3 bloom =
         texture2D(tBloom0, vUv).rgb * 0.55 +
         texture2D(tBloom1, vUv).rgb * 0.32 +
@@ -15620,6 +16622,137 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       col = mix(hi, lo, step(col, vec3(0.0031308)));
 
       gl_FragColor = vec4(col, 1.0);
+    }`;
+
+  /* Screen-space ambient occlusion.
+   *
+   * Reconstructs view-space position and normal from the depth buffer, then
+   * samples a hemisphere around each pixel. This is what puts contact shadow
+   * into every crease, under every shoulder pad and where a boot meets the
+   * ground — the difference between "objects floating near each other" and
+   * "objects that are actually in the same room". */
+  const SSAO_FS = `
+    uniform sampler2D tDepth;
+    uniform mat4 uProjection;
+    uniform mat4 uInverseProjection;
+    uniform vec2 uResolution;
+    uniform float uRadius;
+    uniform float uBias;
+    uniform float uIntensity;
+    uniform float uNear;
+    uniform float uFar;
+    varying vec2 vUv;
+
+    const int KERNEL = 12;
+
+    vec3 viewPos(vec2 uv, float d) {
+      vec4 clip = vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+      vec4 v = uInverseProjection * clip;
+      return v.xyz / v.w;
+    }
+
+    float rand(vec2 co) {
+      return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    void main() {
+      float d = texture2D(tDepth, vUv).x;
+      if (d >= 0.9999) { gl_FragColor = vec4(1.0); return; }
+
+      vec3 p = viewPos(vUv, d);
+      vec2 texel = 1.0 / uResolution;
+
+      // Reconstruct the normal from whichever neighbour is closer in depth.
+      // Taking the forward difference blindly smears the normal across every
+      // silhouette and turns the whole pass into an edge detector.
+      vec3 pR = viewPos(vUv + vec2(texel.x, 0.0), texture2D(tDepth, vUv + vec2(texel.x, 0.0)).x);
+      vec3 pL = viewPos(vUv - vec2(texel.x, 0.0), texture2D(tDepth, vUv - vec2(texel.x, 0.0)).x);
+      vec3 pU = viewPos(vUv + vec2(0.0, texel.y), texture2D(tDepth, vUv + vec2(0.0, texel.y)).x);
+      vec3 pD = viewPos(vUv - vec2(0.0, texel.y), texture2D(tDepth, vUv - vec2(0.0, texel.y)).x);
+      vec3 dx = abs(pR.z - p.z) < abs(p.z - pL.z) ? (pR - p) : (p - pL);
+      vec3 dy = abs(pU.z - p.z) < abs(p.z - pD.z) ? (pU - p) : (p - pD);
+      vec3 n = normalize(cross(dx, dy));
+      if (n.z < 0.0) n = -n;
+
+      float a = rand(vUv) * 6.2831853;
+      vec3 rvec = normalize(vec3(cos(a), sin(a), 0.0));
+      vec3 tangent = normalize(rvec - n * dot(rvec, n));
+      vec3 bitangent = cross(n, tangent);
+      mat3 tbn = mat3(tangent, bitangent, n);
+
+      float occlusion = 0.0;
+      for (int i = 0; i < KERNEL; i++) {
+        float fi = float(i);
+        // Deterministic hemisphere points, weighted toward the origin.
+        float s1 = rand(vec2(fi, 0.37)) * 2.0 - 1.0;
+        float s2 = rand(vec2(fi, 0.71)) * 2.0 - 1.0;
+        float s3 = rand(vec2(fi, 0.13));
+        vec3 samp = normalize(vec3(s1, s2, s3 * 0.85 + 0.15));
+        samp *= mix(0.25, 1.0, (fi / float(KERNEL)) * (fi / float(KERNEL)));
+
+        vec3 sp = p + tbn * samp * uRadius;
+        vec4 off = uProjection * vec4(sp, 1.0);
+        off.xyz /= off.w;
+        vec2 suv = off.xy * 0.5 + 0.5;
+        if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) continue;
+
+        float sd = texture2D(tDepth, suv).x;
+        vec3 sampleView = viewPos(suv, sd);
+        float rangeCheck = smoothstep(0.0, 1.0, uRadius / max(0.0001, abs(p.z - sampleView.z)));
+        if (sampleView.z >= sp.z + uBias) occlusion += rangeCheck;
+      }
+      float ao = 1.0 - (occlusion / float(KERNEL)) * uIntensity;
+      gl_FragColor = vec4(clamp(ao, 0.0, 1.0));
+    }`;
+
+  /* A 4-tap cross blur is enough to kill SSAO noise at this sample count. */
+  const AO_BLUR_FS = `
+    uniform sampler2D tDiffuse;
+    uniform vec2 uTexel;
+    varying vec2 vUv;
+    void main() {
+      float s = texture2D(tDiffuse, vUv).r;
+      s += texture2D(tDiffuse, vUv + vec2(uTexel.x, 0.0)).r;
+      s += texture2D(tDiffuse, vUv - vec2(uTexel.x, 0.0)).r;
+      s += texture2D(tDiffuse, vUv + vec2(0.0, uTexel.y)).r;
+      s += texture2D(tDiffuse, vUv - vec2(0.0, uTexel.y)).r;
+      s += texture2D(tDiffuse, vUv + uTexel).r;
+      s += texture2D(tDiffuse, vUv - uTexel).r;
+      s += texture2D(tDiffuse, vUv + vec2(uTexel.x, -uTexel.y)).r;
+      s += texture2D(tDiffuse, vUv + vec2(-uTexel.x, uTexel.y)).r;
+      gl_FragColor = vec4(s / 9.0);
+    }`;
+
+  /* Compact luma FXAA. MSAA is unavailable on a multisampled float target in
+   * several browsers, and jagged silhouettes are a loud cheapness cue. */
+  const FXAA_FS = `
+    uniform sampler2D tDiffuse;
+    uniform vec2 uTexel;
+    varying vec2 vUv;
+    float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+    void main() {
+      vec3 rgbM = texture2D(tDiffuse, vUv).rgb;
+      float lM = luma(rgbM);
+      float lNW = luma(texture2D(tDiffuse, vUv + vec2(-uTexel.x, -uTexel.y)).rgb);
+      float lNE = luma(texture2D(tDiffuse, vUv + vec2( uTexel.x, -uTexel.y)).rgb);
+      float lSW = luma(texture2D(tDiffuse, vUv + vec2(-uTexel.x,  uTexel.y)).rgb);
+      float lSE = luma(texture2D(tDiffuse, vUv + vec2( uTexel.x,  uTexel.y)).rgb);
+
+      float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+      float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+      if (lMax - lMin < max(0.035, lMax * 0.125)) { gl_FragColor = vec4(rgbM, 1.0); return; }
+
+      vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), ((lNW + lSW) - (lNE + lSE)));
+      float reduce = max((lNW + lNE + lSW + lSE) * 0.03125, 0.0078125);
+      float rcpDir = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+      dir = clamp(dir * rcpDir, -8.0, 8.0) * uTexel;
+
+      vec3 rgbA = 0.5 * (texture2D(tDiffuse, vUv + dir * (1.0 / 3.0 - 0.5)).rgb +
+                         texture2D(tDiffuse, vUv + dir * (2.0 / 3.0 - 0.5)).rgb);
+      vec3 rgbB = rgbA * 0.5 + 0.25 * (texture2D(tDiffuse, vUv - dir * 0.5).rgb +
+                                       texture2D(tDiffuse, vUv + dir * 0.5).rgb);
+      float lB = luma(rgbB);
+      gl_FragColor = vec4((lB < lMin || lB > lMax) ? rgbA : rgbB, 1.0);
     }`;
 
   const BLEND_FS = `
@@ -15676,6 +16809,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const compositeMat = new THREE.ShaderMaterial({
       uniforms: {
         tDiffuse: { value: null }, tBloom0: { value: null }, tBloom1: { value: null }, tBloom2: { value: null },
+        tAO: { value: null }, uAOEnabled: { value: 0 },
         uStrength: { value: CFG.gfx.bloomStrength }, uVignette: { value: 0.62 },
         uGrade: { value: 1.0 }, uTint: { value: new THREE.Color(1.02, 1.0, 1.05) }
       },
@@ -15690,6 +16824,33 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       uniforms: { tDiffuse: { value: null } },
       vertexShader: QUAD_VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false
     });
+
+    const ssaoMat = new THREE.ShaderMaterial({
+      uniforms: {
+        tDepth: { value: null },
+        uProjection: { value: new THREE.Matrix4() },
+        uInverseProjection: { value: new THREE.Matrix4() },
+        uResolution: { value: new THREE.Vector2(1, 1) },
+        uRadius: { value: CFG.gfx.ssaoRadius },
+        uBias: { value: 0.022 },
+        uIntensity: { value: CFG.gfx.ssaoIntensity },
+        uNear: { value: 0.1 }, uFar: { value: 500 }
+      },
+      vertexShader: QUAD_VS, fragmentShader: SSAO_FS, depthTest: false, depthWrite: false
+    });
+    const aoBlurMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() } },
+      vertexShader: QUAD_VS, fragmentShader: AO_BLUR_FS, depthTest: false, depthWrite: false
+    });
+    const fxaaMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() } },
+      vertexShader: QUAD_VS, fragmentShader: FXAA_FS, depthTest: false, depthWrite: false
+    });
+
+    /* SSAO reads the depth buffer as a texture. A multisampled colour target
+     * cannot hand out its depth attachment on every driver, so when occlusion
+     * is on the scene target drops MSAA and FXAA takes over edge duty. */
+    function ssaoOn() { return !!(CFG.gfx.ssao && renderer.capabilities.isWebGL2); }
 
     /* Motion blur is a temporal smear whose weight follows how fast the
      * camera is actually turning, so it only appears when you whip the view
@@ -15713,13 +16874,26 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       if (P._targets) P._targets.forEach(t => t.dispose());
       if (P.sceneTarget) P.sceneTarget.dispose();
 
+      if (P.depthTexture) P.depthTexture.dispose();
+      P.depthTexture = null;
+
+      const wantAO = ssaoOn();
       P.sceneTarget = new THREE.WebGLRenderTarget(Math.max(2, width), Math.max(2, height), {
         minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
         format: THREE.RGBAFormat, type: halfFloat,
         depthBuffer: true, stencilBuffer: false,
-        samples: CFG.gfx.antialias && renderer.capabilities.isWebGL2 ? 4 : 0
+        samples: (!wantAO && CFG.gfx.antialias && renderer.capabilities.isWebGL2) ? 4 : 0
       });
       if ('colorSpace' in P.sceneTarget.texture) P.sceneTarget.texture.colorSpace = THREE.NoColorSpace;
+
+      if (wantAO) {
+        P.depthTexture = new THREE.DepthTexture(Math.max(2, width), Math.max(2, height));
+        P.depthTexture.type = THREE.UnsignedIntType;
+        P.depthTexture.format = THREE.DepthFormat;
+        P.depthTexture.minFilter = THREE.NearestFilter;
+        P.depthTexture.magFilter = THREE.NearestFilter;
+        P.sceneTarget.depthTexture = P.depthTexture;
+      }
 
       P.bright = makeTarget(width / 2, height / 2);
       P.levels = [];
@@ -15733,7 +16907,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       P.historyIndex = 0;
       P.historyValid = false;
 
-      P._targets = [P.bright, P.post, P.history[0], P.history[1]]
+      // Occlusion is a low-frequency signal; half resolution is free quality.
+      P.aoW = Math.max(2, Math.floor(width / 2));
+      P.aoH = Math.max(2, Math.floor(height / 2));
+      P.aoRaw = makeTarget(P.aoW, P.aoH);
+      P.aoSmooth = makeTarget(P.aoW, P.aoH);
+
+      P._targets = [P.bright, P.post, P.history[0], P.history[1], P.aoRaw, P.aoSmooth]
         .concat(P.levels.reduce((acc, l) => acc.concat([l.a, l.b]), []));
     };
 
@@ -15757,6 +16937,28 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       renderer.setRenderTarget(P.sceneTarget);
       renderer.clear();
       renderer.render(scene, camera);
+
+      // ---- ambient occlusion ------------------------------------------------
+      if (P.depthTexture && CFG.gfx.ssao) {
+        ssaoMat.uniforms.tDepth.value = P.depthTexture;
+        ssaoMat.uniforms.uProjection.value.copy(camera.projectionMatrix);
+        ssaoMat.uniforms.uInverseProjection.value.copy(camera.projectionMatrixInverse);
+        ssaoMat.uniforms.uResolution.value.set(P.aoW, P.aoH);
+        ssaoMat.uniforms.uRadius.value = CFG.gfx.ssaoRadius;
+        ssaoMat.uniforms.uIntensity.value = CFG.gfx.ssaoIntensity;
+        ssaoMat.uniforms.uNear.value = camera.near;
+        ssaoMat.uniforms.uFar.value = camera.far;
+        draw(ssaoMat, P.aoRaw);
+
+        aoBlurMat.uniforms.tDiffuse.value = P.aoRaw.texture;
+        aoBlurMat.uniforms.uTexel.value.set(1 / P.aoW, 1 / P.aoH);
+        draw(aoBlurMat, P.aoSmooth);
+
+        compositeMat.uniforms.tAO.value = P.aoSmooth.texture;
+        compositeMat.uniforms.uAOEnabled.value = P.debugAO ? 2 : 1;
+      } else {
+        compositeMat.uniforms.uAOEnabled.value = 0;
+      }
 
       brightMat.uniforms.tDiffuse.value = P.sceneTarget.texture;
       brightMat.uniforms.uThreshold.value = CFG.gfx.bloomThreshold;
@@ -15783,10 +16985,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       compositeMat.uniforms.tBloom2.value = P.levels[2].b.texture;
       compositeMat.uniforms.uStrength.value = CFG.gfx.bloomStrength * (CFG.access.reduceFlashing ? 0.6 : 1);
 
+      // FXAA runs last, on the graded sRGB image, where edge contrast lives.
+      const useFxaa = !!CFG.gfx.fxaa;
+      if (useFxaa) fxaaMat.uniforms.uTexel.value.set(1 / P.width, 1 / P.height);
+
+      function present(texture) {
+        if (!useFxaa) { copyMat.uniforms.tDiffuse.value = texture; draw(copyMat, null); return; }
+        fxaaMat.uniforms.tDiffuse.value = texture;
+        draw(fxaaMat, null);
+      }
+
       const blurAmount = CFG.gfx.motionBlur ? P.motionAmount : 0;
       if (blurAmount <= 0.004) {
-        draw(compositeMat, null);
         P.historyValid = false;
+        if (!useFxaa) { draw(compositeMat, null); return; }
+        draw(compositeMat, P.post);
+        present(P.post.texture);
         return;
       }
 
@@ -15800,21 +17014,27 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       blendMat.uniforms.uAmount.value = P.historyValid ? blurAmount : 0;
       draw(blendMat, next);
 
-      copyMat.uniforms.tDiffuse.value = next.texture;
-      draw(copyMat, null);
+      present(next.texture);
 
       P.historyIndex = 1 - P.historyIndex;
       P.historyValid = true;
     };
+
+    /* Exposed so tools can inspect and tune the chain from the console. */
+    P.materials = { bright: brightMat, blur: blurMat, composite: compositeMat,
+                    ssao: ssaoMat, aoBlur: aoBlurMat, fxaa: fxaaMat };
+    P.debugAO = false;
 
     P.dispose = function () {
       if (P._targets) P._targets.forEach(t => t.dispose());
       if (P.sceneTarget) P.sceneTarget.dispose();
       if (P.post) P.post.dispose();
       if (P.history) P.history.forEach(t => t.dispose());
+      if (P.depthTexture) P.depthTexture.dispose();
       quadGeo.dispose();
       brightMat.dispose(); blurMat.dispose(); compositeMat.dispose();
       blendMat.dispose(); copyMat.dispose();
+      ssaoMat.dispose(); aoBlurMat.dispose(); fxaaMat.dispose();
     };
 
     return P;
@@ -15908,6 +17128,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
       G.camera = new THREE.PerspectiveCamera(CFG.camera.fov, 1, CFG.camera.near, CFG.camera.far);
       G.postfx = HC.PostFX(G.renderer);
+
+      // Image-based lighting must exist before any scene is built, or every
+      // metal surface in the game renders as flat black.
+      HC.Mats.buildEnvironment(G.renderer);
 
       G.hud = HC.HUD(container);
       G.menus = HC.Menus(container, G.renderer, G);
@@ -16010,6 +17234,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         [0.10, 'BUILDING NOVA DISTRICT', () => {
           disposeArena();
           G.scene = new THREE.Scene();
+          HC.Mats.applyEnvironment(G.scene, CFG.gfx.envIntensity);
           HC.VFX.init(G.scene, G.camera);
           G.arena = HC.Arena({ scene: G.scene, mode: opts.mode, map: 'nova_district' });
         }],
@@ -16419,7 +17644,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       });
 
       HC.VFX.update(dt);
-      if (G.state !== 'intro') G.rig.update(dt);
+      if (G._freeCam) {
+        // Pinned camera for tooling and screenshots: the rig stays out of it.
+        G.camera.position.fromArray(G._freeCam.pos);
+        G.camera.lookAt(G._freeCam.look[0], G._freeCam.look[1], G._freeCam.look[2]);
+        if (G._freeCam.fov) { G.camera.fov = G._freeCam.fov; G.camera.updateProjectionMatrix(); }
+      } else if (G.state !== 'intro') {
+        G.rig.update(dt);
+      }
 
       // Audio listener follows the camera.
       G.camera.getWorldDirection(_v);
@@ -16438,17 +17670,24 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     function fadeLocalModel() {
       const p = G.arena && G.arena.player;
       if (!p || !G.rig) return;
-      const d = G.rig.distanceToTarget === undefined ? CFG.camera.distance : G.rig.distanceToTarget;
+      // A pinned tooling camera owns its own framing; never dissolve for it.
+      const d = G._freeCam ? 1e3
+        : (G.rig.distanceToTarget === undefined ? CFG.camera.distance : G.rig.distanceToTarget);
       const a = CFG.camera.fadeEndDistance, b = CFG.camera.fadeStartDistance;
       let fade = U.clamp01((d - a) / Math.max(0.01, b - a));
       // Cloak already owns the model's opacity; don't fight it.
       if (p.cloakBlend > 0.02) fade = 1;
-      fade = Math.max(fade, 0.06);
+      // A half-transparent character shows its own interior faces and reads as
+      // a broken wireframe, so the body is only ever lightly veiled or gone.
+      const HIDE_BELOW = 0.55;
+      fade = fade < HIDE_BELOW ? 0 : U.clamp01((fade - HIDE_BELOW) / (1 - HIDE_BELOW)) * 0.35 + 0.65;
       if (Math.abs(fade - lastLocalFade) < 0.01) return;
       lastLocalFade = fade;
       if (p.cloakBlend <= 0.02) {
-        p.model.setOpacity(fade);
-        p.weaponSlots.forEach(s => s.model.setOpacity(Math.max(fade, 0.35)));
+        const hidden = fade <= 0.001;
+        p.model.setBodyVisible(!hidden);
+        if (!hidden) p.model.setOpacity(fade);
+        p.weaponSlots.forEach(s => s.model.setOpacity(1));
       }
     }
 
@@ -16547,7 +17786,28 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         if (G.state === 'intro') { G.rig.cinematic = null; G.menus.hideIntro(); startCountdown(); }
         if (G.state === 'countdown') G.countdown = 0.01;
       },
-      state() { return G.state; }
+      state() { return G.state; },
+      /**
+       * Pins the camera for screenshot tooling. Pass null to hand control
+       * back to the rig.
+       */
+      freeCam(spec) {
+        if (!spec) { G._freeCam = null; return 'rig'; }
+        G._freeCam = {
+          pos: spec.pos || [0, 6, 18],
+          look: spec.look || [0, 2, 0],
+          fov: spec.fov || 0
+        };
+        return G._freeCam;
+      },
+      /** Moves the local player somewhere useful before a shot. */
+      placePlayer(x, y, z) {
+        const p = G.arena && G.arena.player;
+        if (!p) return false;
+        p.position.set(x, y, z);
+        if (p.velocity) p.velocity.set(0, 0, 0);
+        return true;
+      }
     };
 
     return G;

@@ -215,7 +215,12 @@
       motionBlur: false,
       antialias: true,
       textureQuality: 2,             // 0 low / 1 med / 2 high
-      exposure: 1.18
+      exposure: 1.18,
+      envIntensity: 1.0,             // strength of image-based lighting
+      ssao: true,
+      ssaoRadius: 1.15,
+      ssaoIntensity: 1.30,
+      fxaa: true
     },
 
     /* ---------------- audio ---------------- */

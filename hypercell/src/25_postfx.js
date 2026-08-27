@@ -55,6 +55,8 @@
     uniform sampler2D tBloom0;
     uniform sampler2D tBloom1;
     uniform sampler2D tBloom2;
+    uniform sampler2D tAO;
+    uniform float uAOEnabled;
     uniform float uStrength;
     uniform float uVignette;
     uniform float uGrade;
@@ -62,6 +64,16 @@
     varying vec2 vUv;
     void main() {
       vec3 base = texture2D(tDiffuse, vUv).rgb;
+      if (uAOEnabled > 1.5) {
+        // Debug view: the raw occlusion term, for tuning radius/intensity.
+        gl_FragColor = vec4(vec3(texture2D(tAO, vUv).r), 1.0);
+        return;
+      }
+      if (uAOEnabled > 0.5) {
+        // Occlusion darkens ambient response; bloom is added after so bright
+        // emissive surfaces are never dimmed by a crease behind them.
+        base *= mix(1.0, texture2D(tAO, vUv).r, 0.85);
+      }
       vec3 bloom =
         texture2D(tBloom0, vUv).rgb * 0.55 +
         texture2D(tBloom1, vUv).rgb * 0.32 +
@@ -84,6 +96,137 @@
       col = mix(hi, lo, step(col, vec3(0.0031308)));
 
       gl_FragColor = vec4(col, 1.0);
+    }`;
+
+  /* Screen-space ambient occlusion.
+   *
+   * Reconstructs view-space position and normal from the depth buffer, then
+   * samples a hemisphere around each pixel. This is what puts contact shadow
+   * into every crease, under every shoulder pad and where a boot meets the
+   * ground — the difference between "objects floating near each other" and
+   * "objects that are actually in the same room". */
+  const SSAO_FS = `
+    uniform sampler2D tDepth;
+    uniform mat4 uProjection;
+    uniform mat4 uInverseProjection;
+    uniform vec2 uResolution;
+    uniform float uRadius;
+    uniform float uBias;
+    uniform float uIntensity;
+    uniform float uNear;
+    uniform float uFar;
+    varying vec2 vUv;
+
+    const int KERNEL = 12;
+
+    vec3 viewPos(vec2 uv, float d) {
+      vec4 clip = vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+      vec4 v = uInverseProjection * clip;
+      return v.xyz / v.w;
+    }
+
+    float rand(vec2 co) {
+      return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    void main() {
+      float d = texture2D(tDepth, vUv).x;
+      if (d >= 0.9999) { gl_FragColor = vec4(1.0); return; }
+
+      vec3 p = viewPos(vUv, d);
+      vec2 texel = 1.0 / uResolution;
+
+      // Reconstruct the normal from whichever neighbour is closer in depth.
+      // Taking the forward difference blindly smears the normal across every
+      // silhouette and turns the whole pass into an edge detector.
+      vec3 pR = viewPos(vUv + vec2(texel.x, 0.0), texture2D(tDepth, vUv + vec2(texel.x, 0.0)).x);
+      vec3 pL = viewPos(vUv - vec2(texel.x, 0.0), texture2D(tDepth, vUv - vec2(texel.x, 0.0)).x);
+      vec3 pU = viewPos(vUv + vec2(0.0, texel.y), texture2D(tDepth, vUv + vec2(0.0, texel.y)).x);
+      vec3 pD = viewPos(vUv - vec2(0.0, texel.y), texture2D(tDepth, vUv - vec2(0.0, texel.y)).x);
+      vec3 dx = abs(pR.z - p.z) < abs(p.z - pL.z) ? (pR - p) : (p - pL);
+      vec3 dy = abs(pU.z - p.z) < abs(p.z - pD.z) ? (pU - p) : (p - pD);
+      vec3 n = normalize(cross(dx, dy));
+      if (n.z < 0.0) n = -n;
+
+      float a = rand(vUv) * 6.2831853;
+      vec3 rvec = normalize(vec3(cos(a), sin(a), 0.0));
+      vec3 tangent = normalize(rvec - n * dot(rvec, n));
+      vec3 bitangent = cross(n, tangent);
+      mat3 tbn = mat3(tangent, bitangent, n);
+
+      float occlusion = 0.0;
+      for (int i = 0; i < KERNEL; i++) {
+        float fi = float(i);
+        // Deterministic hemisphere points, weighted toward the origin.
+        float s1 = rand(vec2(fi, 0.37)) * 2.0 - 1.0;
+        float s2 = rand(vec2(fi, 0.71)) * 2.0 - 1.0;
+        float s3 = rand(vec2(fi, 0.13));
+        vec3 samp = normalize(vec3(s1, s2, s3 * 0.85 + 0.15));
+        samp *= mix(0.25, 1.0, (fi / float(KERNEL)) * (fi / float(KERNEL)));
+
+        vec3 sp = p + tbn * samp * uRadius;
+        vec4 off = uProjection * vec4(sp, 1.0);
+        off.xyz /= off.w;
+        vec2 suv = off.xy * 0.5 + 0.5;
+        if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) continue;
+
+        float sd = texture2D(tDepth, suv).x;
+        vec3 sampleView = viewPos(suv, sd);
+        float rangeCheck = smoothstep(0.0, 1.0, uRadius / max(0.0001, abs(p.z - sampleView.z)));
+        if (sampleView.z >= sp.z + uBias) occlusion += rangeCheck;
+      }
+      float ao = 1.0 - (occlusion / float(KERNEL)) * uIntensity;
+      gl_FragColor = vec4(clamp(ao, 0.0, 1.0));
+    }`;
+
+  /* A 4-tap cross blur is enough to kill SSAO noise at this sample count. */
+  const AO_BLUR_FS = `
+    uniform sampler2D tDiffuse;
+    uniform vec2 uTexel;
+    varying vec2 vUv;
+    void main() {
+      float s = texture2D(tDiffuse, vUv).r;
+      s += texture2D(tDiffuse, vUv + vec2(uTexel.x, 0.0)).r;
+      s += texture2D(tDiffuse, vUv - vec2(uTexel.x, 0.0)).r;
+      s += texture2D(tDiffuse, vUv + vec2(0.0, uTexel.y)).r;
+      s += texture2D(tDiffuse, vUv - vec2(0.0, uTexel.y)).r;
+      s += texture2D(tDiffuse, vUv + uTexel).r;
+      s += texture2D(tDiffuse, vUv - uTexel).r;
+      s += texture2D(tDiffuse, vUv + vec2(uTexel.x, -uTexel.y)).r;
+      s += texture2D(tDiffuse, vUv + vec2(-uTexel.x, uTexel.y)).r;
+      gl_FragColor = vec4(s / 9.0);
+    }`;
+
+  /* Compact luma FXAA. MSAA is unavailable on a multisampled float target in
+   * several browsers, and jagged silhouettes are a loud cheapness cue. */
+  const FXAA_FS = `
+    uniform sampler2D tDiffuse;
+    uniform vec2 uTexel;
+    varying vec2 vUv;
+    float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+    void main() {
+      vec3 rgbM = texture2D(tDiffuse, vUv).rgb;
+      float lM = luma(rgbM);
+      float lNW = luma(texture2D(tDiffuse, vUv + vec2(-uTexel.x, -uTexel.y)).rgb);
+      float lNE = luma(texture2D(tDiffuse, vUv + vec2( uTexel.x, -uTexel.y)).rgb);
+      float lSW = luma(texture2D(tDiffuse, vUv + vec2(-uTexel.x,  uTexel.y)).rgb);
+      float lSE = luma(texture2D(tDiffuse, vUv + vec2( uTexel.x,  uTexel.y)).rgb);
+
+      float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+      float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+      if (lMax - lMin < max(0.035, lMax * 0.125)) { gl_FragColor = vec4(rgbM, 1.0); return; }
+
+      vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), ((lNW + lSW) - (lNE + lSE)));
+      float reduce = max((lNW + lNE + lSW + lSE) * 0.03125, 0.0078125);
+      float rcpDir = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+      dir = clamp(dir * rcpDir, -8.0, 8.0) * uTexel;
+
+      vec3 rgbA = 0.5 * (texture2D(tDiffuse, vUv + dir * (1.0 / 3.0 - 0.5)).rgb +
+                         texture2D(tDiffuse, vUv + dir * (2.0 / 3.0 - 0.5)).rgb);
+      vec3 rgbB = rgbA * 0.5 + 0.25 * (texture2D(tDiffuse, vUv - dir * 0.5).rgb +
+                                       texture2D(tDiffuse, vUv + dir * 0.5).rgb);
+      float lB = luma(rgbB);
+      gl_FragColor = vec4((lB < lMin || lB > lMax) ? rgbA : rgbB, 1.0);
     }`;
 
   const BLEND_FS = `
@@ -140,6 +283,7 @@
     const compositeMat = new THREE.ShaderMaterial({
       uniforms: {
         tDiffuse: { value: null }, tBloom0: { value: null }, tBloom1: { value: null }, tBloom2: { value: null },
+        tAO: { value: null }, uAOEnabled: { value: 0 },
         uStrength: { value: CFG.gfx.bloomStrength }, uVignette: { value: 0.62 },
         uGrade: { value: 1.0 }, uTint: { value: new THREE.Color(1.02, 1.0, 1.05) }
       },
@@ -154,6 +298,33 @@
       uniforms: { tDiffuse: { value: null } },
       vertexShader: QUAD_VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false
     });
+
+    const ssaoMat = new THREE.ShaderMaterial({
+      uniforms: {
+        tDepth: { value: null },
+        uProjection: { value: new THREE.Matrix4() },
+        uInverseProjection: { value: new THREE.Matrix4() },
+        uResolution: { value: new THREE.Vector2(1, 1) },
+        uRadius: { value: CFG.gfx.ssaoRadius },
+        uBias: { value: 0.022 },
+        uIntensity: { value: CFG.gfx.ssaoIntensity },
+        uNear: { value: 0.1 }, uFar: { value: 500 }
+      },
+      vertexShader: QUAD_VS, fragmentShader: SSAO_FS, depthTest: false, depthWrite: false
+    });
+    const aoBlurMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() } },
+      vertexShader: QUAD_VS, fragmentShader: AO_BLUR_FS, depthTest: false, depthWrite: false
+    });
+    const fxaaMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() } },
+      vertexShader: QUAD_VS, fragmentShader: FXAA_FS, depthTest: false, depthWrite: false
+    });
+
+    /* SSAO reads the depth buffer as a texture. A multisampled colour target
+     * cannot hand out its depth attachment on every driver, so when occlusion
+     * is on the scene target drops MSAA and FXAA takes over edge duty. */
+    function ssaoOn() { return !!(CFG.gfx.ssao && renderer.capabilities.isWebGL2); }
 
     /* Motion blur is a temporal smear whose weight follows how fast the
      * camera is actually turning, so it only appears when you whip the view
@@ -177,13 +348,26 @@
       if (P._targets) P._targets.forEach(t => t.dispose());
       if (P.sceneTarget) P.sceneTarget.dispose();
 
+      if (P.depthTexture) P.depthTexture.dispose();
+      P.depthTexture = null;
+
+      const wantAO = ssaoOn();
       P.sceneTarget = new THREE.WebGLRenderTarget(Math.max(2, width), Math.max(2, height), {
         minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
         format: THREE.RGBAFormat, type: halfFloat,
         depthBuffer: true, stencilBuffer: false,
-        samples: CFG.gfx.antialias && renderer.capabilities.isWebGL2 ? 4 : 0
+        samples: (!wantAO && CFG.gfx.antialias && renderer.capabilities.isWebGL2) ? 4 : 0
       });
       if ('colorSpace' in P.sceneTarget.texture) P.sceneTarget.texture.colorSpace = THREE.NoColorSpace;
+
+      if (wantAO) {
+        P.depthTexture = new THREE.DepthTexture(Math.max(2, width), Math.max(2, height));
+        P.depthTexture.type = THREE.UnsignedIntType;
+        P.depthTexture.format = THREE.DepthFormat;
+        P.depthTexture.minFilter = THREE.NearestFilter;
+        P.depthTexture.magFilter = THREE.NearestFilter;
+        P.sceneTarget.depthTexture = P.depthTexture;
+      }
 
       P.bright = makeTarget(width / 2, height / 2);
       P.levels = [];
@@ -197,7 +381,13 @@
       P.historyIndex = 0;
       P.historyValid = false;
 
-      P._targets = [P.bright, P.post, P.history[0], P.history[1]]
+      // Occlusion is a low-frequency signal; half resolution is free quality.
+      P.aoW = Math.max(2, Math.floor(width / 2));
+      P.aoH = Math.max(2, Math.floor(height / 2));
+      P.aoRaw = makeTarget(P.aoW, P.aoH);
+      P.aoSmooth = makeTarget(P.aoW, P.aoH);
+
+      P._targets = [P.bright, P.post, P.history[0], P.history[1], P.aoRaw, P.aoSmooth]
         .concat(P.levels.reduce((acc, l) => acc.concat([l.a, l.b]), []));
     };
 
@@ -221,6 +411,28 @@
       renderer.setRenderTarget(P.sceneTarget);
       renderer.clear();
       renderer.render(scene, camera);
+
+      // ---- ambient occlusion ------------------------------------------------
+      if (P.depthTexture && CFG.gfx.ssao) {
+        ssaoMat.uniforms.tDepth.value = P.depthTexture;
+        ssaoMat.uniforms.uProjection.value.copy(camera.projectionMatrix);
+        ssaoMat.uniforms.uInverseProjection.value.copy(camera.projectionMatrixInverse);
+        ssaoMat.uniforms.uResolution.value.set(P.aoW, P.aoH);
+        ssaoMat.uniforms.uRadius.value = CFG.gfx.ssaoRadius;
+        ssaoMat.uniforms.uIntensity.value = CFG.gfx.ssaoIntensity;
+        ssaoMat.uniforms.uNear.value = camera.near;
+        ssaoMat.uniforms.uFar.value = camera.far;
+        draw(ssaoMat, P.aoRaw);
+
+        aoBlurMat.uniforms.tDiffuse.value = P.aoRaw.texture;
+        aoBlurMat.uniforms.uTexel.value.set(1 / P.aoW, 1 / P.aoH);
+        draw(aoBlurMat, P.aoSmooth);
+
+        compositeMat.uniforms.tAO.value = P.aoSmooth.texture;
+        compositeMat.uniforms.uAOEnabled.value = P.debugAO ? 2 : 1;
+      } else {
+        compositeMat.uniforms.uAOEnabled.value = 0;
+      }
 
       brightMat.uniforms.tDiffuse.value = P.sceneTarget.texture;
       brightMat.uniforms.uThreshold.value = CFG.gfx.bloomThreshold;
@@ -247,10 +459,22 @@
       compositeMat.uniforms.tBloom2.value = P.levels[2].b.texture;
       compositeMat.uniforms.uStrength.value = CFG.gfx.bloomStrength * (CFG.access.reduceFlashing ? 0.6 : 1);
 
+      // FXAA runs last, on the graded sRGB image, where edge contrast lives.
+      const useFxaa = !!CFG.gfx.fxaa;
+      if (useFxaa) fxaaMat.uniforms.uTexel.value.set(1 / P.width, 1 / P.height);
+
+      function present(texture) {
+        if (!useFxaa) { copyMat.uniforms.tDiffuse.value = texture; draw(copyMat, null); return; }
+        fxaaMat.uniforms.tDiffuse.value = texture;
+        draw(fxaaMat, null);
+      }
+
       const blurAmount = CFG.gfx.motionBlur ? P.motionAmount : 0;
       if (blurAmount <= 0.004) {
-        draw(compositeMat, null);
         P.historyValid = false;
+        if (!useFxaa) { draw(compositeMat, null); return; }
+        draw(compositeMat, P.post);
+        present(P.post.texture);
         return;
       }
 
@@ -264,21 +488,27 @@
       blendMat.uniforms.uAmount.value = P.historyValid ? blurAmount : 0;
       draw(blendMat, next);
 
-      copyMat.uniforms.tDiffuse.value = next.texture;
-      draw(copyMat, null);
+      present(next.texture);
 
       P.historyIndex = 1 - P.historyIndex;
       P.historyValid = true;
     };
+
+    /* Exposed so tools can inspect and tune the chain from the console. */
+    P.materials = { bright: brightMat, blur: blurMat, composite: compositeMat,
+                    ssao: ssaoMat, aoBlur: aoBlurMat, fxaa: fxaaMat };
+    P.debugAO = false;
 
     P.dispose = function () {
       if (P._targets) P._targets.forEach(t => t.dispose());
       if (P.sceneTarget) P.sceneTarget.dispose();
       if (P.post) P.post.dispose();
       if (P.history) P.history.forEach(t => t.dispose());
+      if (P.depthTexture) P.depthTexture.dispose();
       quadGeo.dispose();
       brightMat.dispose(); blurMat.dispose(); compositeMat.dispose();
       blendMat.dispose(); copyMat.dispose();
+      ssaoMat.dispose(); aoBlurMat.dispose(); fxaaMat.dispose();
     };
 
     return P;

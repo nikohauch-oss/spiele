@@ -70,6 +70,8 @@
         roughness: 0.4, metalness: 0.2, repeat: 1, seed: 37, rim: false }),
       windowCool: Mats.make({ kind: 'plate', color: 0x121a26, emissive: 0x62d6ff, emissiveIntensity: 1.15,
         roughness: 0.4, metalness: 0.2, repeat: 1, seed: 41, rim: false }),
+      interiorGlow: Mats.make({ kind: 'plate', color: 0x2a2418, emissive: 0xffbe72,
+        emissiveIntensity: 0.85, roughness: 0.9, metalness: 0.0, repeat: 1, seed: 43, rim: false }),
       neonA: Mats.additive(0x36c7ff, 0.95),
       neonB: Mats.additive(0xff5a3c, 0.95),
       neonC: Mats.additive(0xb46bff, 0.95),
@@ -240,6 +242,45 @@
      * 3. BUILDINGS
      * ================================================================== */
     /**
+     * One window: recessed glass, a dark frame, a mullion cross and a sill.
+     *
+     * A flat emissive rectangle is the loudest "untextured 3D" cue a building
+     * facade can give off — real windows are a hole with a frame around it and
+     * something visible behind the glass. Six thin boxes buy all of that.
+     *
+     * `axis` is the facade normal ('z' or 'x'); `sg` its sign.
+     */
+    function windowUnit(x, y, z, ww, hh, axis, sg) {
+      const roll = rnd();
+      const lit = roll > 0.40;
+      const glassMat = lit ? (rnd() > 0.55 ? M.windowCool : M.windowLit) : M.glass;
+      const frameT = 0.09;                      // frame bar thickness
+      const inset = 0.10;                       // how far the glass sits back
+      const box = (bw, bh, bd) => new THREE.BoxGeometry(bw, bh, bd);
+      const at = (ox, oy, depth) => axis === 'z'
+        ? [x + ox, y + oy, z + sg * depth]
+        : [x + sg * depth, y + oy, z + ox];
+      const dims = (bw, bh, bd) => axis === 'z' ? box(bw, bh, bd) : box(bd, bh, bw);
+
+      // Reveal: a dark recess so the opening reads as depth, not a sticker.
+      deco(dims(ww, hh, 0.06), M.rubberMat, at(0, 0, -inset * 0.5));
+      // Glass, set back inside the reveal.
+      deco(dims(ww - frameT * 2, hh - frameT * 2, 0.05), glassMat, at(0, 0, -inset * 0.25));
+      // Frame: two verticals, two horizontals, standing proud of the wall.
+      [-1, 1].forEach(k => {
+        deco(dims(frameT, hh + frameT, 0.13), M.darkSteel, at(k * (ww / 2 - frameT / 2), 0, 0.04));
+        deco(dims(ww + frameT, frameT, 0.13), M.darkSteel, at(0, k * (hh / 2 - frameT / 2), 0.04));
+      });
+      // Mullion cross — the detail your eye actually resolves at range.
+      deco(dims(frameT * 0.62, hh - frameT * 2, 0.10), M.darkSteel, at(0, 0, 0.02));
+      if (roll > 0.6) deco(dims(ww - frameT * 2, frameT * 0.62, 0.10), M.darkSteel, at(0, hh * 0.10, 0.02));
+      // Sill, angled out to shed water like the real thing.
+      deco(dims(ww + frameT * 2, 0.10, 0.24), M.panel, at(0, -hh / 2 - 0.09, 0.09));
+      // Interior glow slab behind lit glass: gives the window a depth cue.
+      if (lit) deco(dims(ww - frameT * 3, hh - frameT * 3, 0.04), M.interiorGlow, at(0, 0, -inset));
+    }
+
+    /**
      * A building block with a lit facade, roof lip, roof access and
      * optional walk-through interior.
      */
@@ -300,23 +341,20 @@
           const cols = Math.max(1, Math.floor(w / 3.0));
           for (let c = 0; c < cols; c++) {
             const x = cx - w / 2 + (c + 0.5) * (w / cols);
-            const lit = rnd() > 0.42;
-            deco(new THREE.BoxGeometry(w / cols * 0.62, 1.5, 0.12),
-              lit ? (rnd() > 0.55 ? M.windowCool : M.windowLit) : M.glass, [x, y, zc]);
-            deco(new THREE.BoxGeometry(w / cols * 0.70, 0.16, 0.22), M.darkSteel, [x, y - 0.86, zc]);
+            windowUnit(x, y, zc, w / cols * 0.68, 1.55, 'z', sz);
           }
           deco(new THREE.BoxGeometry(w, 0.26, 0.28), M.panel, [cx, y + 1.05, zc]);
+          deco(new THREE.BoxGeometry(w, 0.10, 0.40), M.darkSteel, [cx, y + 1.20, zc + sz * 0.06]);
         });
         [-1, 1].forEach(sx => {
           const xc = cx + sx * (w / 2 + 0.06);
           const cols = Math.max(1, Math.floor(d / 3.0));
           for (let c = 0; c < cols; c++) {
             const z = cz - d / 2 + (c + 0.5) * (d / cols);
-            const lit = rnd() > 0.5;
-            deco(new THREE.BoxGeometry(0.12, 1.5, d / cols * 0.62),
-              lit ? (rnd() > 0.5 ? M.windowCool : M.windowLit) : M.glass, [xc, y, z]);
+            windowUnit(xc, y, z, d / cols * 0.68, 1.55, 'x', sx);
           }
           deco(new THREE.BoxGeometry(0.28, 0.26, d), M.panel, [xc, y + 1.05, cz]);
+          deco(new THREE.BoxGeometry(0.40, 0.10, d), M.darkSteel, [xc + sx * 0.06, y + 1.20, cz]);
         });
       }
 
@@ -825,17 +863,62 @@
     const skyMatDome = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        uTop: { value: new THREE.Color(0x0d1830) },
-        uMid: { value: new THREE.Color(0x27467c) },
-        uBottom: { value: new THREE.Color(0x6b4468) }
+        uTop: { value: new THREE.Color(0x08111f) },
+        uMid: { value: new THREE.Color(0x1d3560) },
+        uBottom: { value: new THREE.Color(0x5c3a5e) },
+        uGlow: { value: new THREE.Color(0xff9a5c) },
+        uMoon: { value: new THREE.Vector3(-0.42, 0.46, -0.78).normalize() }
       },
-      vertexShader: 'varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader:
-        'uniform vec3 uTop; uniform vec3 uMid; uniform vec3 uBottom; varying vec3 vPos;' +
-        'void main(){ float h = normalize(vPos).y;' +
-        ' vec3 c = mix(uBottom, uMid, smoothstep(-0.22, 0.16, h));' +
-        ' c = mix(c, uTop, smoothstep(0.10, 0.72, h));' +
-        ' gl_FragColor = vec4(c, 1.0); }'
+      vertexShader:
+        'varying vec3 vPos; void main(){ vPos = position;' +
+        ' gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      /* A flat two-stop gradient is what makes a night sky look like a
+       * coloured wall. This adds the four things that sell a real one:
+       * stars, thin cloud banding, a moon with a halo, and the sodium glow a
+       * city throws onto its own horizon. */
+      fragmentShader: [
+        'uniform vec3 uTop; uniform vec3 uMid; uniform vec3 uBottom; uniform vec3 uGlow;',
+        'uniform vec3 uMoon; varying vec3 vPos;',
+        'float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }',
+        'float vnoise(vec3 p){',
+        '  vec3 i = floor(p), f = fract(p);',
+        '  f = f * f * (3.0 - 2.0 * f);',
+        '  float n000 = hash(i), n100 = hash(i + vec3(1,0,0));',
+        '  float n010 = hash(i + vec3(0,1,0)), n110 = hash(i + vec3(1,1,0));',
+        '  float n001 = hash(i + vec3(0,0,1)), n101 = hash(i + vec3(1,0,1));',
+        '  float n011 = hash(i + vec3(0,1,1)), n111 = hash(i + vec3(1,1,1));',
+        '  return mix(mix(mix(n000,n100,f.x), mix(n010,n110,f.x), f.y),',
+        '             mix(mix(n001,n101,f.x), mix(n011,n111,f.x), f.y), f.z);',
+        '}',
+        'float fbm(vec3 p){',
+        '  float a = 0.5, s = 0.0;',
+        '  for (int i = 0; i < 4; i++) { s += vnoise(p) * a; p *= 2.03; a *= 0.5; }',
+        '  return s;',
+        '}',
+        'void main(){',
+        '  vec3 d = normalize(vPos);',
+        '  float h = d.y;',
+        '  vec3 c = mix(uBottom, uMid, smoothstep(-0.22, 0.16, h));',
+        '  c = mix(c, uTop, smoothstep(0.10, 0.72, h));',
+        // Stars: a sparse grid hash, brighter high up, gently twinkling in size.
+        '  vec3 sp = d * 260.0;',
+        '  float star = hash(floor(sp));',
+        '  float mask = smoothstep(0.9955, 0.9995, star);',
+        '  float tw = 0.55 + 0.45 * hash(floor(sp) + 3.1);',
+        '  c += vec3(0.85, 0.90, 1.0) * mask * tw * smoothstep(0.02, 0.42, h);',
+        // Thin high cloud, lit from below by the city.
+        '  float cl = fbm(d * 2.6 + vec3(0.0, 0.0, 1.7));',
+        '  cl = smoothstep(0.48, 0.86, cl) * smoothstep(0.02, 0.35, h);',
+        '  c = mix(c, mix(vec3(0.16, 0.20, 0.31), uGlow * 0.35, 0.45), cl * 0.55);',
+        // Moon with a soft halo.
+        '  float md = dot(d, normalize(uMoon));',
+        '  c += vec3(0.95, 0.96, 0.92) * smoothstep(0.9992, 0.9997, md);',
+        '  c += vec3(0.42, 0.52, 0.70) * pow(max(md, 0.0), 220.0) * 0.55;',
+        // Sodium haze the district throws back at its own sky.
+        '  c += uGlow * 0.20 * pow(1.0 - clamp(abs(h) * 3.4, 0.0, 1.0), 2.4);',
+        '  gl_FragColor = vec4(c, 1.0);',
+        '}'
+      ].join('\n')
     });
     const skyMesh = new THREE.Mesh(skyGeo, skyMatDome);
     skyMesh.frustumCulled = false;

@@ -16,21 +16,28 @@
 
   function partSet(pal, skinMat, glowColor) {
     const s = (pal.primary ^ 0x5a5a) & 0xffff;
+    // Weapons are small objects seen close up: texture repeats above ~1 tile
+    // shatter into noise, and matte metal reads as grey plastic. Low repeat,
+    // low roughness, high metalness, and real environment reflections.
     return {
-      body: Mats.make({ unique: true, kind: 'plate', color: pal.darkMetal, seed: s + 1,
-        roughness: 0.44, metalness: 0.78, repeat: 1.6, rim: { color: 0xa8c8ff, strength: 0.3, power: 3.0 } }),
-      metal: Mats.make({ unique: true, kind: 'metal', color: pal.metal, seed: s + 2,
-        roughness: 0.32, metalness: 0.95, repeat: 2.0, rim: { color: 0xffffff, strength: 0.28, power: 3.2 } }),
+      body: Mats.make({ unique: true, kind: 'plate', color: 0x2c313b, seed: s + 1,
+        roughness: 0.36, metalness: 0.85, repeat: 0.35, normalScale: 0.45,
+        rim: { color: 0xa8c8ff, strength: 0.26, power: 3.2 } }),
+      metal: Mats.make({ unique: true, kind: 'metal', color: 0x9aa4b2, seed: s + 2,
+        roughness: 0.22, metalness: 1.0, repeat: 0.5, normalScale: 0.35,
+        rim: { color: 0xffffff, strength: 0.26, power: 3.2 } }),
       grip: Mats.make({ unique: true, kind: 'rubber', color: 0x14161c, seed: s + 3,
-        roughness: 0.95, repeat: 3.0, rim: { color: 0x7f98b8, strength: 0.18, power: 3.4 } }),
+        roughness: 0.88, metalness: 0.1, repeat: 1.2, normalScale: 0.5,
+        rim: { color: 0x7f98b8, strength: 0.16, power: 3.4 } }),
       accent: Mats.make({ unique: true, kind: 'plate', color: pal.accent, seed: s + 4,
-        roughness: 0.38, metalness: 0.55, repeat: 1.2, emissive: glowColor, emissiveIntensity: 0.35,
+        roughness: 0.30, metalness: 0.75, repeat: 0.3, normalScale: 0.4,
+        emissive: glowColor, emissiveIntensity: 0.32,
         rim: { color: glowColor, strength: 0.4, power: 2.6 } }),
       glow: Mats.make({ unique: true, kind: 'energy', color: glowColor, emissive: glowColor,
-        emissiveIntensity: 2.4, opacity: 0.95, depthWrite: true, rim: false }),
+        emissiveIntensity: 2.6, opacity: 0.95, depthWrite: true, rim: false }),
       trim: Mats.make({ unique: true, kind: 'metal', color: pal.trim, seed: s + 5,
-        roughness: skinMat.goldTrim ? 0.24 : 0.42, metalness: skinMat.goldTrim ? 0.96 : 0.62,
-        repeat: 1.4, rim: { color: 0xffffff, strength: 0.3, power: 3.0 } })
+        roughness: skinMat.goldTrim ? 0.16 : 0.30, metalness: skinMat.goldTrim ? 1.0 : 0.9,
+        repeat: 0.4, normalScale: 0.35, rim: { color: 0xffffff, strength: 0.3, power: 3.0 } })
     };
   }
 
@@ -80,53 +87,119 @@
   const ARCH = {};
 
   ARCH.assault_rifle = function (B, M, L, out, root) {
-    const w = L * 0.11, h = L * 0.15;
-    B.add(plate(w, h, L * 0.62, w * 0.28, 0.2), M.body, { pos: [0, 0, L * 0.02] });
-    B.add(plate(w * 0.86, h * 0.62, L * 0.30, w * 0.2, 0.2), M.metal, { pos: [0, h * 0.10, L * 0.42] });
-    // barrel + shroud
-    B.add(new THREE.CylinderGeometry(w * 0.20, w * 0.20, L * 0.42, 10), M.metal,
-      { pos: [0, h * 0.06, L * 0.52], rot: [Math.PI / 2, 0, 0] });
+    const w = L * 0.085, h = L * 0.125;
+
+    /* Receiver — the spine of the weapon. Everything else hangs off it. */
+    B.add(plate(w * 1.0, h, L * 0.40, w * 0.22, 0.12), M.body, { pos: [0, 0, -L * 0.02] });
+    B.add(plate(w * 0.72, h * 0.34, L * 0.42, w * 0.14, 0), M.metal, { pos: [0, h * 0.44, -L * 0.02] });
+
+    /* Handguard — slimmer than the receiver, with vent slots so it does not
+     * read as one continuous slab. */
+    B.add(plate(w * 0.82, h * 0.66, L * 0.30, w * 0.20, 0.25), M.body, { pos: [0, h * 0.02, L * 0.34] });
     for (let i = 0; i < 4; i++) {
-      B.add(torus(w * 0.28, w * 0.05, 10), M.body, { pos: [0, h * 0.06, L * (0.40 + i * 0.09)], rot: [0, 0, 0] });
+      [-1, 1].forEach(sg => B.add(plate(w * 0.10, h * 0.30, L * 0.045, w * 0.03, 0), M.grip,
+        { pos: [sg * w * 0.42, h * 0.02, L * (0.24 + i * 0.055)] }));
     }
-    // stock
-    B.add(plate(w * 0.75, h * 0.75, L * 0.26, w * 0.2, 0.2), M.body, { pos: [0, -h * 0.02, -L * 0.36] });
-    B.add(plate(w * 0.7, h * 0.95, L * 0.06, w * 0.18, 0.2), M.grip, { pos: [0, -h * 0.05, -L * 0.48] });
-    // grip + magazine + trigger guard
-    B.add(plate(w * 0.66, h * 0.95, L * 0.11, w * 0.16, 0.2), M.grip, { pos: [0, -h * 0.72, -L * 0.10], rot: [0.28, 0, 0] });
-    B.add(plate(w * 0.78, h * 1.15, L * 0.09, w * 0.16, 0.15), M.body, { pos: [0, -h * 0.82, L * 0.06], rot: [-0.12, 0, 0] });
-    B.add(torus(w * 0.34, w * 0.06, 10), M.metal, { pos: [0, -h * 0.36, L * 0.0], rot: [0, Math.PI / 2, 0] });
-    // rail + optic
-    B.add(plate(w * 0.5, h * 0.14, L * 0.44, w * 0.06, 0), M.metal, { pos: [0, h * 0.56, L * 0.14] });
-    B.add(plate(w * 0.62, h * 0.42, L * 0.14, w * 0.12, 0.2), M.body, { pos: [0, h * 0.80, L * 0.14] });
-    B.add(new THREE.CylinderGeometry(w * 0.22, w * 0.22, L * 0.02, 12), M.glow,
-      { pos: [0, h * 0.80, L * 0.21], rot: [Math.PI / 2, 0, 0] });
-    // energy cell + seams
-    B.add(plate(w * 0.42, h * 0.30, L * 0.16, w * 0.08, 0), M.glow, { pos: [w * 0.58, 0, -L * 0.06] });
-    B.add(plate(w * 0.42, h * 0.30, L * 0.16, w * 0.08, 0), M.glow, { pos: [-w * 0.58, 0, -L * 0.06] });
-    B.add(plate(w * 0.30, h * 0.10, L * 0.34, w * 0.04, 0), M.accent, { pos: [0, -h * 0.28, L * 0.30] });
-    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.06, L * 0.74]);
-    out.sockets.eject = socket(root, 'eject', [w * 0.6, h * 0.12, L * 0.12]);
-    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.9, L * 0.06]);
-    out.sockets.foregrip = socket(root, 'foregrip', [0, -h * 0.42, L * 0.34]);
-    out.sockets.grip = socket(root, 'grip', [0, -h * 0.5, -L * 0.08]);
+
+    /* Barrel + muzzle device. */
+    B.add(new THREE.CylinderGeometry(w * 0.13, w * 0.13, L * 0.30, 14), M.metal,
+      { pos: [0, h * 0.04, L * 0.60], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.22, w * 0.19, L * 0.10, 14), M.body,
+      { pos: [0, h * 0.04, L * 0.74], rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 3; i++) {
+      B.add(torus(w * 0.23, w * 0.035, 14), M.metal, { pos: [0, h * 0.04, L * (0.71 + i * 0.028)] });
+    }
+
+    /* Stock — a distinct shape with a visible gap, not a continuation. */
+    B.add(plate(w * 0.34, h * 0.42, L * 0.16, w * 0.10, 0), M.metal, { pos: [0, h * 0.06, -L * 0.28] });
+    B.add(plate(w * 0.78, h * 0.86, L * 0.14, w * 0.22, 0.2), M.body, { pos: [0, -h * 0.04, -L * 0.42] });
+    B.add(plate(w * 0.80, h * 1.00, L * 0.05, w * 0.20, 0.2), M.grip, { pos: [0, -h * 0.04, -L * 0.50] });
+    B.add(plate(w * 0.60, h * 0.26, L * 0.20, w * 0.08, 0), M.grip, { pos: [0, h * 0.44, -L * 0.34] });
+
+    /* Pistol grip, trigger guard, magazine — angled, clearly separate. */
+    B.add(plate(w * 0.60, h * 0.92, L * 0.10, w * 0.18, 0.25), M.grip,
+      { pos: [0, -h * 0.66, -L * 0.14], rot: [0.30, 0, 0] });
+    B.add(torus(w * 0.30, w * 0.055, 12), M.metal, { pos: [0, -h * 0.34, -L * 0.04], rot: [0, Math.PI / 2, 0] });
+    B.add(plate(w * 0.62, h * 1.05, L * 0.085, w * 0.14, 0.1), M.body,
+      { pos: [0, -h * 0.74, L * 0.08], rot: [-0.16, 0, 0] });
+    B.add(plate(w * 0.50, h * 0.22, L * 0.07, w * 0.06, 0), M.accent,
+      { pos: [0, -h * 1.18, L * 0.10], rot: [-0.16, 0, 0] });
+
+    /* Optic on the rail. */
+    B.add(plate(w * 0.46, h * 0.24, L * 0.10, w * 0.10, 0), M.metal, { pos: [0, h * 0.60, L * 0.10] });
+    B.add(new THREE.CylinderGeometry(w * 0.24, w * 0.24, L * 0.14, 16), M.body,
+      { pos: [0, h * 0.84, L * 0.10], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.20, w * 0.20, L * 0.012, 16), M.glow,
+      { pos: [0, h * 0.84, L * 0.175], rot: [Math.PI / 2, 0, 0] });
+
+    /* Energy cell + seam lighting — the hero read at a glance. */
+    [-1, 1].forEach(sg => B.add(plate(w * 0.16, h * 0.34, L * 0.18, w * 0.05, 0), M.glow,
+      { pos: [sg * w * 0.52, -h * 0.06, -L * 0.06] }));
+    B.add(plate(w * 0.26, h * 0.08, L * 0.26, w * 0.03, 0), M.accent, { pos: [0, -h * 0.36, L * 0.34] });
+
+    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.04, L * 0.82]);
+    out.sockets.eject = socket(root, 'eject', [w * 0.55, h * 0.10, L * 0.06]);
+    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.92, L * 0.08]);
+    out.sockets.foregrip = socket(root, 'foregrip', [0, -h * 0.30, L * 0.36]);
+    out.sockets.grip = socket(root, 'grip', [0, -h * 0.48, -L * 0.12]);
   };
 
   ARCH.smg = function (B, M, L, out, root) {
-    const w = L * 0.13, h = L * 0.17;
-    B.add(plate(w, h, L * 0.52, w * 0.3, 0.2), M.body, { pos: [0, 0, L * 0.04] });
-    B.add(new THREE.CylinderGeometry(w * 0.19, w * 0.19, L * 0.30, 10), M.metal,
-      { pos: [0, h * 0.08, L * 0.42], rot: [Math.PI / 2, 0, 0] });
-    B.add(plate(w * 0.9, h * 0.5, L * 0.16, w * 0.2, 0.2), M.accent, { pos: [0, h * 0.12, L * 0.34] });
-    B.add(plate(w * 0.60, h * 0.90, L * 0.10, w * 0.16, 0.2), M.grip, { pos: [0, -h * 0.70, -L * 0.06], rot: [0.24, 0, 0] });
-    B.add(plate(w * 0.70, h * 1.00, L * 0.08, w * 0.14, 0.15), M.body, { pos: [0, -h * 0.78, L * 0.10], rot: [-0.1, 0, 0] });
-    B.add(plate(w * 0.4, h * 0.12, L * 0.34, w * 0.05, 0), M.metal, { pos: [0, h * 0.58, L * 0.10] });
-    B.add(plate(w * 0.34, h * 0.24, L * 0.20, w * 0.06, 0), M.glow, { pos: [w * 0.54, -h * 0.05, 0] });
-    B.add(plate(w * 0.34, h * 0.24, L * 0.20, w * 0.06, 0), M.glow, { pos: [-w * 0.54, -h * 0.05, 0] });
-    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.08, L * 0.60]);
-    out.sockets.eject = socket(root, 'eject', [w * 0.55, h * 0.14, L * 0.10]);
-    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.85, L * 0.10]);
-    out.sockets.grip = socket(root, 'grip', [0, -h * 0.45, -L * 0.05]);
+    const w = L * 0.125, h = L * 0.165;
+
+    /* Receiver: a squat, wide body with a raised deck the rail sits on. */
+    B.add(plate(w, h * 0.94, L * 0.46, w * 0.26, 0.18), M.body, { pos: [0, 0, L * 0.02] });
+    B.add(plate(w * 0.74, h * 0.30, L * 0.50, w * 0.14, 0), M.metal, { pos: [0, h * 0.52, L * 0.02] });
+    // Ejection port, cut as a recessed dark panel.
+    B.add(plate(w * 0.10, h * 0.34, L * 0.14, w * 0.03, 0), M.grip, { pos: [w * 0.50, h * 0.18, L * 0.06] });
+    // Charging handle.
+    B.add(new THREE.CylinderGeometry(w * 0.07, w * 0.07, L * 0.10, 8), M.metal,
+      { pos: [w * 0.52, h * 0.36, -L * 0.10], rot: [0, 0, Math.PI / 2] });
+
+    /* Handguard with cooling slots, then the suppressed barrel. */
+    B.add(plate(w * 0.80, h * 0.56, L * 0.24, w * 0.18, 0.22), M.body, { pos: [0, h * 0.04, L * 0.34] });
+    for (let i = 0; i < 3; i++) {
+      [-1, 1].forEach(sg => B.add(plate(w * 0.09, h * 0.24, L * 0.04, w * 0.03, 0), M.grip,
+        { pos: [sg * w * 0.41, h * 0.04, L * (0.27 + i * 0.06)] }));
+    }
+    B.add(new THREE.CylinderGeometry(w * 0.14, w * 0.14, L * 0.16, 12), M.metal,
+      { pos: [0, h * 0.08, L * 0.50], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.25, w * 0.23, L * 0.20, 14), M.body,
+      { pos: [0, h * 0.08, L * 0.62], rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 4; i++) {
+      B.add(torus(w * 0.26, w * 0.028, 14), M.metal, { pos: [0, h * 0.08, L * (0.56 + i * 0.035)] });
+    }
+
+    /* Folding stock stub and sling loop — reads as a compact PDW. */
+    B.add(plate(w * 0.30, h * 0.36, L * 0.14, w * 0.08, 0), M.metal, { pos: [0, h * 0.10, -L * 0.28] });
+    B.add(plate(w * 0.66, h * 0.62, L * 0.06, w * 0.14, 0.2), M.grip, { pos: [0, h * 0.02, -L * 0.36] });
+    B.add(torus(w * 0.16, w * 0.035, 10), M.metal, { pos: [-w * 0.44, -h * 0.24, -L * 0.24], rot: [0, Math.PI / 2, 0] });
+
+    /* Grip, trigger guard, angled magazine. */
+    B.add(plate(w * 0.56, h * 0.88, L * 0.10, w * 0.16, 0.24), M.grip,
+      { pos: [0, -h * 0.66, -L * 0.08], rot: [0.26, 0, 0] });
+    B.add(torus(w * 0.28, w * 0.05, 12), M.metal, { pos: [0, -h * 0.32, L * 0.02], rot: [0, Math.PI / 2, 0] });
+    B.add(plate(w * 0.58, h * 1.00, L * 0.085, w * 0.13, 0.12), M.body,
+      { pos: [0, -h * 0.76, L * 0.12], rot: [-0.14, 0, 0] });
+    B.add(plate(w * 0.48, h * 0.20, L * 0.07, w * 0.05, 0), M.accent,
+      { pos: [0, -h * 1.16, L * 0.14], rot: [-0.14, 0, 0] });
+
+    /* Compact reflex sight. */
+    B.add(plate(w * 0.42, h * 0.20, L * 0.09, w * 0.08, 0), M.metal, { pos: [0, h * 0.66, L * 0.08] });
+    B.add(plate(w * 0.40, h * 0.42, L * 0.03, w * 0.06, 0), M.metal, { pos: [0, h * 0.90, L * 0.04] });
+    B.add(plate(w * 0.34, h * 0.34, L * 0.012, w * 0.04, 0), M.glow, { pos: [0, h * 0.90, L * 0.055] });
+
+    /* Charge cells down both flanks — the family read shared with the rifle. */
+    [-1, 1].forEach(sg => {
+      B.add(plate(w * 0.14, h * 0.30, L * 0.20, w * 0.05, 0), M.glow, { pos: [sg * w * 0.52, -h * 0.10, -L * 0.02] });
+      B.add(plate(w * 0.16, h * 0.10, L * 0.24, w * 0.04, 0), M.accent, { pos: [sg * w * 0.50, h * 0.30, L * 0.32] });
+    });
+
+    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.08, L * 0.72]);
+    out.sockets.eject = socket(root, 'eject', [w * 0.55, h * 0.18, L * 0.06]);
+    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.95, L * 0.13]);
+    out.sockets.foregrip = socket(root, 'foregrip', [0, -h * 0.26, L * 0.34]);
+    out.sockets.grip = socket(root, 'grip', [0, -h * 0.46, -L * 0.06]);
   };
 
   ARCH.minigun = function (B, M, L, out, root) {
@@ -272,16 +345,46 @@
 
   ARCH.pistol = function (B, M, L, out, root) {
     const w = L * 0.16, h = L * 0.26;
-    B.add(plate(w, h * 0.62, L * 0.60, w * 0.24, 0.2), M.body, { pos: [0, h * 0.10, L * 0.06] });
-    B.add(new THREE.CylinderGeometry(w * 0.16, w * 0.16, L * 0.30, 8), M.metal,
-      { pos: [0, h * 0.08, L * 0.34], rot: [Math.PI / 2, 0, 0] });
-    B.add(new THREE.CylinderGeometry(w * 0.30, w * 0.30, L * 0.26, 10), M.body,
-      { pos: [0, h * 0.08, L * 0.50], rot: [Math.PI / 2, 0, 0] });   // suppressor
-    B.add(plate(w * 0.66, h * 0.9, L * 0.14, w * 0.16, 0.2), M.grip, { pos: [0, -h * 0.45, -L * 0.10], rot: [0.30, 0, 0] });
-    B.add(plate(w * 0.3, h * 0.10, L * 0.22, w * 0.05, 0), M.glow, { pos: [0, h * 0.34, L * 0.06] });
-    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.08, L * 0.66]);
-    out.sockets.eject = socket(root, 'eject', [w * 0.5, h * 0.18, L * 0.02]);
-    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.6, -L * 0.06]);
+
+    /* Slide over frame: two clearly separate masses with a visible rail gap,
+     * which is what makes a handgun read as a handgun. */
+    B.add(plate(w * 0.94, h * 0.34, L * 0.58, w * 0.20, 0.12), M.metal, { pos: [0, h * 0.26, L * 0.08] });
+    B.add(plate(w, h * 0.30, L * 0.54, w * 0.22, 0.18), M.body, { pos: [0, h * 0.02, L * 0.06] });
+    // Slide serrations.
+    for (let i = 0; i < 5; i++) {
+      [-1, 1].forEach(sg => B.add(plate(w * 0.06, h * 0.22, L * 0.02, w * 0.02, 0), M.grip,
+        { pos: [sg * w * 0.48, h * 0.26, L * (-0.10 - i * 0.035)] }));
+    }
+    // Ejection port.
+    B.add(plate(w * 0.08, h * 0.18, L * 0.12, w * 0.02, 0), M.grip, { pos: [w * 0.47, h * 0.30, L * 0.14] });
+
+    /* Barrel and screw-on suppressor. */
+    B.add(new THREE.CylinderGeometry(w * 0.15, w * 0.15, L * 0.14, 10), M.metal,
+      { pos: [0, h * 0.24, L * 0.40], rot: [Math.PI / 2, 0, 0] });
+    B.add(new THREE.CylinderGeometry(w * 0.29, w * 0.27, L * 0.30, 14), M.body,
+      { pos: [0, h * 0.24, L * 0.58], rot: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < 5; i++) {
+      B.add(torus(w * 0.30, w * 0.030, 14), M.metal, { pos: [0, h * 0.24, L * (0.48 + i * 0.045)] });
+    }
+
+    /* Grip with checkering, trigger guard, magazine base plate. */
+    B.add(plate(w * 0.62, h * 0.86, L * 0.13, w * 0.15, 0.22), M.grip,
+      { pos: [0, -h * 0.46, -L * 0.10], rot: [0.30, 0, 0] });
+    for (let i = 0; i < 4; i++) {
+      B.add(plate(w * 0.48, h * 0.05, L * 0.10, w * 0.02, 0), M.body,
+        { pos: [0, -h * (0.22 + i * 0.16), -L * (0.06 + i * 0.036)], rot: [0.30, 0, 0] });
+    }
+    B.add(torus(w * 0.26, w * 0.045, 12), M.metal, { pos: [0, -h * 0.20, L * 0.02], rot: [0, Math.PI / 2, 0] });
+    B.add(plate(w * 0.58, h * 0.08, L * 0.14, w * 0.04, 0), M.accent, { pos: [0, -h * 0.86, -L * 0.20], rot: [0.30, 0, 0] });
+
+    /* Sights and a charge window along the frame. */
+    B.add(plate(w * 0.16, h * 0.12, L * 0.04, w * 0.03, 0), M.metal, { pos: [0, h * 0.46, L * 0.30] });
+    B.add(plate(w * 0.30, h * 0.12, L * 0.04, w * 0.03, 0), M.metal, { pos: [0, h * 0.46, -L * 0.16] });
+    B.add(plate(w * 0.26, h * 0.09, L * 0.22, w * 0.04, 0), M.glow, { pos: [0, h * 0.06, L * 0.04] });
+
+    out.sockets.muzzle = socket(root, 'muzzle', [0, h * 0.24, L * 0.76]);
+    out.sockets.eject = socket(root, 'eject', [w * 0.5, h * 0.32, L * 0.14]);
+    out.sockets.magazine = socket(root, 'magazine', [0, -h * 0.8, -L * 0.16]);
     out.sockets.grip = socket(root, 'grip', [0, -h * 0.28, -L * 0.08]);
   };
 
