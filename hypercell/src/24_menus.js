@@ -626,6 +626,7 @@
         HC.Save.captureSettings();
         M.show(M.settingsReturn || 'menu');
       });
+      s.backButton = node.querySelector('[data-back]');
       node.querySelector('[data-reset]').addEventListener('click', () => {
         HC.Save.data.settings = HC.Save.defaultProfile().settings;
         HC.Input.resetBinds();

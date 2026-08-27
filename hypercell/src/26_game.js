@@ -105,6 +105,16 @@
     function wireEvents() {
       G.menus.events.on('deploy', (opts) => startMatch(opts));
       G.menus.events.on('resume', () => setPaused(false));
+      G.menus.events.on('screen', (id) => {
+        // Leaving Settings while a match is suspended returns to the pause
+        // overlay rather than silently resuming an unfocused game.
+        if (G.state === 'match' && id === 'menu' && G.pausedForSettings) {
+          G.pausedForSettings = false;
+          G.menus.hideAll();
+          setPaused(true);
+        }
+      });
+      G.menus.events.on('pauseToSettings', () => { G.pausedForSettings = true; });
       G.menus.events.on('quitMatch', () => endMatchToMenu());
       G.menus.events.on('settingsChanged', () => {
         G.renderer.shadowMap.enabled = CFG.gfx.shadows;
@@ -559,6 +569,7 @@
 
       if (G.scoreboardOpen) G.hud.setScoreboard(true);
       G.hud.setWantCapture(!G.paused && !G.menus.current);
+      G.hud.show(!G.menus.current);
       G.hud.update(dt);
 
       if (G.frame % 24 === 0) {
@@ -640,8 +651,12 @@
       r.info.reset();
       G.postfx.updateMotion(G.camera, G.lastFrameDt || 0);
       r.setViewport(0, 0, G.width, G.height);
-      if (G.scene && (G.state === 'match' || G.state === 'countdown' ||
-          G.state === 'intro' || G.state === 'ending')) {
+
+      // A full-screen menu owns the frame. The pause overlay is deliberately
+      // not a screen, so the frozen match still shows behind it.
+      const inWorld = G.state === 'match' || G.state === 'countdown' ||
+                      G.state === 'intro' || G.state === 'ending';
+      if (G.scene && inWorld && !G.menus.current) {
         G.postfx.render(G.scene, G.camera);
       } else {
         r.setRenderTarget(null);
