@@ -235,7 +235,7 @@ const secs2 = SECONDS;
       const V = new THREE.Vector3();
       // Point the player at the nearest hostile so hit registration, crits
       // and kills are genuinely exercised rather than shot into the sky.
-      const aimAtEnemy = (c) => {
+      const aimAtEnemy = (c, t) => {
         let best = null, bestD = Infinity;
         for (const a of arena.actors) {
           if (a === player || !a.health.alive) continue;
@@ -285,7 +285,7 @@ const secs2 = SECONDS;
         c.ultimate = Math.abs(t % 12.0) < 0.01;
         c.reloadPressed = Math.abs(t % 9.0) < 0.01;
         c.swapPressed = Math.abs(t % 14.0) < 0.01;
-        aimAtEnemy(c);
+        aimAtEnemy(c, t);
         return c;
       };
       return window.HYPERCELL._debug.simulate(secs, (t) => mk(t + offset));
