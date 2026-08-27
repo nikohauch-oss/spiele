@@ -661,7 +661,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /*! HYPERCELL — a stylised 3D hero shooter.
- *  Built 2026-08-27T18:14:29.332Z
+ *  Built 2026-08-27T19:30:45.498Z
  *  All geometry, textures, animation and audio are generated at runtime.
  *  Bundled: three.js r160 (MIT).
  */
@@ -9274,15 +9274,30 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       let sc = opts.scale === undefined ? 1 : opts.scale;
       if (typeof sc === 'number') sc = [sc, sc, sc];
       ry = ry || 0;
+
+      // Footprint projected onto the world axes, so a rotated piece still gets
+      // a collision box that matches what the player can see.
+      const c = Math.abs(Math.cos(ry)), sn = Math.abs(Math.sin(ry));
+      const w = size[0] * sc[0] * c + size[2] * sc[2] * sn;
+      const d = size[0] * sc[0] * sn + size[2] * sc[2] * c;
+      const h = size[1] * sc[1];
+
+      if (opts.collide) {
+        // Refuse to wedge a solid prop into geometry that is already there.
+        // This map is dense, and a fence growing out of a staircase is worse
+        // than no fence — better to drop the piece and say so.
+        _probe.length = 0;
+        world.query(x - w / 2 + 0.06, y + 0.10, z - d / 2 + 0.06,
+                    x + w / 2 - 0.06, y + h - 0.10, z + d / 2 - 0.06, _probe);
+        if (_probe.some(sh => sh.enabled && sh.blocksMovement && sh.maxY > y + 0.14)) {
+          propsSkipped.push(name + ' @ ' + x.toFixed(1) + ',' + z.toFixed(1));
+          return null;
+        }
+      }
+
       push(src.clone(), mat, [x, y, z], [opts.pitch || 0, ry, 0], sc);
 
       if (opts.collide) {
-        // Footprint projected onto the world axes, so a rotated railing still
-        // gets a collision box that matches what the player can see.
-        const c = Math.abs(Math.cos(ry)), sn = Math.abs(Math.sin(ry));
-        const w = size[0] * sc[0] * c + size[2] * sc[2] * sn;
-        const d = size[0] * sc[0] * sn + size[2] * sc[2] * c;
-        const h = size[1] * sc[1];
         world.addBox(
           { x: x - w / 2, y: y, z: z - d / 2 },
           { x: x + w / 2, y: y + h, z: z + d / 2 },
@@ -9291,6 +9306,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       }
       return size;
     }
+    const _probe = [];
+    const propsSkipped = [];
 
     /** Visual-only geometry (no collision) — trim, signage, cables. */
     function deco(geo, mat, pos, rot, scale) { push(geo, mat, pos, rot, scale); }
@@ -9317,17 +9334,35 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
 
     /**
-     * Stairs as stacked boxes. Ramps rely on slope maths and can be walked
-     * into at any angle; steps use the same auto-step path as a kerb, which
-     * makes vertical access completely predictable.
+     * Stairs, built from the imported kit's stair module.
+     *
+     * The module is a 2 x 2 x 2 flight of six treads, so at full size each
+     * tread rises 0.333 m — comfortably under the 0.48 m auto-step. That is
+     * what makes it usable as real geometry rather than decoration: the
+     * collision boxes are generated at exactly the module's own tread
+     * heights, so what you can see and what you can climb are the same thing.
+     *
+     * A tall flight is tiled from several modules rather than one stretched
+     * one, because stretching a single module past about 2.9 m of rise pushes
+     * its treads over the auto-step and the stair silently stops working.
+     *
      * @param axis 'x' or 'z' — the direction of travel
      * @param dir  +1 climbs toward increasing axis, -1 toward decreasing
      */
     function stairs(cx, cz, fromY, toY, width, run, axis, dir, mat, surface) {
+      const TREADS = 6;                       // treads in one kit module
       const rise = toY - fromY;
-      const steps = Math.max(2, Math.ceil(rise / (CFG.body.stepHeight * 0.82)));
+      const maxModuleRise = CFG.body.stepHeight * TREADS * 0.92;
+      const modules = Math.max(1, Math.ceil(rise / maxModuleRise));
+      const moduleRise = rise / modules;
+      const moduleRun = run / modules;
+      const steps = modules * TREADS;
       const stepRise = rise / steps;
       const tread = run / steps;
+
+      // Collision only: each tread is a solid block from the ground up to its
+      // own height, which is the same auto-step path a kerb uses. The kit
+      // module below supplies the visual.
       for (let i = 0; i < steps; i++) {
         const y = fromY + stepRise * (i + 1);
         const offset = (i + 0.5 - steps / 2) * tread * dir;
@@ -9335,20 +9370,56 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         const sz = axis === 'z' ? cz + offset : cz;
         const w = axis === 'x' ? tread : width;
         const d = axis === 'z' ? tread : width;
-        // Each tread is a solid block from the ground up to its own height.
-        solid(sx, (fromY + y) / 2, sz, w + 0.02, y - fromY, d, mat, surface || 'metal');
+        solid(sx, (fromY + y) / 2, sz, w + 0.02, y - fromY, d, null, surface || 'metal');
       }
-      // Side rails so nobody walks off the edge by accident.
-      const railW = axis === 'x' ? run : 0.22;
-      const railD = axis === 'z' ? run : 0.22;
-      [-1, 1].forEach(sgn => {
-        const rx = axis === 'x' ? cx : cx + sgn * (width / 2 + 0.11);
-        const rz = axis === 'z' ? cz : cz + sgn * (width / 2 + 0.11);
-        const rx2 = axis === 'z' ? cx + sgn * (width / 2 + 0.11) : rx;
-        const rz2 = axis === 'x' ? cz + sgn * (width / 2 + 0.11) : rz;
-        deco(new THREE.BoxGeometry(railW, rise + 1.0, railD), M.steel,
-          [rx2, fromY + rise / 2 + 0.5, rz2], axis === 'x' ? [Math.atan2(rise, run), 0, 0] : [0, 0, 0]);
-      });
+
+      // One kit module per flight segment. The module climbs toward its own
+      // -Z, so it gets yawed onto the travel axis.
+      const yaw = axis === 'z' ? (dir > 0 ? Math.PI : 0)
+                               : (dir > 0 ? -Math.PI / 2 : Math.PI / 2);
+      for (let m = 0; m < modules; m++) {
+        const off = ((m + 0.5) - modules / 2) * moduleRun * dir;
+        prop('stairs',
+          axis === 'x' ? cx + off : cx,
+          fromY + m * moduleRise,
+          axis === 'z' ? cz + off : cz,
+          yaw, mat || M.panel,
+          { scale: [width / 2, moduleRise / 2, moduleRun / 2] });
+      }
+
+      // Balustrade down both edges, pitched onto the slope. These Euler
+      // triples are the verified ones per axis and direction — the rotation
+      // order makes them non-obvious, and guessing gives you a rail that
+      // climbs the wrong way.
+      const slope = Math.atan2(rise, run);
+      const railRot = axis === 'z'
+        ? (dir > 0 ? [-slope, -Math.PI / 2, 0] : [slope, Math.PI / 2, 0])
+        : (dir > 0 ? [0, 0, slope] : [0, Math.PI, slope]);
+      const railGeo = HC.Kit.geometry('railing');
+      const railSize = HC.Kit.size('railing');
+      if (railGeo && railSize) {
+        // Tiled, not stretched: one 4 m railing pulled across a 14 m flight
+        // spreads its four posts into a diagonal beam with occasional legs.
+        const flight = Math.hypot(rise, run);
+        const segs = Math.max(1, Math.round(flight / 2.6));
+        const segLen = flight / segs;
+        const half = width / 2 + 0.10;
+        for (let k = 0; k < segs; k++) {
+          const t = (k + 0.5) / segs;             // position along the flight
+          const along = (t - 0.5) * run * dir;
+          const y = fromY + t * rise;
+          [-1, 1].forEach(sgn => {
+            // Travel offset runs along `axis`; the rail offset is across it.
+            push(railGeo.clone(), M.steel,
+              [cx + (axis === 'x' ? along : sgn * half),
+               y,
+               cz + (axis === 'z' ? along : sgn * half)],
+              railRot,
+              [segLen / railSize[0], 1.05 / railSize[1], 1]);
+          });
+        }
+      }
+
       result.minimap.walls.push({ x: cx, z: cz, w: axis === 'x' ? run : width,
         d: axis === 'z' ? run : width, h: rise });
     }
@@ -9723,6 +9794,57 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       result.minimap.walls.push({ x: p[0], z: p[1], w: 6.4, d: 6.4, h: 1.1 });
     });
 
+    /* Street railings.
+     *
+     * Chest-high, and see-through in both senses: you cannot walk through
+     * them, but they do not stop a bullet either, because a barrier you can
+     * plainly see between is one you expect to shoot through. That makes them
+     * shallow cover which rewards putting a solid post between you and the
+     * shooter, rather than a wall that soaks rounds for free.
+     *
+     * They run along the shop frontages only. Longer runs down the street
+     * approaches were tried and reverted: they cut the routes out of the
+     * spawns badly enough that the bots stopped meeting each other at all,
+     * and the smoke test caught it as a collapse in damage dealt. Cover that
+     * changes where a fight can happen is a level-design decision, not
+     * decoration, so it stays off until it is designed rather than sprinkled.
+     *
+     * `prop()` drops any piece that would land inside geometry that is
+     * already there, so a run breaks around a staircase instead of growing
+     * out of one.
+     */
+    // Frontage railings either side of the four walk-through shops, doorways
+    // left clear.
+    [-1, 1].forEach(sx => {
+      [-1, 1].forEach(sz => {
+        const bx = sx * 30, bz = sz * 22;
+        const front = bz - sz * 9.2;
+        [-7.4, 7.4].forEach(ox => {
+          const placed = prop('fenceLow', bx + ox, 0.18, front, 0, M.darkSteel, {
+            scale: [1.05, 0.80, 1],
+            collide: true, surface: 'metal', blocksProjectiles: false
+          });
+          // Anti-climb spikes along the top rail — the reason a fence like
+          // this exists on a real street at all. Only where the rail landed.
+          if (!placed) return;
+          for (let i = -2; i <= 2; i++) {
+            prop('spikeRow', bx + ox + i * 0.78, 1.30, front, 0, M.steel, { scale: 0.75 });
+          }
+        });
+      });
+    });
+
+    /* A cover panel down the middle of each side street, so the flank routes
+     * are not bare corridors. Same rules: blocks movement, not bullets. */
+    [-1, 1].forEach(sx => {
+      [-1, 1].forEach(sz => {
+        prop('fence', sx * 38, 0.18, sz * 12.5, Math.PI / 2, M.darkSteel, {
+          scale: [1, 0.62, 1],
+          collide: true, surface: 'metal', blocksProjectiles: false
+        });
+      });
+    });
+
     /* ================================================================== *
      * 6. TEAM BASES + DELIVERY ZONES
      * ================================================================== */
@@ -10015,6 +10137,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
     HC.Log.info('Map', 'NOVA DISTRICT built: ' + drawCalls + ' static draw calls, ' +
       world.shapeCount + ' collision shapes, ' + lights.length + ' point lights');
+    if (propsSkipped.length) {
+      HC.Log.info('Map', propsSkipped.length + ' kit props skipped (space already occupied): ' +
+        propsSkipped.slice(0, 8).join('; ') + (propsSkipped.length > 8 ? ' ...' : ''));
+    }
 
     /* --- key lighting --- */
     const hemi = new THREE.HemisphereLight(0x4a7ab8, 0x232830, 0.92);
